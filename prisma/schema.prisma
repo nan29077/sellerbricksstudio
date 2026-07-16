@@ -1,0 +1,581 @@
+// 셀러 브릭스 - Prisma 스키마
+// provider 는 postgresql. docker-compose 의 Postgres 와 연결됩니다.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===================== Enums =====================
+enum Role {
+  SUPER_ADMIN
+  MANAGER
+  FACILITY_ADMIN
+  SELLER
+  BUYER
+}
+
+enum FacilityType {
+  WAREHOUSE // 창고
+  STUDIO    // 스튜디오
+}
+
+enum FacilityStatus {
+  PENDING   // 승인 대기
+  APPROVED  // 승인됨
+  SUSPENDED // 정지
+}
+
+enum BookingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  COMPLETED
+}
+
+enum CommissionType {
+  PERCENT
+  FIXED
+}
+
+enum ProductSource {
+  CATALOG       // 시설에 정식 등록된 상품
+  AD_HOC        // 방송 중 임시 추가
+  TEMP_PRODUCT  // 임시 상품(정식 전환 전)
+}
+
+enum LiveStatus {
+  DRAFT
+  READY
+  LIVE
+  ENDED
+  CANCELLED
+}
+
+enum SnsChannelType {
+  YOUTUBE
+  INSTAGRAM
+  TIKTOK
+  ETC
+  CATENOID // 자체 송출
+}
+
+enum OrderStatus {
+  ORDER_CREATED
+  PAYMENT_PENDING
+  PAID
+  PREPARING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  READY
+  IN_PROGRESS
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CARD          // 신용카드
+  EASY_PAY      // 간편결제
+  BANK_TRANSFER // 간편 계좌이체
+}
+
+enum SettlementStatus {
+  PENDING
+  CONFIRMED
+  PAID
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+// ===================== Core: Users =====================
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(SELLER)
+  isActive     Boolean  @default(true)
+  profileImageIndex Int? // 1-20 랜덤 배정 프로필 이미지 (null이면 미배정)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profile            Profile?
+  ownedFacilities    Facility[]          @relation("FacilityOwner")
+  managedFacilities  ManagerFacility[]
+  bookings           Booking[]           @relation("SellerBookings")
+  liveSessions       LiveSession[]       @relation("SellerLiveSessions")
+  orders             Order[]             @relation("SellerOrders")
+  kakaoChannels      KakaoChannel[]
+  settlements        Settlement[]        @relation("SellerSettlements")
+  managerCommission  ManagerCommissionRule[]
+  auditLogs          AuditLog[]
+}
+
+model Profile {
+  id          String  @id @default(cuid())
+  userId      String  @unique
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  phone       String?
+  companyName String?
+  avatarUrl   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ===================== Facilities =====================
+model Facility {
+  id          String         @id @default(cuid())
+  ownerId     String
+  owner       User           @relation("FacilityOwner", fields: [ownerId], references: [id])
+  name        String
+  type        FacilityType
+  status      FacilityStatus @default(PENDING)
+  region      String         // 지역 (예: 서울, 부산)
+  address     String
+  description String?
+  equipment   String?        // 보유 장비 (콤마 구분 또는 자유 텍스트)
+  openTime    String?        // "09:00"
+  closeTime   String?        // "22:00"
+  basePrice   Int            @default(0) // 예약료(원)
+  rating      Float          @default(0)
+  thumbnailUrl String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  images        FacilityImage[]
+  slots         FacilityAvailableSlot[]
+  blackoutDates FacilityBlackoutDate[]
+  managers      ManagerFacility[]
+  products      FacilityProduct[]
+  bookings      Booking[]
+  liveSessions  LiveSession[]
+  orders        Order[]
+  settlements   Settlement[]
+
+  @@index([region])
+  @@index([type])
+  @@index([status])
+}
+
+model FacilityImage {
+  id         String   @id @default(cuid())
+  facilityId String
+  facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  url        String
+  sortOrder  Int      @default(0)
+}
+
+// 예약 가능 시간대(반복 슬롯)
+model FacilityAvailableSlot {
+  id         String   @id @default(cuid())
+  facilityId String
+  facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  weekday    Int      // 0=일 ~ 6=토
+  startTime  String   // "10:00"
+  endTime    String   // "12:00"
+  isActive   Boolean  @default(true)
+
+  @@index([facilityId])
+}
+
+// 예약 불가일
+model FacilityBlackoutDate {
+  id         String   @id @default(cuid())
+  facilityId String
+  facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  date       DateTime
+  reason     String?
+
+  @@unique([facilityId, date])
+}
+
+// 중간관리자 - 시설 매핑 (영업한 시설)
+model ManagerFacility {
+  id         String   @id @default(cuid())
+  managerId  String
+  manager    User     @relation(fields: [managerId], references: [id], onDelete: Cascade)
+  facilityId String
+  facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([managerId, facilityId])
+  @@index([facilityId])
+}
+
+// ===================== Products =====================
+// products: 마스터 상품 카탈로그(시설 무관)
+model Product {
+  id           String   @id @default(cuid())
+  name         String
+  sku          String?
+  category     String
+  description  String?
+  thumbnailUrl String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  images           ProductImage[]
+  options          ProductOption[]
+  facilityProducts FacilityProduct[]
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  sortOrder Int     @default(0)
+}
+
+model ProductOption {
+  id          String  @id @default(cuid())
+  productId   String
+  product     Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name        String  // 예: 색상
+  value       String  // 예: 블랙
+  extraPrice  Int     @default(0)
+  stock       Int     @default(0)
+}
+
+// facility_products: 시설에서 판매 가능한 상품 + 가격/재고/수수료
+model FacilityProduct {
+  id              String        @id @default(cuid())
+  facilityId      String
+  facility        Facility      @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product       @relation(fields: [productId], references: [id])
+  salePrice       Int           // 판매가(원)
+  consumerPrice   Int           // 소비자가(원)
+  stock           Int           @default(0)
+  shippingInfo    String?
+  commissionType  CommissionType @default(PERCENT)
+  commissionValue Float          @default(0)  // PERCENT: %, FIXED: 원
+  isSellable      Boolean        @default(true)
+  source          ProductSource  @default(CATALOG)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  liveSessionProducts LiveSessionProduct[]
+
+  @@index([facilityId])
+}
+
+// ===================== Bookings =====================
+model Booking {
+  id             String        @id @default(cuid())
+  facilityId     String
+  facility       Facility      @relation(fields: [facilityId], references: [id])
+  sellerId       String
+  seller         User          @relation("SellerBookings", fields: [sellerId], references: [id])
+  status         BookingStatus @default(PENDING)
+  startAt        DateTime
+  endAt          DateTime
+  purpose        String?       // 방송 목적
+  expectedProducts String?     // 예상 판매 상품
+  rejectReason   String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  liveSession LiveSession?
+
+  @@index([facilityId, startAt])
+  @@index([sellerId])
+}
+
+// ===================== Live Sessions =====================
+model LiveSession {
+  id            String     @id @default(cuid())
+  slug          String     @unique // 구매자용 링크 식별자
+  bookingId     String?    @unique
+  booking       Booking?   @relation(fields: [bookingId], references: [id])
+  sellerId      String
+  seller        User       @relation("SellerLiveSessions", fields: [sellerId], references: [id])
+  facilityId    String
+  facility      Facility   @relation(fields: [facilityId], references: [id])
+  title         String
+  description   String?
+  status        LiveStatus @default(DRAFT)
+  scheduledStart DateTime?
+  scheduledEnd   DateTime?
+  selfStreamUrl String?    // 자체 송출 URL
+  buyerLinkUrl  String?    // 구매자용 방송 링크
+  catenoidStreamId String?
+  catenoidPlaybackUrl String?
+  alimtalkStatus NotificationStatus @default(PENDING)
+  numberVersion Int        @default(0) // 상품번호 변경 폴링용 버전
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  products       LiveSessionProduct[]
+  numberHistory  LiveProductNumberHistory[]
+  orders         Order[]
+  streamChannels StreamChannel[]
+  notifications  NotificationLog[]
+  catenoidLogs   CatenoidStreamLog[]
+
+  @@index([sellerId])
+  @@index([facilityId])
+}
+
+// 방송에서 판매하는 상품 + 상품번호
+model LiveSessionProduct {
+  id                String          @id @default(cuid())
+  liveSessionId     String
+  liveSession       LiveSession     @relation(fields: [liveSessionId], references: [id], onDelete: Cascade)
+  facilityProductId String?
+  facilityProduct   FacilityProduct? @relation(fields: [facilityProductId], references: [id])
+  displayNumber     Int             // 구매자에게 보이는 상품번호
+  sortOrder         Int             @default(0)
+  // 임시상품(스냅샷) 필드 - facilityProduct 없이도 동작
+  nameSnapshot      String
+  priceSnapshot     Int
+  stockSnapshot     Int             @default(0)
+  imageSnapshot     String?
+  optionSnapshot    String?         // JSON 문자열
+  source            ProductSource   @default(CATALOG)
+  isActive          Boolean         @default(true)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  orderItems OrderItem[]
+
+  @@unique([liveSessionId, displayNumber])
+  @@index([liveSessionId])
+}
+
+// 상품번호 변경 이력
+model LiveProductNumberHistory {
+  id            String      @id @default(cuid())
+  liveSessionId String
+  liveSession   LiveSession @relation(fields: [liveSessionId], references: [id], onDelete: Cascade)
+  liveSessionProductId String
+  oldNumber     Int?
+  newNumber     Int
+  changedBy     String      // userId
+  changedAt     DateTime    @default(now())
+
+  @@index([liveSessionId])
+}
+
+// ===================== Orders & Payments =====================
+model Order {
+  id            String      @id @default(cuid())
+  orderNo       String      @unique
+  liveSessionId String
+  liveSession   LiveSession @relation(fields: [liveSessionId], references: [id])
+  sellerId      String
+  seller        User        @relation("SellerOrders", fields: [sellerId], references: [id])
+  facilityId    String
+  facility      Facility    @relation(fields: [facilityId], references: [id])
+  buyerName     String
+  buyerPhone    String
+  buyerAddress  String?
+  status        OrderStatus @default(ORDER_CREATED)
+  totalAmount   Int
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  items    OrderItem[]
+  payment  Payment?
+
+  @@index([liveSessionId])
+  @@index([sellerId])
+  @@index([facilityId])
+}
+
+model OrderItem {
+  id                   String             @id @default(cuid())
+  orderId              String
+  order                Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  liveSessionProductId String
+  liveSessionProduct   LiveSessionProduct @relation(fields: [liveSessionProductId], references: [id])
+  displayNumber        Int
+  productName          String
+  unitPrice            Int
+  quantity             Int
+  optionLabel          String?
+  lineTotal            Int
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  orderId       String        @unique
+  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider      String        @default("mock")
+  method        PaymentMethod
+  status        PaymentStatus @default(READY)
+  amount        Int
+  pgTransactionId String?
+  approvedAt    DateTime?
+  failReason    String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  events PaymentEvent[]
+}
+
+model PaymentEvent {
+  id        String   @id @default(cuid())
+  paymentId String
+  payment   Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  type      String   // CREATED|CONFIRMED|FAILED|CANCELLED|REFUNDED|WEBHOOK
+  payload   String?  // JSON
+  createdAt DateTime @default(now())
+
+  @@index([paymentId])
+}
+
+// ===================== Commission & Settlement =====================
+// 기본 수수료 정책(시설/플랫폼 단위 기본값)
+model CommissionRule {
+  id             String         @id @default(cuid())
+  scope          String         // PLATFORM | FACILITY
+  facilityId     String?
+  commissionType CommissionType @default(PERCENT)
+  commissionValue Float         @default(0)
+  createdAt      DateTime       @default(now())
+}
+
+// 중간관리자 수수료 (SUPER_ADMIN 만 설정)
+model ManagerCommissionRule {
+  id             String         @id @default(cuid())
+  managerId      String
+  manager        User           @relation(fields: [managerId], references: [id], onDelete: Cascade)
+  commissionType CommissionType @default(PERCENT)
+  commissionValue Float         @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([managerId])
+}
+
+model Settlement {
+  id            String           @id @default(cuid())
+  sellerId      String
+  seller        User             @relation("SellerSettlements", fields: [sellerId], references: [id])
+  facilityId    String
+  facility      Facility         @relation(fields: [facilityId], references: [id])
+  periodStart   DateTime
+  periodEnd     DateTime
+  grossAmount   Int              // 총 매출
+  commissionAmount Int           // 셀러 수수료(셀러 수익)
+  facilityAmount Int             // 시설 정산금
+  status        SettlementStatus @default(PENDING)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([sellerId])
+  @@index([facilityId])
+}
+
+// ===================== Kakao Alimtalk =====================
+model KakaoChannel {
+  id            String   @id @default(cuid())
+  sellerId      String
+  seller        User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  channelName   String
+  plusFriendId  String?
+  senderKey     String?
+  createdAt     DateTime @default(now())
+
+  subscribers KakaoSubscriber[]
+
+  @@index([sellerId])
+}
+
+model KakaoSubscriber {
+  id        String       @id @default(cuid())
+  channelId String
+  channel   KakaoChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  name      String?
+  phone     String
+  createdAt DateTime     @default(now())
+
+  @@index([channelId])
+}
+
+model NotificationTemplate {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  content   String   // {방송링크} 등 변수 포함
+  createdAt DateTime @default(now())
+}
+
+model NotificationLog {
+  id            String             @id @default(cuid())
+  liveSessionId String?
+  liveSession   LiveSession?       @relation(fields: [liveSessionId], references: [id])
+  channelId     String?
+  templateCode  String?
+  recipient     String
+  content       String
+  status        NotificationStatus @default(PENDING)
+  provider      String             @default("mock")
+  error         String?
+  createdAt     DateTime           @default(now())
+
+  @@index([liveSessionId])
+}
+
+// ===================== Streaming =====================
+model StreamChannel {
+  id            String         @id @default(cuid())
+  liveSessionId String
+  liveSession   LiveSession    @relation(fields: [liveSessionId], references: [id], onDelete: Cascade)
+  type          SnsChannelType
+  url           String?
+  externalId    String?
+  createdAt     DateTime       @default(now())
+
+  @@index([liveSessionId])
+}
+
+model CatenoidStreamLog {
+  id            String      @id @default(cuid())
+  liveSessionId String
+  liveSession   LiveSession @relation(fields: [liveSessionId], references: [id], onDelete: Cascade)
+  action        String      // CREATE|INFO|END|PLAYBACK|EXTERNAL
+  payload       String?
+  createdAt     DateTime    @default(now())
+
+  @@index([liveSessionId])
+}
+
+// ===================== Audit =====================
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id])
+  action    String
+  entity    String
+  entityId  String?
+  meta      String?  // JSON
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+}
+
+// 사이트 전역 설정 (배너, 사이트 정보, 라이브 기능 on/off 등)
+// key-value 저장소. 값은 문자열로 보관하고 앱에서 파싱한다.
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

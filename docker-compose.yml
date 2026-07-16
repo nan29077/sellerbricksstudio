@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: sellerbricks-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sellerbricks
+      POSTGRES_PASSWORD: sellerbricks
+      POSTGRES_DB: sellerbricks
+    ports:
+      - "5432:5432"
+    volumes:
+      - sellerbricks_pg:/var/lib/postgresql/data
+volumes:
+  sellerbricks_pg:

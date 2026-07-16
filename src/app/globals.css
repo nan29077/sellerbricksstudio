@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* 꿀벌 색상 팔레트 */
+  --background: 48 100% 98%;      /* #FFFBF0 크림/허니 화이트 */
+  --foreground: 240 36% 14%;      /* #1A1A2E 진한 네이비 */
+  --card: 0 0% 100%;
+  --card-foreground: 240 36% 14%;
+  --primary: 37 90% 55%;          /* #F5A623 꿀벌 호박색 */
+  --primary-foreground: 0 0% 100%;
+  --secondary: 48 100% 95%;       /* #FFF3D0 연한 허니 */
+  --secondary-foreground: 240 36% 14%;
+  --muted: 45 60% 95%;
+  --muted-foreground: 240 10% 45%;
+  --accent: 43 100% 51%;          /* #FFC107 밝은 노란색 */
+  --accent-foreground: 240 36% 14%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 40 30% 88%;
+  --input: 40 30% 88%;
+  --ring: 37 90% 55%;
+  --radius: 0.7rem;
+}
+
+* { border-color: hsl(var(--border)); }
+body { background: hsl(var(--background)); color: hsl(var(--foreground)); -webkit-tap-highlight-color: transparent; }
+html { scroll-behavior: smooth; }
+
+/* 모바일 터치 타겟 보장 */
+button, a[role="button"], .tap { min-height: 44px; }
+
+/* 모바일 Safe Area (iPhone 노치/홈바 대응) */
+.safe-area-inset-bottom { padding-bottom: env(safe-area-inset-bottom, 0); }
+
+/* 반응형 테이블 스크롤 */
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* 모바일 줄바꿈 최적화 */
+@media (max-width: 640px) {
+  .container { padding-left: 1rem; padding-right: 1rem; }
+  h1 { font-size: clamp(1.5rem, 5vw, 2.25rem); }
+  h2 { font-size: clamp(1.25rem, 4vw, 1.875rem); }
+}
+
+/* 푸터 노치 대응 */
+footer { padding-bottom: env(safe-area-inset-bottom, 0); }
