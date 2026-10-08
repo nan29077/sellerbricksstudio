@@ -30,7 +30,7 @@ async function main() {
     update: {},
     create: {
       email: "facility@sellerbricks.kr", passwordHash: pw, role: Role.FACILITY_ADMIN, profileImageIndex: 4,
-      profile: { create: { name: "시설 운영자", companyName: "성수라이브" } },
+      profile: { create: { name: "창고(스튜디오) 관리자", companyName: "성수라이브" } },
     },
   });
 

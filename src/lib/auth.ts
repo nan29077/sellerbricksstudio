@@ -17,7 +17,7 @@ export const authOptions: NextAuthOptions = {
         const DEMO_USERS: Record<string, { id: string; name: string; role: Role; pw: string }> = {
           "admin@sellerbricks.kr":    { id: "demo-admin",    name: "최고관리자",            role: "SUPER_ADMIN" as Role, pw: "password1234" },
           "manager@sellerbricks.kr":  { id: "demo-manager",  name: "중간관리자 (영업담당)", role: "MANAGER",             pw: "password1234" },
-          "facility@sellerbricks.kr": { id: "demo-facility", name: "시설 운영자",              role: "FACILITY_ADMIN",      pw: "password1234" },
+          "facility@sellerbricks.kr": { id: "demo-facility", name: "창고(스튜디오) 관리자", role: "FACILITY_ADMIN", pw: "password1234" },
           "seller@sellerbricks.kr":   { id: "demo-seller",   name: "셀러",                 role: "SELLER",              pw: "password1234" },
         };
         const demo = DEMO_USERS[credentials.email];

@@ -94,8 +94,8 @@ export function RoleAccessToggles({
         settingKey="facilityDisabled"
         title="시설이용자 비활성화"
         icon={Warehouse}
-        descOn="시설 운영자 계정의 모든 기능이 중지되고, 로그인·회원가입 화면 및 셀러의 예약·시설 예약·주문 관리 메뉴가 숨겨집니다."
-        descOff="시설 운영자 계정이 정상적으로 이용 가능합니다."
+        descOn="창고(스튜디오) 관리자 계정의 모든 기능이 중지되고, 로그인·회원가입 화면 및 셀러의 예약·시설 예약·주문 관리 메뉴가 숨겨집니다."
+        descOff="창고(스튜디오) 관리자 계정이 정상적으로 이용 가능합니다."
         initial={facilityDisabled}
       />
     </div>

@@ -42,7 +42,7 @@ export function LiveSettingsToggle({ initial }: { initial: boolean }) {
               <p className="font-semibold text-navy">라이브 기능 {on ? "활성화됨" : "비활성화됨"}</p>
               <p className="text-sm text-muted-foreground mt-0.5">
                 {on
-                  ? "셀러·시설 운영자 화면에 라이브 메뉴와 기능이 표시됩니다."
+                  ? "셀러·창고(스튜디오) 관리자 화면에 라이브 메뉴와 기능이 표시됩니다."
                   : "라이브 메뉴와 기능이 사용자 화면에서 숨김 처리됩니다."}
               </p>
             </div>

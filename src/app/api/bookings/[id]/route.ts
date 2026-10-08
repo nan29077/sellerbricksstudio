@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { ok, fail, handleError } from "@/lib/http";
 import { audit } from "@/lib/audit";
 
-// 예약 상태 변경: 시설 운영자(승인/거절/완료), 셀러(취소)
+// 예약 상태 변경: 창고(스튜디오) 관리자(승인/거절/완료), 셀러(취소)
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await requireUser();

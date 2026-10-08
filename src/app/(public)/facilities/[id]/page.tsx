@@ -362,7 +362,7 @@ export default async function FacilityDetail({ params }: { params: { id: string 
                           </Button>
                         </Link>
                         <p className="text-center text-xs text-muted-foreground mt-3">
-                          예약 신청 후 시설 운영자 승인이 필요합니다
+                          예약 신청 후 창고(스튜디오) 관리자 승인이 필요합니다
                         </p>
                       </>
                     ) : (

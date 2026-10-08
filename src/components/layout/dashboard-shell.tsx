@@ -144,9 +144,9 @@ export function DashboardShell({
         <Image
           src="/images/brand/logo-original-on-dark.png"
           alt="셀러브릭스 스튜디오"
-          width={150}
-          height={40}
-          className="h-10 w-auto object-contain"
+          width={190}
+          height={48}
+          className="h-12 w-auto object-contain"
           priority
         />
       </Link>
@@ -230,9 +230,9 @@ export function DashboardShell({
           <Image
             src="/images/brand/logo-original-on-light.png"
             alt="셀러브릭스 스튜디오"
-            width={134}
-            height={36}
-            className="h-9 w-auto object-contain"
+            width={154}
+            height={40}
+            className="h-10 w-auto object-contain"
             priority
           />
         </Link>

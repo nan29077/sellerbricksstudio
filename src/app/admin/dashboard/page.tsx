@@ -21,7 +21,7 @@ type RecentUser = {
 
 const roleLabels: Record<string, string> = {
   SUPER_ADMIN: "관리자",
-  FACILITY_ADMIN: "시설 운영자",
+  FACILITY_ADMIN: "창고(스튜디오) 관리자",
   SELLER: "셀러",
   MANAGER: "매니저",
 };
@@ -200,7 +200,7 @@ export default async function AdminDashboard() {
 
   const roleBreakdown = [
     { label: "셀러",       value: sellers,       color: "bg-brand-500" },
-    { label: "시설 운영자", value: facilityAdmins, color: "bg-sky-500" },
+    { label: "창고(스튜디오) 관리자", value: facilityAdmins, color: "bg-sky-500" },
     { label: "매니저",     value: managers,       color: "bg-violet-500" },
   ];
 

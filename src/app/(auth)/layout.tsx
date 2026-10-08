@@ -8,9 +8,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <Image
           src="/images/brand/logo-original-on-dark.png"
           alt="셀러브릭스 스튜디오"
-          width={180}
-          height={48}
-          className="w-[180px] h-auto object-contain"
+          width={220}
+          height={56}
+          className="w-[220px] h-auto object-contain"
           priority
         />
       </Link>

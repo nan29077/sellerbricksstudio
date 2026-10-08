@@ -5,7 +5,7 @@ import { addLiveProductSchema } from "@/lib/validations";
 import { ok, fail, handleError } from "@/lib/http";
 import { audit } from "@/lib/audit";
 
-// 세션 접근 권한: 셀러 본인 또는 시설 소유 시설 운영자
+// 세션 접근 권한: 셀러 본인 또는 시설 소유 창고(스튜디오) 관리자
 async function assertAccess(userId: string, role: string, sessionId: string) {
   const s = await prisma.liveSession.findUnique({ where: { id: sessionId }, include: { facility: true } });
   if (!s) throw new Error("세션을 찾을 수 없습니다.");

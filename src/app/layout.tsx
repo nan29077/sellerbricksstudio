@@ -4,9 +4,9 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 
 const siteName = "셀러브릭스 스튜디오";
-const shareTitle = "방송에만 집중하세요. 나머지는 우리가 합니다.";
-const shareDescription = "공간 탐색부터 라이브 준비와 판매 관리까지, 셀러브릭스 스튜디오에서 이어보세요.";
-const shareImage = "/images/social/share-card.png?v=2";
+const shareTitle = "좋은 상품이 더 멀리 닿는 라이브";
+const shareDescription = "창고(스튜디오) 찾기부터 라이브 준비와 판매 관리까지, 셀러브릭스 스튜디오가 함께합니다.";
+const shareImage = "/images/social/share-card-v3.jpg";
 
 function getSiteUrl(): URL {
   const configuredUrl = process.env.NEXT_PUBLIC_APP_URL;
@@ -37,23 +37,26 @@ function getSiteUrl(): URL {
 }
 
 export function generateMetadata(): Metadata {
+  const siteUrl = getSiteUrl();
+  const shareImageUrl = new URL(shareImage, siteUrl).toString();
   return {
-    metadataBase: getSiteUrl(),
-    title: `${siteName} | 방송에만 집중하세요`,
+    metadataBase: siteUrl,
+    title: `${siteName} | 좋은 상품이 더 멀리 닿는 라이브`,
     description: shareDescription,
     openGraph: {
       type: "website",
       locale: "ko_KR",
       siteName,
+      url: siteUrl,
       title: `${shareTitle} | ${siteName}`,
       description: shareDescription,
-      images: [{ url: shareImage, width: 1200, height: 630, alt: `${siteName} — ${shareTitle}` }],
+      images: [{ url: shareImageUrl, width: 1200, height: 630, alt: `${siteName} — ${shareTitle}`, type: "image/jpeg" }],
     },
     twitter: {
       card: "summary_large_image",
       title: `${shareTitle} | ${siteName}`,
       description: shareDescription,
-      images: [shareImage],
+      images: [shareImageUrl],
     },
   };
 }

@@ -69,9 +69,9 @@ npm run dev
 
 ## 카카오톡·SNS 공유 카드
 
-사이트 링크의 미리보기에는 `public/images/social/share-card.png`(1200×630)가 사용됩니다. Open Graph와 X(Twitter) 카드의 제목·설명·이미지는 `src/app/layout.tsx`에서 설정합니다. 실제 배포 환경에서는 `NEXT_PUBLIC_APP_URL`을 공개 사이트 주소(예: `https://example.com`)로 설정하세요. 이 값이 없으면 요청 호스트를 사용합니다.
+사이트 링크의 미리보기에는 `public/images/social/share-card-v3.jpg`(1200×630)가 사용됩니다. Open Graph와 X(Twitter) 카드의 제목·설명·절대 이미지 URL은 `src/app/layout.tsx`에서 설정합니다. 실제 배포 환경에서는 `NEXT_PUBLIC_APP_URL`을 공개 사이트 주소(예: `https://example.com`)로 설정하세요. 이 값이 없으면 요청 호스트를 사용합니다.
 
-공유 이미지의 배경 원본은 `public/images/social/share-background.png`입니다. 네이비·골드 톤의 라이브커머스 촬영 스튜디오를 생성형 이미지로 제작하고, 로고와 한글 문구는 코드로 선명하게 합성했습니다. 문구를 바꾼 뒤에는 Pillow와 한글 글꼴이 있는 환경에서 `scripts/generate-share-card.py`를 실행해 최종 이미지를 다시 만들 수 있습니다. 예: `python scripts/generate-share-card.py --font /path/to/korean-bold.ttf`. 로고를 바꿀 때는 `scripts/generate-brand-assets.py`를 먼저 실행하세요. 공유 이미지 URL에는 버전 쿼리가 있어 변경 후 미리보기 캐시가 새 이미지를 가리키도록 합니다.
+공유 이미지의 배경 원본은 `public/images/social/share-background.png`입니다. 네이비·골드 톤의 라이브커머스 촬영 스튜디오를 생성형 이미지로 제작하고, 로고와 한글 문구는 코드로 선명하게 합성했습니다. 문구를 바꾼 뒤에는 Pillow와 한글 글꼴이 있는 환경에서 `scripts/generate-share-card.py`를 실행하면 PNG 원본과 공유용 JPEG를 함께 다시 만들 수 있습니다. 예: `python scripts/generate-share-card.py --font /path/to/korean-bold.ttf`. 로고를 바꿀 때는 `scripts/generate-brand-assets.py`를 먼저 실행하세요. 공유 카드가 크게 바뀌면 JPEG 파일 이름의 버전을 올려 카카오톡 등 외부 서비스의 기존 이미지 캐시를 피하세요.
 
 ## 홈페이지 비주얼
 
@@ -89,7 +89,7 @@ npm run dev
 |------|--------|-----------|
 | 최고관리자 (SUPER_ADMIN) | `admin@sellerbricks.kr` | `/admin/dashboard` |
 | 중간관리자 (MANAGER) | `manager@sellerbricks.kr` | `/manager/dashboard` |
-| 창고지기 (FACILITY_ADMIN) | `facility@sellerbricks.kr` | `/facility/dashboard` |
+| 창고(스튜디오) 관리자 (FACILITY_ADMIN) | `facility@sellerbricks.kr` | `/facility/dashboard` |
 | 셀러 (SELLER) | `seller@sellerbricks.kr` | `/seller/dashboard` |
 | 구매자 (BUYER) | 로그인 불필요 | 방송 링크로 접속 |
 
@@ -99,14 +99,14 @@ npm run dev
 
 ## 전체 플로우 체험 (5분)
 
-1. **창고지기**로 로그인 → `상품` 메뉴에서 상품 등록 (시드에 이미 존재)
+1. **창고(스튜디오) 관리자**로 로그인 → `상품` 메뉴에서 상품 등록 (시드에 이미 존재)
 2. **셀러**로 로그인 → `예약` → 시설 검색 후 예약 신청
-3. **창고지기**로 로그인 → `예약 관리`에서 **승인**
+3. **창고(스튜디오) 관리자**로 로그인 → `예약 관리`에서 **승인**
 4. **셀러**로 로그인 → `라이브` → 승인된 예약으로 **라이브 세션 생성**
 5. `판매 상품 선택`에서 시설 상품 추가 → **상품번호 자동/수동 부여**, 드래그로 순서 변경, 방송 중 **임시상품 추가**
 6. 세션 상세에서 **방송 시작** + **카카오 알림톡 발송**(Mock) + 구매자 링크 복사
 7. 구매자 링크(`/live/...`)를 새 창에서 열어 **상품번호로 장바구니 담기 → Mock 결제 → 주문 완료**
-8. **셀러/창고지기/관리자** 대시보드에서 주문·매출·정산 확인
+8. **셀러/창고(스튜디오) 관리자/관리자** 대시보드에서 주문·매출·정산 확인
 
 > 셀러 화면에서 상품번호를 바꾸면 구매자 화면에 약 4초 내 자동 반영됩니다(폴링).
 

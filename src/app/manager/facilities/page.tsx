@@ -11,9 +11,9 @@ import { Building2 } from "lucide-react";
 export const dynamic = "force-dynamic";
 
 const DUMMY_FACILITIES: any[] = [
-  { id:"d1", name:"강남 프리미엄 라이브 스튜디오", type:"STUDIO",    region:"서울", basePrice:150000, status:"APPROVED", owner:{ profile:{ name:"시설 운영자 (김대영)" } }, _count:{ products:248, bookings:48 } },
-  { id:"d3", name:"성수 인더스트리얼 스튜디오",     type:"STUDIO",    region:"서울", basePrice:120000, status:"APPROVED", owner:{ profile:{ name:"시설 운영자 (이선호)" } }, _count:{ products:186, bookings:22 } },
-  { id:"d5", name:"판교 IT 테크 스튜디오",          type:"STUDIO",    region:"경기", basePrice:100000, status:"APPROVED", owner:{ profile:{ name:"시설 운영자 (박태호)" } }, _count:{ products:142, bookings:15 } },
+  { id:"d1", name:"강남 프리미엄 라이브 스튜디오", type:"STUDIO",    region:"서울", basePrice:150000, status:"APPROVED", owner:{ profile:{ name:"창고(스튜디오) 관리자 (김대영)" } }, _count:{ products:248, bookings:48 } },
+  { id:"d3", name:"성수 인더스트리얼 스튜디오",     type:"STUDIO",    region:"서울", basePrice:120000, status:"APPROVED", owner:{ profile:{ name:"창고(스튜디오) 관리자 (이선호)" } }, _count:{ products:186, bookings:22 } },
+  { id:"d5", name:"판교 IT 테크 스튜디오",          type:"STUDIO",    region:"경기", basePrice:100000, status:"APPROVED", owner:{ profile:{ name:"창고(스튜디오) 관리자 (박태호)" } }, _count:{ products:142, bookings:15 } },
 ];
 
 export default async function ManagerFacilities() {

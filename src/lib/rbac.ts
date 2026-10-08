@@ -4,7 +4,7 @@ import { prisma } from "./prisma";
 export const ROLE_LABELS: Record<Role, string> = {
   SUPER_ADMIN: "최고관리자",
   MANAGER: "중간관리자",
-  FACILITY_ADMIN: "시설 운영자",
+  FACILITY_ADMIN: "창고(스튜디오) 관리자",
   SELLER: "셀러",
   BUYER: "구매자",
 };
@@ -29,7 +29,7 @@ export async function managerFacilityIds(managerId: string): Promise<string[]> {
   return rows.map((r) => r.facilityId);
 }
 
-// 시설 운영자가 소유한 시설 id 목록
+// 창고(스튜디오) 관리자가 소유한 시설 id 목록
 export async function ownedFacilityIds(ownerId: string): Promise<string[]> {
   const rows = await prisma.facility.findMany({ where: { ownerId }, select: { id: true } });
   return rows.map((r) => r.id);

@@ -6,7 +6,7 @@ import { Store, Warehouse } from "lucide-react";
 
 const roles = [
   { href: "/signup/seller", role: "SELLER", icon: Store, title: "셀러로 가입", desc: "창고/스튜디오를 예약하고 라이브 방송으로 판매하세요." },
-  { href: "/signup/facility", role: "FACILITY_ADMIN", icon: Warehouse, title: "시설 운영자로 가입", desc: "창고, 스튜디오, 농장, 공장, 농가 등 시설을 보유하고 운영하는 분들을 위한 계정입니다." },
+  { href: "/signup/facility", role: "FACILITY_ADMIN", icon: Warehouse, title: "창고(스튜디오) 관리자로 가입", desc: "창고, 스튜디오, 농장, 공장, 농가 등 시설을 보유하고 운영하는 분들을 위한 계정입니다." },
 ];
 
 export default function SignupPage() {

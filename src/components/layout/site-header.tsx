@@ -19,7 +19,7 @@ export function SiteHeader() {
   const nav = [
     { href: "/", label: "홈" },
     { href: "/intro", label: "서비스 소개" },
-    { href: "/facilities", label: "공간 찾기" },
+    { href: "/facilities", label: "창고(스튜디오) 찾기" },
   ];
 
   return (

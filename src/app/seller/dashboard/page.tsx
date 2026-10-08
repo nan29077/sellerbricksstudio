@@ -171,7 +171,7 @@ export default async function SellerDashboard() {
             <p className="text-sm font-semibold text-amber-800">
               승인 대기 중인 예약이 {pendingBookings}건 있습니다
             </p>
-            <p className="text-xs text-amber-600">시설 운영자의 승인을 기다리고 있습니다.</p>
+            <p className="text-xs text-amber-600">창고(스튜디오) 관리자의 승인을 기다리고 있습니다.</p>
           </div>
           <Link href="/seller/bookings">
             <Button variant="outline" size="sm" className="border-amber-300 text-amber-700">

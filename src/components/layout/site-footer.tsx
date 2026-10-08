@@ -3,8 +3,8 @@ import Link from "next/link";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 
 const footerLinks = [
-  { title: "서비스", links: [{ href: "/intro", label: "서비스 소개" }, { href: "/facilities", label: "공간 찾기" }, { href: "/facilities?type=STUDIO", label: "스튜디오" }, { href: "/facilities?type=WAREHOUSE", label: "창고" }] },
-  { title: "시작하기", links: [{ href: "/signup/seller", label: "셀러 가입" }, { href: "/signup/facility", label: "시설 운영자 가입" }, { href: "/login", label: "로그인" }] },
+  { title: "서비스", links: [{ href: "/intro", label: "서비스 소개" }, { href: "/facilities", label: "창고(스튜디오) 찾기" }, { href: "/facilities?type=STUDIO", label: "스튜디오" }, { href: "/facilities?type=WAREHOUSE", label: "창고" }] },
+  { title: "시작하기", links: [{ href: "/signup/seller", label: "셀러 가입" }, { href: "/signup/facility", label: "창고(스튜디오) 관리자 가입" }, { href: "/login", label: "로그인" }] },
 ];
 
 export function SiteFooter() {

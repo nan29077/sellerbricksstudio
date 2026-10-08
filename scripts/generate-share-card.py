@@ -61,10 +61,10 @@ def main() -> None:
     gold = "#FFD05A"
     white = "#FFFFFF"
     muted = "#D8DCE8"
-    kicker = "셀러의 라이브를 위한 새로운 무대"
-    first = "방송에만 집중하세요."
-    second = "나머지는 우리가 합니다."
-    detail = "공간 탐색  ·  라이브 준비  ·  판매 관리"
+    kicker = "SELLERBRICKS STUDIO"
+    first = "좋은 상품이,"
+    second = "더 멀리 닿는 라이브."
+    detail = "창고(스튜디오) 찾기  ·  라이브 준비  ·  판매 관리"
 
     draw.rounded_rectangle((72, 201, 474, 249), radius=24, fill=(25, 30, 49, 230), outline=(245, 166, 35, 160), width=2)
     draw.text((94, 211), kicker, font=ImageFont.truetype(str(font_path), 21), fill=gold)
@@ -75,8 +75,12 @@ def main() -> None:
     draw.text((73, 523), detail, font=fit_font(draw, detail, font_path, 25, 620), fill=muted)
 
     output = SOCIAL / "share-card.png"
-    card.convert("RGB").save(output, optimize=True)
+    share_jpg = SOCIAL / "share-card-v3.jpg"
+    rgb_card = card.convert("RGB")
+    rgb_card.save(output, optimize=True)
+    rgb_card.save(share_jpg, quality=90, optimize=True, progressive=True)
     print(output)
+    print(share_jpg)
 
 
 if __name__ == "__main__":

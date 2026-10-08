@@ -389,7 +389,7 @@ export function BookingForm({
               )}
             </Button>
             <p className="text-center text-xs text-muted-foreground mt-3">
-              예약 신청 후 시설 운영자의 승인이 완료되면 예약이 확정됩니다.
+              예약 신청 후 창고(스튜디오) 관리자의 승인이 완료되면 예약이 확정됩니다.
             </p>
           </form>
         </CardContent>

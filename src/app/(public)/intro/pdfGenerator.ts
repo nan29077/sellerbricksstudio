@@ -207,7 +207,7 @@ export async function generateSellerBricksPdf(
               '</div>' +
             '</div>' +
             '<div style="background:#1C1917;border-radius:20px;padding:26px 30px;">' +
-              '<div style="color:#F5A623;font-size:15px;font-weight:800;margin-bottom:14px;">시설 관리자</div>' +
+              '<div style="color:#F5A623;font-size:15px;font-weight:800;margin-bottom:14px;">창고(스튜디오) 관리자</div>' +
               '<div style="display:flex;flex-wrap:wrap;gap:8px;">' +
                 tagsHtml(facilTags,
                   'background:rgba(245,166,35,0.15);color:rgba(255,255,255,0.85);font-size:12px;padding:5px 12px;border-radius:8px;') +
@@ -227,7 +227,7 @@ export async function generateSellerBricksPdf(
             '<div>' +
               '<div style="color:#F5A623;font-size:13px;font-weight:700;margin-bottom:4px;">하나의 플랫폼, 세 가지 역할</div>' +
               '<div style="color:rgba(255,255,255,0.55);font-size:12px;">' +
-                '셀러 · 시설 관리자 · 관리자가 유기적으로 연결되는 통합 관리 시스템' +
+                '셀러 · 창고(스튜디오) 관리자 · 관리자가 유기적으로 연결되는 통합 관리 시스템' +
               '</div>' +
             '</div>' +
           '</div>' +

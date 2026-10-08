@@ -26,8 +26,18 @@ def variant(image: Image.Image, dark_background: bool) -> Image.Image:
     if not dark_background:
         return image.copy()
     pixels = []
-    for red, green, blue, alpha in image.getdata():
-        pixels.append((red, green, blue, alpha) if is_gold(red, green, blue) else (255, 255, 255, alpha))
+    for index, (red, green, blue, alpha) in enumerate(image.get_flattened_data()):
+        x = index % image.width
+        if x >= 80 or is_gold(red, green, blue):
+            # Keep the supplied SELLERBRICKS lettering and gold details intact.
+            pixels.append((red, green, blue, alpha))
+        elif max(red, green, blue) < 135:
+            # Only recolor the speech-bubble symbol around the play button.
+            # Muted blue gray keeps the mark visible on navy without turning it white.
+            pixels.append((86, 96, 120, alpha))
+        else:
+            # Darken any pale edge pixels around the symbol so it does not glow.
+            pixels.append((25, 31, 49, alpha))
     result = Image.new("RGBA", image.size)
     result.putdata(pixels)
     return result
@@ -37,19 +47,19 @@ def make_wordmark(name: str, dark_background: bool) -> None:
     scale = 3
     original = variant(SOURCE, dark_background)
     original = original.resize((SOURCE.width * scale, SOURCE.height * scale), Image.Resampling.LANCZOS)
-    canvas = Image.new("RGBA", (original.width + 12, original.height + 36), (0, 0, 0, 0))
+    canvas = Image.new("RGBA", (original.width + 12, original.height + 64), (0, 0, 0, 0))
     canvas.alpha_composite(original, (0, 0))
 
     draw = ImageDraw.Draw(canvas)
-    font = ImageFont.truetype(str(FONT), 48)
+    font = ImageFont.truetype(str(FONT), 64)
     label = "STUDIO"
-    spacing = 16
+    spacing = 14
     label_width = sum(draw.textlength(letter, font=font) for letter in label) + spacing * (len(label) - 1)
     # The source wordmark begins after the symbol, at approximately x=80.
     wordmark_center = (80 + SOURCE.width) * scale / 2
     x = wordmark_center - label_width / 2
     for letter in label:
-        draw.text((round(x), 207), letter, font=font, fill="#FFFFFF" if dark_background else "#202126")
+        draw.text((round(x), 199), letter, font=font, fill="#202126")
         x += draw.textlength(letter, font=font) + spacing
 
     bounds = canvas.getbbox()

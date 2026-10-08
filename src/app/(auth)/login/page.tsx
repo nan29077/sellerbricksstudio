@@ -9,7 +9,7 @@ import { Loader2, ShieldCheck, Store, Warehouse } from "lucide-react";
 
 const DEMO_ACCOUNTS = [
   { label: "최고관리자", role: "SUPER_ADMIN", email: "admin@sellerbricks.kr", icon: ShieldCheck, color: "text-red-600 bg-red-50 border-red-200" },
-  { label: "시설 운영자", role: "FACILITY_ADMIN", email: "facility@sellerbricks.kr", icon: Warehouse, color: "text-emerald-600 bg-emerald-50 border-emerald-200" },
+  { label: "창고(스튜디오) 관리자", role: "FACILITY_ADMIN", email: "facility@sellerbricks.kr", icon: Warehouse, color: "text-emerald-600 bg-emerald-50 border-emerald-200" },
   { label: "셀러", role: "SELLER", email: "seller@sellerbricks.kr", icon: Store, color: "text-brand-600 bg-brand-50 border-brand-200" },
 ];
 

@@ -18,7 +18,7 @@ export default async function AdminLiveSettings() {
         <h2 className="text-sm font-bold text-navy">라이브 기능</h2>
         <LiveSettingsToggle initial={settings.liveEnabled} />
         <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground leading-relaxed">
-          스위치를 끄면 셀러·시설 운영자의 좌측 메뉴에서 <b className="text-navy">라이브</b> 항목이 사라지고,
+          스위치를 끄면 셀러·창고(스튜디오) 관리자의 좌측 메뉴에서 <b className="text-navy">라이브</b> 항목이 사라지고,
           라이브 관련 페이지 접근이 대시보드로 차단됩니다. 다시 켜면 즉시 복구됩니다.
         </div>
       </div>

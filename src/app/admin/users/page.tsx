@@ -29,11 +29,11 @@ const ROLE_COLORS: Record<string, "navy" | "default" | "green" | "blue" | "gray"
 const DUMMY_USERS: any[] = [
   { id:"u1",  email:"admin@sellerbricks.kr",    role:"SUPER_ADMIN",    isActive:true,  createdAt:new Date("2026-01-01"), profile:{ name:"최고관리자" } },
   { id:"u2",  email:"manager@sellerbricks.kr",  role:"MANAGER",        isActive:true,  createdAt:new Date("2026-01-15"), profile:{ name:"중간관리자 (영업담당)" } },
-  { id:"u3",  email:"facility@sellerbricks.kr", role:"FACILITY_ADMIN", isActive:true,  createdAt:new Date("2026-02-01"), profile:{ name:"시설 운영자 (김대영)" } },
+  { id:"u3",  email:"facility@sellerbricks.kr", role:"FACILITY_ADMIN", isActive:true,  createdAt:new Date("2026-02-01"), profile:{ name:"창고(스튜디오) 관리자 (김대영)" } },
   { id:"u4",  email:"seller@sellerbricks.kr",   role:"SELLER",         isActive:true,  createdAt:new Date("2026-02-10"), profile:{ name:"셀러 (박지현)" } },
   { id:"u5",  email:"seller2@example.com",       role:"SELLER",         isActive:true,  createdAt:new Date("2026-03-05"), profile:{ name:"홍길동" } },
   { id:"u6",  email:"seller3@example.com",       role:"SELLER",         isActive:false, createdAt:new Date("2026-03-20"), profile:{ name:"이수민" } },
-  { id:"u7",  email:"facility2@example.com",     role:"FACILITY_ADMIN", isActive:true,  createdAt:new Date("2026-04-01"), profile:{ name:"시설 운영자 (최정호)" } },
+  { id:"u7",  email:"facility2@example.com",     role:"FACILITY_ADMIN", isActive:true,  createdAt:new Date("2026-04-01"), profile:{ name:"창고(스튜디오) 관리자 (최정호)" } },
   { id:"u8",  email:"manager2@example.com",      role:"MANAGER",        isActive:true,  createdAt:new Date("2026-04-15"), profile:{ name:"영업팀장 (권도현)" } },
   { id:"u9",  email:"seller4@example.com",       role:"SELLER",         isActive:true,  createdAt:new Date("2026-05-01"), profile:{ name:"김미래" } },
   { id:"u10", email:"seller5@example.com",       role:"SELLER",         isActive:true,  createdAt:new Date("2026-05-20"), profile:{ name:"정유나" } },
@@ -71,7 +71,7 @@ export default async function AdminUsers() {
         {[
           { label: "전체 회원",  value: counts.total,         icon: Users,     color: "text-blue-600 bg-blue-50"     },
           { label: "셀러",       value: counts.sellers,       icon: Store,     color: "text-brand-600 bg-brand-50"   },
-          { label: "시설 운영자",   value: counts.facilityAdmins,icon: Warehouse, color: "text-emerald-600 bg-emerald-50"},
+          { label: "창고(스튜디오) 관리자", value: counts.facilityAdmins, icon: Warehouse, color: "text-emerald-600 bg-emerald-50"},
           { label: "중간관리자", value: counts.managers,      icon: Briefcase, color: "text-purple-600 bg-purple-50" },
         ].map((s) => (
           <Card key={s.label}>
