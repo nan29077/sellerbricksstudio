@@ -6,7 +6,7 @@ import { Providers } from "@/components/providers";
 const siteName = "셀러브릭스 스튜디오";
 const shareTitle = "좋은 상품이 더 멀리 닿는 라이브";
 const shareDescription = "창고(스튜디오) 찾기부터 라이브 준비와 판매 관리까지, 셀러브릭스 스튜디오가 함께합니다.";
-const shareImage = "/images/social/share-card-v3.jpg";
+const shareImage = "/images/social/share-card-v4.jpg";
 
 function getSiteUrl(): URL {
   const configuredUrl = process.env.NEXT_PUBLIC_APP_URL;

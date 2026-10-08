@@ -75,7 +75,7 @@ def main() -> None:
     draw.text((73, 523), detail, font=fit_font(draw, detail, font_path, 25, 620), fill=muted)
 
     output = SOCIAL / "share-card.png"
-    share_jpg = SOCIAL / "share-card-v3.jpg"
+    share_jpg = SOCIAL / "share-card-v4.jpg"
     rgb_card = card.convert("RGB")
     rgb_card.save(output, optimize=True)
     rgb_card.save(share_jpg, quality=90, optimize=True, progressive=True)

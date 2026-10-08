@@ -60,7 +60,7 @@ export async function generateSellerBricksPdf(
         'border-radius:50%;background:#E8921A;opacity:0.07;"></div>' +
         '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;' +
         'height:100%;padding:80px;box-sizing:border-box;text-align:center;position:relative;">' +
-          '<img src="' + origin + '/images/brand/logo-original-on-dark.png" ' +
+          '<img src="' + origin + '/images/brand/logo-original-on-dark.png?v=4" ' +
           'style="height:50px;margin-bottom:44px;object-fit:contain;" />' +
           '<div style="background:#F5A623;color:#1C1917;font-size:11px;font-weight:700;' +
           'letter-spacing:2px;padding:5px 18px;border-radius:20px;margin-bottom:32px;">' +
@@ -302,7 +302,7 @@ export async function generateSellerBricksPdf(
         'border-radius:50%;background:#E8921A;opacity:0.06;"></div>' +
         '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;' +
         'height:100%;padding:80px;box-sizing:border-box;text-align:center;position:relative;">' +
-          '<img src="' + origin + '/images/brand/logo-original-on-dark.png" ' +
+          '<img src="' + origin + '/images/brand/logo-original-on-dark.png?v=4" ' +
           'style="height:44px;margin-bottom:36px;object-fit:contain;" />' +
           '<div style="color:#F5A623;font-size:12px;font-weight:700;letter-spacing:2px;margin-bottom:16px;">' +
             'GET STARTED TODAY' +

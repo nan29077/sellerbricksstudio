@@ -142,7 +142,7 @@ export function DashboardShell({
         onClick={onNav}
       >
         <Image
-          src="/images/brand/logo-original-on-dark.png"
+          src="/images/brand/logo-original-on-dark.png?v=4"
           alt="셀러브릭스 스튜디오"
           width={190}
           height={48}

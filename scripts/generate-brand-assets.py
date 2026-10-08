@@ -28,15 +28,17 @@ def variant(image: Image.Image, dark_background: bool) -> Image.Image:
     pixels = []
     for index, (red, green, blue, alpha) in enumerate(image.get_flattened_data()):
         x = index % image.width
-        if x >= 80 or is_gold(red, green, blue):
-            # Keep the supplied SELLERBRICKS lettering and gold details intact.
+        if is_gold(red, green, blue):
             pixels.append((red, green, blue, alpha))
+        elif x >= 80 and max(red, green, blue) < 135:
+            # The black SELLER letters need a soft light fill on navy.
+            pixels.append((222, 227, 235, alpha))
         elif max(red, green, blue) < 135:
             # Only recolor the speech-bubble symbol around the play button.
             # Muted blue gray keeps the mark visible on navy without turning it white.
             pixels.append((86, 96, 120, alpha))
         else:
-            # Darken any pale edge pixels around the symbol so it does not glow.
+            # Replace the raster's pale outline with a quiet navy edge.
             pixels.append((25, 31, 49, alpha))
     result = Image.new("RGBA", image.size)
     result.putdata(pixels)
@@ -59,7 +61,7 @@ def make_wordmark(name: str, dark_background: bool) -> None:
     wordmark_center = (80 + SOURCE.width) * scale / 2
     x = wordmark_center - label_width / 2
     for letter in label:
-        draw.text((round(x), 199), letter, font=font, fill="#202126")
+        draw.text((round(x), 199), letter, font=font, fill="#D5DCE8" if dark_background else "#202126")
         x += draw.textlength(letter, font=font) + spacing
 
     bounds = canvas.getbbox()
