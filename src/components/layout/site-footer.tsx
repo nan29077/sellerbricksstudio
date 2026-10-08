@@ -1,5 +1,8 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 
 const footerLinks = [
@@ -8,6 +11,9 @@ const footerLinks = [
 ];
 
 export function SiteFooter() {
+  const pathname = usePathname();
+  if (/^\/facilities\/[^/]+$/.test(pathname)) return null;
+
   return (
     <footer className="bg-[#11172B] text-white">
       <div className="container grid gap-12 py-16 sm:py-20 lg:grid-cols-[1.5fr_1fr] lg:gap-20">

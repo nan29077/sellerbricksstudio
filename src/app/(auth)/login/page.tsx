@@ -38,7 +38,9 @@ export default function LoginPage() {
     const res = await signIn("credentials", { email: em, password: pw, redirect: false });
     if (res?.error) return false;
     const me = await fetch("/api/me").then((r) => r.json()).catch(() => null);
-    router.push(me?.data?.home ?? "/");
+    const requested = new URLSearchParams(window.location.search).get("callbackUrl");
+    const safeCallback = requested?.startsWith("/") && !requested.startsWith("//") ? requested : null;
+    router.push(safeCallback ?? me?.data?.home ?? "/");
     router.refresh();
     return true;
   }

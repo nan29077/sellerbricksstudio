@@ -15,9 +15,10 @@ const DUMMY_FACILITIES = [
 export default async function NewBookingPage({
   searchParams,
 }: {
-  searchParams: { facilityId?: string };
+  searchParams: { facilityId?: string; start?: string; end?: string };
 }) {
   await requireRole(["SELLER"]);
+  const validTime = (value?: string) => value && /^([01]\d|2[0-3]):[0-5]\d$/.test(value) ? value : undefined;
 
   let facilities: typeof DUMMY_FACILITIES = [];
   try {
@@ -42,7 +43,12 @@ export default async function NewBookingPage({
   return (
     <div>
       <PageHeader title="예약 신청" description="방송할 창고/스튜디오와 시간을 선택하세요." />
-      <BookingForm facilities={facilities} defaultFacilityId={searchParams.facilityId} />
+      <BookingForm
+        facilities={facilities}
+        defaultFacilityId={searchParams.facilityId}
+        defaultStart={validTime(searchParams.start)}
+        defaultEnd={validTime(searchParams.end)}
+      />
     </div>
   );
 }

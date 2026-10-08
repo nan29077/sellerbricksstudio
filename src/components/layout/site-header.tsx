@@ -2,6 +2,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
+import { usePathname } from "next/navigation";
 import { Menu, X, Building2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { ROLE_HOME } from "@/lib/rbac";
 
 export function SiteHeader() {
   const { data: session } = useSession();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const role = (session?.user as any)?.role;
   const home = role ? ROLE_HOME[role as keyof typeof ROLE_HOME] : null;
@@ -21,6 +23,8 @@ export function SiteHeader() {
     { href: "/intro", label: "서비스 소개" },
     { href: "/facilities", label: "창고(스튜디오) 찾기" },
   ];
+
+  if (/^\/facilities\/[^/]+$/.test(pathname)) return null;
 
   return (
     <header className="sticky top-0 z-40 border-b border-[#ECE8E0] bg-white/95 backdrop-blur-xl">

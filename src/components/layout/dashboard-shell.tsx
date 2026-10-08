@@ -10,7 +10,7 @@ import {
   Warehouse, Package, CalendarClock, Users, Building2,
   Settings, ScrollText, Sliders, Image as ImageIcon,
   ChevronRight, Home, Globe, ScanBarcode, TrendingUp, Megaphone,
-  Share2, BarChart3, Ticket,
+  Share2, BarChart3, Ticket, LayoutTemplate,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getProfileImage } from "@/lib/profile";
@@ -73,6 +73,7 @@ const ROLE_NAV: Record<string, NavSection[]> = {
     { title: "운영", items: [
       { href: "/facility/dashboard", label: "대시보드",  icon: LayoutDashboard },
       { href: "/facility/profile",   label: "시설 정보", icon: Warehouse },
+      { href: "/facility/pages",     label: "시설 페이지", icon: LayoutTemplate },
     ]},
     { title: "상품 · 일정", items: [
       { href: "/facility/products", label: "상품 관리", icon: Package },

@@ -43,17 +43,21 @@ function formatKRW(n: number) {
 export function BookingForm({
   facilities,
   defaultFacilityId,
+  defaultStart,
+  defaultEnd,
 }: {
   facilities: Facility[];
   defaultFacilityId?: string;
+  defaultStart?: string;
+  defaultEnd?: string;
 }) {
   const router = useRouter();
 
   // Form state
   const [facilityId, setFacilityId] = useState(defaultFacilityId ?? facilities[0]?.id ?? "");
   const [date, setDate] = useState("");
-  const [start, setStart] = useState("10:00");
-  const [end, setEnd] = useState("12:00");
+  const [start, setStart] = useState(defaultStart ?? "10:00");
+  const [end, setEnd] = useState(defaultEnd ?? "12:00");
   const [purpose, setPurpose] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
