@@ -40,8 +40,6 @@ button, a[role="button"], .tap { min-height: 44px; }
 /* 모바일 줄바꿈 최적화 */
 @media (max-width: 640px) {
   .container { padding-left: 1rem; padding-right: 1rem; }
-  h1 { font-size: clamp(1.5rem, 5vw, 2.25rem); }
-  h2 { font-size: clamp(1.25rem, 4vw, 1.875rem); }
 }
 
 /* 푸터 노치 대응 */

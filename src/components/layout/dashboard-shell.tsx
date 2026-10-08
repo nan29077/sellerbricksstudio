@@ -132,35 +132,36 @@ export function DashboardShell({
       (o) => o.href !== href && o.href.length > href.length && (pathname === o.href || pathname.startsWith(o.href + "/")),
     );
   };
+  const currentPage = navItems.find((item) => isActive(item.href))?.label ?? "워크스페이스";
 
   const SidebarContent = ({ onNav }: { onNav?: () => void }) => (
     <div className="flex flex-col h-full">
       <Link
         href="/"
-        className="flex h-16 items-center gap-2 border-b border-border px-5 bg-white shrink-0"
+        className="flex h-20 items-center gap-2 border-b border-white/10 px-5 shrink-0"
         onClick={onNav}
       >
         <Image
-          src="/images/bee/studio-logo-headset.png"
+          src="/images/bee/studio-logo-main.png"
           alt="셀러브릭스 스튜디오"
           width={160}
           height={36}
-          className="h-8 w-auto object-contain"
+          className="h-9 w-auto object-contain"
           priority
         />
       </Link>
 
-      <div className="px-4 py-3 border-b border-border bg-brand-50 shrink-0">
+      <div className="mx-3 mt-4 rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-3 shrink-0">
         <div className="flex items-center gap-2.5">
           <Image
             src={getProfileImage(profileImageIndex)}
             alt={userName}
             width={36}
             height={36}
-            className="h-9 w-9 rounded-full object-cover shrink-0 border border-brand-200 bg-white"
+            className="h-10 w-10 rounded-full object-cover shrink-0 border border-white/20 bg-white"
           />
           <div className="min-w-0">
-            <p className="text-sm font-bold text-navy truncate">{userName}</p>
+            <p className="text-sm font-bold text-white truncate">{userName}</p>
             <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-full", ROLE_BADGE_COLOR[role] ?? "bg-gray-100 text-gray-600")}>
               {roleLabel}
             </span>
@@ -168,10 +169,10 @@ export function DashboardShell({
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-4 bg-white">
+      <nav className="flex-1 overflow-y-auto px-3 py-5 space-y-5">
         {sections.map((section) => (
           <div key={section.title} className="space-y-0.5">
-            <p className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+            <p className="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">
               {section.title}
             </p>
             {section.items.map((n) => {
@@ -184,11 +185,11 @@ export function DashboardShell({
                   className={cn(
                     "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
                     active
-                      ? "bg-brand-500 text-white shadow-sm"
-                      : "text-navy/80 hover:bg-brand-50 hover:text-brand-700",
+                      ? "bg-brand-500 text-navy shadow-[0_8px_20px_rgba(245,166,35,0.2)]"
+                      : "text-white/65 hover:bg-white/10 hover:text-white",
                   )}
                 >
-                  <n.icon className={cn("h-4 w-4 shrink-0", active ? "text-white" : "text-muted-foreground")} />
+                  <n.icon className={cn("h-4 w-4 shrink-0", active ? "text-navy" : "text-white/45")} />
                   <span className="flex-1">{n.label}</span>
                   {active && <ChevronRight className="h-3 w-3 opacity-60" />}
                 </Link>
@@ -198,19 +199,18 @@ export function DashboardShell({
         ))}
       </nav>
 
-      <div className="border-t border-border p-3 bg-white shrink-0 space-y-1">
+      <div className="border-t border-white/10 p-3 shrink-0 space-y-1">
         <Link
           href="/"
           onClick={onNav}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors"
-          style={{ color: "#F5A623" }}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-brand-300 transition-colors hover:bg-white/10"
         >
-          <Home className="h-4 w-4 shrink-0" style={{ color: "#F5A623" }} />
+          <Home className="h-4 w-4 shrink-0" />
           메인으로
         </Link>
         <button
           onClick={() => signOut({ callbackUrl: "/" })}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-navy/70 hover:bg-red-50 hover:text-red-600 transition-colors"
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-white/55 hover:bg-red-400/10 hover:text-red-200 transition-colors"
         >
           <LogOut className="h-4 w-4 shrink-0" />
           로그아웃
@@ -220,12 +220,12 @@ export function DashboardShell({
   );
 
   return (
-    <div className="min-h-screen bg-brand-50/40">
-      <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col border-r border-border bg-white shadow-sm z-30">
+    <div className="min-h-screen bg-[#F7F6F2]">
+      <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col border-r border-navy bg-[#141A2E] shadow-xl z-30">
         <SidebarContent />
       </aside>
 
-      <header className="md:hidden sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-white px-4 shadow-sm">
+      <header className="md:hidden sticky top-0 z-40 flex h-16 items-center justify-between border-b border-[#ECE8E0] bg-white/95 px-4 shadow-sm backdrop-blur">
         <Link href="/" className="flex items-center">
           <Image
             src="/images/bee/studio-logo-headset.png"
@@ -248,7 +248,7 @@ export function DashboardShell({
 
       {open && (
         <div className="md:hidden fixed inset-0 z-50 flex">
-          <div className="w-72 max-w-[85vw] bg-white flex flex-col h-full shadow-2xl border-r border-border">
+          <div className="w-72 max-w-[85vw] bg-[#141A2E] flex flex-col h-full shadow-2xl border-r border-navy">
             <SidebarContent onNav={() => setOpen(false)} />
           </div>
           <div
@@ -260,7 +260,13 @@ export function DashboardShell({
       )}
 
       <div className="md:pl-64">
-        <div className="container max-w-6xl py-6 pb-24 md:pb-10">{children}</div>
+        <div className="mx-auto max-w-7xl px-4 py-6 pb-24 sm:px-6 md:px-8 md:py-8 md:pb-12">
+          <div className="mb-7 hidden items-center justify-between border-b border-[#E8E4DB] pb-5 md:flex">
+            <div><p className="text-[10px] font-extrabold tracking-[0.2em] text-brand-700">SELLERBRICKS WORKSPACE</p><p className="mt-1 text-sm font-semibold text-slate-500">{roleLabel} <span className="mx-2 text-slate-300">/</span> <span className="text-navy">{currentPage}</span></p></div>
+            <Link href="/" className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 transition hover:text-brand-700"><Home className="h-4 w-4" />사이트 보기</Link>
+          </div>
+          {children}
+        </div>
       </div>
 
       <nav

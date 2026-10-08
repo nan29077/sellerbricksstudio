@@ -73,6 +73,10 @@ npm run dev
 
 공유 이미지의 배경 원본은 `public/images/social/share-background.png`입니다. 문구나 로고를 바꾼 뒤에는 Pillow와 한글 글꼴이 있는 환경에서 `scripts/generate-share-card.py`를 실행해 최종 이미지를 다시 만들 수 있습니다. 예: `python scripts/generate-share-card.py --font /path/to/korean-bold.ttf`.
 
+## 홈페이지 비주얼
+
+메인 배너와 서비스 카드에는 `public/images/home/hero-studio.webp`, `hero-fulfillment.webp`, `hero-farm.webp`를 사용합니다. 생성형 이미지로 만든 **서비스 연출 이미지**이며, 실제 회원·시설 사진이나 운영 실적을 뜻하지 않습니다. 제작 프롬프트는 각각 네이비·골드 톤의 라이브커머스 스튜디오, 창고와 방송 준비 공간, 산지 현장 방송을 실사형으로 구성하고 왼쪽에 제목 공간을 두는 방향입니다. 신규 이미지로 교체할 때는 같은 경로와 비율을 유지하면 기존 레이아웃을 재사용할 수 있습니다.
+
 ---
 
 ## 테스트 계정

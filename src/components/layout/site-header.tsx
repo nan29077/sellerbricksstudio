@@ -19,28 +19,28 @@ export function SiteHeader() {
   const nav = [
     { href: "/", label: "홈" },
     { href: "/intro", label: "서비스 소개" },
-    { href: "/facilities?type=STUDIO", label: "스튜디오 예약" },
+    { href: "/facilities", label: "공간 찾기" },
   ];
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-white/95 backdrop-blur shadow-sm">
-      <div className="container flex h-16 items-center justify-between">
+    <header className="sticky top-0 z-40 border-b border-[#ECE8E0] bg-white/95 backdrop-blur-xl">
+      <div className="container flex h-[72px] items-center justify-between">
         <Link href="/" className="flex items-center gap-1">
           <Image
             src="/images/bee/studio-logo-headset.png"
             alt="셀러브릭스 스튜디오"
             width={180}
             height={40}
-            className="h-9 w-auto object-contain"
+            className="h-10 w-auto object-contain"
             priority
           />
         </Link>
-        <nav className="hidden md:flex items-center gap-1">
+        <nav className="hidden md:flex items-center gap-1 rounded-full bg-[#F7F5EF] p-1">
           {nav.map((n) => (
             <Link
               key={n.href}
               href={n.href}
-              className="rounded-lg px-3 py-2 text-sm font-medium text-navy hover:bg-brand-50 hover:text-brand-600 transition-colors"
+              className="rounded-full px-4 py-2 text-sm font-semibold text-navy/75 hover:bg-white hover:text-brand-700 transition-colors"
             >
               {n.label}
             </Link>
@@ -48,7 +48,7 @@ export function SiteHeader() {
           {(role === "SELLER" || role === "SUPER_ADMIN") && (
             <Link
               href={farmHref}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50 transition-colors"
+              className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-white transition-colors"
             >
               <Building2 className="h-3.5 w-3.5" />
               시설 예약
@@ -60,7 +60,7 @@ export function SiteHeader() {
             <>
               {home && (
                 <Link href={home}>
-                  <Button variant="outline" size="sm" className="border-brand-300 text-brand-600 hover:bg-brand-50">
+                  <Button variant="outline" size="sm" className="rounded-full border-brand-300 text-brand-700 hover:bg-brand-50">
                     대시보드
                   </Button>
                 </Link>
@@ -72,11 +72,11 @@ export function SiteHeader() {
           ) : (
             <>
               <Link href="/login">
-                <Button variant="ghost" size="sm">로그인</Button>
+                <Button variant="ghost" size="sm" className="rounded-full">로그인</Button>
               </Link>
               <Link href="/signup">
-                <Button size="sm" className="bg-brand-500 hover:bg-brand-600 text-white font-semibold">
-                  무료 시작하기
+                <Button size="sm" className="rounded-full bg-navy px-5 text-white hover:bg-navy-700 font-semibold">
+                  시작하기
                 </Button>
               </Link>
             </>

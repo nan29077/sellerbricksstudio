@@ -1,85 +1,27 @@
-import Link from "next/link";
 import Image from "next/image";
-import { Mail, MapPin, Phone } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 
-const FOOTER_LINKS = {
-  서비스: [
-    { href: "/intro", label: "서비스 소개" },
-    { href: "/facilities?type=STUDIO", label: "창고 스튜디오 예약" },
-    { href: "/facilities", label: "공장 농장 농가 예약" },
-  ],
-  가입: [
-    { href: "/signup/seller", label: "셀러 가입" },
-    { href: "/signup/facility", label: "시설 운영자 가입" },
-    { href: "/login", label: "로그인" },
-  ],
-  지원: [
-    { href: "#", label: "이용약관" },
-    { href: "#", label: "개인정보처리방침" },
-    { href: "#", label: "고객센터" },
-    { href: "#", label: "세무 파트너 문의" },
-  ],
-};
+const footerLinks = [
+  { title: "서비스", links: [{ href: "/intro", label: "서비스 소개" }, { href: "/facilities", label: "공간 찾기" }, { href: "/facilities?type=STUDIO", label: "스튜디오" }, { href: "/facilities?type=WAREHOUSE", label: "창고" }] },
+  { title: "시작하기", links: [{ href: "/signup/seller", label: "셀러 가입" }, { href: "/signup/facility", label: "시설 운영자 가입" }, { href: "/login", label: "로그인" }] },
+];
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-border bg-navy text-white/80">
-      <div className="container py-12 sm:py-14">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-8">
-          <div className="col-span-2 sm:col-span-1">
-            <Link href="/" className="inline-block">
-              {/* 새 로고는 컬러 이미지이므로 필터 미적용 */}
-              <Image
-                src="/images/bee/studio-logo-footer.png"
-                alt="셀러브릭스 스튜디오"
-                width={200}
-                height={40}
-                className="h-10 w-auto object-contain"
-              />
-            </Link>
-            <p className="mt-3 text-sm text-white/60 leading-relaxed">
-              셀러가 방송에만 집중할 수 있도록<br />
-              플랫폼·공간·운영·세무까지 책임지는<br />
-              라이브 커머스 종합 솔루션
-            </p>
-            <div className="mt-4 space-y-1.5">
-              <p className="flex items-center gap-2 text-xs text-white/50">
-                <Mail className="h-3.5 w-3.5 shrink-0" />hello@sellerbricks.kr
-              </p>
-              <p className="flex items-center gap-2 text-xs text-white/50">
-                <Phone className="h-3.5 w-3.5 shrink-0" />1588-0000
-              </p>
-              <p className="flex items-center gap-2 text-xs text-white/50">
-                <MapPin className="h-3.5 w-3.5 shrink-0" />전라남도 목포시
-              </p>
-            </div>
-          </div>
-
-          {Object.entries(FOOTER_LINKS).map(([title, links]) => (
-            <div key={title}>
-              <p className="font-bold text-white text-sm mb-3">{title}</p>
-              <ul className="space-y-2">
-                {links.map((l) => (
-                  <li key={l.href}>
-                    <Link href={l.href} className="text-sm text-white/60 hover:text-brand-400 transition-colors">
-                      {l.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+    <footer className="bg-[#11172B] text-white">
+      <div className="container grid gap-12 py-16 sm:py-20 lg:grid-cols-[1.5fr_1fr] lg:gap-20">
+        <div>
+          <Link href="/" className="inline-block"><Image src="/images/bee/studio-logo-main.png" alt="셀러브릭스 스튜디오" width={250} height={65} className="h-14 w-auto object-contain" /></Link>
+          <h2 className="mt-8 text-2xl font-extrabold leading-snug tracking-tight sm:text-3xl">방송에만 집중하세요.<br /><span className="text-brand-300">나머지는 우리가 합니다.</span></h2>
+          <p className="mt-4 max-w-md text-sm leading-7 text-white/55">라이브커머스의 공간 탐색부터 운영과 판매 이후의 확인까지, 셀러의 다음 단계를 함께 준비합니다.</p>
+          <Link href="/signup/seller" className="mt-7 inline-flex min-h-11 items-center gap-2 rounded-full border border-white/25 px-5 text-sm font-bold text-white transition hover:border-brand-400 hover:text-brand-300">셀러로 시작하기<ArrowRight className="h-4 w-4" /></Link>
         </div>
-
-        <div className="mt-10 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-xs text-white/40">
-            © 2026 셀러브릭스 스튜디오 주식회사. 사업자등록번호: 123-45-67890
-          </p>
-          <p className="text-xs text-white/40">
-            전라남도 · 목포시 · 부안군 협력 파트너
-          </p>
+        <div className="grid grid-cols-2 gap-8">
+          {footerLinks.map((group) => <div key={group.title}><p className="text-xs font-extrabold tracking-[0.18em] text-brand-300">{group.title}</p><ul className="mt-5 space-y-3">{group.links.map((item) => <li key={item.href}><Link href={item.href} className="group inline-flex items-center gap-1 text-sm text-white/60 transition hover:text-white">{item.label}<ArrowUpRight className="h-3.5 w-3.5 opacity-0 transition group-hover:opacity-100" /></Link></li>)}</ul></div>)}
         </div>
       </div>
+      <div className="border-t border-white/10"><div className="container flex flex-col gap-2 py-5 text-xs text-white/35 sm:flex-row sm:items-center sm:justify-between"><p>© {new Date().getFullYear()} Sellerbricks Studio. All rights reserved.</p><p>Made for the moments that move your business forward.</p></div></div>
     </footer>
   );
 }
