@@ -431,4 +431,9 @@ export default function IntroPage() {
               <Download className="h-4 w-4" />소개서 저장
             </Button>
           </div>
-        <
+        </div>
+      </section>
+
+    </div>
+  );
+}

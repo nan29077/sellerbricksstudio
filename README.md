@@ -40,8 +40,8 @@ cp .env.example .env
 ```env
 DATABASE_URL="postgresql://sellerbricks:sellerbricks@localhost:5432/sellerbricks?schema=public"
 NEXTAUTH_SECRET="아무_긴_랜덤_문자열"
-NEXTAUTH_URL="http://localhost:3000"
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
+NEXTAUTH_URL="http://localhost:3007"
+NEXT_PUBLIC_APP_URL="http://localhost:3007"
 ```
 
 ### 3. DB 띄우기 (Docker)
@@ -65,7 +65,13 @@ npm run db:seed      # 테스트 계정/시설/상품 생성
 npm run dev
 ```
 
-→ http://localhost:3000
+→ http://localhost:3007
+
+## 카카오톡·SNS 공유 카드
+
+사이트 링크의 미리보기에는 `public/images/social/share-card.png`(1200×630)가 사용됩니다. Open Graph와 X(Twitter) 카드의 제목·설명·이미지는 `src/app/layout.tsx`에서 설정합니다. 실제 배포 환경에서는 `NEXT_PUBLIC_APP_URL`을 공개 사이트 주소(예: `https://example.com`)로 설정하세요. 이 값이 없으면 요청 호스트를 사용합니다.
+
+공유 이미지의 배경 원본은 `public/images/social/share-background.png`입니다. 문구나 로고를 바꾼 뒤에는 Pillow와 한글 글꼴이 있는 환경에서 `scripts/generate-share-card.py`를 실행해 최종 이미지를 다시 만들 수 있습니다. 예: `python scripts/generate-share-card.py --font /path/to/korean-bold.ttf`.
 
 ---
 
