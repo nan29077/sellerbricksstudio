@@ -27,11 +27,11 @@ export function SiteHeader() {
       <div className="container flex h-[72px] items-center justify-between">
         <Link href="/" className="flex items-center gap-1">
           <Image
-            src="/images/bee/studio-logo-headset.png"
+            src="/images/brand/logo-original-on-light.png"
             alt="셀러브릭스 스튜디오"
-            width={180}
-            height={40}
-            className="h-10 w-auto object-contain"
+            width={170}
+            height={44}
+            className="h-11 w-auto object-contain"
             priority
           />
         </Link>

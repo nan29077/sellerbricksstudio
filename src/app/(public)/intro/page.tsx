@@ -9,7 +9,7 @@ import {
   Receipt, Calculator, Headphones,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { generateHoneyBeePdf } from "./pdfGenerator";
+import { generateSellerBricksPdf } from "./pdfGenerator";
 
 /* ────────────────────────────────
    데이터
@@ -103,9 +103,6 @@ export default function IntroPage() {
       <section className="relative overflow-hidden bg-navy py-20 md:py-28">
         <div className="absolute inset-0 opacity-10"
           style={{ backgroundImage: "radial-gradient(circle at 20% 50%, #F5A623 0%, transparent 50%), radial-gradient(circle at 80% 20%, #FFC107 0%, transparent 40%)" }} />
-        <div className="absolute right-8 bottom-0 hidden lg:block opacity-80">
-          <Image src="/images/bee/bee-headset.png" alt="" width={160} height={160} className="w-36 h-36 object-contain" />
-        </div>
         <div className="container relative z-10 text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/20 px-4 py-1.5 text-white text-sm font-semibold mb-6" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}>
             <Zap className="h-4 w-4" />
@@ -129,7 +126,7 @@ export default function IntroPage() {
               variant="outline"
               className="border-white/30 text-white bg-white/10 hover:bg-white/20 gap-2 h-12"
               disabled={pdfLoading}
-              onClick={() => generateHoneyBeePdf(setPdfLoading)}
+              onClick={() => generateSellerBricksPdf(setPdfLoading)}
             >
               {pdfLoading
                 ? <Loader2 className="h-4 w-4 animate-spin" />
@@ -142,9 +139,6 @@ export default function IntroPage() {
 
       {/* -- 섹션 1: 셀러브릭스 플랫폼 지원 -- */}
       <section className="py-16 md:py-20 bg-white relative overflow-hidden">
-        <div className="absolute left-4 bottom-4 opacity-30 hidden md:block">
-          <Image src="/images/bee/bee-bricks.png" alt="" width={80} height={80} className="w-20 h-20 object-contain" />
-        </div>
         <div className="container">
           <div className="text-center mb-12">
             <SectionBadge>★ 핵심 서비스</SectionBadge>
@@ -198,7 +192,7 @@ export default function IntroPage() {
             </div>
             <div className="relative flex items-center justify-center">
               <div className="rounded-3xl bg-gradient-to-br from-brand-500 to-brand-600 p-10 text-center text-white shadow-2xl">
-                <Image src="/images/bee/bee-camera.png" alt="카메라 꿀벌" width={120} height={120} className="w-28 h-28 mx-auto mb-4 object-contain" />
+                <Image src="/images/brand/mark-original-on-light.png" alt="셀러브릭스 심볼" width={112} height={112} className="mx-auto mb-4 h-28 w-28 object-contain" />
                 <p className="font-extrabold text-xl mb-1">LIVE NOW</p>
                 <p className="text-brand-100 text-sm">셀러브릭스 스튜디오 채널</p>
                 <div className="mt-4 flex justify-center gap-4 text-sm">
@@ -213,9 +207,6 @@ export default function IntroPage() {
 
       {/* -- 섹션 3: 마케팅 지원 -- */}
       <section className="py-16 md:py-20 bg-white relative overflow-hidden">
-        <div className="absolute right-6 top-6 opacity-20 hidden md:block">
-          <Image src="/images/bee/bee-wifi.png" alt="" width={90} height={90} className="w-22 h-22 object-contain" />
-        </div>
         <div className="container">
           <div className="text-center mb-12">
             <SectionBadge>10년+ 전문팀</SectionBadge>
@@ -243,9 +234,6 @@ export default function IntroPage() {
 
       {/* -- 섹션 4: 방송 지원 -- */}
       <section className="py-16 md:py-20 bg-[#FFFBF0] relative overflow-hidden">
-        <div className="absolute left-6 bottom-6 opacity-25 hidden md:block">
-          <Image src="/images/bee/bee-waving.png" alt="" width={80} height={80} className="w-20 h-20 object-contain" />
-        </div>
         <div className="container">
           <div className="text-center mb-12">
             <SectionBadge>방송 지원</SectionBadge>
@@ -265,7 +253,7 @@ export default function IntroPage() {
         <div className="container">
           <div className="grid md:grid-cols-2 gap-10 items-center">
             <div className="rounded-3xl bg-gradient-to-br from-honey-400 to-brand-500 p-10 text-white text-center shadow-xl">
-              <Image src="/images/bee/bee-cart.png" alt="쇼핑카트 꿀벌" width={120} height={120} className="w-28 h-28 mx-auto mb-4 object-contain" />
+              <Image src="/images/brand/mark-original-on-light.png" alt="셀러브릭스 심볼" width={112} height={112} className="mx-auto mb-4 h-28 w-28 object-contain" />
               <p className="font-extrabold text-xl mb-2">검증 상품 직소싱</p>
               <p className="text-white/80 text-sm">10년+ 소싱 경력 · 최저가 공급</p>
               <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
@@ -405,9 +393,6 @@ export default function IntroPage() {
       <section className="py-20 bg-gradient-to-r from-brand-500 to-brand-600 relative overflow-hidden">
         <div className="absolute inset-0 opacity-15"
           style={{ backgroundImage: "radial-gradient(circle at 10% 90%, #1A1A2E 0%, transparent 50%)" }} />
-        <div className="absolute right-10 bottom-0 opacity-60 hidden lg:block">
-          <Image src="/images/bee/bee-waving.png" alt="" width={140} height={140} className="w-32 h-32 object-contain" />
-        </div>
         <div className="container relative z-10 text-center text-white">
           <h2 className="text-3xl md:text-5xl font-extrabold mb-4">
             지금 바로 시작하세요

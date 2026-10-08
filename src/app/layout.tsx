@@ -5,8 +5,8 @@ import { Providers } from "@/components/providers";
 
 const siteName = "셀러브릭스 스튜디오";
 const shareTitle = "방송에만 집중하세요. 나머지는 우리가 합니다.";
-const shareDescription = "라이브커머스부터 스튜디오 예약·정산·성장 지원까지, 셀러브릭스 스튜디오가 함께합니다.";
-const shareImage = "/images/social/share-card.png";
+const shareDescription = "공간 탐색부터 라이브 준비와 판매 관리까지, 셀러브릭스 스튜디오에서 이어보세요.";
+const shareImage = "/images/social/share-card.png?v=2";
 
 function getSiteUrl(): URL {
   const configuredUrl = process.env.NEXT_PUBLIC_APP_URL;

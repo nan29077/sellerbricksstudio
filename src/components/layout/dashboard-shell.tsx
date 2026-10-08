@@ -142,11 +142,11 @@ export function DashboardShell({
         onClick={onNav}
       >
         <Image
-          src="/images/bee/studio-logo-main.png"
+          src="/images/brand/logo-original-on-dark.png"
           alt="셀러브릭스 스튜디오"
-          width={160}
-          height={36}
-          className="h-9 w-auto object-contain"
+          width={150}
+          height={40}
+          className="h-10 w-auto object-contain"
           priority
         />
       </Link>
@@ -228,11 +228,11 @@ export function DashboardShell({
       <header className="md:hidden sticky top-0 z-40 flex h-16 items-center justify-between border-b border-[#ECE8E0] bg-white/95 px-4 shadow-sm backdrop-blur">
         <Link href="/" className="flex items-center">
           <Image
-            src="/images/bee/studio-logo-headset.png"
+            src="/images/brand/logo-original-on-light.png"
             alt="셀러브릭스 스튜디오"
-            width={140}
-            height={32}
-            className="h-7 w-auto object-contain"
+            width={134}
+            height={36}
+            className="h-9 w-auto object-contain"
             priority
           />
         </Link>

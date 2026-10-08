@@ -71,11 +71,13 @@ npm run dev
 
 사이트 링크의 미리보기에는 `public/images/social/share-card.png`(1200×630)가 사용됩니다. Open Graph와 X(Twitter) 카드의 제목·설명·이미지는 `src/app/layout.tsx`에서 설정합니다. 실제 배포 환경에서는 `NEXT_PUBLIC_APP_URL`을 공개 사이트 주소(예: `https://example.com`)로 설정하세요. 이 값이 없으면 요청 호스트를 사용합니다.
 
-공유 이미지의 배경 원본은 `public/images/social/share-background.png`입니다. 문구나 로고를 바꾼 뒤에는 Pillow와 한글 글꼴이 있는 환경에서 `scripts/generate-share-card.py`를 실행해 최종 이미지를 다시 만들 수 있습니다. 예: `python scripts/generate-share-card.py --font /path/to/korean-bold.ttf`.
+공유 이미지의 배경 원본은 `public/images/social/share-background.png`입니다. 네이비·골드 톤의 라이브커머스 촬영 스튜디오를 생성형 이미지로 제작하고, 로고와 한글 문구는 코드로 선명하게 합성했습니다. 문구를 바꾼 뒤에는 Pillow와 한글 글꼴이 있는 환경에서 `scripts/generate-share-card.py`를 실행해 최종 이미지를 다시 만들 수 있습니다. 예: `python scripts/generate-share-card.py --font /path/to/korean-bold.ttf`. 로고를 바꿀 때는 `scripts/generate-brand-assets.py`를 먼저 실행하세요. 공유 이미지 URL에는 버전 쿼리가 있어 변경 후 미리보기 캐시가 새 이미지를 가리키도록 합니다.
 
 ## 홈페이지 비주얼
 
 메인 배너와 서비스 카드에는 `public/images/home/hero-studio.webp`, `hero-fulfillment.webp`, `hero-farm.webp`를 사용합니다. 생성형 이미지로 만든 **서비스 연출 이미지**이며, 실제 회원·시설 사진이나 운영 실적을 뜻하지 않습니다. 제작 프롬프트는 각각 네이비·골드 톤의 라이브커머스 스튜디오, 창고와 방송 준비 공간, 산지 현장 방송을 실사형으로 구성하고 왼쪽에 제목 공간을 두는 방향입니다. 신규 이미지로 교체할 때는 같은 경로와 비율을 유지하면 기존 레이아웃을 재사용할 수 있습니다.
+
+휴대폰 배너에는 별도의 `hero-studio-mobile.webp`, `hero-fulfillment-mobile.webp`, `hero-farm-mobile.webp`를 사용합니다. 원본의 장소와 분위기를 참고해 핵심 피사체가 중앙에 모인 3:2 구도로 생성했고, 모바일에서는 사진과 문구를 분리해 사진이 잘리지 않게 했습니다. 브랜드 로고는 사용자가 제공한 기존 셀러브릭스 로고 이미지에서 추출한 `public/images/brand/original-logo-source.png`에 `STUDIO`를 하단에 붙인 것입니다. 밝은 배경용 `logo-original-on-light.png`와 어두운 배경용 `logo-original-on-dark.png`가 있으며, PNG·파비콘은 `scripts/generate-brand-assets.py`로 다시 만들 수 있습니다.
 
 ---
 

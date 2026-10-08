@@ -45,27 +45,34 @@ def main() -> None:
 
     background = Image.open(SOCIAL / "share-background.png").convert("RGB")
     card = ImageOps.fit(background, SIZE, method=Image.Resampling.LANCZOS).convert("RGBA")
+    shade = Image.new("RGBA", SIZE, (0, 0, 0, 0))
+    shade_draw = ImageDraw.Draw(shade)
+    for x in range(960):
+        opacity = round(230 * (1 - x / 960) ** 1.1)
+        shade_draw.line((x, 0, x, SIZE[1]), fill=(12, 18, 37, opacity))
+    card = Image.alpha_composite(card, shade)
     draw = ImageDraw.Draw(card)
     font_path = find_font(args.font)
 
-    logo = Image.open(ROOT / "public" / "images" / "bee" / "studio-logo-main.png").convert("RGBA")
-    logo.thumbnail((318, 84), Image.Resampling.LANCZOS)
-    card.alpha_composite(logo, (72, 63))
+    logo = Image.open(ROOT / "public" / "images" / "brand" / "logo-original-on-dark.png").convert("RGBA")
+    logo.thumbnail((342, 92), Image.Resampling.LANCZOS)
+    card.alpha_composite(logo, (72, 55))
 
     gold = "#FFD05A"
     white = "#FFFFFF"
     muted = "#D8DCE8"
-    kicker = "셀러를 위한 올인원 성장 파트너"
+    kicker = "셀러의 라이브를 위한 새로운 무대"
     first = "방송에만 집중하세요."
     second = "나머지는 우리가 합니다."
-    detail = "라이브커머스 · 스튜디오 · 정산 · 성장 지원"
+    detail = "공간 탐색  ·  라이브 준비  ·  판매 관리"
 
-    draw.rounded_rectangle((72, 204, 497, 250), radius=23, fill="#26283B", outline="#B78022", width=2)
-    draw.text((91, 211), kicker, font=ImageFont.truetype(str(font_path), 22), fill=gold)
-    draw.text((71, 286), first, font=fit_font(draw, first, font_path, 54, 635), fill=white, stroke_width=1, stroke_fill="#172039")
-    draw.text((71, 370), second, font=fit_font(draw, second, font_path, 54, 635), fill=gold, stroke_width=1, stroke_fill="#172039")
-    draw.line((73, 493, 649, 493), fill=(245, 166, 35, 180), width=2)
-    draw.text((73, 517), detail, font=fit_font(draw, detail, font_path, 26, 765), fill=muted)
+    draw.rounded_rectangle((72, 201, 474, 249), radius=24, fill=(25, 30, 49, 230), outline=(245, 166, 35, 160), width=2)
+    draw.text((94, 211), kicker, font=ImageFont.truetype(str(font_path), 21), fill=gold)
+    draw.rounded_rectangle((72, 284, 78, 444), radius=3, fill=gold)
+    draw.text((100, 283), first, font=fit_font(draw, first, font_path, 57, 610), fill=white, stroke_width=1, stroke_fill="#11172B")
+    draw.text((100, 368), second, font=fit_font(draw, second, font_path, 57, 610), fill=gold, stroke_width=1, stroke_fill="#11172B")
+    draw.line((73, 499, 635, 499), fill=(245, 166, 35, 190), width=2)
+    draw.text((73, 523), detail, font=fit_font(draw, detail, font_path, 25, 620), fill=muted)
 
     output = SOCIAL / "share-card.png"
     card.convert("RGB").save(output, optimize=True)
