@@ -6,7 +6,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <div className="min-h-screen bg-gradient-to-b from-navy to-blue-950 flex flex-col items-center justify-center p-4 py-8">
       <Link href="/" className="mb-6 flex flex-col items-center">
         <Image
-          src="/images/brand/logo-original-on-dark.png?v=4"
+          src="/images/brand/logo-original-on-dark.png?v=6"
           alt="셀러브릭스 스튜디오"
           width={220}
           height={56}

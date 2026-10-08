@@ -51,7 +51,7 @@ export function SiteHeader() {
               className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-white transition-colors"
             >
               <Building2 className="h-3.5 w-3.5" />
-              시설 예약
+              창고(스튜디오) 예약
             </Link>
           )}
         </nav>
@@ -105,7 +105,7 @@ export function SiteHeader() {
               onClick={() => setOpen(false)}
             >
               <Building2 className="h-3.5 w-3.5" />
-              시설 예약
+              창고(스튜디오) 예약
             </Link>
           )}
           <div className="pt-2 border-t border-border mt-2 flex flex-col gap-2">

@@ -30,16 +30,17 @@ def variant(image: Image.Image, dark_background: bool) -> Image.Image:
         x = index % image.width
         if is_gold(red, green, blue):
             pixels.append((red, green, blue, alpha))
-        elif x >= 80 and max(red, green, blue) < 135:
-            # The black SELLER letters need a soft light fill on navy.
+        elif 80 <= x < 234 and max(red, green, blue) < 70:
+            # Recolor only the solid SELLER letter interiors.
             pixels.append((222, 227, 235, alpha))
-        elif max(red, green, blue) < 135:
+        elif x < 80 and max(red, green, blue) < 135:
             # Only recolor the speech-bubble symbol around the play button.
             # Muted blue gray keeps the mark visible on navy without turning it white.
             pixels.append((86, 96, 120, alpha))
         else:
-            # Replace the raster's pale outline with a quiet navy edge.
-            pixels.append((25, 31, 49, alpha))
+            # Remove the source raster's outline. Transparency lets the exact
+            # page background show through in the footer, sidebar and cards.
+            pixels.append((0, 0, 0, 0))
     result = Image.new("RGBA", image.size)
     result.putdata(pixels)
     return result

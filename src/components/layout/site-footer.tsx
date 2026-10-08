@@ -12,7 +12,7 @@ export function SiteFooter() {
     <footer className="bg-[#11172B] text-white">
       <div className="container grid gap-12 py-16 sm:py-20 lg:grid-cols-[1.5fr_1fr] lg:gap-20">
         <div>
-          <Link href="/" className="inline-block"><Image src="/images/brand/logo-original-on-dark.png?v=4" alt="셀러브릭스 스튜디오" width={210} height={56} className="h-14 w-auto object-contain" /></Link>
+          <Link href="/" className="inline-block"><Image src="/images/brand/logo-original-on-dark.png?v=6" alt="셀러브릭스 스튜디오" width={210} height={56} className="h-14 w-auto object-contain" /></Link>
           <h2 className="mt-8 text-2xl font-extrabold leading-snug tracking-tight sm:text-3xl">방송에만 집중하세요.<br /><span className="text-brand-300">나머지는 우리가 합니다.</span></h2>
           <p className="mt-4 max-w-md text-sm leading-7 text-white/55">라이브커머스의 공간 탐색부터 운영과 판매 이후의 확인까지, 셀러의 다음 단계를 함께 준비합니다.</p>
           <Link href="/signup/seller" className="mt-7 inline-flex min-h-11 items-center gap-2 rounded-full border border-white/25 px-5 text-sm font-bold text-white transition hover:border-brand-400 hover:text-brand-300">셀러로 시작하기<ArrowRight className="h-4 w-4" /></Link>

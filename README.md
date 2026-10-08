@@ -69,7 +69,7 @@ npm run dev
 
 ## 카카오톡·SNS 공유 카드
 
-사이트 링크의 미리보기에는 `public/images/social/share-card-v4.jpg`(1200×630)가 사용됩니다. Open Graph와 X(Twitter) 카드의 제목·설명·절대 이미지 URL은 `src/app/layout.tsx`에서 설정합니다. 실제 배포 환경에서는 `NEXT_PUBLIC_APP_URL`을 공개 사이트 주소(예: `https://example.com`)로 설정하세요. 이 값이 없으면 요청 호스트를 사용합니다.
+사이트 링크의 미리보기에는 `public/images/social/share-card-v5.jpg`(1200×630)가 사용됩니다. Open Graph와 X(Twitter) 카드의 제목·설명·절대 이미지 URL은 `src/app/layout.tsx`에서 설정합니다. 실제 배포 환경에서는 `NEXT_PUBLIC_APP_URL`을 공개 사이트 주소(예: `https://example.com`)로 설정하세요. 이 값이 없으면 요청 호스트를 사용합니다.
 
 공유 이미지의 배경 원본은 `public/images/social/share-background.png`입니다. 네이비·골드 톤의 라이브커머스 촬영 스튜디오를 생성형 이미지로 제작하고, 로고와 한글 문구는 코드로 선명하게 합성했습니다. 문구를 바꾼 뒤에는 Pillow와 한글 글꼴이 있는 환경에서 `scripts/generate-share-card.py`를 실행하면 PNG 원본과 공유용 JPEG를 함께 다시 만들 수 있습니다. 예: `python scripts/generate-share-card.py --font /path/to/korean-bold.ttf`. 로고를 바꿀 때는 `scripts/generate-brand-assets.py`를 먼저 실행하세요. 공유 카드가 크게 바뀌면 JPEG 파일 이름의 버전을 올려 카카오톡 등 외부 서비스의 기존 이미지 캐시를 피하세요.
 
