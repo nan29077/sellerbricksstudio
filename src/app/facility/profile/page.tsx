@@ -5,25 +5,15 @@ import { PageHeader } from "@/components/layout/dashboard-widgets";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty";
+import { FacilityProfileEdit } from "@/components/facility/facility-profile-edit";
 import { formatKRW } from "@/lib/utils";
-import { MapPin, Clock, Wallet, Star, Package, CalendarCheck, TrendingUp, Building2 } from "lucide-react";
+import {
+  MapPin, Clock, Wallet, Star, CalendarCheck, TrendingUp,
+  Building2, Tag, ExternalLink,
+} from "lucide-react";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
-
-const DUMMY_FACILITIES_PROFILE = [
-  {
-    id:"d1", name:"강남 프리미엄 라이브 스튜디오", type:"STUDIO", region:"서울 강남구",
-    address:"서울 강남구 테헤란로 123 B동 3층", rating:4.9, status:"APPROVED",
-    basePrice:150_000, depositAmount:300_000, openTime:"09:00", closeTime:"22:00",
-    description:"강남 최고급 라이브 스튜디오. 4K 카메라, 전문 조명, 고속 인터넷 완비.",
-    thumbnailUrl:"https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&q=70",
-    productCount:248, bookingCount:48, monthlyRevenue:18_500_000,
-    reviews:[
-      { author:"박지현", rating:5, text:"방송 환경이 정말 최고예요. 조명과 카메라 세팅이 완벽합니다." },
-      { author:"홍길동", rating:5, text:"접근성도 좋고 장비도 전부 최신식이라 방송 퀄리티가 올라갔어요." },
-    ],
-  },
-];
 
 export default async function FacilityProfile() {
   const user = await requireRole(["FACILITY_ADMIN"]);
@@ -33,17 +23,19 @@ export default async function FacilityProfile() {
     const ids = await ownedFacilityIds(user.id);
     facilities = await prisma.facility.findMany({
       where: { id: { in: ids } },
-      include: { _count: { select: { bookings: true, products: true } } },
+      include: {
+        _count: { select: { bookings: true } },
+        slots: { select: { id: true } },
+      },
     });
-    if (facilities.length === 0) facilities = DUMMY_FACILITIES_PROFILE;
   } catch {
-    facilities = DUMMY_FACILITIES_PROFILE;
+    // DB 연결 실패 시 빈 배열
   }
 
   if (facilities.length === 0) {
     return (
       <div>
-        <PageHeader title="시설 정보" description="내 시설 프로필과 운영 현황을 관리하세요." />
+        <PageHeader title="시설 정보 · 편집" description="내 시설 프로필과 운영 현황을 관리하세요." />
         <EmptyState
           icon={<Building2 className="h-10 w-10" />}
           title="등록된 시설이 없습니다"
@@ -54,90 +46,143 @@ export default async function FacilityProfile() {
   }
 
   return (
-    <div className="space-y-5 pb-24 md:pb-0">
-      <PageHeader title="시설 정보" description="내 시설 프로필과 운영 현황을 관리하세요." />
+    <div className="space-y-6 pb-24 md:pb-0">
+      <PageHeader title="시설 정보 · 편집" description="내 시설 프로필과 운영 현황을 관리하세요." />
 
-      {facilities.map((f: any) => (
-        <Card key={f.id}>
-          <CardContent className="pt-5">
-            {/* 대표 이미지 */}
-            {f.thumbnailUrl && (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={f.thumbnailUrl} alt={f.name} className="w-full h-48 object-cover rounded-xl mb-4" />
-            )}
+      {facilities.map((f: any) => {
+        const specialties = f.specialty
+          ? f.specialty.split(",").map((s: string) => s.trim()).filter(Boolean)
+          : [];
 
-            {/* 기본 정보 */}
-            <div className="flex items-start justify-between gap-3 mb-4">
-              <div>
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <Badge tone={f.status === "APPROVED" ? "green" : "yellow"}>
-                    {f.status === "APPROVED" ? "운영중" : "검토중"}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">{f.type === "STUDIO" ? "스튜디오" : "창고"}</span>
+        return (
+          <div key={f.id} className="space-y-4">
+            {/* 메인 정보 카드 */}
+            <Card>
+              <CardContent className="pt-5">
+                {/* 대표 이미지 */}
+                {f.thumbnailUrl && (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={f.thumbnailUrl} alt={f.name} className="w-full h-52 object-cover rounded-2xl mb-5" />
+                )}
+
+                {/* 상태 + 이름 */}
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <Badge tone={f.status === "APPROVED" ? "green" : "yellow"}>
+                        {f.status === "APPROVED" ? "운영중" : "검토중"}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {f.type === "STUDIO" ? "라이브 스튜디오" : "창고"}
+                      </span>
+                    </div>
+                    <h2 className="text-xl font-extrabold text-navy">{f.name}</h2>
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                      <MapPin className="h-4 w-4 shrink-0" />
+                      {f.address ?? f.region}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <div className="flex items-center gap-1">
+                      <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
+                      <span className="font-bold text-navy">
+                        {typeof f.rating === "number" ? f.rating.toFixed(1) : "-"}
+                      </span>
+                    </div>
+                    {f.status === "APPROVED" && (
+                      <Link
+                        href={`/facilities/${f.id}`}
+                        target="_blank"
+                        className="flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline"
+                      >
+                        시설 페이지 보기 <ExternalLink className="h-3 w-3" />
+                      </Link>
+                    )}
+                  </div>
                 </div>
-                <h2 className="text-xl font-extrabold text-navy">{f.name}</h2>
-                <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                  <MapPin className="h-4 w-4" />
-                  {f.address ?? f.region}
-                </div>
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
-                <span className="font-bold text-navy">{typeof f.rating === "number" ? f.rating.toFixed(1) : "4.9"}</span>
-              </div>
-            </div>
 
-            {/* 운영 통계 */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-              {[
-                { label: "기본 이용료",   value: formatKRW(f.basePrice ?? 150000),             icon: Wallet         },
-                { label: "예약 건수",     value: `${f._count?.bookings ?? f.bookingCount ?? 0}건`, icon: CalendarCheck },
-                { label: "등록 상품",     value: `${f._count?.products ?? f.productCount ?? 0}개`, icon: Package       },
-                { label: "월 수익",       value: formatKRW(f.monthlyRevenue ?? 0),              icon: TrendingUp     },
-              ].map((s) => (
-                <div key={s.label} className="rounded-xl bg-muted/40 p-3 text-center">
-                  <s.icon className="h-4 w-4 text-muted-foreground mx-auto mb-1" />
-                  <p className="text-xs text-muted-foreground">{s.label}</p>
-                  <p className="font-bold text-navy text-sm">{s.value}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* 운영 시간 */}
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-              <Clock className="h-4 w-4 shrink-0" />
-              <span>운영 시간: {f.openTime ?? "09:00"} ~ {f.closeTime ?? "22:00"}</span>
-            </div>
-
-            {/* 설명 */}
-            {f.description && (
-              <p className="text-sm text-muted-foreground rounded-xl bg-muted/30 p-3 mb-4">{f.description}</p>
-            )}
-
-            {/* 리뷰 */}
-            {f.reviews && f.reviews.length > 0 && (
-              <div>
-                <h3 className="font-bold text-navy text-sm mb-2">셀러 리뷰</h3>
-                <div className="space-y-2">
-                  {f.reviews.map((r: any, i: number) => (
-                    <div key={i} className="rounded-xl bg-amber-50 border border-amber-100 p-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-sm text-navy">{r.author}</span>
-                        <div className="flex">
-                          {[1,2,3,4,5].map((s) => (
-                            <Star key={s} className={`h-3 w-3 ${s <= r.rating ? "fill-amber-400 text-amber-400" : "text-muted-foreground"}`} />
-                          ))}
-                        </div>
-                      </div>
-                      <p className="text-xs text-muted-foreground">{r.text}</p>
+                {/* 운영 통계 */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                  {[
+                    {
+                      label: "기본 이용료",
+                      value: formatKRW(f.basePrice ?? 0),
+                      icon: Wallet,
+                    },
+                    {
+                      label: "총 예약 건수",
+                      value: `${f._count?.bookings ?? 0}건`,
+                      icon: CalendarCheck,
+                    },
+                    {
+                      label: "예약 슬롯 수",
+                      value: `${f.slots?.length ?? 0}개`,
+                      icon: Clock,
+                    },
+                    {
+                      label: "전문 분야 수",
+                      value: `${specialties.length}개`,
+                      icon: Tag,
+                    },
+                  ].map((s) => (
+                    <div key={s.label} className="rounded-xl bg-muted/40 p-3 text-center">
+                      <s.icon className="h-4 w-4 text-muted-foreground mx-auto mb-1" />
+                      <p className="text-xs text-muted-foreground">{s.label}</p>
+                      <p className="font-bold text-navy text-sm">{s.value}</p>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      ))}
+
+                {/* 운영 시간 */}
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+                  <Clock className="h-4 w-4 shrink-0" />
+                  <span>운영 시간: {f.openTime ?? "09:00"} ~ {f.closeTime ?? "22:00"}</span>
+                </div>
+
+                {/* 전문 분야 태그 미리보기 */}
+                {specialties.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-3">
+                    {specialties.map((s: string) => (
+                      <span key={s} className="rounded-full border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs font-bold text-brand-700">
+                        {s} 전문
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 전문 분야 · 라이브 공간 편집 카드 */}
+            <FacilityProfileEdit
+              facilityId={f.id}
+              initialSpecialty={f.specialty ?? ""}
+              initialLiveSpaceInfo={f.liveSpaceInfo ?? ""}
+              initialDescription={f.description ?? ""}
+            />
+
+            {/* 시설 페이지 편집 링크 */}
+            <Card className="border-dashed">
+              <CardContent className="pt-5 pb-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-extrabold text-navy">시설 페이지 꾸미기</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      배너, 테마, 소개 문구, 장비 목록 등을 꾸밀 수 있습니다
+                    </p>
+                  </div>
+                  <Link
+                    href="/facility/pages"
+                    className="flex items-center gap-1 rounded-xl bg-brand-600 px-4 py-2 text-xs font-bold text-white hover:bg-brand-700"
+                  >
+                    <TrendingUp className="h-3.5 w-3.5" />
+                    페이지 꾸미기
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      })}
     </div>
   );
 }

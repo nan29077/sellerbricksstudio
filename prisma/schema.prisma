@@ -124,6 +124,7 @@ model User {
   settlements        Settlement[]        @relation("SellerSettlements")
   managerCommission  ManagerCommissionRule[]
   auditLogs          AuditLog[]
+  inquiries          FacilityInquiry[]   @relation("SellerInquiries")
 }
 
 model Profile {
@@ -150,6 +151,8 @@ model Facility {
   address     String
   description String?
   equipment   String?        // 보유 장비 (콤마 구분 또는 자유 텍스트)
+  specialty   String?        // 전문 카테고리 (콤마 구분: 의류,코스메틱,식품 등)
+  liveSpaceInfo String?      // 라이브 공간 안내 (조명/카메라/인터넷 등)
   openTime    String?        // "09:00"
   closeTime   String?        // "22:00"
   basePrice   Int            @default(0) // 예약료(원)
@@ -167,10 +170,29 @@ model Facility {
   liveSessions  LiveSession[]
   orders        Order[]
   settlements   Settlement[]
+  inquiries     FacilityInquiry[]
 
   @@index([region])
   @@index([type])
   @@index([status])
+}
+
+// ===================== 시설 문의 =====================
+model FacilityInquiry {
+  id          String   @id @default(cuid())
+  facilityId  String
+  facility    Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  sellerId    String
+  seller      User     @relation("SellerInquiries", fields: [sellerId], references: [id])
+  message     String   @db.Text
+  reply       String?  @db.Text
+  repliedAt   DateTime?
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([facilityId])
+  @@index([sellerId])
 }
 
 model FacilityImage {

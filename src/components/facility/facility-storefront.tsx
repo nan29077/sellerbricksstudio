@@ -1,13 +1,29 @@
 import Link from "next/link";
 import { formatKRW } from "@/lib/utils";
 import { FACILITY_PAGE_THEMES, type FacilityPageConfig } from "@/lib/facility-page";
+import { FacilityInquiryButton } from "@/components/facility/facility-inquiry-button";
 import {
-  ArrowRight, BadgeCheck, Boxes, CalendarDays, Camera, CheckCircle2,
-  ChevronLeft, Clock3, Home, MapPin, Package, Radio, ShieldCheck,
-  ShoppingBag, Store, UserRound, Video, Warehouse, Wifi,
+  ArrowRight, BadgeCheck, Boxes, CalendarDays, Camera,
+  CheckCircle2, ChevronLeft, Clock3, Home, MapPin,
+  MessageSquare, ShieldCheck, Store, Tag, UserRound,
+  Warehouse, Wifi,
 } from "lucide-react";
 
 const WEEK = ["일", "월", "화", "수", "목", "금", "토"];
+
+// 주요 카테고리 아이콘/색상 매핑
+const SPECIALTY_META: Record<string, { color: string; bg: string }> = {
+  "의류": { color: "text-purple-700", bg: "bg-purple-50 border-purple-200" },
+  "코스메틱": { color: "text-pink-700", bg: "bg-pink-50 border-pink-200" },
+  "패션잡화": { color: "text-blue-700", bg: "bg-blue-50 border-blue-200" },
+  "식품": { color: "text-green-700", bg: "bg-green-50 border-green-200" },
+  "전자제품": { color: "text-slate-700", bg: "bg-slate-100 border-slate-200" },
+  "홈리빙": { color: "text-amber-700", bg: "bg-amber-50 border-amber-200" },
+  "스포츠": { color: "text-orange-700", bg: "bg-orange-50 border-orange-200" },
+  "반려동물": { color: "text-teal-700", bg: "bg-teal-50 border-teal-200" },
+  "유아동": { color: "text-cyan-700", bg: "bg-cyan-50 border-cyan-200" },
+  "도서/취미": { color: "text-indigo-700", bg: "bg-indigo-50 border-indigo-200" },
+};
 
 export function FacilityStorefront({
   facility: f,
@@ -16,15 +32,18 @@ export function FacilityStorefront({
 }: {
   facility: any;
   pageConfig: FacilityPageConfig;
-  user: { role?: string } | null;
+  user: { role?: string; id?: string } | null;
 }) {
   const accent = FACILITY_PAGE_THEMES[pageConfig.theme].accent;
   const isWarehouse = f.type === "WAREHOUSE";
-  const productCount = f.products?.length ?? 0;
   const slotCount = f.slots?.length ?? 0;
   const equipment = f.equipment?.split(",").map((item: string) => item.trim()).filter(Boolean) ?? [];
+  const specialties = f.specialty
+    ? f.specialty.split(",").map((s: string) => s.trim()).filter(Boolean)
+    : [];
   const directBookingHref = `/seller/bookings/new?facilityId=${f.id}`;
   const isSeller = user?.role === "SELLER";
+  const isLoggedIn = !!user;
   const bookingHref = isSeller
     ? directBookingHref
     : user
@@ -37,6 +56,7 @@ export function FacilityStorefront({
 
   return (
     <div className="min-h-screen bg-[#FBF8EE] pb-20 md:pb-0">
+      {/* 상단 헤더 */}
       <div className="border-b border-[#EEEAE0] bg-white">
         <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between px-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
@@ -50,9 +70,9 @@ export function FacilityStorefront({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="#store-products" aria-label="연동 상품" className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-navy bg-[#FFD552] text-navy shadow-[2px_2px_0_#1A1A2E] transition hover:-translate-y-0.5">
-              <ShoppingBag className="h-5 w-5" />
-            </Link>
+            <a href="#store-inquiry" aria-label="시설 문의" className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-navy bg-white text-navy shadow-[2px_2px_0_#1A1A2E] transition hover:-translate-y-0.5">
+              <MessageSquare className="h-5 w-5" />
+            </a>
             <Link href={bookingHref} aria-label="시설 예약" className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-navy bg-[#FFD552] text-navy shadow-[2px_2px_0_#1A1A2E] transition hover:-translate-y-0.5">
               <CalendarDays className="h-5 w-5" />
             </Link>
@@ -60,6 +80,7 @@ export function FacilityStorefront({
         </div>
       </div>
 
+      {/* 배너 */}
       <section id="store-home" className="relative mx-auto h-[280px] max-w-[1440px] overflow-hidden bg-navy sm:h-[360px] lg:h-[430px]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={pageConfig.bannerUrl} alt={`${pageConfig.pageTitle} 커버`} className="h-full w-full object-cover" />
@@ -67,8 +88,19 @@ export function FacilityStorefront({
         <Link href="/facilities" className="absolute left-4 top-4 inline-flex items-center gap-1 rounded-full border border-white/25 bg-black/30 px-3 py-2 text-xs font-bold text-white backdrop-blur-md hover:bg-black/45 sm:left-6">
           <ChevronLeft className="h-4 w-4" /> 시설 목록
         </Link>
+        {/* 전문 분야 배지 (배너 오른쪽 하단) */}
+        {specialties.length > 0 && (
+          <div className="absolute bottom-4 right-4 flex flex-wrap justify-end gap-1.5">
+            {specialties.slice(0, 3).map((s: string) => (
+              <span key={s} className="rounded-full border border-white/30 bg-black/40 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur-sm">
+                {s} 전문
+              </span>
+            ))}
+          </div>
+        )}
       </section>
 
+      {/* 메인 카드 */}
       <main className="relative z-10 mx-auto -mt-16 max-w-5xl px-3 sm:-mt-20 sm:px-6">
         <section className="relative rounded-[28px] border border-white/80 bg-white p-5 pt-14 shadow-[0_14px_40px_rgba(26,26,46,0.14)] sm:p-8 sm:pt-16">
           <div className="absolute -top-12 left-5 flex h-24 w-24 items-center justify-center rounded-full border-[5px] border-white bg-brand-50 shadow-md sm:-top-14 sm:left-8 sm:h-28 sm:w-28">
@@ -87,17 +119,17 @@ export function FacilityStorefront({
                   <BadgeCheck className="h-4 w-4" />
                 </span>
               </div>
-              <p className="mt-1 hidden items-center gap-1 text-xs font-semibold text-muted-foreground sm:flex"><MapPin className="h-3.5 w-3.5" />{f.address ?? f.region}</p>
-            </div>
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-500">
-              <Video className="h-4 w-4" />
+              <p className="mt-1 hidden items-center gap-1 text-xs font-semibold text-muted-foreground sm:flex">
+                <MapPin className="h-3.5 w-3.5" />{f.address ?? f.region}
+              </p>
             </div>
           </div>
 
+          {/* 통계 */}
           <div className="mt-7 grid grid-cols-3 divide-x divide-[#E8E8EC] rounded-2xl bg-[#F8F9FB] px-2 py-5 sm:mt-8">
             {[
               { value: (f.rating ?? 0).toFixed(1), label: "시설 평점" },
-              { value: productCount.toLocaleString(), label: "연동 상품" },
+              { value: specialties.length > 0 ? `${specialties.length}개` : "-", label: "전문 분야" },
               { value: slotCount.toLocaleString(), label: "예약 일정" },
             ].map((stat) => (
               <div key={stat.label} className="text-center">
@@ -112,6 +144,22 @@ export function FacilityStorefront({
             <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-slate-400 sm:text-sm">{pageConfig.intro}</p>
           </div>
 
+          {/* 전문 분야 태그 */}
+          {specialties.length > 0 && (
+            <div className="mt-5 flex flex-wrap gap-2">
+              {specialties.map((s: string) => {
+                const meta = SPECIALTY_META[s] ?? { color: "text-brand-700", bg: "bg-brand-50 border-brand-200" };
+                return (
+                  <span key={s} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold ${meta.bg} ${meta.color}`}>
+                    <Tag className="h-3 w-3" />
+                    {s} 전문
+                  </span>
+                );
+              })}
+            </div>
+          )}
+
+          {/* 예약 CTA */}
           <Link
             href={bookingHref}
             className="mt-6 flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl border border-[#D99000] px-5 text-base font-black text-navy shadow-sm transition hover:brightness-105 sm:text-lg"
@@ -121,8 +169,19 @@ export function FacilityStorefront({
             {bookingLabel}
             <ArrowRight className="h-5 w-5" />
           </Link>
+
+          {/* 문의 버튼 */}
+          <div className="mt-3">
+            <FacilityInquiryButton
+              facilityId={f.id}
+              facilityName={f.name}
+              isSeller={isSeller}
+              isLoggedIn={isLoggedIn}
+            />
+          </div>
         </section>
 
+        {/* 퀵 예약 */}
         <section id="store-booking" className="mt-5 scroll-mt-6 overflow-hidden rounded-[26px] border border-[#E9DFC5] bg-white shadow-[0_10px_30px_rgba(26,26,46,0.08)]">
           <div className="grid lg:grid-cols-[1.15fr_0.85fr]">
             <div className="p-5 sm:p-7 lg:p-8">
@@ -132,7 +191,9 @@ export function FacilityStorefront({
                   <h2 className="mt-1 text-2xl font-black text-navy sm:text-3xl">원하는 시간으로 바로 예약하세요</h2>
                   <p className="mt-2 text-sm font-medium leading-relaxed text-slate-500">시설과 시간이 미리 선택된 예약 신청서로 바로 연결됩니다.</p>
                 </div>
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#FFF7D6] text-brand-700"><CalendarDays className="h-6 w-6" /></span>
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#FFF7D6] text-brand-700">
+                  <CalendarDays className="h-6 w-6" />
+                </span>
               </div>
 
               <div className="mt-6 grid grid-cols-3 gap-2">
@@ -174,23 +235,34 @@ export function FacilityStorefront({
                 <p className="text-xs font-bold text-white/55">기본 이용료 · 1시간</p>
                 <p className="mt-2 text-3xl font-black text-[#FFD552]">{formatKRW(f.basePrice)}</p>
                 <div className="mt-5 space-y-3 border-t border-white/10 pt-5">
-                  <p className="flex items-center gap-2 text-xs font-bold text-white/75"><Clock3 className="h-4 w-4 text-[#FFD552]" /> 운영 {f.openTime ?? "09:00"}–{f.closeTime ?? "22:00"}</p>
-                  <p className="flex items-center gap-2 text-xs font-bold text-white/75"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> 승인 전에는 결제되지 않습니다</p>
-                  <p className="flex items-center gap-2 text-xs font-bold text-white/75"><ShieldCheck className="h-4 w-4 text-emerald-400" /> 셀러브릭스 안전 예약</p>
+                  <p className="flex items-center gap-2 text-xs font-bold text-white/75">
+                    <Clock3 className="h-4 w-4 text-[#FFD552]" /> 운영 {f.openTime ?? "09:00"}–{f.closeTime ?? "22:00"}
+                  </p>
+                  <p className="flex items-center gap-2 text-xs font-bold text-white/75">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400" /> 승인 전에는 결제되지 않습니다
+                  </p>
+                  <p className="flex items-center gap-2 text-xs font-bold text-white/75">
+                    <ShieldCheck className="h-4 w-4 text-emerald-400" /> 셀러브릭스 안전 예약
+                  </p>
                 </div>
               </div>
               <Link href={bookingHref} className="mt-7 flex min-h-13 items-center justify-center gap-2 rounded-xl bg-[#FFD552] px-4 py-3.5 text-sm font-black text-navy transition hover:-translate-y-0.5 hover:bg-brand-300">
                 <CalendarDays className="h-4 w-4" />{bookingLabel}<ArrowRight className="h-4 w-4" />
               </Link>
-              {!isSeller && <p className="mt-3 text-center text-[10px] font-medium text-white/45">예약 신청은 셀러 계정으로 진행할 수 있습니다.</p>}
+              {!isSeller && (
+                <p className="mt-3 text-center text-[10px] font-medium text-white/45">
+                  예약 신청은 셀러 계정으로 진행할 수 있습니다.
+                </p>
+              )}
             </div>
           </div>
         </section>
 
+        {/* 페이지 내비 */}
         <nav className="mt-5 hidden grid-cols-4 overflow-hidden rounded-2xl border border-[#ECE8DD] bg-white p-1.5 shadow-sm md:grid">
           {[
             { href: "#store-home", label: "홈", icon: Home },
-            { href: "#store-products", label: "연동 상품", icon: ShoppingBag },
+            { href: "#store-specialty", label: "전문 분야", icon: Tag },
             { href: "#store-schedule", label: "예약 일정", icon: CalendarDays },
             { href: "#store-info", label: "시설 정보", icon: UserRound },
           ].map((item, index) => (
@@ -201,49 +273,52 @@ export function FacilityStorefront({
         </nav>
 
         <div className="mt-5 space-y-5">
-          {pageConfig.showProducts && (
-            <section id="store-products" className="scroll-mt-36 rounded-[24px] border border-[#EEEAE0] bg-white p-5 shadow-sm sm:p-7">
-              <div className="mb-5 flex items-end justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-brand-700">Facility products</p>
-                  <h2 className="mt-1 text-xl font-black text-navy">이 시설의 연동 상품</h2>
-                </div>
-                <span className="text-xs font-bold text-slate-400">{productCount}개</span>
+          {/* 주요 취급 카테고리 */}
+          <section id="store-specialty" className="scroll-mt-36 rounded-[24px] border border-[#EEEAE0] bg-white p-5 shadow-sm sm:p-7">
+            <div className="mb-5 flex items-end justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-brand-700">Specialty</p>
+                <h2 className="mt-1 text-xl font-black text-navy">주요 취급 카테고리</h2>
               </div>
-              {productCount > 0 ? (
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                  {f.products.map((fp: any) => {
-                    const product = fp.product;
-                    const image = product?.thumbnailUrl ?? product?.images?.[0]?.url;
-                    const discount = fp.consumerPrice > fp.salePrice && fp.consumerPrice > 0
-                      ? Math.round((1 - fp.salePrice / fp.consumerPrice) * 100)
-                      : 0;
+              <Tag className="h-6 w-6 text-brand-500" />
+            </div>
+
+            {specialties.length > 0 ? (
+              <>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {specialties.map((s: string) => {
+                    const meta = SPECIALTY_META[s] ?? { color: "text-brand-700", bg: "bg-brand-50 border-brand-200" };
                     return (
-                      <article key={fp.id} className="group overflow-hidden rounded-2xl border border-[#EEEAE0] bg-white transition hover:-translate-y-1 hover:shadow-lg">
-                        <div className="relative aspect-square overflow-hidden bg-[#F5F5F4]">
-                          {image ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={image} alt={product?.name ?? "상품"} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
-                          ) : (
-                            <div className="flex h-full items-center justify-center"><Package className="h-9 w-9 text-slate-300" /></div>
-                          )}
-                          {discount > 0 && <span className="absolute left-2 top-2 rounded-full bg-red-500 px-2 py-1 text-[10px] font-black text-white">{discount}%</span>}
+                      <div key={s} className={`flex items-center gap-3 rounded-2xl border p-4 ${meta.bg}`}>
+                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/80 ${meta.color}`}>
+                          <Tag className="h-5 w-5" />
                         </div>
-                        <div className="p-3">
-                          <p className="text-[10px] font-bold text-slate-400">{product?.category}</p>
-                          <h3 className="mt-1 line-clamp-2 text-xs font-extrabold leading-snug text-navy sm:text-sm">{product?.name}</h3>
-                          <p className="mt-2 text-sm font-black text-brand-700">{formatKRW(fp.salePrice)}</p>
+                        <div>
+                          <p className={`text-sm font-extrabold ${meta.color}`}>{s}</p>
+                          <p className="text-[10px] text-slate-400">전문 취급</p>
                         </div>
-                      </article>
+                      </div>
                     );
                   })}
                 </div>
-              ) : (
-                <EmptyPanel icon={ShoppingBag} text="아직 준비 중인 상품입니다" />
-              )}
-            </section>
-          )}
 
+                {/* 라이브 공간 정보 */}
+                {f.liveSpaceInfo && (
+                  <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                    <div className="mb-3 flex items-center gap-2">
+                      <Camera className="h-4 w-4 text-amber-700" />
+                      <p className="text-sm font-black text-amber-800">라이브·촬영 공간 안내</p>
+                    </div>
+                    <p className="text-sm leading-relaxed text-amber-900 whitespace-pre-line">{f.liveSpaceInfo}</p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <EmptyPanel icon={Tag} text="카테고리 정보를 준비 중입니다" />
+            )}
+          </section>
+
+          {/* 예약 일정 */}
           {pageConfig.showSchedule && (
             <section id="store-schedule" className="scroll-mt-36 rounded-[24px] border border-[#EEEAE0] bg-white p-5 shadow-sm sm:p-7">
               <div className="mb-5 flex items-center justify-between">
@@ -256,14 +331,19 @@ export function FacilityStorefront({
               {slotCount > 0 ? (
                 <div className="grid gap-3 sm:grid-cols-2">
                   {f.slots.map((slot: any) => (
-                    <div key={slot.id} className="flex items-center gap-3 rounded-2xl border border-[#EEEAE0] bg-[#FCFBF7] p-4">
-                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-navy text-sm font-black text-white">{WEEK[slot.weekday]}</span>
+                    <Link key={slot.id} href={bookingHrefForSlot(slot)} className="group flex items-center gap-3 rounded-2xl border border-[#EEEAE0] bg-[#FCFBF7] p-4 transition hover:border-brand-300 hover:bg-brand-50">
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-navy text-sm font-black text-white">
+                        {WEEK[slot.weekday]}
+                      </span>
                       <div className="min-w-0 flex-1">
                         <p className="font-black text-navy">{slot.startTime} – {slot.endTime}</p>
                         <p className="mt-0.5 text-xs text-slate-400">예약 가능 시간</p>
                       </div>
-                      <p className="text-xs font-black text-brand-700">{formatKRW(slot.price ?? f.basePrice)}</p>
-                    </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-xs font-black text-brand-700">{formatKRW(slot.price ?? f.basePrice)}</p>
+                        <ArrowRight className="mt-1 h-4 w-4 text-slate-300 group-hover:text-brand-500" />
+                      </div>
+                    </Link>
                   ))}
                 </div>
               ) : (
@@ -272,6 +352,7 @@ export function FacilityStorefront({
             </section>
           )}
 
+          {/* 시설 정보 */}
           <section id="store-info" className="scroll-mt-36 rounded-[24px] border border-[#EEEAE0] bg-white p-5 shadow-sm sm:p-7">
             <div className="mb-5">
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-brand-700">Facility guide</p>
@@ -294,7 +375,9 @@ export function FacilityStorefront({
 
             {pageConfig.showEquipment && equipment.length > 0 && (
               <div className="mt-5">
-                <h3 className="mb-3 flex items-center gap-2 text-sm font-black text-navy"><Boxes className="h-4 w-4 text-brand-600" /> 제공 시설·장비</h3>
+                <h3 className="mb-3 flex items-center gap-2 text-sm font-black text-navy">
+                  <Boxes className="h-4 w-4 text-brand-600" /> 제공 시설·장비
+                </h3>
                 <div className="flex flex-wrap gap-2">
                   {equipment.map((item: string) => (
                     <span key={item} className="inline-flex items-center gap-1.5 rounded-full border border-[#E8E4DA] bg-[#FCFBF7] px-3 py-2 text-xs font-bold text-navy">
@@ -309,25 +392,48 @@ export function FacilityStorefront({
               {[
                 { icon: ShieldCheck, text: "안전한 예약·결제" },
                 { icon: Wifi, text: "시설 연결 지원" },
-                { icon: Radio, text: "라이브 운영 연동" },
+                { icon: CheckCircle2, text: "마케팅 지원 연동" },
               ].map((item) => (
-                <div key={item.text} className="flex items-center gap-2 text-xs font-bold text-slate-500"><item.icon className="h-4 w-4 text-emerald-500" />{item.text}</div>
+                <div key={item.text} className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                  <item.icon className="h-4 w-4 text-emerald-500" />{item.text}
+                </div>
               ))}
             </div>
+          </section>
+
+          {/* 문의 섹션 */}
+          <section id="store-inquiry" className="scroll-mt-36 rounded-[24px] border border-[#EEEAE0] bg-white p-5 shadow-sm sm:p-7">
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-brand-700">Inquiry</p>
+                <h2 className="mt-1 text-xl font-black text-navy">시설에 문의하기</h2>
+                <p className="mt-1 text-xs text-slate-400">예약 가능 여부, 시설 상태, 특별 요청 등을 문의해보세요</p>
+              </div>
+              <MessageSquare className="h-6 w-6 text-brand-500" />
+            </div>
+            <FacilityInquiryButton
+              facilityId={f.id}
+              facilityName={f.name}
+              isSeller={isSeller}
+              isLoggedIn={isLoggedIn}
+            />
           </section>
         </div>
 
         <div className="py-8 text-center">
-          <Link href="/facilities" className="inline-flex items-center gap-1 text-sm font-black text-slate-400 hover:text-brand-700"><ChevronLeft className="h-4 w-4" /> 다른 시설 둘러보기</Link>
+          <Link href="/facilities" className="inline-flex items-center gap-1 text-sm font-black text-slate-400 hover:text-brand-700">
+            <ChevronLeft className="h-4 w-4" /> 다른 시설 둘러보기
+          </Link>
         </div>
       </main>
 
+      {/* 모바일 하단 내비 */}
       <nav aria-label="시설 페이지 메뉴" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 items-center border-t border-[#E8E5DE] bg-white/95 px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-[0_-3px_16px_rgba(26,26,46,0.05)] backdrop-blur md:hidden">
         {[
           { href: "#store-home", label: "홈", icon: Home },
-          { href: "#store-products", label: "상품", icon: ShoppingBag },
+          { href: "#store-specialty", label: "카테고리", icon: Tag },
           { href: bookingHref, label: "예약", icon: CalendarDays },
-          { href: "#store-info", label: "시설", icon: UserRound },
+          { href: "#store-inquiry", label: "문의", icon: MessageSquare },
         ].map((item) => (
           <Link key={item.label} href={item.href} className="flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-semibold text-slate-500 transition hover:bg-[#FAF8F3] hover:text-navy">
             <item.icon className="h-[18px] w-[18px]" strokeWidth={1.9} />
@@ -339,7 +445,7 @@ export function FacilityStorefront({
   );
 }
 
-function EmptyPanel({ icon: Icon, text }: { icon: typeof ShoppingBag; text: string }) {
+function EmptyPanel({ icon: Icon, text }: { icon: React.ElementType; text: string }) {
   return (
     <div className="flex min-h-52 flex-col items-center justify-center rounded-2xl bg-[#F8F9FB] text-slate-300">
       <Icon className="h-10 w-10" />

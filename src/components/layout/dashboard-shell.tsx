@@ -6,10 +6,10 @@ import { signOut } from "next-auth/react";
 import { useState } from "react";
 import {
   LogOut, Menu, X, type LucideIcon,
-  LayoutDashboard, CalendarDays, Radio, ShoppingCart, MessageSquare,
-  Warehouse, Package, CalendarClock, Users, Building2,
+  LayoutDashboard, CalendarDays, MessageSquare,
+  Warehouse, CalendarClock, Users, Building2,
   Settings, ScrollText, Sliders, Image as ImageIcon,
-  ChevronRight, Home, Globe, ScanBarcode, TrendingUp, Megaphone,
+  ChevronRight, Home, Globe, TrendingUp, Megaphone,
   Share2, BarChart3, Ticket, LayoutTemplate,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -24,23 +24,24 @@ const ROLE_NAV: Record<string, NavSection[]> = {
       { href: "/admin/dashboard", label: "대시보드", icon: LayoutDashboard },
     ]},
     { title: "회원 · 시설", items: [
-      { href: "/admin/users",      label: "회원 관리",     icon: Users },
-      { href: "/admin/facilities", label: "시설 관리",     icon: Building2 },
+      { href: "/admin/users",      label: "회원 관리", icon: Users },
+      { href: "/admin/facilities", label: "시설 관리", icon: Building2 },
+      { href: "/admin/managers",   label: "매니저 관리", icon: Users },
     ]},
-    { title: "거래 관리", items: [
-      { href: "/admin/bookings",         label: "예약 관리",     icon: CalendarDays },
-      { href: "/admin/farm-reservations", label: "시설 예약 관리", icon: Building2 },
-      { href: "/admin/orders",           label: "주문 관리",   icon: ShoppingCart },
+    { title: "예약 관리", items: [
+      { href: "/admin/bookings",          label: "예약 현황", icon: CalendarDays },
+      { href: "/admin/farm-reservations", label: "시설 예약", icon: Building2 },
     ]},
-    { title: "마케팅", items: [
-      { href: "/admin/marketing", label: "마케팅 지원 관리", icon: Megaphone },
+    { title: "정산 · 마케팅", items: [
+      { href: "/admin/settlements", label: "정산 관리",    icon: TrendingUp },
+      { href: "/admin/marketing",   label: "마케팅 지원",  icon: Megaphone },
     ]},
     { title: "시스템 설정", items: [
-      { href: "/admin/site-settings",    label: "사이트 설정", icon: ImageIcon },
-      { href: "/admin/site-management",  label: "사이트 관리", icon: Globe },
-      { href: "/admin/live-settings",    label: "메뉴 권한 설정", icon: Sliders },
-      { href: "/admin/integrations",     label: "연동 설정",   icon: Settings },
-      { href: "/admin/audit-logs",       label: "감사 로그",   icon: ScrollText },
+      { href: "/admin/site-settings",   label: "사이트 설정",    icon: ImageIcon },
+      { href: "/admin/site-management", label: "사이트 관리",    icon: Globe },
+      { href: "/admin/live-settings",   label: "메뉴 권한 설정", icon: Sliders },
+      { href: "/admin/integrations",    label: "연동 설정",      icon: Settings },
+      { href: "/admin/audit-logs",      label: "감사 로그",      icon: ScrollText },
     ]},
     { title: "계정", items: [
       { href: "/admin/settings", label: "설정", icon: Settings },
@@ -48,22 +49,22 @@ const ROLE_NAV: Record<string, NavSection[]> = {
   ],
   SELLER: [
     { title: "운영", items: [
-      { href: "/seller/dashboard",          label: "대시보드", icon: LayoutDashboard },
-      { href: "/seller/bookings",           label: "예약",     icon: CalendarDays, requiresFacility: true },
-      { href: "/seller/farm-reservations",  label: "시설 예약", icon: Building2, requiresFacility: true },
+      { href: "/seller/dashboard", label: "대시보드", icon: LayoutDashboard },
+      { href: "/seller/bookings",  label: "예약 관리", icon: CalendarDays, requiresFacility: true },
     ]},
-    { title: "라이브 커머스", items: [
-      { href: "/seller/live-sessions", label: "라이브 방송", icon: Radio, requiresLive: true },
-    ]},
-    { title: "판매", items: [
-      { href: "/seller/orders", label: "주문 관리", icon: ShoppingCart, requiresFacility: true },
+    { title: "창고·스튜디오", items: [
+      { href: "/facilities",                label: "창고(스튜디오) 검색", icon: Warehouse },
+      { href: "/seller/farm-reservations",  label: "시설 예약 현황",      icon: Building2, requiresFacility: true },
     ]},
     { title: "마케팅 지원", items: [
-      { href: "/seller/marketing",            label: "SNS 마케팅",     icon: Share2 },
-      { href: "/seller/marketing/events",     label: "이벤트/프로모션", icon: Megaphone },
-      { href: "/seller/marketing/assets",     label: "광고 소재 관리", icon: ImageIcon },
-      { href: "/seller/marketing/analytics",  label: "마케팅 분석",    icon: BarChart3 },
-      { href: "/seller/marketing/coupons",    label: "쿠폰 관리",      icon: Ticket },
+      { href: "/seller/marketing",           label: "SNS 마케팅",     icon: Share2 },
+      { href: "/seller/marketing/events",    label: "이벤트/프로모션", icon: Megaphone },
+      { href: "/seller/marketing/assets",    label: "광고 소재",      icon: ImageIcon },
+      { href: "/seller/marketing/analytics", label: "마케팅 분석",    icon: BarChart3 },
+      { href: "/seller/marketing/coupons",   label: "쿠폰 관리",     icon: Ticket },
+    ]},
+    { title: "정산", items: [
+      { href: "/seller/settlements", label: "정산 내역", icon: TrendingUp },
     ]},
     { title: "계정", items: [
       { href: "/seller/settings", label: "설정", icon: Settings },
@@ -72,21 +73,17 @@ const ROLE_NAV: Record<string, NavSection[]> = {
   FACILITY_ADMIN: [
     { title: "운영", items: [
       { href: "/facility/dashboard", label: "대시보드",  icon: LayoutDashboard },
-      { href: "/facility/profile",   label: "시설 정보", icon: Warehouse },
-      { href: "/facility/pages",     label: "시설 페이지", icon: LayoutTemplate },
+      { href: "/facility/profile",   label: "시설 정보 · 편집", icon: Warehouse },
+      { href: "/facility/pages",     label: "시설 페이지 꾸미기", icon: LayoutTemplate },
     ]},
-    { title: "상품 · 일정", items: [
-      { href: "/facility/products", label: "상품 관리", icon: Package },
-      { href: "/facility/products/scan", label: "제품관리", icon: ScanBarcode },
-      { href: "/facility/schedule", label: "일정 관리", icon: CalendarClock },
+    { title: "예약 관리", items: [
+      { href: "/facility/bookings",   label: "예약 현황", icon: CalendarDays },
+      { href: "/facility/schedule",   label: "일정 관리", icon: CalendarClock },
+      { href: "/facility/inquiries",  label: "셀러 문의", icon: MessageSquare },
     ]},
-    { title: "예약 · 라이브", items: [
-      { href: "/facility/bookings",      label: "예약 관리", icon: CalendarDays },
-      { href: "/facility/live-sessions", label: "라이브",    icon: Radio, requiresLive: true },
-      { href: "/facility/orders",        label: "주문 관리", icon: ShoppingCart },
-    ]},
-    { title: "계정", items: [
-      { href: "/facility/settings", label: "설정", icon: Settings },
+    { title: "시설 운영", items: [
+      { href: "/facility/settlements", label: "정산 내역", icon: TrendingUp },
+      { href: "/facility/settings",    label: "설정",      icon: Settings },
     ]},
   ],
 };

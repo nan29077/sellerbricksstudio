@@ -6,7 +6,7 @@ import { formatKRW } from "@/lib/utils";
 import {
   ArrowRight, ArrowUpRight, Building2, CalendarDays,
   CheckCircle2, ChevronRight, CircleAlert, ClipboardList,
-  Globe, Settings2, Users, Radio, Wallet, TrendingUp,
+  Globe, Settings2, Users, Wallet, TrendingUp, UserCheck,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -44,12 +44,10 @@ async function getDashboardData() {
       facilityCounts,
       bookingCounts,
       recentUsers,
-      liveSessions,
       pendingSettlements,
-      thisMonthRevenue,
-      lastMonthRevenue,
-      totalOrderCount,
-      pendingOrders,
+      thisMonthBookings,
+      lastMonthBookings,
+      approvedFacilities,
     ] = await Promise.all([
       prisma.user.groupBy({ by: ["role"], _count: true }),
       prisma.facility.groupBy({ by: ["status"], _count: true }),
@@ -62,53 +60,40 @@ async function getDashboardData() {
           profile: { select: { name: true } },
         },
       }),
-      // 라이브 세션 상태별
-      prisma.liveSession.groupBy({ by: ["status"], _count: true }),
       // 정산 대기 건수
       prisma.settlement.count({ where: { status: "PENDING" } }),
-      // 이번 달 매출
-      prisma.order.aggregate({
+      // 이번 달 예약 건수
+      prisma.booking.count({
         where: {
-          status: { in: ["PAID", "PREPARING", "SHIPPED", "DELIVERED"] },
           createdAt: { gte: monthStart },
+          status: { not: "CANCELLED" },
         },
-        _sum: { totalAmount: true },
       }),
-      // 지난달 매출 (증감 비교)
-      prisma.order.aggregate({
+      // 지난달 예약 건수
+      prisma.booking.count({
         where: {
-          status: { in: ["PAID", "PREPARING", "SHIPPED", "DELIVERED"] },
           createdAt: { gte: lastMonthStart, lt: monthStart },
+          status: { not: "CANCELLED" },
         },
-        _sum: { totalAmount: true },
       }),
-      // 전체 주문 수
-      prisma.order.count({
-        where: { status: { in: ["PAID", "PREPARING", "SHIPPED", "DELIVERED"] } },
-      }),
-      // 처리 대기 주문
-      prisma.order.count({ where: { status: "PAID" } }),
+      // 운영 중인 시설 수
+      prisma.facility.count({ where: { status: "APPROVED" } }),
     ]);
 
-    const thisRevenue = thisMonthRevenue._sum.totalAmount ?? 0;
-    const lastRevenue = lastMonthRevenue._sum.totalAmount ?? 0;
-    const revenueDiff = lastRevenue > 0 ? Math.round(((thisRevenue - lastRevenue) / lastRevenue) * 100) : null;
-
-    const liveCount = (status: string) =>
-      liveSessions.find((l) => l.status === status)?._count ?? 0;
+    const bookingDiff =
+      lastMonthBookings > 0
+        ? Math.round(((thisMonthBookings - lastMonthBookings) / lastMonthBookings) * 100)
+        : null;
 
     return {
       userCounts,
       facilityCounts,
       bookingCounts,
       recentUsers: recentUsers as RecentUser[],
-      activeLives: liveCount("LIVE"),
-      totalLives: liveSessions.reduce((s, l) => s + l._count, 0),
       pendingSettlements,
-      thisMonthRevenue: thisRevenue,
-      revenueDiff,
-      totalOrders: totalOrderCount,
-      pendingOrders,
+      thisMonthBookings,
+      bookingDiff,
+      approvedFacilities,
     };
   } catch {
     return null;
@@ -133,20 +118,17 @@ export default async function AdminDashboard() {
   const facilityAdmins = count(data?.userCounts, "FACILITY_ADMIN");
   const managers = count(data?.userCounts, "MANAGER");
 
-  const activeLives = data?.activeLives ?? 0;
-  const totalLives = data?.totalLives ?? 0;
   const pendingSettlements = data?.pendingSettlements ?? 0;
-  const thisMonthRevenue = data?.thisMonthRevenue ?? 0;
-  const revenueDiff = data?.revenueDiff;
-  const totalOrders = data?.totalOrders ?? 0;
-  const pendingOrders = data?.pendingOrders ?? 0;
+  const thisMonthBookings = data?.thisMonthBookings ?? 0;
+  const bookingDiff = data?.bookingDiff;
+  const approvedFacilities = data?.approvedFacilities ?? 0;
 
-  const revenueLabel =
-    revenueDiff !== null && revenueDiff !== undefined
-      ? revenueDiff > 0
-        ? `전월 대비 +${revenueDiff}%`
-        : revenueDiff < 0
-          ? `전월 대비 ${revenueDiff}%`
+  const bookingDiffLabel =
+    bookingDiff !== null && bookingDiff !== undefined
+      ? bookingDiff > 0
+        ? `전월 대비 +${bookingDiff}%`
+        : bookingDiff < 0
+          ? `전월 대비 ${bookingDiff}%`
           : "전월 동일"
       : "전월 데이터 없음";
 
@@ -164,7 +146,7 @@ export default async function AdminDashboard() {
       label: "등록 시설",
       value: totalFacilities,
       unit: "개",
-      detail: `승인 대기 ${pendingFacilities}개`,
+      detail: `운영중 ${approvedFacilities}개 · 승인 대기 ${pendingFacilities}개`,
       icon: Building2,
       tone: "bg-sky-50 text-sky-700",
       href: "/admin/facilities",
@@ -179,29 +161,29 @@ export default async function AdminDashboard() {
       href: "/admin/bookings",
     },
     {
-      label: "전체 주문",
-      value: totalOrders,
-      unit: "건",
-      detail: `결제 처리 대기 ${pendingOrders}건`,
-      icon: TrendingUp,
+      label: "시설 관리자",
+      value: facilityAdmins,
+      unit: "명",
+      detail: `매니저 ${managers}명 포함`,
+      icon: UserCheck,
       tone: "bg-emerald-50 text-emerald-700",
-      href: "/admin/orders",
+      href: "/admin/users",
     },
   ];
 
   const quickActions = [
-    { title: "회원 관리",    description: "가입 회원과 역할 확인",    href: "/admin/users",          icon: Users },
-    { title: "시설 승인",    description: "등록 시설 검토 및 관리",   href: "/admin/facilities",     icon: Building2 },
-    { title: "예약 관리",    description: "예약 요청과 상태 확인",    href: "/admin/bookings",       icon: ClipboardList },
-    { title: "정산 관리",    description: "정산 대기 항목 처리",      href: "/admin/settlements",    icon: Wallet },
-    { title: "라이브 세션",  description: "라이브 현황 모니터링",     href: "/admin/live-sessions",  icon: Radio },
-    { title: "사이트 설정",  description: "배너와 기본 정보 관리",    href: "/admin/site-settings",  icon: Settings2 },
+    { title: "회원 관리",       description: "가입 회원과 역할 확인",    href: "/admin/users",          icon: Users },
+    { title: "시설 승인",       description: "등록 시설 검토 및 관리",   href: "/admin/facilities",     icon: Building2 },
+    { title: "예약 관리",       description: "예약 요청과 상태 확인",    href: "/admin/bookings",       icon: ClipboardList },
+    { title: "정산 관리",       description: "정산 대기 항목 처리",      href: "/admin/settlements",    icon: Wallet },
+    { title: "마케팅 지원",     description: "셀러 마케팅 캠페인 관리",  href: "/admin/marketing",      icon: TrendingUp },
+    { title: "사이트 설정",     description: "배너와 기본 정보 관리",    href: "/admin/site-settings",  icon: Settings2 },
   ];
 
   const roleBreakdown = [
-    { label: "셀러",       value: sellers,       color: "bg-brand-500" },
-    { label: "창고(스튜디오) 관리자", value: facilityAdmins, color: "bg-sky-500" },
-    { label: "매니저",     value: managers,       color: "bg-violet-500" },
+    { label: "셀러",            value: sellers,       color: "bg-brand-500" },
+    { label: "창고·스튜디오 관리자", value: facilityAdmins, color: "bg-sky-500" },
+    { label: "매니저",          value: managers,      color: "bg-violet-500" },
   ];
 
   return (
@@ -225,7 +207,7 @@ export default async function AdminDashboard() {
             운영의 흐름을 한눈에.
           </h1>
           <p className="mt-3 text-sm leading-7 text-white/75 sm:text-base">
-            회원, 시설, 예약, 주문, 정산 현황을 살펴보고 지금 필요한 운영 작업으로 바로 이동하세요.
+            회원, 시설, 예약, 정산 현황을 살펴보고 지금 필요한 운영 작업으로 바로 이동하세요.
           </p>
           <div className="mt-7 flex flex-wrap gap-2 text-xs font-semibold text-white/85">
             <span className="rounded-full border border-white/25 bg-white/10 px-3 py-1.5">
@@ -234,9 +216,9 @@ export default async function AdminDashboard() {
             <span className="rounded-full border border-white/25 bg-white/10 px-3 py-1.5">
               최고관리자 워크스페이스
             </span>
-            {activeLives > 0 && (
-              <span className="rounded-full border border-red-400/40 bg-red-500/20 px-3 py-1.5 text-red-200">
-                라이브 방송 {activeLives}개 진행 중
+            {pendingFacilities > 0 && (
+              <span className="rounded-full border border-amber-400/40 bg-amber-500/20 px-3 py-1.5 text-amber-200">
+                시설 승인 대기 {pendingFacilities}개
               </span>
             )}
           </div>
@@ -263,33 +245,42 @@ export default async function AdminDashboard() {
         </div>
       )}
 
-      {/* 이번 달 매출 + 라이브 + 정산 요약 */}
+      {/* 이번 달 요약 3카드 */}
       {data && (
         <section>
           <p className="text-[11px] font-extrabold tracking-[0.18em] text-brand-700 mb-3">THIS MONTH</p>
           <div className="grid gap-3 sm:grid-cols-3">
+            {/* 이번 달 예약 */}
             <div className="rounded-[22px] border border-[#E9E5DC] bg-white p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-2">
-                <Wallet className="h-5 w-5 text-emerald-600" />
-                <p className="text-sm font-semibold text-slate-500">이번 달 매출</p>
+                <CalendarDays className="h-5 w-5 text-violet-600" />
+                <p className="text-sm font-semibold text-slate-500">이번 달 예약</p>
               </div>
               <p className="text-2xl font-extrabold text-navy">
-                {thisMonthRevenue > 0 ? formatKRW(thisMonthRevenue) : "—"}
+                {thisMonthBookings > 0 ? thisMonthBookings.toLocaleString("ko-KR") : "—"}
+                <span className="ml-1 text-base font-semibold text-slate-500">건</span>
               </p>
-              <p className="text-xs text-slate-500 mt-1">{revenueLabel}</p>
+              <p className="text-xs text-slate-500 mt-1">{bookingDiffLabel}</p>
             </div>
+
+            {/* 운영 중 시설 */}
             <div className="rounded-[22px] border border-[#E9E5DC] bg-white p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-2">
-                <Radio className="h-5 w-5 text-purple-600" />
-                <p className="text-sm font-semibold text-slate-500">라이브 세션</p>
+                <Building2 className="h-5 w-5 text-sky-600" />
+                <p className="text-sm font-semibold text-slate-500">운영 중 시설</p>
               </div>
-              <p className="text-2xl font-extrabold text-navy">{totalLives}<span className="ml-1 text-base font-semibold text-slate-500">개</span></p>
+              <p className="text-2xl font-extrabold text-navy">
+                {approvedFacilities}
+                <span className="ml-1 text-base font-semibold text-slate-500">개</span>
+              </p>
               <p className="text-xs text-slate-500 mt-1">
-                {activeLives > 0 ? (
-                  <span className="text-red-600 font-bold">현재 {activeLives}개 방송 중</span>
-                ) : "현재 방송 없음"}
+                {pendingFacilities > 0 ? (
+                  <span className="text-amber-600 font-bold">승인 대기 {pendingFacilities}개</span>
+                ) : "대기 중인 시설 없음"}
               </p>
             </div>
+
+            {/* 정산 대기 */}
             <Link href="/admin/settlements">
               <div className={`rounded-[22px] border p-5 shadow-sm hover:shadow-md transition cursor-pointer ${pendingSettlements > 0 ? "border-amber-300 bg-amber-50" : "border-[#E9E5DC] bg-white"}`}>
                 <div className="flex items-center gap-2 mb-2">
@@ -297,7 +288,8 @@ export default async function AdminDashboard() {
                   <p className="text-sm font-semibold text-slate-500">정산 대기</p>
                 </div>
                 <p className={`text-2xl font-extrabold ${pendingSettlements > 0 ? "text-amber-700" : "text-navy"}`}>
-                  {pendingSettlements}<span className="ml-1 text-base font-semibold text-slate-500">건</span>
+                  {pendingSettlements}
+                  <span className="ml-1 text-base font-semibold text-slate-500">건</span>
                 </p>
                 <p className="text-xs text-slate-500 mt-1">
                   {pendingSettlements > 0 ? "승인 처리 필요" : "대기 항목 없음"}
