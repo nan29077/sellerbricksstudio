@@ -50,19 +50,18 @@ def make_wordmark(name: str, dark_background: bool) -> None:
     scale = 3
     original = variant(SOURCE, dark_background)
     original = original.resize((SOURCE.width * scale, SOURCE.height * scale), Image.Resampling.LANCZOS)
-    canvas = Image.new("RGBA", (original.width + 12, original.height + 64), (0, 0, 0, 0))
+    canvas = Image.new("RGBA", (original.width + 12, original.height + 96), (0, 0, 0, 0))
     canvas.alpha_composite(original, (0, 0))
 
     draw = ImageDraw.Draw(canvas)
-    font = ImageFont.truetype(str(FONT), 64)
+    font = ImageFont.truetype(str(FONT), 72)
     label = "STUDIO"
-    spacing = 14
-    label_width = sum(draw.textlength(letter, font=font) for letter in label) + spacing * (len(label) - 1)
-    # The source wordmark begins after the symbol, at approximately x=80.
-    wordmark_center = (80 + SOURCE.width) * scale / 2
-    x = wordmark_center - label_width / 2
+    spacing = 16
+    # Align the supporting label with the left edge of SELLER and leave a
+    # little more breathing room beneath the primary wordmark.
+    x = 80 * scale
     for letter in label:
-        draw.text((round(x), 199), letter, font=font, fill="#D5DCE8" if dark_background else "#202126")
+        draw.text((round(x), 220), letter, font=font, fill="#D5DCE8" if dark_background else "#202126")
         x += draw.textlength(letter, font=font) + spacing
 
     bounds = canvas.getbbox()

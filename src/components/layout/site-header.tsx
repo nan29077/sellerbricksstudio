@@ -31,7 +31,7 @@ export function SiteHeader() {
       <div className="container flex h-[72px] items-center justify-between">
         <Link href="/" className="flex items-center gap-1">
           <Image
-            src="/images/brand/logo-original-on-light.png"
+            src="/images/brand/logo-original-on-light.png?v=7"
             alt="셀러브릭스 스튜디오"
             width={170}
             height={44}

@@ -140,7 +140,7 @@ export function DashboardShell({
         onClick={onNav}
       >
         <Image
-          src="/images/brand/logo-original-on-dark.png?v=6"
+          src="/images/brand/logo-original-on-dark.png?v=7"
           alt="셀러브릭스 스튜디오"
           width={190}
           height={48}
@@ -226,7 +226,7 @@ export function DashboardShell({
       <header className="md:hidden sticky top-0 z-40 flex h-16 items-center justify-between border-b border-[#ECE8E0] bg-white/95 px-4 shadow-sm backdrop-blur">
         <Link href="/" className="flex items-center">
           <Image
-            src="/images/brand/logo-original-on-light.png"
+            src="/images/brand/logo-original-on-light.png?v=7"
             alt="셀러브릭스 스튜디오"
             width={154}
             height={40}
