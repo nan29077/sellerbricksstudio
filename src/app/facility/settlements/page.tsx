@@ -51,18 +51,18 @@ export default async function FacilitySettlements() {
 
   return (
     <div className="space-y-5 pb-24 md:pb-0">
-      <PageHeader title="정산 내역" description="시설 운영 수익 및 정산 현황을 확인하세요." />
+      <PageHeader title="정산 내역" description="창고(스튜디오) 운영 수익 및 정산 현황을 확인하세요." />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <StatCard label="시설 총 매출"  value={formatKRW(st.gross)}          sub="누적"    icon={TrendingUp}   />
-        <StatCard label="시설 정산금"   value={formatKRW(st.facilityAmount)} sub="20%"     icon={Banknote}     />
+        <StatCard label="창고(스튜디오) 총 매출"  value={formatKRW(st.gross)}          sub="누적"    icon={TrendingUp}   />
+        <StatCard label="창고(스튜디오) 정산금"   value={formatKRW(st.facilityAmount)} sub="20%"     icon={Banknote}     />
         <StatCard label="총 주문"       value={`${st.orderCount}건`}         sub="정산 대상" icon={CalendarCheck} />
       </div>
 
       {/* 월별 수익 차트 */}
       <Card>
         <CardContent className="pt-5">
-          <h3 className="font-bold text-navy mb-4">월별 시설 정산금 추이</h3>
+          <h3 className="font-bold text-navy mb-4">월별 창고(스튜디오) 정산금 추이</h3>
           <div className="flex items-end gap-2 h-28 mb-2">
             {DUMMY_MONTHLY_FAC.map((m) => (
               <div key={m.month} className="flex-1 flex flex-col items-center gap-1">
@@ -85,7 +85,7 @@ export default async function FacilitySettlements() {
         </CardHeader>
         <CardContent className="pt-0 overflow-x-auto">
           <Table
-            headers={["방송 세션", "시설", "총 매출", "시설 정산금", "상태"]}
+            headers={["방송 세션", "창고(스튜디오)", "총 매출", "창고(스튜디오) 정산금", "상태"]}
             rows={DUMMY_SETTLEMENT_ROWS.map((s) => [
               <div key="session">
                 <p className="font-medium text-navy text-xs">{s.session}</p>
@@ -109,7 +109,7 @@ export default async function FacilitySettlements() {
         <CardContent className="pt-4 pb-4 flex items-start gap-3">
           <Info className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
           <div className="text-xs text-muted-foreground space-y-1">
-            <p>시설 정산금은 방송 총 매출의 20%입니다.</p>
+            <p>창고(스튜디오) 정산금은 방송 총 매출의 20%입니다.</p>
             <p>정산은 매월 5일에 등록된 계좌로 자동 지급됩니다.</p>
           </div>
         </CardContent>

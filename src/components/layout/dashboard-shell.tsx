@@ -23,14 +23,14 @@ const ROLE_NAV: Record<string, NavSection[]> = {
     { title: "운영 현황", items: [
       { href: "/admin/dashboard", label: "대시보드", icon: LayoutDashboard },
     ]},
-    { title: "회원 · 시설", items: [
+    { title: "회원 · 창고(스튜디오)", items: [
       { href: "/admin/users",      label: "회원 관리", icon: Users },
-      { href: "/admin/facilities", label: "시설 관리", icon: Building2 },
+      { href: "/admin/facilities", label: "창고(스튜디오) 관리", icon: Building2 },
       { href: "/admin/managers",   label: "매니저 관리", icon: Users },
     ]},
     { title: "예약 관리", items: [
       { href: "/admin/bookings",          label: "예약 현황", icon: CalendarDays },
-      { href: "/admin/farm-reservations", label: "시설 예약", icon: Building2 },
+      { href: "/admin/farm-reservations", label: "창고(스튜디오) 예약", icon: Building2 },
     ]},
     { title: "정산 · 마케팅", items: [
       { href: "/admin/settlements", label: "정산 관리",    icon: TrendingUp },
@@ -54,7 +54,7 @@ const ROLE_NAV: Record<string, NavSection[]> = {
     ]},
     { title: "창고·스튜디오", items: [
       { href: "/facilities",                label: "창고(스튜디오) 검색", icon: Warehouse },
-      { href: "/seller/farm-reservations",  label: "시설 예약 현황",      icon: Building2, requiresFacility: true },
+      { href: "/seller/farm-reservations",  label: "창고(스튜디오) 예약 현황",      icon: Building2, requiresFacility: true },
     ]},
     { title: "마케팅 지원", items: [
       { href: "/seller/marketing",           label: "SNS 마케팅",     icon: Share2 },
@@ -73,15 +73,15 @@ const ROLE_NAV: Record<string, NavSection[]> = {
   FACILITY_ADMIN: [
     { title: "운영", items: [
       { href: "/facility/dashboard", label: "대시보드",  icon: LayoutDashboard },
-      { href: "/facility/profile",   label: "시설 정보 · 편집", icon: Warehouse },
-      { href: "/facility/pages",     label: "시설 페이지 꾸미기", icon: LayoutTemplate },
+      { href: "/facility/profile",   label: "창고(스튜디오) 정보 · 편집", icon: Warehouse },
+      { href: "/facility/pages",     label: "창고(스튜디오) 페이지 꾸미기", icon: LayoutTemplate },
     ]},
     { title: "예약 관리", items: [
       { href: "/facility/bookings",   label: "예약 현황", icon: CalendarDays },
       { href: "/facility/schedule",   label: "일정 관리", icon: CalendarClock },
       { href: "/facility/inquiries",  label: "셀러 문의", icon: MessageSquare },
     ]},
-    { title: "시설 운영", items: [
+    { title: "창고(스튜디오) 운영", items: [
       { href: "/facility/settlements", label: "정산 내역", icon: TrendingUp },
       { href: "/facility/settings",    label: "설정",      icon: Settings },
     ]},

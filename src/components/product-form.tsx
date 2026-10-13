@@ -32,7 +32,7 @@ export function ProductForm({ facilities }: { facilities: { id: string; name: st
   return (
     <Card className="max-w-2xl"><CardContent className="pt-6">
       <form onSubmit={onSubmit} className="space-y-4">
-        <div><Label>시설</Label><Select value={f.facilityId} onChange={set("facilityId")}>{facilities.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</Select></div>
+        <div><Label>창고(스튜디오)</Label><Select value={f.facilityId} onChange={set("facilityId")}>{facilities.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</Select></div>
         <div><Label>상품명</Label><Input value={f.name} onChange={set("name")} required /></div>
         <div className="grid grid-cols-2 gap-3">
           <div><Label>SKU</Label><Input value={f.sku} onChange={set("sku")} /></div>

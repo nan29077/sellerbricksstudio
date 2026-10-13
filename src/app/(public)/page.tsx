@@ -56,7 +56,7 @@ const serviceCards = [
 ];
 
 const journey = [
-  { icon: Store, number: "01", title: "공간 탐색", description: "방송 목적과 지역에 맞는 시설을 둘러보고 예약을 신청합니다." },
+  { icon: Store, number: "01", title: "공간 탐색", description: "방송 목적과 지역에 맞는 창고(스튜디오)를 둘러보고 예약을 신청합니다." },
   { icon: ClipboardList, number: "02", title: "상품·일정 준비", description: "라이브에 사용할 상품과 번호, 방송 일정을 한곳에서 정리합니다." },
   { icon: Radio, number: "03", title: "라이브 운영", description: "방송 상태와 주문 흐름을 확인하며 판매에 집중합니다." },
   { icon: BarChart3, number: "04", title: "결과 확인", description: "방송 후 주문과 정산 내역을 살펴보고 다음 계획을 세웁니다." },
@@ -70,8 +70,8 @@ const capabilities = [
 ];
 
 const faqs = [
-  { question: "어떤 공간을 찾을 수 있나요?", answer: "등록된 라이브 스튜디오와 창고를 지역과 유형별로 탐색할 수 있습니다. 이용 가능 여부와 상세 조건은 각 시설 페이지에서 확인해 주세요." },
-  { question: "예약은 어떻게 진행하나요?", answer: "시설 상세 페이지에서 원하는 날짜와 시간을 선택해 신청합니다. 신청 이후의 진행 상태는 대시보드에서 확인할 수 있습니다." },
+  { question: "어떤 공간을 찾을 수 있나요?", answer: "등록된 라이브 스튜디오와 창고를 지역과 유형별로 탐색할 수 있습니다. 이용 가능 여부와 상세 조건은 각 창고(스튜디오) 페이지에서 확인해 주세요." },
+  { question: "예약은 어떻게 진행하나요?", answer: "창고(스튜디오) 상세 페이지에서 원하는 날짜와 시간을 선택해 신청합니다. 신청 이후의 진행 상태는 대시보드에서 확인할 수 있습니다." },
   { question: "방송에 사용할 상품도 관리할 수 있나요?", answer: "라이브 세션에서 판매할 상품을 선택하고 상품번호와 순서를 관리할 수 있습니다." },
   { question: "판매 이후에는 무엇을 확인할 수 있나요?", answer: "주문과 정산 내역을 해당 계정의 대시보드에서 확인할 수 있습니다. 이용 가능한 기능은 계정 역할에 따라 다릅니다." },
 ];
@@ -159,7 +159,7 @@ export default async function HomePage() {
 
       <section className="container py-20 sm:py-28">
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-          <div><p className="text-xs font-extrabold tracking-[0.2em] text-brand-700">EXPLORE SPACES</p><h2 className="mt-4 text-3xl font-extrabold tracking-tight text-navy sm:text-4xl">방송에 어울리는 공간을 찾아보세요</h2><p className="mt-3 text-sm leading-7 text-slate-600 sm:text-base">실제 등록된 시설의 정보를 확인하고 내 콘텐츠에 맞는 공간을 선택하세요.</p></div>
+          <div><p className="text-xs font-extrabold tracking-[0.2em] text-brand-700">EXPLORE SPACES</p><h2 className="mt-4 text-3xl font-extrabold tracking-tight text-navy sm:text-4xl">방송에 어울리는 공간을 찾아보세요</h2><p className="mt-3 text-sm leading-7 text-slate-600 sm:text-base">실제 등록된 창고(스튜디오)의 정보를 확인하고 내 콘텐츠에 맞는 공간을 선택하세요.</p></div>
           <Link href="/facilities" className="inline-flex min-h-11 shrink-0 items-center gap-2 text-sm font-bold text-brand-700 hover:text-navy">전체 공간 보기<ArrowRight className="h-4 w-4" /></Link>
         </div>
         {facilities.length > 0 ? (
@@ -180,7 +180,7 @@ export default async function HomePage() {
           </div>
         ) : (
           <div className="mt-10 flex flex-col items-start justify-between gap-4 rounded-[24px] border border-[#E9E5DC] bg-white p-7 sm:flex-row sm:items-center sm:p-10">
-            <div><p className="text-lg font-bold text-navy">{available ? "아직 등록된 공간이 없습니다" : "시설 목록을 불러올 수 없습니다"}</p><p className="mt-2 text-sm leading-6 text-slate-600">{available ? "새로운 공간이 등록되면 이곳에서 바로 확인할 수 있습니다." : "잠시 후 다시 시도하거나 서비스 소개에서 이용 방식을 확인해 주세요."}</p></div>
+            <div><p className="text-lg font-bold text-navy">{available ? "아직 등록된 공간이 없습니다" : "창고(스튜디오) 목록을 불러올 수 없습니다"}</p><p className="mt-2 text-sm leading-6 text-slate-600">{available ? "새로운 공간이 등록되면 이곳에서 바로 확인할 수 있습니다." : "잠시 후 다시 시도하거나 서비스 소개에서 이용 방식을 확인해 주세요."}</p></div>
             <Link href="/intro" className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full bg-brand-50 px-5 text-sm font-bold text-brand-700 hover:bg-brand-100">서비스 소개 보기<ChevronRight className="h-4 w-4" /></Link>
           </div>
         )}

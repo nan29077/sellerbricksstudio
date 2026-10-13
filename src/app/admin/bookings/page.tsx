@@ -68,7 +68,7 @@ export default async function AdminBookings() {
         </div>
       )}
 
-      <Table headers={["시설명", "셀러", "일정", "목적", "상태"]}>
+      <Table headers={["창고(스튜디오)명", "셀러", "일정", "목적", "상태"]}>
         {bookings.map((b: any) => {
           const st = BOOKING_STATUS[b.status as keyof typeof BOOKING_STATUS] ?? { label: b.status, tone: "gray" as const };
           const sellerName = b.seller?.profile?.name ?? b.seller?.email ?? "셀러";

@@ -14,7 +14,7 @@ export const sellerNav: NavItem[] = [
 
 export const facilityNav: NavItem[] = [
   { href: "/facility/dashboard", label: "대시보드", icon: LayoutDashboard },
-  { href: "/facility/profile", label: "시설정보", icon: Warehouse },
+  { href: "/facility/profile", label: "창고(스튜디오)정보", icon: Warehouse },
   { href: "/facility/products", label: "상품", icon: Package },
   { href: "/facility/schedule", label: "일정", icon: CalendarClock },
   { href: "/facility/bookings", label: "예약", icon: CalendarDays },
@@ -25,7 +25,7 @@ export const facilityNav: NavItem[] = [
 export const adminNav: NavItem[] = [
   { href: "/admin/dashboard", label: "대시보드", icon: LayoutDashboard },
   { href: "/admin/users", label: "회원", icon: Users },
-  { href: "/admin/facilities", label: "시설", icon: Building2 },
+  { href: "/admin/facilities", label: "창고(스튜디오)", icon: Building2 },
   { href: "/admin/bookings", label: "예약", icon: CalendarDays },
   { href: "/admin/orders", label: "주문", icon: ShoppingCart },
   { href: "/admin/integrations", label: "연동설정", icon: Settings },

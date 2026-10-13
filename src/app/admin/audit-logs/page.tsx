@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 const DUMMY_LOGS = [
   { id:"l1",  createdAt:new Date("2026-06-18T14:32:00"), actor:"최고관리자",        role:"SUPER_ADMIN",    action:"APPROVE", entity:"Facility", detail:"강남 프리미엄 라이브 스튜디오 승인 처리",   severity:"info"    },
-  { id:"l2",  createdAt:new Date("2026-06-18T14:15:00"), actor:"창고(스튜디오) 관리자 (김대영)", role:"FACILITY_ADMIN", action:"UPDATE",  entity:"Facility", detail:"시설 프로필 정보 수정",                    severity:"info"    },
+  { id:"l2",  createdAt:new Date("2026-06-18T14:15:00"), actor:"창고(스튜디오) 관리자 (김대영)", role:"FACILITY_ADMIN", action:"UPDATE",  entity:"Facility", detail:"창고(스튜디오) 프로필 정보 수정",                    severity:"info"    },
   { id:"l3",  createdAt:new Date("2026-06-18T13:55:00"), actor:"셀러 (박지현)",     role:"SELLER",         action:"CREATE",  entity:"Booking",  detail:"예약 신청 - 강남 스튜디오 6/22 14:00",    severity:"info"    },
   { id:"l4",  createdAt:new Date("2026-06-18T13:20:00"), actor:"최고관리자",        role:"SUPER_ADMIN",    action:"UPDATE",  entity:"User",     detail:"회원 비활성화 처리",                       severity:"warning" },
   { id:"l5",  createdAt:new Date("2026-06-18T12:45:00"), actor:"셀러 (홍길동)",     role:"SELLER",         action:"LOGIN",   entity:"Auth",     detail:"로그인 성공",                              severity:"info"    },

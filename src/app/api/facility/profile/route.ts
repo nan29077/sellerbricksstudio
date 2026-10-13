@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
 
 // PATCH /api/facility/profile
-// FACILITY_ADMIN이 자신의 시설 정보(전문분야, 라이브공간 안내, 설명 등)를 수정
+// FACILITY_ADMIN이 자신의 창고(스튜디오) 정보(전문분야, 라이브공간 안내, 설명 등)를 수정
 export async function PATCH(req: NextRequest) {
   const user = await getSessionUser();
   if (!user) {
@@ -20,16 +20,16 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "facilityId가 필요합니다" }, { status: 400 });
     }
 
-    // 본인 소유 시설 확인
+    // 본인 소유 창고(스튜디오) 확인
     const facility = await prisma.facility.findUnique({
       where: { id: facilityId },
       select: { id: true, ownerId: true },
     });
     if (!facility) {
-      return NextResponse.json({ error: "시설을 찾을 수 없습니다" }, { status: 404 });
+      return NextResponse.json({ error: "창고(스튜디오)를 찾을 수 없습니다" }, { status: 404 });
     }
     if (facility.ownerId !== user.id) {
-      return NextResponse.json({ error: "본인 소유 시설만 수정할 수 있습니다" }, { status: 403 });
+      return NextResponse.json({ error: "본인 소유 창고(스튜디오)만 수정할 수 있습니다" }, { status: 403 });
     }
 
     const updateData: any = {};

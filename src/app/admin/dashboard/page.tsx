@@ -76,7 +76,7 @@ async function getDashboardData() {
           status: { not: "CANCELLED" },
         },
       }),
-      // 운영 중인 시설 수
+      // 운영 중인 창고(스튜디오) 수
       prisma.facility.count({ where: { status: "APPROVED" } }),
     ]);
 
@@ -143,7 +143,7 @@ export default async function AdminDashboard() {
       href: "/admin/users",
     },
     {
-      label: "등록 시설",
+      label: "등록 창고(스튜디오)",
       value: totalFacilities,
       unit: "개",
       detail: `운영중 ${approvedFacilities}개 · 승인 대기 ${pendingFacilities}개`,
@@ -161,7 +161,7 @@ export default async function AdminDashboard() {
       href: "/admin/bookings",
     },
     {
-      label: "시설 관리자",
+      label: "창고(스튜디오) 관리자",
       value: facilityAdmins,
       unit: "명",
       detail: `매니저 ${managers}명 포함`,
@@ -173,7 +173,7 @@ export default async function AdminDashboard() {
 
   const quickActions = [
     { title: "회원 관리",       description: "가입 회원과 역할 확인",    href: "/admin/users",          icon: Users },
-    { title: "시설 승인",       description: "등록 시설 검토 및 관리",   href: "/admin/facilities",     icon: Building2 },
+    { title: "창고(스튜디오) 승인",       description: "등록 창고(스튜디오) 검토 및 관리",   href: "/admin/facilities",     icon: Building2 },
     { title: "예약 관리",       description: "예약 요청과 상태 확인",    href: "/admin/bookings",       icon: ClipboardList },
     { title: "정산 관리",       description: "정산 대기 항목 처리",      href: "/admin/settlements",    icon: Wallet },
     { title: "마케팅 지원",     description: "셀러 마케팅 캠페인 관리",  href: "/admin/marketing",      icon: TrendingUp },
@@ -207,7 +207,7 @@ export default async function AdminDashboard() {
             운영의 흐름을 한눈에.
           </h1>
           <p className="mt-3 text-sm leading-7 text-white/75 sm:text-base">
-            회원, 시설, 예약, 정산 현황을 살펴보고 지금 필요한 운영 작업으로 바로 이동하세요.
+            회원, 창고(스튜디오), 예약, 정산 현황을 살펴보고 지금 필요한 운영 작업으로 바로 이동하세요.
           </p>
           <div className="mt-7 flex flex-wrap gap-2 text-xs font-semibold text-white/85">
             <span className="rounded-full border border-white/25 bg-white/10 px-3 py-1.5">
@@ -218,7 +218,7 @@ export default async function AdminDashboard() {
             </span>
             {pendingFacilities > 0 && (
               <span className="rounded-full border border-amber-400/40 bg-amber-500/20 px-3 py-1.5 text-amber-200">
-                시설 승인 대기 {pendingFacilities}개
+                창고(스튜디오) 승인 대기 {pendingFacilities}개
               </span>
             )}
           </div>
@@ -263,11 +263,11 @@ export default async function AdminDashboard() {
               <p className="text-xs text-slate-500 mt-1">{bookingDiffLabel}</p>
             </div>
 
-            {/* 운영 중 시설 */}
+            {/* 운영 중 창고(스튜디오) */}
             <div className="rounded-[22px] border border-[#E9E5DC] bg-white p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-2">
                 <Building2 className="h-5 w-5 text-sky-600" />
-                <p className="text-sm font-semibold text-slate-500">운영 중 시설</p>
+                <p className="text-sm font-semibold text-slate-500">운영 중 창고(스튜디오)</p>
               </div>
               <p className="text-2xl font-extrabold text-navy">
                 {approvedFacilities}
@@ -276,7 +276,7 @@ export default async function AdminDashboard() {
               <p className="text-xs text-slate-500 mt-1">
                 {pendingFacilities > 0 ? (
                   <span className="text-amber-600 font-bold">승인 대기 {pendingFacilities}개</span>
-                ) : "대기 중인 시설 없음"}
+                ) : "대기 중인 창고(스튜디오) 없음"}
               </p>
             </div>
 
@@ -366,8 +366,8 @@ export default async function AdminDashboard() {
                   <Building2 className="h-5 w-5" />
                 </span>
                 <div>
-                  <p className="text-sm font-bold text-navy">시설 승인 대기</p>
-                  <p className="text-xs text-slate-500">새로 등록된 시설을 검토하세요</p>
+                  <p className="text-sm font-bold text-navy">창고(스튜디오) 승인 대기</p>
+                  <p className="text-xs text-slate-500">새로 등록된 창고(스튜디오)를 검토하세요</p>
                 </div>
               </div>
               <span className="flex items-center gap-1 text-sm font-extrabold text-brand-700">

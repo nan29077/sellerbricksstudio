@@ -54,7 +54,7 @@ npm run db:up        # docker compose up -d (Postgres 16)
 
 ```bash
 npm run db:push      # Prisma 스키마를 DB에 반영
-npm run db:seed      # 테스트 계정/시설/상품 생성
+npm run db:seed      # 테스트 계정/창고(스튜디오)/상품 생성
 ```
 
 > 마이그레이션 이력을 남기려면 `npm run db:push` 대신 `npm run db:migrate` 사용.
@@ -75,7 +75,7 @@ npm run dev
 
 ## 홈페이지 비주얼
 
-메인 배너와 서비스 카드에는 `public/images/home/hero-studio.webp`, `hero-fulfillment.webp`, `hero-farm.webp`를 사용합니다. 생성형 이미지로 만든 **서비스 연출 이미지**이며, 실제 회원·시설 사진이나 운영 실적을 뜻하지 않습니다. 제작 프롬프트는 각각 네이비·골드 톤의 라이브커머스 스튜디오, 창고와 방송 준비 공간, 산지 현장 방송을 실사형으로 구성하고 왼쪽에 제목 공간을 두는 방향입니다. 신규 이미지로 교체할 때는 같은 경로와 비율을 유지하면 기존 레이아웃을 재사용할 수 있습니다.
+메인 배너와 서비스 카드에는 `public/images/home/hero-studio.webp`, `hero-fulfillment.webp`, `hero-farm.webp`를 사용합니다. 생성형 이미지로 만든 **서비스 연출 이미지**이며, 실제 회원·창고(스튜디오) 사진이나 운영 실적을 뜻하지 않습니다. 제작 프롬프트는 각각 네이비·골드 톤의 라이브커머스 스튜디오, 창고와 방송 준비 공간, 산지 현장 방송을 실사형으로 구성하고 왼쪽에 제목 공간을 두는 방향입니다. 신규 이미지로 교체할 때는 같은 경로와 비율을 유지하면 기존 레이아웃을 재사용할 수 있습니다.
 
 휴대폰 배너에는 별도의 `hero-studio-mobile.webp`, `hero-fulfillment-mobile.webp`, `hero-farm-mobile.webp`를 사용합니다. 원본의 장소와 분위기를 참고해 핵심 피사체가 중앙에 모인 3:2 구도로 생성했고, 모바일에서는 사진과 문구를 분리해 사진이 잘리지 않게 했습니다. 브랜드 로고는 사용자가 제공한 기존 셀러브릭스 로고 이미지에서 추출한 `public/images/brand/original-logo-source.png`에 `STUDIO`를 하단에 붙인 것입니다. 밝은 배경용 `logo-original-on-light.png`와 어두운 배경용 `logo-original-on-dark.png`가 있으며, PNG·파비콘은 `scripts/generate-brand-assets.py`로 다시 만들 수 있습니다.
 
@@ -100,10 +100,10 @@ npm run dev
 ## 전체 플로우 체험 (5분)
 
 1. **창고(스튜디오) 관리자**로 로그인 → `상품` 메뉴에서 상품 등록 (시드에 이미 존재)
-2. **셀러**로 로그인 → `예약` → 시설 검색 후 예약 신청
+2. **셀러**로 로그인 → `예약` → 창고(스튜디오) 검색 후 예약 신청
 3. **창고(스튜디오) 관리자**로 로그인 → `예약 관리`에서 **승인**
 4. **셀러**로 로그인 → `라이브` → 승인된 예약으로 **라이브 세션 생성**
-5. `판매 상품 선택`에서 시설 상품 추가 → **상품번호 자동/수동 부여**, 드래그로 순서 변경, 방송 중 **임시상품 추가**
+5. `판매 상품 선택`에서 창고(스튜디오) 상품 추가 → **상품번호 자동/수동 부여**, 드래그로 순서 변경, 방송 중 **임시상품 추가**
 6. 세션 상세에서 **방송 시작** + **카카오 알림톡 발송**(Mock) + 구매자 링크 복사
 7. 구매자 링크(`/live/...`)를 새 창에서 열어 **상품번호로 장바구니 담기 → Mock 결제 → 주문 완료**
 8. **셀러/창고(스튜디오) 관리자/관리자** 대시보드에서 주문·매출·정산 확인
@@ -114,9 +114,9 @@ npm run dev
 
 ## 사용자 역할 & 권한 (RBAC)
 
-- **SUPER_ADMIN**: 전체 데이터, 시설 승인, 중간관리자/수수료 설정, 연동·감사로그
-- **MANAGER**: 본인이 영업한 시설(`manager_facilities`)만 조회 — 수수료는 최고관리자만 설정
-- **FACILITY_ADMIN**: 본인 소유 시설/상품/예약/주문만 관리, 방송 중 상품 추가
+- **SUPER_ADMIN**: 전체 데이터, 창고(스튜디오) 승인, 중간관리자/수수료 설정, 연동·감사로그
+- **MANAGER**: 본인이 영업한 창고(스튜디오)(`manager_facilities`)만 조회 — 수수료는 최고관리자만 설정
+- **FACILITY_ADMIN**: 본인 소유 창고(스튜디오)/상품/예약/주문만 관리, 방송 중 상품 추가
 - **SELLER**: 본인 예약/방송/상품번호/주문/정산
 - **BUYER**: 공개 방송 링크 + 본인 주문 결과
 
@@ -153,7 +153,7 @@ npm run dev
 - 동일 `facilityId` 동일 시간대 `booking` 중복 방지 (API에서 overlap 검사)
 - 상품번호 변경 시 `live_product_number_history`에 이력 저장 + `numberVersion` 증가(실시간 반영)
 - 주문은 `liveSessionId / sellerId / facilityId`와 연결
-- 중간관리자는 `manager_facilities`에 연결된 시설만 접근
+- 중간관리자는 `manager_facilities`에 연결된 창고(스튜디오)만 접근
 
 ---
 

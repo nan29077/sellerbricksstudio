@@ -71,7 +71,7 @@ export default async function FacilitiesPage({
       <form className="mt-5 flex flex-col gap-3 rounded-xl border border-border bg-white p-4" action="/facilities" method="get">
         <div className="flex items-center gap-2 rounded-lg border border-border px-3">
           <Search className="h-4 w-4 text-muted-foreground" />
-          <input name="q" defaultValue={q} placeholder="시설명 또는 지역 검색" className="h-11 flex-1 bg-transparent text-sm outline-none" />
+          <input name="q" defaultValue={q} placeholder="창고(스튜디오)명 또는 지역 검색" className="h-11 flex-1 bg-transparent text-sm outline-none" />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <select name="type" defaultValue={type ?? ""} className="h-10 rounded-lg border border-border px-2 text-sm bg-white">
@@ -108,7 +108,7 @@ export default async function FacilitiesPage({
         ))}
       </div>
 
-      <p className="mt-4 text-sm text-muted-foreground">총 {facilities.length}개 시설</p>
+      <p className="mt-4 text-sm text-muted-foreground">총 {facilities.length}개 창고(스튜디오)</p>
 
       {facilities.length === 0 ? (
         <div className="mt-8">

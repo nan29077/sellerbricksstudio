@@ -31,7 +31,7 @@ export default async function AdminLiveSettings() {
         />
         <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground leading-relaxed">
           비활성화 스위치를 켜면 해당 역할 계정의 모든 기능이 중지되고, 로그인·회원가입 화면에서 해당 역할 옵션이 숨겨집니다.
-          <b className="text-navy"> 시설이용자 비활성화</b> 시 셀러 계정의 <b className="text-navy">예약 · 시설 예약 · 주문 관리</b> 메뉴도 함께 숨겨집니다.
+          <b className="text-navy"> 창고(스튜디오) 이용자 비활성화</b> 시 셀러 계정의 <b className="text-navy">예약 · 창고(스튜디오) 예약 · 주문 관리</b> 메뉴도 함께 숨겨집니다.
           스위치를 끄면 즉시 복구됩니다.
         </div>
       </div>

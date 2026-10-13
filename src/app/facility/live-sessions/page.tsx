@@ -20,7 +20,7 @@ export default async function FacilityLiveSessions() {
   const sessions = await prisma.liveSession.findMany({ where: { facilityId: { in: ids } }, orderBy: { createdAt: "desc" }, include: { seller: { include: { profile: true } }, _count: { select: { products: true } } } });
   return (
     <div>
-      <PageHeader title="라이브 세션" description="내 시설에서 진행되는 방송입니다. 방송 중 상품 추가가 가능합니다." />
+      <PageHeader title="라이브 세션" description="내 창고(스튜디오)에서 진행되는 방송입니다. 방송 중 상품 추가가 가능합니다." />
       {sessions.length === 0 ? <EmptyState title="라이브 세션이 없습니다" /> : (
         <Table headers={["제목", "셀러", "상태", "상품수", ""]}>
           {sessions.map((s) => { const st = LIVE_STATUS[s.status]; return (

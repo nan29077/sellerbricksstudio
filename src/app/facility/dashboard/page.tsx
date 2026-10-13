@@ -37,7 +37,7 @@ async function getDashboardData(userId: string) {
     sellerRankRaw,
     thisMonthRevenue,
   ] = await Promise.all([
-    // 시설 목록
+    // 창고(스튜디오) 목록
     prisma.facility.findMany({
       where: { id: { in: facIds } },
       select: { id: true, name: true, region: true, type: true },
@@ -67,7 +67,7 @@ async function getDashboardData(userId: string) {
       where: { facilityId: { in: facIds }, createdAt: { gte: sevenDaysAgo } },
       select: { createdAt: true },
     }),
-    // 이번 달 시설별 예약 수 (가동률 계산용)
+    // 이번 달 창고(스튜디오)별 예약 수 (가동률 계산용)
     prisma.booking.groupBy({
       by: ["facilityId"],
       where: { facilityId: { in: facIds }, createdAt: { gte: monthStart } },
@@ -81,7 +81,7 @@ async function getDashboardData(userId: string) {
       orderBy: { _count: { id: "desc" } },
       take: 5,
     }),
-    // 이번 달 총 매출 (시설 이용 라이브에서 발생한 주문 기준)
+    // 이번 달 총 매출 (창고(스튜디오) 이용 라이브에서 발생한 주문 기준)
     prisma.order.aggregate({
       where: {
         liveSession: { facilityId: { in: facIds } },
@@ -105,7 +105,7 @@ async function getDashboardData(userId: string) {
     };
   });
 
-  // 시설별 이번 달 예약 건수 맵
+  // 창고(스튜디오)별 이번 달 예약 건수 맵
   const monthlyMap = new Map<string, number>();
   for (const g of monthlyBookings) {
     monthlyMap.set(g.facilityId, g._count.id);
@@ -197,7 +197,7 @@ export default async function FacilityDashboard() {
 
       {/* 핵심 지표 4개 */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="등록 시설" value={`${facilities.length}개`} sub="창고/스튜디오" icon={Building2} />
+        <StatCard label="등록 창고(스튜디오)" value={`${facilities.length}개`} sub="창고/스튜디오" icon={Building2} />
         <StatCard label="총 예약" value={`${totalBookings}건`} sub={`대기 ${pendingBookings}건`} icon={CalendarCheck} />
         <StatCard label="이용 셀러" value={`${totalSellers}명`} sub="누적 이용자" icon={Users} />
         <StatCard
@@ -292,21 +292,21 @@ export default async function FacilityDashboard() {
         </Card>
       </div>
 
-      {/* 보유 시설 현황 — 실 DB (가동률 = 이번 달 예약 기준) */}
+      {/* 보유 창고(스튜디오) 현황 — 실 DB (가동률 = 이번 달 예약 기준) */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold text-navy">보유 시설 현황</h3>
+          <h3 className="font-bold text-navy">보유 창고(스튜디오) 현황</h3>
           <Link href="/facility/profile" className="text-xs text-brand-600 flex items-center gap-1">
-            시설 관리 <ArrowRight className="h-3 w-3" />
+            창고(스튜디오) 관리 <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
         {facilities.length === 0 ? (
           <Card>
             <CardContent className="py-10 text-center text-sm text-muted-foreground">
               <Building2 className="h-10 w-10 mx-auto mb-2 opacity-30" />
-              등록된 시설이 없습니다.{" "}
+              등록된 창고(스튜디오)가 없습니다.{" "}
               <Link href="/facility/profile" className="text-brand-600 underline">
-                시설을 등록하세요
+                창고(스튜디오)를 등록하세요
               </Link>
             </CardContent>
           </Card>
@@ -383,7 +383,7 @@ export default async function FacilityDashboard() {
               {upcoming.map((b: any) => {
                 const sellerName =
                   b.seller?.profile?.name ?? b.seller?.email ?? "셀러";
-                const facName = b.facility?.name ?? "시설";
+                const facName = b.facility?.name ?? "창고(스튜디오)";
                 return (
                   <div
                     key={b.id}
@@ -421,7 +421,7 @@ export default async function FacilityDashboard() {
               <div>
                 <p className="text-sm font-semibold text-navy">셀러브릭스 플랫폼 바로가기</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  sellerbricks.co.kr에서 시설·셀러·정산을 통합 관리하세요
+                  sellerbricks.co.kr에서 창고(스튜디오)·셀러·정산을 통합 관리하세요
                 </p>
               </div>
               <ExternalLink className="h-5 w-5 text-brand-500 shrink-0" />

@@ -68,7 +68,7 @@ export function FacilityInquiryButton({
         className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-5 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
       >
         <MessageSquare className="h-4 w-4" />
-        시설에 문의하기
+        창고(스튜디오)에 문의하기
       </button>
 
       {open && (
@@ -77,7 +77,7 @@ export function FacilityInquiryButton({
           <div className="relative z-10 w-full max-w-md rounded-t-3xl bg-white p-6 shadow-2xl sm:rounded-3xl">
             <div className="mb-4 flex items-start justify-between">
               <div>
-                <h3 className="text-lg font-black text-navy">시설 문의</h3>
+                <h3 className="text-lg font-black text-navy">창고(스튜디오) 문의</h3>
                 <p className="mt-0.5 text-xs text-slate-400">{facilityName}</p>
               </div>
               <button onClick={() => setOpen(false)} className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200">
@@ -89,7 +89,7 @@ export function FacilityInquiryButton({
               <div className="py-8 text-center">
                 <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500" />
                 <p className="mt-3 text-base font-black text-navy">문의가 전송되었습니다</p>
-                <p className="mt-1 text-sm text-slate-400">시설 관리자가 확인 후 답변을 드립니다</p>
+                <p className="mt-1 text-sm text-slate-400">창고(스튜디오) 관리자가 확인 후 답변을 드립니다</p>
                 <Button
                   className="mt-6"
                   variant="outline"
@@ -102,7 +102,7 @@ export function FacilityInquiryButton({
               <>
                 <div className="mb-4 rounded-2xl bg-amber-50 px-4 py-3">
                   <p className="text-xs font-semibold text-amber-800">
-                    예약 가능 여부, 시설 상태, 특별 요청 등을 자유롭게 문의해보세요
+                    예약 가능 여부, 창고(스튜디오) 상태, 특별 요청 등을 자유롭게 문의해보세요
                   </p>
                 </div>
                 <textarea

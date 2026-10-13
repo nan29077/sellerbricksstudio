@@ -47,12 +47,12 @@ export default async function AdminSettlements() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="전체 정산 현황" description="시설별, 월별 정산 현황을 확인합니다." />
+      <PageHeader title="전체 정산 현황" description="창고(스튜디오)별, 월별 정산 현황을 확인합니다." />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard label="총 매출"      value={formatKRW(st.gross)}          sub="누적"              icon={TrendingUp}   />
         <StatCard label="셀러 정산금"  value={formatKRW(st.sellerProfit)}   sub="80%"               icon={Package}      />
-        <StatCard label="시설 정산금"  value={formatKRW(st.facilityAmount)} sub="20%"               icon={Building2}    />
+        <StatCard label="창고(스튜디오) 정산금"  value={formatKRW(st.facilityAmount)} sub="20%"               icon={Building2}    />
         <StatCard label="총 주문"      value={`${st.orderCount}건`}         sub="정산 대상"         icon={BarChart3}    />
       </div>
 
@@ -75,18 +75,18 @@ export default async function AdminSettlements() {
         </CardContent>
       </Card>
 
-      {/* 시설별 정산 테이블 */}
+      {/* 창고(스튜디오)별 정산 테이블 */}
       <Card>
         <CardContent className="pt-5 overflow-x-auto">
-          <h3 className="font-bold text-navy mb-4">시설별 정산 내역</h3>
+          <h3 className="font-bold text-navy mb-4">창고(스튜디오)별 정산 내역</h3>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left py-2 text-xs text-muted-foreground font-medium">시설명</th>
+                <th className="text-left py-2 text-xs text-muted-foreground font-medium">창고(스튜디오)명</th>
                 <th className="text-center py-2 text-xs text-muted-foreground font-medium">주문</th>
                 <th className="text-right py-2 text-xs text-muted-foreground font-medium">총 매출</th>
                 <th className="text-right py-2 text-xs text-muted-foreground font-medium">셀러 정산</th>
-                <th className="text-right py-2 text-xs text-muted-foreground font-medium">시설 정산</th>
+                <th className="text-right py-2 text-xs text-muted-foreground font-medium">창고(스튜디오) 정산</th>
                 <th className="text-center py-2 text-xs text-muted-foreground font-medium">상태</th>
               </tr>
             </thead>

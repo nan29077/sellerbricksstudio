@@ -29,13 +29,13 @@ export default async function FacilityPages() {
 
   return (
     <div className="space-y-6 pb-24 md:pb-0">
-      <PageHeader title="시설 페이지 꾸미기" description="시설마다 독립된 소개 페이지를 만들고 배너와 노출 내용을 관리하세요." />
+      <PageHeader title="창고(스튜디오) 페이지 꾸미기" description="창고(스튜디오)마다 독립된 소개 페이지를 만들고 배너와 노출 내용을 관리하세요." />
 
       {pages.length === 0 ? (
         <EmptyState
           icon={<LayoutTemplate className="h-10 w-10" />}
-          title="꾸밀 수 있는 시설이 없습니다"
-          description="시설이 등록되고 승인되면 전용 페이지를 꾸밀 수 있습니다."
+          title="꾸밀 수 있는 창고(스튜디오)가 없습니다"
+          description="창고(스튜디오)가 등록되고 승인되면 전용 페이지를 꾸밀 수 있습니다."
         />
       ) : (
         <div className="grid gap-5 lg:grid-cols-2">

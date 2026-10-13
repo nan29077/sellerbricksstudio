@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     const data = facilityProductSchema.parse(body);
 
     const owned = await ownedFacilityIds(user.id);
-    if (!owned.includes(facilityId)) return fail("본인 시설에만 상품을 등록할 수 있습니다.", 403);
+    if (!owned.includes(facilityId)) return fail("본인 창고(스튜디오)에만 상품을 등록할 수 있습니다.", 403);
 
     const product = await prisma.product.create({
       data: {

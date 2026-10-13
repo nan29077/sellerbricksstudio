@@ -97,15 +97,15 @@ export function FacilityPageEditor({
           <div className="flex items-center gap-4 border-b border-[#EEEAE0] bg-gradient-to-r from-[#FFF9E8] to-white p-5">
             <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full border-4 border-white bg-brand-50 shadow-md">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={form.profileImageUrl} alt="선택한 시설 프로필" className="h-full w-full object-cover" />
+              <img src={form.profileImageUrl} alt="선택한 창고(스튜디오) 프로필" className="h-full w-full object-cover" />
               <span className="absolute inset-x-0 bottom-0 bg-navy/75 py-1 text-center text-[8px] font-black text-white">PROFILE</span>
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <UserRound className="h-5 w-5 text-brand-700" />
-                <h2 className="font-extrabold text-navy">시설 프로필 이미지</h2>
+                <h2 className="font-extrabold text-navy">창고(스튜디오) 프로필 이미지</h2>
               </div>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">시설마다 20개 이미지 중 하나가 자동 배정됩니다. 원하는 이미지로 선택해 고정할 수도 있습니다.</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">창고(스튜디오)마다 20개 이미지 중 하나가 자동 배정됩니다. 원하는 이미지로 선택해 고정할 수도 있습니다.</p>
             </div>
           </div>
           <div className="p-5">
@@ -189,7 +189,7 @@ export function FacilityPageEditor({
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             {([
-              ["showEquipment", "시설·장비"],
+              ["showEquipment", "창고(스튜디오)·장비"],
               ["showSchedule", "이용 시간"],
               ["showProducts", "연동 상품"],
             ] as const).map(([key, label]) => (
@@ -257,7 +257,7 @@ export function FacilityPageEditor({
                 <p className="mt-0.5 truncate text-[9px] font-semibold text-slate-400">{facility.type === "WAREHOUSE" ? "물류 창고" : "라이브 스튜디오"} · {facility.region}</p>
               </div>
               <div className="mt-4 grid grid-cols-3 divide-x rounded-xl bg-[#F8F9FB] py-3 text-center">
-                {[['4.9', '시설 평점'], ['0', '연동 상품'], ['0', '예약 일정']].map(([value, label]) => (
+                {[['4.9', '창고(스튜디오) 평점'], ['0', '연동 상품'], ['0', '예약 일정']].map(([value, label]) => (
                   <div key={label}><p className="text-sm font-black text-navy">{value}</p><p className="mt-0.5 text-[8px] text-slate-400">{label}</p></div>
                 ))}
               </div>
@@ -268,7 +268,7 @@ export function FacilityPageEditor({
               </div>
             </div>
             <div className="mt-3 grid grid-cols-4 rounded-xl border bg-white p-1 text-center text-[8px] font-bold text-slate-400">
-              {['홈', '상품', '예약', '시설'].map((label, index) => <div key={label} className={cn('rounded-lg py-2', index === 0 && 'bg-brand-50 text-navy')}>{label}</div>)}
+              {['홈', '상품', '예약', '창고(스튜디오)'].map((label, index) => <div key={label} className={cn('rounded-lg py-2', index === 0 && 'bg-brand-50 text-navy')}>{label}</div>)}
             </div>
           </div>
         </div>

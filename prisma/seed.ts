@@ -50,7 +50,7 @@ async function main() {
     create: { managerId: manager.id, commissionType: CommissionType.PERCENT, commissionValue: 5 },
   });
 
-  // ---------------- 시설 ----------------
+  // ---------------- 창고(스튜디오) ----------------
   const facData = [
     { name: "서울 성수 라이브 창고", type: FacilityType.WAREHOUSE, region: "서울", address: "서울 성동구 성수일로 77", equipment: "조명, 짐벌, 마이크, 무대", basePrice: 150000, rating: 4.8 },
     { name: "남양주 패션 스튜디오", type: FacilityType.STUDIO, region: "경기", address: "경기 남양주시 다산순환로 20", equipment: "행거, 전신거울, 조명세트, 배경지", basePrice: 120000, rating: 4.6 },
@@ -74,7 +74,7 @@ async function main() {
       },
     });
     facilities.push(fac);
-    // 중간관리자 연결: 첫번째/세번째 시설을 manager 가 영업
+    // 중간관리자 연결: 첫번째/세번째 창고(스튜디오)를 manager 가 영업
     if (f.region !== "경기") {
       await prisma.managerFacility.create({ data: { managerId: manager.id, facilityId: fac.id } });
     }

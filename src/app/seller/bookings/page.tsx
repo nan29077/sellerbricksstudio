@@ -87,7 +87,7 @@ export default async function SellerBookings() {
                         <Badge tone={st.tone}>{st.label}</Badge>
                         <span className="text-xs text-muted-foreground">{b.facility?.type === "STUDIO" ? "스튜디오" : "창고"}</span>
                       </div>
-                      <p className="font-bold text-navy truncate">{b.facility?.name ?? "시설"}</p>
+                      <p className="font-bold text-navy truncate">{b.facility?.name ?? "창고(스튜디오)"}</p>
                       <p className="text-sm text-muted-foreground">{b.facility?.region} · {formatDateTime(b.startAt)}</p>
                       <p className="text-xs text-muted-foreground mt-1">목적: {b.purpose}</p>
                       {b.rejectReason && (

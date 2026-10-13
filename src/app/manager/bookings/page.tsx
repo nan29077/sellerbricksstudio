@@ -39,14 +39,14 @@ export default async function ManagerBookings() {
 
   return (
     <div className="pb-24 md:pb-0">
-      <PageHeader title="예약 현황" description="담당 시설의 전체 예약 현황을 조회합니다." />
+      <PageHeader title="예약 현황" description="담당 창고(스튜디오)의 전체 예약 현황을 조회합니다." />
 
       {bookings.length === 0 ? (
-        <EmptyState title="예약이 없습니다" description="담당 시설에 예약이 들어오면 여기서 확인할 수 있습니다." />
+        <EmptyState title="예약이 없습니다" description="담당 창고(스튜디오)에 예약이 들어오면 여기서 확인할 수 있습니다." />
       ) : (
         <div className="mt-4 overflow-x-auto rounded-xl border border-border bg-white">
           <Table
-            headers={["시설명", "셀러", "일정", "상태"]}
+            headers={["창고(스튜디오)명", "셀러", "일정", "상태"]}
             rows={bookings.map((b: any) => {
               const st = BOOKING_STATUS[b.status as keyof typeof BOOKING_STATUS] ?? { label: b.status, tone: "gray" as const };
               return [

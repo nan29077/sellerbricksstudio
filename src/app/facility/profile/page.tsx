@@ -35,11 +35,11 @@ export default async function FacilityProfile() {
   if (facilities.length === 0) {
     return (
       <div>
-        <PageHeader title="시설 정보 · 편집" description="내 시설 프로필과 운영 현황을 관리하세요." />
+        <PageHeader title="창고(스튜디오) 정보 · 편집" description="내 창고(스튜디오) 프로필과 운영 현황을 관리하세요." />
         <EmptyState
           icon={<Building2 className="h-10 w-10" />}
-          title="등록된 시설이 없습니다"
-          description="관리자에게 시설 등록을 요청하세요."
+          title="등록된 창고(스튜디오)가 없습니다"
+          description="관리자에게 창고(스튜디오) 등록을 요청하세요."
         />
       </div>
     );
@@ -47,7 +47,7 @@ export default async function FacilityProfile() {
 
   return (
     <div className="space-y-6 pb-24 md:pb-0">
-      <PageHeader title="시설 정보 · 편집" description="내 시설 프로필과 운영 현황을 관리하세요." />
+      <PageHeader title="창고(스튜디오) 정보 · 편집" description="내 창고(스튜디오) 프로필과 운영 현황을 관리하세요." />
 
       {facilities.map((f: any) => {
         const specialties = f.specialty
@@ -95,7 +95,7 @@ export default async function FacilityProfile() {
                         target="_blank"
                         className="flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline"
                       >
-                        시설 페이지 보기 <ExternalLink className="h-3 w-3" />
+                        창고(스튜디오) 페이지 보기 <ExternalLink className="h-3 w-3" />
                       </Link>
                     )}
                   </div>
@@ -160,12 +160,12 @@ export default async function FacilityProfile() {
               initialDescription={f.description ?? ""}
             />
 
-            {/* 시설 페이지 편집 링크 */}
+            {/* 창고(스튜디오) 페이지 편집 링크 */}
             <Card className="border-dashed">
               <CardContent className="pt-5 pb-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-extrabold text-navy">시설 페이지 꾸미기</p>
+                    <p className="text-sm font-extrabold text-navy">창고(스튜디오) 페이지 꾸미기</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       배너, 테마, 소개 문구, 장비 목록 등을 꾸밀 수 있습니다
                     </p>

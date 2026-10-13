@@ -61,7 +61,7 @@ export default async function AdminOrders() {
         ))}
       </div>
 
-      <Table headers={["주문번호", "시설", "셀러", "구매자", "금액", "상태", "일시"]}>
+      <Table headers={["주문번호", "창고(스튜디오)", "셀러", "구매자", "금액", "상태", "일시"]}>
         {orders.map((o) => {
           const s = ORDER_STATUS[o.status] ?? { label: o.status, tone: "gray" };
           return (

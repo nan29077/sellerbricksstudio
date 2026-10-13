@@ -66,14 +66,14 @@ export function FacilityStorefront({
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-black text-navy sm:text-base">{pageConfig.pageTitle}</p>
-              <p className="text-[10px] font-semibold text-muted-foreground">셀러브릭스 파트너 시설</p>
+              <p className="text-[10px] font-semibold text-muted-foreground">셀러브릭스 파트너 창고(스튜디오)</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <a href="#store-inquiry" aria-label="시설 문의" className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-navy bg-white text-navy shadow-[2px_2px_0_#1A1A2E] transition hover:-translate-y-0.5">
+            <a href="#store-inquiry" aria-label="창고(스튜디오) 문의" className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-navy bg-white text-navy shadow-[2px_2px_0_#1A1A2E] transition hover:-translate-y-0.5">
               <MessageSquare className="h-5 w-5" />
             </a>
-            <Link href={bookingHref} aria-label="시설 예약" className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-navy bg-[#FFD552] text-navy shadow-[2px_2px_0_#1A1A2E] transition hover:-translate-y-0.5">
+            <Link href={bookingHref} aria-label="창고(스튜디오) 예약" className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-navy bg-[#FFD552] text-navy shadow-[2px_2px_0_#1A1A2E] transition hover:-translate-y-0.5">
               <CalendarDays className="h-5 w-5" />
             </Link>
           </div>
@@ -86,7 +86,7 @@ export function FacilityStorefront({
         <img src={pageConfig.bannerUrl} alt={`${pageConfig.pageTitle} 커버`} className="h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/5" />
         <Link href="/facilities" className="absolute left-4 top-4 inline-flex items-center gap-1 rounded-full border border-white/25 bg-black/30 px-3 py-2 text-xs font-bold text-white backdrop-blur-md hover:bg-black/45 sm:left-6">
-          <ChevronLeft className="h-4 w-4" /> 시설 목록
+          <ChevronLeft className="h-4 w-4" /> 창고(스튜디오) 목록
         </Link>
         {/* 전문 분야 배지 (배너 오른쪽 하단) */}
         {specialties.length > 0 && (
@@ -128,7 +128,7 @@ export function FacilityStorefront({
           {/* 통계 */}
           <div className="mt-7 grid grid-cols-3 divide-x divide-[#E8E8EC] rounded-2xl bg-[#F8F9FB] px-2 py-5 sm:mt-8">
             {[
-              { value: (f.rating ?? 0).toFixed(1), label: "시설 평점" },
+              { value: (f.rating ?? 0).toFixed(1), label: "창고(스튜디오) 평점" },
               { value: specialties.length > 0 ? `${specialties.length}개` : "-", label: "전문 분야" },
               { value: slotCount.toLocaleString(), label: "예약 일정" },
             ].map((stat) => (
@@ -189,7 +189,7 @@ export function FacilityStorefront({
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-700">Quick booking</p>
                   <h2 className="mt-1 text-2xl font-black text-navy sm:text-3xl">원하는 시간으로 바로 예약하세요</h2>
-                  <p className="mt-2 text-sm font-medium leading-relaxed text-slate-500">시설과 시간이 미리 선택된 예약 신청서로 바로 연결됩니다.</p>
+                  <p className="mt-2 text-sm font-medium leading-relaxed text-slate-500">창고(스튜디오)와 시간이 미리 선택된 예약 신청서로 바로 연결됩니다.</p>
                 </div>
                 <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#FFF7D6] text-brand-700">
                   <CalendarDays className="h-6 w-6" />
@@ -264,7 +264,7 @@ export function FacilityStorefront({
             { href: "#store-home", label: "홈", icon: Home },
             { href: "#store-specialty", label: "전문 분야", icon: Tag },
             { href: "#store-schedule", label: "예약 일정", icon: CalendarDays },
-            { href: "#store-info", label: "시설 정보", icon: UserRound },
+            { href: "#store-info", label: "창고(스튜디오) 정보", icon: UserRound },
           ].map((item, index) => (
             <Link key={item.href} href={item.href} className={`flex flex-col items-center justify-center gap-1 rounded-xl px-1 py-2.5 text-[10px] font-bold transition hover:bg-brand-50 sm:flex-row sm:text-xs ${index === 0 ? "bg-brand-50 text-brand-800" : "text-slate-400"}`}>
               <item.icon className="h-4 w-4" />{item.label}
@@ -352,15 +352,15 @@ export function FacilityStorefront({
             </section>
           )}
 
-          {/* 시설 정보 */}
+          {/* 창고(스튜디오) 정보 */}
           <section id="store-info" className="scroll-mt-36 rounded-[24px] border border-[#EEEAE0] bg-white p-5 shadow-sm sm:p-7">
             <div className="mb-5">
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-brand-700">Facility guide</p>
-              <h2 className="mt-1 text-xl font-black text-navy">시설 정보</h2>
+              <h2 className="mt-1 text-xl font-black text-navy">창고(스튜디오) 정보</h2>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {[
-                { icon: isWarehouse ? Warehouse : Camera, label: "시설 유형", value: isWarehouse ? "물류 창고" : "라이브 스튜디오" },
+                { icon: isWarehouse ? Warehouse : Camera, label: "창고(스튜디오) 유형", value: isWarehouse ? "물류 창고" : "라이브 스튜디오" },
                 { icon: MapPin, label: "위치", value: f.address ?? f.region },
                 { icon: Clock3, label: "운영 시간", value: `${f.openTime ?? "09:00"} – ${f.closeTime ?? "22:00"}` },
                 { icon: Store, label: "기본 이용료", value: `${formatKRW(f.basePrice)} / 시간` },
@@ -376,7 +376,7 @@ export function FacilityStorefront({
             {pageConfig.showEquipment && equipment.length > 0 && (
               <div className="mt-5">
                 <h3 className="mb-3 flex items-center gap-2 text-sm font-black text-navy">
-                  <Boxes className="h-4 w-4 text-brand-600" /> 제공 시설·장비
+                  <Boxes className="h-4 w-4 text-brand-600" /> 제공 창고(스튜디오)·장비
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {equipment.map((item: string) => (
@@ -391,7 +391,7 @@ export function FacilityStorefront({
             <div className="mt-6 grid gap-2 border-t border-[#EEEAE0] pt-5 sm:grid-cols-3">
               {[
                 { icon: ShieldCheck, text: "안전한 예약·결제" },
-                { icon: Wifi, text: "시설 연결 지원" },
+                { icon: Wifi, text: "창고(스튜디오) 연결 지원" },
                 { icon: CheckCircle2, text: "마케팅 지원 연동" },
               ].map((item) => (
                 <div key={item.text} className="flex items-center gap-2 text-xs font-bold text-slate-500">
@@ -406,8 +406,8 @@ export function FacilityStorefront({
             <div className="mb-5 flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-brand-700">Inquiry</p>
-                <h2 className="mt-1 text-xl font-black text-navy">시설에 문의하기</h2>
-                <p className="mt-1 text-xs text-slate-400">예약 가능 여부, 시설 상태, 특별 요청 등을 문의해보세요</p>
+                <h2 className="mt-1 text-xl font-black text-navy">창고(스튜디오)에 문의하기</h2>
+                <p className="mt-1 text-xs text-slate-400">예약 가능 여부, 창고(스튜디오) 상태, 특별 요청 등을 문의해보세요</p>
               </div>
               <MessageSquare className="h-6 w-6 text-brand-500" />
             </div>
@@ -422,13 +422,13 @@ export function FacilityStorefront({
 
         <div className="py-8 text-center">
           <Link href="/facilities" className="inline-flex items-center gap-1 text-sm font-black text-slate-400 hover:text-brand-700">
-            <ChevronLeft className="h-4 w-4" /> 다른 시설 둘러보기
+            <ChevronLeft className="h-4 w-4" /> 다른 창고(스튜디오) 둘러보기
           </Link>
         </div>
       </main>
 
       {/* 모바일 하단 내비 */}
-      <nav aria-label="시설 페이지 메뉴" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 items-center border-t border-[#E8E5DE] bg-white/95 px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-[0_-3px_16px_rgba(26,26,46,0.05)] backdrop-blur md:hidden">
+      <nav aria-label="창고(스튜디오) 페이지 메뉴" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 items-center border-t border-[#E8E5DE] bg-white/95 px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-[0_-3px_16px_rgba(26,26,46,0.05)] backdrop-blur md:hidden">
         {[
           { href: "#store-home", label: "홈", icon: Home },
           { href: "#store-specialty", label: "카테고리", icon: Tag },

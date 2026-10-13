@@ -38,7 +38,7 @@ export default async function FacilityOrders() {
 
   return (
     <div className="pb-24 md:pb-0">
-      <PageHeader title="주문 현황" description="시설에서 진행된 라이브 방송의 주문 현황입니다." />
+      <PageHeader title="주문 현황" description="창고(스튜디오)에서 진행된 라이브 방송의 주문 현황입니다." />
 
       {orders.length === 0 ? (
         <EmptyState title="주문이 없습니다" description="라이브 방송 후 주문 내역이 여기에 표시됩니다." />

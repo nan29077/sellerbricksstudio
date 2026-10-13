@@ -41,7 +41,7 @@ async function getDashboardData(userId: string) {
     commissionRules,
     thisMonthRevenue,
   ] = await Promise.all([
-    // 담당 시설 목록
+    // 담당 창고(스튜디오) 목록
     prisma.facility.findMany({
       where: { id: { in: facIds } },
       select: { id: true, name: true, region: true, type: true },
@@ -80,7 +80,7 @@ async function getDashboardData(userId: string) {
         seller: { select: { email: true, profile: { select: { name: true } } } },
       },
     }),
-    // 시설별 누적 예약 수
+    // 창고(스튜디오)별 누적 예약 수
     prisma.booking.groupBy({
       by: ["facilityId"],
       where: { facilityId: { in: facIds } },
@@ -90,7 +90,7 @@ async function getDashboardData(userId: string) {
     prisma.managerCommissionRule.findMany({
       where: { managerId: userId },
     }),
-    // 이번 달 매출 (담당 시설 라이브에서 발생한 주문)
+    // 이번 달 매출 (담당 창고(스튜디오) 라이브에서 발생한 주문)
     prisma.order.aggregate({
       where: {
         liveSession: { facilityId: { in: facIds } },
@@ -101,7 +101,7 @@ async function getDashboardData(userId: string) {
     }),
   ]);
 
-  // 시설별 예약 수 맵
+  // 창고(스튜디오)별 예약 수 맵
   const perFacMap = new Map<string, number>();
   for (const g of perFacilityBookings) {
     perFacMap.set(g.facilityId, g._count.id);
@@ -148,10 +148,10 @@ export default async function ManagerDashboard() {
       <div className="flex items-start justify-between">
         <PageHeader
           title={`안녕하세요, ${user.name}님`}
-          description="매니저 대시보드 — 담당 시설 현황을 확인하세요"
+          description="매니저 대시보드 — 담당 창고(스튜디오) 현황을 확인하세요"
         />
         <Link href="/manager/facilities" className="hidden sm:block">
-          <Button variant="outline">시설 관리</Button>
+          <Button variant="outline">창고(스튜디오) 관리</Button>
         </Link>
       </div>
 
@@ -163,7 +163,7 @@ export default async function ManagerDashboard() {
             <p className="text-sm font-semibold text-amber-800">
               승인 대기 중인 예약이 {pendingBookings}건 있습니다
             </p>
-            <p className="text-xs text-amber-600">담당 시설의 예약 요청을 확인해 주세요.</p>
+            <p className="text-xs text-amber-600">담당 창고(스튜디오)의 예약 요청을 확인해 주세요.</p>
           </div>
           <Link href="/manager/bookings">
             <Button variant="outline" size="sm" className="border-amber-300 text-amber-700">
@@ -175,7 +175,7 @@ export default async function ManagerDashboard() {
 
       {/* 핵심 지표 4개 */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="담당 시설" value={`${facilities.length}개`} sub="창고/스튜디오" icon={Building2} />
+        <StatCard label="담당 창고(스튜디오)" value={`${facilities.length}개`} sub="창고/스튜디오" icon={Building2} />
         <StatCard label="총 예약" value={`${totalBookings}건`} sub={`이번 달 +${thisMonthBookings}건`} icon={CalendarDays} />
         <StatCard label="이용 셀러" value={`${totalSellers}명`} sub="누적 이용자" icon={Users} />
         <StatCard
@@ -186,10 +186,10 @@ export default async function ManagerDashboard() {
         />
       </div>
 
-      {/* 담당 시설 현황 — 실 DB */}
+      {/* 담당 창고(스튜디오) 현황 — 실 DB */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold text-navy">담당 시설 현황</h3>
+          <h3 className="font-bold text-navy">담당 창고(스튜디오) 현황</h3>
           <Link href="/manager/facilities" className="text-xs text-brand-600 flex items-center gap-1">
             전체보기 <ArrowRight className="h-3 w-3" />
           </Link>
@@ -198,7 +198,7 @@ export default async function ManagerDashboard() {
           <Card>
             <CardContent className="py-10 text-center text-sm text-muted-foreground">
               <Building2 className="h-10 w-10 mx-auto mb-2 opacity-30" />
-              담당 시설이 없습니다
+              담당 창고(스튜디오)가 없습니다
             </CardContent>
           </Card>
         ) : (
@@ -274,7 +274,7 @@ export default async function ManagerDashboard() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-navy">{sellerName}</p>
                         <p className="text-xs text-muted-foreground">
-                          {b.facility?.name ?? "시설"}
+                          {b.facility?.name ?? "창고(스튜디오)"}
                         </p>
                         {b.startAt && (
                           <div className="flex items-center gap-1 text-xs text-brand-600 mt-1">
@@ -356,7 +356,7 @@ export default async function ManagerDashboard() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-navy">{sellerName}</p>
                       <p className="text-xs text-muted-foreground">
-                        {b.facility?.name ?? "시설"} — {formatDate(b.createdAt)}
+                        {b.facility?.name ?? "창고(스튜디오)"} — {formatDate(b.createdAt)}
                       </p>
                     </div>
                     <span
@@ -380,7 +380,7 @@ export default async function ManagerDashboard() {
               <div>
                 <p className="text-sm font-semibold text-navy">셀러브릭스 플랫폼 바로가기</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  sellerbricks.co.kr에서 시설·셀러를 통합 관리하세요
+                  sellerbricks.co.kr에서 창고(스튜디오)·셀러를 통합 관리하세요
                 </p>
               </div>
               <ExternalLink className="h-5 w-5 text-brand-500 shrink-0" />

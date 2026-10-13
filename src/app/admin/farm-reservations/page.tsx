@@ -95,8 +95,8 @@ export default function AdminFacilityReservations() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="시설 예약 관리"
-        description="셀러들의 시설 방문 예약 신청을 검토하고 승인·거절합니다."
+        title="창고(스튜디오) 예약 관리"
+        description="셀러들의 창고(스튜디오) 방문 예약 신청을 검토하고 승인·거절합니다."
       />
 
       {/* 통계 카드 */}
@@ -112,7 +112,7 @@ export default function AdminFacilityReservations() {
         <div className="rounded-xl bg-yellow-50 border border-yellow-200 px-4 py-3 flex items-center gap-2">
           <Clock className="h-4 w-4 text-yellow-600 shrink-0" />
           <p className="text-sm text-yellow-800 font-semibold">
-            승인 대기 중인 시설 예약이 {counts.pending}건 있습니다.
+            승인 대기 중인 창고(스튜디오) 예약이 {counts.pending}건 있습니다.
           </p>
         </div>
       )}
@@ -123,7 +123,7 @@ export default function AdminFacilityReservations() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <input
             type="text"
-            placeholder="시설명 또는 셀러명 검색"
+            placeholder="창고(스튜디오)명 또는 셀러명 검색"
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300 transition"
@@ -159,7 +159,7 @@ export default function AdminFacilityReservations() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/40">
-              {["시설명", "유형", "신청 셀러", "예약일", "방문 인원", "목적", "상태", "액션"].map(h => (
+              {["창고(스튜디오)명", "유형", "신청 셀러", "예약일", "방문 인원", "목적", "상태", "액션"].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap">
                   {h}
                 </th>
@@ -179,7 +179,7 @@ export default function AdminFacilityReservations() {
                 const typeCls   = TYPE_BADGE_CLASS[r.facilityType] ?? "bg-gray-50 text-gray-700";
                 return (
                   <tr key={r.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
-                    {/* 시설명 */}
+                    {/* 창고(스튜디오)명 */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 shrink-0">

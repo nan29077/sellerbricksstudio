@@ -61,12 +61,12 @@ export function defaultFacilityPageConfig(facility: {
       ? "보관부터 출고, 라이브 판매까지 한곳에서"
       : "브랜드의 이야기가 매출이 되는 라이브 공간",
     intro: facility.description ?? (isWarehouse
-      ? "안전한 보관과 빠른 출고를 위한 시설과 운영 노하우를 제공합니다."
+      ? "안전한 보관과 빠른 출고를 위한 창고(스튜디오)와 운영 노하우를 제공합니다."
       : "전문 장비와 쾌적한 환경을 갖춘 라이브 커머스 스튜디오입니다."),
     bannerUrl: defaultBannerFor(facility.id),
     profileImageUrl: defaultProfileFor(facility.id),
     theme: "gold",
-    ctaLabel: "이 시설 예약하기",
+    ctaLabel: "이 창고(스튜디오) 예약하기",
     showEquipment: true,
     showSchedule: true,
     showProducts: true,

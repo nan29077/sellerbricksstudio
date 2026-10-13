@@ -54,10 +54,10 @@ export default async function AdminFacilities() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="시설 관리" description="등록된 창고 및 스튜디오 현황을 관리합니다." />
+      <PageHeader title="창고(스튜디오) 관리" description="등록된 창고 및 스튜디오 현황을 관리합니다." />
 
       <div className="grid grid-cols-3 gap-3">
-        <StatCard label="전체 시설" value={`${counts.total}개`}   sub="" icon={Building2} />
+        <StatCard label="전체 창고(스튜디오)" value={`${counts.total}개`}   sub="" icon={Building2} />
         <StatCard label="승인됨"   value={`${counts.approved}개`} sub="" icon={CheckCircle2} />
         <StatCard label="대기중"   value={`${counts.pending}개`}  sub="" icon={Clock} />
       </div>
@@ -65,7 +65,7 @@ export default async function AdminFacilities() {
       {counts.pending > 0 && (
         <div className="rounded-xl bg-yellow-50 border border-yellow-200 px-4 py-3 flex items-center gap-2">
           <Clock className="h-4 w-4 text-yellow-600" />
-          <p className="text-sm text-yellow-800 font-semibold">승인 대기 중인 시설이 {counts.pending}개 있습니다. 아래 목록에서 확인하세요.</p>
+          <p className="text-sm text-yellow-800 font-semibold">승인 대기 중인 창고(스튜디오)가 {counts.pending}개 있습니다. 아래 목록에서 확인하세요.</p>
         </div>
       )}
 

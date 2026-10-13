@@ -79,7 +79,7 @@ export function RegisterManagerButton() {
                 <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="8자 이상" required minLength={8} />
               </div>
               <div>
-                <Label>담당 시설 (선택)</Label>
+                <Label>담당 창고(스튜디오) (선택)</Label>
                 <Input value={facility} onChange={(e) => setFacility(e.target.value)} placeholder="강남 프리미엄 스튜디오" />
               </div>
               <div className="flex gap-2 pt-2">

@@ -122,7 +122,7 @@ export function LiveProductManager({
       {tab === "board" && (
         items.length === 0 ? (
           <div className="rounded-xl border border-dashed p-10 text-center text-muted-foreground">
-            판매할 상품이 없습니다. "상품 추가"에서 시설 상품을 선택하세요.
+            판매할 상품이 없습니다. "상품 추가"에서 창고(스튜디오) 상품을 선택하세요.
           </div>
         ) : (
           <div className="space-y-2">
@@ -164,7 +164,7 @@ export function LiveProductManager({
 
       {tab === "catalog" && (
         <div className="space-y-2">
-          {catalog.length === 0 && <p className="text-sm text-muted-foreground">시설에 등록된 상품이 없습니다.</p>}
+          {catalog.length === 0 && <p className="text-sm text-muted-foreground">창고(스튜디오)에 등록된 상품이 없습니다.</p>}
           {catalog.map((c) => {
             const added = items.some((i) => i.nameSnapshot === c.name);
             return (

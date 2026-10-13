@@ -52,7 +52,7 @@ export default async function ManagerCommissions() {
         <Percent className="h-5 w-5 text-purple-600 shrink-0" />
         <div className="flex-1">
           <p className="text-sm font-semibold text-purple-800">내 수수료율: {commissionLabel}</p>
-          <p className="text-xs text-purple-600">담당 시설 총 매출 기준으로 매월 자동 계산됩니다.</p>
+          <p className="text-xs text-purple-600">담당 창고(스튜디오) 총 매출 기준으로 매월 자동 계산됩니다.</p>
         </div>
       </div>
 
@@ -88,7 +88,7 @@ export default async function ManagerCommissions() {
         </CardHeader>
         <CardContent className="pt-0 overflow-x-auto">
           <Table
-            headers={["월", "시설 총 매출", "수수료율", "수수료 수익", "상태"]}
+            headers={["월", "창고(스튜디오) 총 매출", "수수료율", "수수료 수익", "상태"]}
             rows={DUMMY_COMMISSION_HISTORY.map((m) => [
               <span key="month" className="font-semibold text-navy text-sm">{m.month}</span>,
               <span key="gross" className="text-xs">{formatKRW(m.facilityGross)}</span>,
@@ -104,7 +104,7 @@ export default async function ManagerCommissions() {
         <CardContent className="pt-4 pb-4 flex items-start gap-3">
           <Info className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
           <div className="text-xs text-muted-foreground space-y-1">
-            <p>수수료 금액은 담당 시설의 방송 총 매출 기준으로 계산됩니다.</p>
+            <p>수수료 금액은 담당 창고(스튜디오)의 방송 총 매출 기준으로 계산됩니다.</p>
             <p>정산은 매월 5일에 자동 지급됩니다.</p>
             <p>수수료율 변경은 최고관리자에게 문의하세요.</p>
           </div>

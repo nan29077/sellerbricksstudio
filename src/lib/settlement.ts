@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { calcSellerCommission } from "@/lib/utils";
 
-// 주문 기반 정산 요약 계산 (셀러 수익 = 셀러 수수료 합, 시설 정산 = 매출 - 셀러수익)
+// 주문 기반 정산 요약 계산 (셀러 수익 = 셀러 수수료 합, 창고(스튜디오) 정산 = 매출 - 셀러수익)
 export async function computeSettlement(where: { sellerId?: string; facilityId?: string; facilityIds?: string[] }) {
   const orders = await prisma.order.findMany({
     where: {

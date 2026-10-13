@@ -73,13 +73,13 @@ export default async function ManagerSales() {
 
   return (
     <div className="space-y-5 pb-24 md:pb-0">
-      <PageHeader title="매출 현황" description="담당 시설 매출 및 수수료 수익을 분석합니다." />
+      <PageHeader title="매출 현황" description="담당 창고(스튜디오) 매출 및 수수료 수익을 분석합니다." />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="시설 총 매출"   value={formatKRW(st.gross)}    sub={`${st.orderCount}건`}   icon={BarChart2}  />
+        <StatCard label="창고(스튜디오) 총 매출"   value={formatKRW(st.gross)}    sub={`${st.orderCount}건`}   icon={BarChart2}  />
         <StatCard label="내 수수료율"    value={commissionLabel}         sub="설정된 규칙"           icon={Percent}    />
         <StatCard label="내 수수료 수익" value={formatKRW(myIncome)}    sub="누적"                  icon={TrendingUp} />
-        <StatCard label="담당 시설"      value={`${DUMMY_FACILITY_SALES.length}개`} sub="운영중"    icon={Building2}  />
+        <StatCard label="담당 창고(스튜디오)"      value={`${DUMMY_FACILITY_SALES.length}개`} sub="운영중"    icon={Building2}  />
       </div>
 
       {/* 월별 수수료 차트 */}
@@ -104,14 +104,14 @@ export default async function ManagerSales() {
         </CardContent>
       </Card>
 
-      {/* 시설별 매출 순위 */}
+      {/* 창고(스튜디오)별 매출 순위 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">시설별 매출 순위</CardTitle>
+          <CardTitle className="text-base">창고(스튜디오)별 매출 순위</CardTitle>
         </CardHeader>
         <CardContent className="pt-0 overflow-x-auto">
           <Table
-            headers={["순위", "시설명", "지역", "주문", "매출", "수수료 수익", "성장"]}
+            headers={["순위", "창고(스튜디오)명", "지역", "주문", "매출", "수수료 수익", "성장"]}
             rows={DUMMY_FACILITY_SALES.map((f) => [
               <span key="rank" className={`text-sm font-extrabold ${f.rank === 1 ? "text-amber-500" : f.rank === 2 ? "text-gray-400" : "text-orange-400"}`}>#{f.rank}</span>,
               <span key="name" className="font-medium text-navy text-sm">{f.name}</span>,
@@ -132,7 +132,7 @@ export default async function ManagerSales() {
         </CardHeader>
         <CardContent className="pt-0 overflow-x-auto">
           <Table
-            headers={["주문번호", "시설", "셀러", "금액", "수수료 수익", "날짜"]}
+            headers={["주문번호", "창고(스튜디오)", "셀러", "금액", "수수료 수익", "날짜"]}
             rows={DUMMY_RECENT_ORDERS.map((o) => [
               <span key="no" className="font-mono text-xs">{o.orderNo}</span>,
               <Td key="facility">{o.facility}</Td>,

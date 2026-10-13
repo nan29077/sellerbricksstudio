@@ -97,7 +97,7 @@ export default async function SellerSettlements() {
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left py-2 text-xs text-muted-foreground font-medium">방송 세션</th>
-                <th className="text-left py-2 text-xs text-muted-foreground font-medium">시설</th>
+                <th className="text-left py-2 text-xs text-muted-foreground font-medium">창고(스튜디오)</th>
                 <th className="text-right py-2 text-xs text-muted-foreground font-medium">총 매출</th>
                 <th className="text-right py-2 text-xs text-muted-foreground font-medium">수수료</th>
                 <th className="text-right py-2 text-xs text-muted-foreground font-medium">수령액</th>

@@ -17,9 +17,9 @@ export async function POST(req: NextRequest) {
     if (endAt <= startAt) return fail("종료 시간은 시작 시간보다 뒤여야 합니다.");
 
     const facility = await prisma.facility.findUnique({ where: { id: data.facilityId } });
-    if (!facility || facility.status !== "APPROVED") return fail("예약할 수 없는 시설입니다.", 404);
+    if (!facility || facility.status !== "APPROVED") return fail("예약할 수 없는 창고(스튜디오)입니다.", 404);
 
-    // 동일 시설 동일 시간대 중복 예약 방지 (PENDING/APPROVED 만 차단)
+    // 동일 창고(스튜디오) 동일 시간대 중복 예약 방지 (PENDING/APPROVED 만 차단)
     const overlap = await prisma.booking.findFirst({
       where: {
         facilityId: data.facilityId,

@@ -65,7 +65,7 @@ const FACILITIES: Facility[] = [
   { id: "f5", name: "서울 라이브 스튜디오", region: "서울 마포",   type: "STUDIO",    feature: "조명·음향 완비",   desc: "전문 조명·음향 장비 완비. 그린스크린 배경 지원, 라이브 커머스 전용 촬영 공간.", status: "AVAILABLE" },
   { id: "f6", name: "횡성 한우 목장",       region: "강원 횡성",   type: "RANCH",     feature: "한우·목초지",      desc: "강원도 청정 자연에서 자란 횡성 한우. 목장 체험과 프리미엄 라이브 콘텐츠 제작.", status: "AVAILABLE" },
   { id: "f7", name: "부산 수산 가공공장",   region: "부산 기장",   type: "FACTORY",   feature: "수산물 가공·HACCP", desc: "HACCP 인증 수산물 가공공장. 현장 공정 라이브 및 팩토리 투어 콘텐츠 가능.", status: "FULL"      },
-  { id: "f8", name: "충북 과일 선별장",     region: "충북 충주",   type: "SORTING",   feature: "사과·배 선별",     desc: "충주 사과·배 전문 선별·포장 시설. 대용량 보관 창고 라이브 및 즉시 출고 연동.", status: "AVAILABLE" },
+  { id: "f8", name: "충북 과일 선별장",     region: "충북 충주",   type: "SORTING",   feature: "사과·배 선별",     desc: "충주 사과·배 전문 선별·포장 창고(스튜디오). 대용량 보관 창고 라이브 및 즉시 출고 연동.", status: "AVAILABLE" },
 ];
 
 const MY_RESERVATIONS: MyReservation[] = [
@@ -142,8 +142,8 @@ export default function SellerFacilityReservations() {
       {/* 헤더 */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-navy">시설 예약</h1>
-          <p className="mt-1 text-sm text-muted-foreground">농가·공장·창고·스튜디오까지 다양한 시설을 예약하고 라이브 콘텐츠를 제작하세요.</p>
+          <h1 className="text-2xl font-bold text-navy">창고(스튜디오) 예약</h1>
+          <p className="mt-1 text-sm text-muted-foreground">농가·공장·창고·스튜디오까지 다양한 창고(스튜디오)를 예약하고 라이브 콘텐츠를 제작하세요.</p>
         </div>
       </div>
 
@@ -159,12 +159,12 @@ export default function SellerFacilityReservations() {
                 : "text-muted-foreground hover:text-navy"
             }`}
           >
-            {t === "list" ? "시설 목록" : "내 예약"}
+            {t === "list" ? "창고(스튜디오) 목록" : "내 예약"}
           </button>
         ))}
       </div>
 
-      {/* ── 탭 1: 시설 목록 ── */}
+      {/* ── 탭 1: 창고(스튜디오) 목록 ── */}
       {tab === "list" && (
         <div className="space-y-4">
           {/* 유형 필터 */}
@@ -248,7 +248,7 @@ export default function SellerFacilityReservations() {
           <div className="bg-white rounded-xl border border-border shadow-sm p-6">
             <h2 className="text-base font-bold text-navy mb-4 flex items-center gap-2">
               <CalendarDays className="h-4 w-4 text-emerald-600" />
-              시설 방문 예약 신청
+              창고(스튜디오) 방문 예약 신청
             </h2>
 
             {submitted ? (
@@ -259,9 +259,9 @@ export default function SellerFacilityReservations() {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* 시설 선택 */}
+                {/* 창고(스튜디오) 선택 */}
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">시설 선택 *</label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">창고(스튜디오) 선택 *</label>
                   <div className="relative">
                     <select
                       required
@@ -269,7 +269,7 @@ export default function SellerFacilityReservations() {
                       onChange={e => setForm(p => ({ ...p, facilityId: e.target.value }))}
                       className="w-full appearance-none rounded-xl border border-border bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300 transition"
                     >
-                      <option value="">시설을 선택하세요</option>
+                      <option value="">창고(스튜디오)를 선택하세요</option>
                       {FACILITIES.filter(f => f.status === "AVAILABLE").map(f => (
                         <option key={f.id} value={f.id}>
                           {f.name} ({f.region}) — {TYPE_CONFIG[f.type].label}

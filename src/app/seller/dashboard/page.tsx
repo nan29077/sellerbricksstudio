@@ -64,7 +64,7 @@ async function getDashboardData(userId: string) {
       where: { sellerId: userId, status: "PAID" },
       _sum: { commissionAmount: true },
     }),
-    // 추천 시설 (최신 승인 시설)
+    // 추천 창고(스튜디오) (최신 승인 창고(스튜디오))
     prisma.facility.findMany({
       where: { status: "APPROVED" },
       orderBy: { rating: "desc" },
@@ -126,7 +126,7 @@ export default async function SellerDashboard() {
             <p className="text-sm font-semibold text-amber-800">
               승인 대기 중인 예약이 {pendingBookings}건 있습니다
             </p>
-            <p className="text-xs text-amber-600">시설 운영자의 승인을 기다리고 있습니다.</p>
+            <p className="text-xs text-amber-600">창고(스튜디오) 운영자의 승인을 기다리고 있습니다.</p>
           </div>
           <Link href="/seller/bookings">
             <Button variant="outline" size="sm" className="border-amber-300 text-amber-700">
@@ -164,7 +164,7 @@ export default async function SellerDashboard() {
       {/* 빠른 이동 */}
       <div className="grid sm:grid-cols-4 gap-3">
         {[
-          { icon: Search,     label: "창고·스튜디오 검색", desc: "시설 검색 및 예약",    href: "/facilities",          color: "text-blue-600 bg-blue-50" },
+          { icon: Search,     label: "창고·스튜디오 검색", desc: "창고(스튜디오) 검색 및 예약",    href: "/facilities",          color: "text-blue-600 bg-blue-50" },
           { icon: CalendarPlus,label: "예약 신청",         desc: "새 예약 만들기",       href: "/seller/bookings/new", color: "text-brand-600 bg-brand-50" },
           { icon: Share2,     label: "SNS 마케팅",         desc: "마케팅 지원 활용",     href: "/seller/marketing",    color: "text-purple-600 bg-purple-50" },
           { icon: TrendingUp, label: "정산 내역",           desc: "정산 현황 확인",       href: "/seller/settlements",  color: "text-emerald-600 bg-emerald-50" },
@@ -185,7 +185,7 @@ export default async function SellerDashboard() {
         ))}
       </div>
 
-      {/* 다가오는 예약 + 추천 시설 */}
+      {/* 다가오는 예약 + 추천 창고(스튜디오) */}
       <div className="grid lg:grid-cols-2 gap-5">
         {/* 다가오는 예약 */}
         <Card>
@@ -244,7 +244,7 @@ export default async function SellerDashboard() {
           </CardContent>
         </Card>
 
-        {/* 추천 시설 */}
+        {/* 추천 창고(스튜디오) */}
         <Card>
           <CardContent className="pt-5">
             <div className="flex items-center justify-between mb-4">
@@ -292,7 +292,7 @@ export default async function SellerDashboard() {
             ) : (
               <div className="py-8 text-center text-sm text-muted-foreground">
                 <Warehouse className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                등록된 시설이 없습니다
+                등록된 창고(스튜디오)가 없습니다
               </div>
             )}
           </CardContent>
@@ -317,7 +317,7 @@ export default async function SellerDashboard() {
                 return (
                   <div key={b.id} className="flex items-center gap-3 rounded-lg border border-border p-3">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-navy truncate">{b.facility?.name ?? "시설"}</p>
+                      <p className="text-sm font-semibold text-navy truncate">{b.facility?.name ?? "창고(스튜디오)"}</p>
                       <p className="text-xs text-muted-foreground">
                         {b.facility?.region} — {formatDate(b.createdAt)}
                       </p>

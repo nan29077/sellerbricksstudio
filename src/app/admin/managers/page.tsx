@@ -48,11 +48,11 @@ export default async function AdminManagers() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="중간관리자 관리" description="담당 시설 배정과 수수료 규칙을 설정합니다." />
+      <PageHeader title="중간관리자 관리" description="담당 창고(스튜디오) 배정과 수수료 규칙을 설정합니다." />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard label="관리자 수"       value={`${totalManagers}명`}          sub="활성"      icon={Users}      />
-        <StatCard label="담당 시설"        value={`${totalFacilities}개`}        sub="총합"      icon={Building2}  />
+        <StatCard label="담당 창고(스튜디오)"        value={`${totalFacilities}개`}        sub="총합"      icon={Building2}  />
         <StatCard label="이번 달 수수료"   value={formatKRW(totalMonthlyIncome)} sub="합산"      icon={DollarSign} />
         <StatCard label="누적 수수료"      value={formatKRW(totalCumulative)}    sub="전체"      icon={TrendingUp} />
       </div>
@@ -75,7 +75,7 @@ export default async function AdminManagers() {
                   </div>
                   <div className="grid grid-cols-3 gap-3">
                     <div className="text-center p-2 rounded-lg bg-muted/40">
-                      <p className="text-xs text-muted-foreground">담당 시설</p>
+                      <p className="text-xs text-muted-foreground">담당 창고(스튜디오)</p>
                       <p className="font-bold text-navy">{m.facilityCount}개</p>
                     </div>
                     <div className="text-center p-2 rounded-lg bg-muted/40">

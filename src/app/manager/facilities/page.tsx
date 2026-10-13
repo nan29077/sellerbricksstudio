@@ -33,18 +33,18 @@ export default async function ManagerFacilities() {
 
   return (
     <div className="pb-24 md:pb-0">
-      <PageHeader title="내 시설" description={`담당 시설 ${facilities.length}개를 관리합니다.`} />
+      <PageHeader title="내 창고(스튜디오)" description={`담당 창고(스튜디오) ${facilities.length}개를 관리합니다.`} />
 
       {facilities.length === 0 ? (
         <EmptyState
           icon={<Building2 className="h-10 w-10" />}
-          title="담당 시설이 없습니다"
-          description="관리자에게 시설 배정을 요청하세요."
+          title="담당 창고(스튜디오)가 없습니다"
+          description="관리자에게 창고(스튜디오) 배정을 요청하세요."
         />
       ) : (
         <div className="mt-4 overflow-x-auto rounded-xl border border-border bg-white">
           <Table
-            headers={["시설명", "유형", "지역", "기본 이용료", "예약", "상품", "상태"]}
+            headers={["창고(스튜디오)명", "유형", "지역", "기본 이용료", "예약", "상품", "상태"]}
             rows={facilities.map((f: any) => [
               <div key="name" className="flex items-center gap-2">
                 <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />

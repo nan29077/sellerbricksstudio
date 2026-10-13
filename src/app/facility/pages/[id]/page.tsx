@@ -23,7 +23,7 @@ export default async function FacilityPageEdit({ params }: { params: { id: strin
 
   return (
     <div className="space-y-6 pb-24 md:pb-0">
-      <PageHeader title={`${facility.name} 페이지`} description="배너, 소개 문구, 색상과 노출 섹션을 시설에 맞게 꾸며보세요." />
+      <PageHeader title={`${facility.name} 페이지`} description="배너, 소개 문구, 색상과 노출 섹션을 창고(스튜디오)에 맞게 꾸며보세요." />
       <FacilityPageEditor facility={facility} initialConfig={config} />
     </div>
   );

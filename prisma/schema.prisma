@@ -44,7 +44,7 @@ enum CommissionType {
 }
 
 enum ProductSource {
-  CATALOG       // 시설에 정식 등록된 상품
+  CATALOG       // 창고(스튜디오)에 정식 등록된 상품
   AD_HOC        // 방송 중 임시 추가
   TEMP_PRODUCT  // 임시 상품(정식 전환 전)
 }
@@ -177,7 +177,7 @@ model Facility {
   @@index([status])
 }
 
-// ===================== 시설 문의 =====================
+// ===================== 창고(스튜디오) 문의 =====================
 model FacilityInquiry {
   id          String   @id @default(cuid())
   facilityId  String
@@ -227,7 +227,7 @@ model FacilityBlackoutDate {
   @@unique([facilityId, date])
 }
 
-// 중간관리자 - 시설 매핑 (영업한 시설)
+// 중간관리자 - 창고(스튜디오) 매핑 (영업한 창고(스튜디오))
 model ManagerFacility {
   id         String   @id @default(cuid())
   managerId  String
@@ -241,7 +241,7 @@ model ManagerFacility {
 }
 
 // ===================== Products =====================
-// products: 마스터 상품 카탈로그(시설 무관)
+// products: 마스터 상품 카탈로그(창고(스튜디오) 무관)
 model Product {
   id           String   @id @default(cuid())
   name         String
@@ -275,7 +275,7 @@ model ProductOption {
   stock       Int     @default(0)
 }
 
-// facility_products: 시설에서 판매 가능한 상품 + 가격/재고/수수료
+// facility_products: 창고(스튜디오)에서 판매 가능한 상품 + 가격/재고/수수료
 model FacilityProduct {
   id              String        @id @default(cuid())
   facilityId      String
@@ -464,7 +464,7 @@ model PaymentEvent {
 }
 
 // ===================== Commission & Settlement =====================
-// 기본 수수료 정책(시설/플랫폼 단위 기본값)
+// 기본 수수료 정책(창고(스튜디오)/플랫폼 단위 기본값)
 model CommissionRule {
   id             String         @id @default(cuid())
   scope          String         // PLATFORM | FACILITY
@@ -497,7 +497,7 @@ model Settlement {
   periodEnd     DateTime
   grossAmount   Int              // 총 매출
   commissionAmount Int           // 셀러 수수료(셀러 수익)
-  facilityAmount Int             // 시설 정산금
+  facilityAmount Int             // 창고(스튜디오) 정산금
   status        SettlementStatus @default(PENDING)
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt

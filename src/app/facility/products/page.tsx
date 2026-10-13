@@ -51,7 +51,7 @@ export default async function FacilityProducts() {
     <div className="pb-24 md:pb-0">
       <PageHeader
         title="상품 관리"
-        description="시설에서 판매 가능한 상품과 셀러 수수료를 관리하세요."
+        description="창고(스튜디오)에서 판매 가능한 상품과 셀러 수수료를 관리하세요."
         action={
           <Link href="/facility/products/new">
             <Button><Plus className="h-5 w-5 mr-1" />상품 등록</Button>

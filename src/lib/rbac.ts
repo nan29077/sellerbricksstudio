@@ -21,7 +21,7 @@ export function can(role: Role | undefined, allowed: Role[]): boolean {
   return !!role && allowed.includes(role);
 }
 
-// 중간관리자가 접근 가능한 시설 id 목록
+// 중간관리자가 접근 가능한 창고(스튜디오) id 목록
 export async function managerFacilityIds(managerId: string): Promise<string[]> {
   const rows = await prisma.managerFacility.findMany({
     where: { managerId }, select: { facilityId: true },
@@ -29,7 +29,7 @@ export async function managerFacilityIds(managerId: string): Promise<string[]> {
   return rows.map((r) => r.facilityId);
 }
 
-// 창고(스튜디오) 관리자가 소유한 시설 id 목록
+// 창고(스튜디오) 관리자가 소유한 창고(스튜디오) id 목록
 export async function ownedFacilityIds(ownerId: string): Promise<string[]> {
   const rows = await prisma.facility.findMany({ where: { ownerId }, select: { id: true } });
   return rows.map((r) => r.id);

@@ -171,18 +171,18 @@ export function FacilityProfileEdit({
           )}
         </div>
 
-        {/* 시설 소개 */}
+        {/* 창고(스튜디오) 소개 */}
         <div>
           <div className="mb-2 flex items-center gap-2">
             <FileText className="h-4 w-4 text-brand-600" />
-            <p className="text-sm font-bold text-navy">시설 소개</p>
+            <p className="text-sm font-bold text-navy">창고(스튜디오) 소개</p>
           </div>
           {editing ? (
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              placeholder="시설 특징, 제공 서비스, 이용 조건 등을 입력하세요"
+              placeholder="창고(스튜디오) 특징, 제공 서비스, 이용 조건 등을 입력하세요"
               className="w-full resize-none rounded-xl border border-border bg-[#FAFAF8] px-4 py-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-brand-400"
             />
           ) : description ? (
@@ -191,7 +191,7 @@ export function FacilityProfileEdit({
             </p>
           ) : (
             <p className="text-sm text-muted-foreground rounded-xl bg-muted/30 p-3">
-              시설 소개를 입력해주세요
+              창고(스튜디오) 소개를 입력해주세요
             </p>
           )}
         </div>

@@ -17,7 +17,7 @@ export async function PATCH(
   const { reply, isRead } = await req.json();
 
   try {
-    // 권한 확인: FACILITY_ADMIN은 본인 시설 문의만
+    // 권한 확인: FACILITY_ADMIN은 본인 창고(스튜디오) 문의만
     if (user.role === "FACILITY_ADMIN") {
       const facility = await prisma.facility.findUnique({
         where: { id: params.id },

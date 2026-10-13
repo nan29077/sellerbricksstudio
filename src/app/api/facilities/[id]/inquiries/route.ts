@@ -4,7 +4,7 @@ import { getSessionUser } from "@/lib/auth";
 
 // GET /api/facilities/[id]/inquiries
 // - SELLER: 본인 문의 목록
-// - FACILITY_ADMIN: 해당 시설의 모든 문의
+// - FACILITY_ADMIN: 해당 창고(스튜디오)의 모든 문의
 // - SUPER_ADMIN: 전체 문의
 export async function GET(
   req: NextRequest,
@@ -21,7 +21,7 @@ export async function GET(
     if (user.role === "SELLER") {
       where.sellerId = user.id;
     } else if (user.role === "FACILITY_ADMIN") {
-      // 본인 소유 시설인지 확인
+      // 본인 소유 창고(스튜디오)인지 확인
       const facility = await prisma.facility.findUnique({
         where: { id: facilityId },
         select: { ownerId: true },
@@ -78,7 +78,7 @@ export async function POST(
       select: { id: true, status: true },
     });
     if (!facility || facility.status !== "APPROVED") {
-      return NextResponse.json({ error: "시설을 찾을 수 없습니다" }, { status: 404 });
+      return NextResponse.json({ error: "창고(스튜디오)를 찾을 수 없습니다" }, { status: 404 });
     }
 
     const inquiry = await (prisma as any).facilityInquiry.create({

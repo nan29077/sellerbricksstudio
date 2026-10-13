@@ -40,7 +40,7 @@ export default async function AdminCommissionRules() {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard label="관리자 수"       value={`${totalManagers}명`}          sub="활성"    icon={Users}     />
-        <StatCard label="담당 시설"        value={`${totalFacilities}개`}        sub="총합"    icon={Building2} />
+        <StatCard label="담당 창고(스튜디오)"        value={`${totalFacilities}개`}        sub="총합"    icon={Building2} />
         <StatCard label="평균 수수료율"    value={`${avgCommission}%`}           sub="관리자"  icon={Percent}   />
         <StatCard label="월 수수료 합계"   value={formatKRW(totalMonthly)}       sub="예상"    icon={TrendingUp} />
       </div>
@@ -52,7 +52,7 @@ export default async function AdminCommissionRules() {
             <h3 className="font-bold text-navy">중간관리자 수수료 규칙</h3>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Info className="h-3.5 w-3.5" />
-              시설 총 매출 기준으로 자동 계산됩니다
+              창고(스튜디오) 총 매출 기준으로 자동 계산됩니다
             </div>
           </div>
           <div className="space-y-4">
@@ -63,7 +63,7 @@ export default async function AdminCommissionRules() {
                     <p className="font-semibold text-navy">{m.name}</p>
                     <p className="text-xs text-muted-foreground mb-1">{m.email}</p>
                     <p className="text-xs text-muted-foreground">
-                      담당 시설 {m.facilityCount}개 · 예상 월 수수료 {formatKRW(m.estimatedMonthly)}
+                      담당 창고(스튜디오) {m.facilityCount}개 · 예상 월 수수료 {formatKRW(m.estimatedMonthly)}
                     </p>
                   </div>
                   <div className="shrink-0 w-full sm:w-56">
@@ -83,12 +83,12 @@ export default async function AdminCommissionRules() {
       {/* 상품 수수료 */}
       <Card>
         <CardContent className="pt-5">
-          <h3 className="font-bold text-navy mb-4">시설 상품 수수료 현황</h3>
+          <h3 className="font-bold text-navy mb-4">창고(스튜디오) 상품 수수료 현황</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left py-2 text-xs text-muted-foreground font-medium">시설</th>
+                  <th className="text-left py-2 text-xs text-muted-foreground font-medium">창고(스튜디오)</th>
                   <th className="text-left py-2 text-xs text-muted-foreground font-medium">상품</th>
                   <th className="text-right py-2 text-xs text-muted-foreground font-medium">판매가</th>
                   <th className="text-center py-2 text-xs text-muted-foreground font-medium">수수료</th>
