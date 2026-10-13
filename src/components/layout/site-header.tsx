@@ -3,7 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
-import { Menu, X, Building2 } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ROLE_HOME } from "@/lib/rbac";
@@ -31,11 +31,11 @@ export function SiteHeader() {
       <div className="container flex h-[72px] items-center justify-between">
         <Link href="/" className="flex items-center gap-1">
           <Image
-            src="/images/brand/logo-original-on-light.png?v=7"
+            src="/images/brand/logo-original-on-light.png?v=8"
             alt="셀러브릭스 스튜디오"
-            width={170}
-            height={44}
-            className="h-11 w-auto object-contain"
+            width={180}
+            height={32}
+            className="h-8 w-auto object-contain"
             priority
           />
         </Link>
@@ -52,9 +52,8 @@ export function SiteHeader() {
           {(role === "SELLER" || role === "SUPER_ADMIN") && (
             <Link
               href={farmHref}
-              className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-white transition-colors"
+              className="rounded-full px-4 py-2 text-sm font-semibold text-navy/75 hover:bg-white hover:text-brand-700 transition-colors"
             >
-              <Building2 className="h-3.5 w-3.5" />
               창고(스튜디오) 예약
             </Link>
           )}
@@ -105,10 +104,9 @@ export function SiteHeader() {
           {(role === "SELLER" || role === "SUPER_ADMIN") && (
             <Link
               href={farmHref}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+              className="block rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-brand-50 hover:text-brand-600"
               onClick={() => setOpen(false)}
             >
-              <Building2 className="h-3.5 w-3.5" />
               창고(스튜디오) 예약
             </Link>
           )}

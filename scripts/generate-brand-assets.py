@@ -1,8 +1,11 @@
-"""Add STUDIO beneath the original Seller Bricks logo supplied by the owner.
+"""Build the Seller Bricks Studio logo set.
 
-The transparent crop at public/images/brand/original-logo-source.png is the
-source asset. This script makes light/dark logo variants and browser icons.
-Requires Pillow and a bold Latin font.
+The symbol is the studio mark (gold warehouse + play button + red REC dot),
+drawn in code on the same 64-unit grid as studio-favicon-source.svg. The
+SELLERBRICKS lettering comes from the transparent crop at
+public/images/brand/original-logo-source.png, with STUDIO set beneath it.
+This script makes light/dark logo variants, the standalone marks and the
+browser icons. Requires Pillow and a bold Latin font.
 """
 
 from pathlib import Path
@@ -16,6 +19,39 @@ SOURCE = Image.open(BRAND / "original-logo-source.png").convert("RGBA")
 FONT = Path("C:/Windows/Fonts/arialbd.ttf")
 if not FONT.is_file():
     FONT = Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf")
+
+NAVY = (26, 26, 46, 255)
+# Lifted navy so the mark tile stays visible on navy page backgrounds.
+NAVY_ON_DARK = (43, 49, 84, 255)
+GOLD = (245, 166, 35, 255)
+RED = (255, 59, 48, 255)
+
+
+def _round_poly(d, pts, fill, r):
+    """Fill a polygon and stroke it with round joins (like SVG stroke-linejoin=round)."""
+    d.polygon(pts, fill=fill)
+    for i, (x1, y1) in enumerate(pts):
+        x2, y2 = pts[(i + 1) % len(pts)]
+        d.line((x1, y1, x2, y2), fill=fill, width=max(1, round(2 * r)))
+        d.ellipse((x1 - r, y1 - r, x1 + r, y1 + r), fill=fill)
+
+def draw_mark(size: int, tile=NAVY, full_bleed: bool = False) -> Image.Image:
+    """Studio mark: gold warehouse with a play button and a red REC dot.
+    Coordinates follow the 64-unit grid of studio-favicon-source.svg."""
+    ss=8; S=size*ss; u=S/64
+    im=Image.new("RGBA",(S,S),(0,0,0,0)); d=ImageDraw.Draw(im)
+    if full_bleed: d.rectangle((0,0,S,S),fill=tile)
+    else: d.rounded_rectangle((0,0,S-1,S-1),radius=14*u,fill=tile)
+    P=lambda pts:[(x*u,y*u) for x,y in pts]
+    body=P([(8,27),(32,15),(56,27),(56,53),(8,53)])
+    _round_poly(d,body,GOLD,1*u)
+    tri=P([(27,31),(27,47),(41,39)])
+    _round_poly(d,tri,tile,1.25*u)
+    r=6.5*u+1.25*u; cx,cy=52*u,12*u
+    d.ellipse((cx-r,cy-r,cx+r,cy+r),fill=tile)
+    r=6.5*u-1.25*u
+    d.ellipse((cx-r,cy-r,cx+r,cy+r),fill=RED)
+    return im.resize((size,size),Image.Resampling.LANCZOS)
 
 
 def is_gold(red: int, green: int, blue: int) -> bool:
@@ -48,54 +84,40 @@ def variant(image: Image.Image, dark_background: bool) -> Image.Image:
 
 def make_wordmark(name: str, dark_background: bool) -> None:
     scale = 3
-    original = variant(SOURCE, dark_background)
-    original = original.resize((SOURCE.width * scale, SOURCE.height * scale), Image.Resampling.LANCZOS)
-    canvas = Image.new("RGBA", (original.width + 12, original.height + 96), (0, 0, 0, 0))
-    canvas.alpha_composite(original, (0, 0))
+    # Lettering only: the old symbol lives in x < 80 of the source crop.
+    letters = variant(SOURCE, dark_background).crop((80, 0, SOURCE.width, SOURCE.height))
+    letters = letters.resize((letters.width * scale, letters.height * scale), Image.Resampling.LANCZOS)
+    text = Image.new("RGBA", (letters.width + 12, letters.height + 96), (0, 0, 0, 0))
+    text.alpha_composite(letters, (0, 0))
 
-    draw = ImageDraw.Draw(canvas)
+    draw = ImageDraw.Draw(text)
     font = ImageFont.truetype(str(FONT), 72)
-    label = "STUDIO"
-    spacing = 16
-    # Align the supporting label with the left edge of SELLER and leave a
-    # little more breathing room beneath the primary wordmark.
-    x = 80 * scale
-    for letter in label:
+    x = 0
+    for letter in "STUDIO":
         draw.text((round(x), 220), letter, font=font, fill="#D5DCE8" if dark_background else "#202126")
-        x += draw.textlength(letter, font=font) + spacing
+        x += draw.textlength(letter, font=font) + 16
 
+    top, bottom = text.getbbox()[1], text.getbbox()[3]
+    # The mark is as tall as the SELLERBRICKS + STUDIO block.
+    mark = draw_mark(bottom - top + 8, NAVY_ON_DARK if dark_background else NAVY)
+    gap = 30
+    canvas = Image.new("RGBA", (mark.width + gap + text.width, text.height), (0, 0, 0, 0))
+    canvas.alpha_composite(mark, (0, max(0, top - 4)))
+    canvas.alpha_composite(text, (mark.width + gap, 0))
     bounds = canvas.getbbox()
-    if bounds:
-        canvas = canvas.crop((0, 0, bounds[2] + 8, bounds[3] + 10))
+    canvas = canvas.crop((0, bounds[1], bounds[2] + 8, bounds[3] + 6))
     canvas.save(BRAND / name, optimize=True)
-
-
-def make_mark(name: str, dark_background: bool) -> Image.Image:
-    mark = variant(SOURCE.crop((0, 0, 80, SOURCE.height)), dark_background)
-    bounds = mark.getbbox()
-    if bounds:
-        mark = mark.crop(bounds)
-    mark = mark.resize((mark.width * 3, mark.height * 3), Image.Resampling.LANCZOS)
-    mark.save(BRAND / name, optimize=True)
-    return mark
 
 
 make_wordmark("logo-original-on-light.png", False)
 make_wordmark("logo-original-on-dark.png", True)
-mark = make_mark("mark-original-on-light.png", False)
-make_mark("mark-original-on-dark.png", True)
+draw_mark(240, NAVY).save(BRAND / "mark-original-on-light.png", optimize=True)
+draw_mark(240, NAVY_ON_DARK).save(BRAND / "mark-original-on-dark.png", optimize=True)
 
-icon = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
-icon_mark = mark.copy()
-icon_mark.thumbnail((54, 58), Image.Resampling.LANCZOS)
-icon.alpha_composite(icon_mark, ((64 - icon_mark.width) // 2, (64 - icon_mark.height) // 2))
-icon.save(ROOT / "src" / "app" / "icon.png", optimize=True)
+draw_mark(64, NAVY).save(ROOT / "src" / "app" / "icon.png", optimize=True)
+favicon = draw_mark(256, NAVY)
 for path in (ROOT / "src" / "app" / "favicon.ico", ROOT / "public" / "favicon.ico"):
-    icon.save(path, sizes=[(16, 16), (32, 32), (48, 48), (64, 64)])
-
-apple_icon = Image.new("RGBA", (180, 180), "#FFFFFF")
-apple_mark = mark.copy()
-apple_mark.thumbnail((145, 155), Image.Resampling.LANCZOS)
-apple_icon.alpha_composite(apple_mark, ((180 - apple_mark.width) // 2, (180 - apple_mark.height) // 2))
-apple_icon.save(ROOT / "src" / "app" / "apple-icon.png", optimize=True)
+    favicon.save(path, sizes=[(16, 16), (32, 32), (48, 48)])
+# iOS rounds the corners itself, so the apple icon is full bleed.
+draw_mark(180, NAVY, full_bleed=True).convert("RGB").save(ROOT / "src" / "app" / "apple-icon.png", optimize=True)
 print(BRAND)

@@ -192,7 +192,7 @@ export default function IntroPage() {
             </div>
             <div className="relative flex items-center justify-center">
               <div className="rounded-3xl bg-gradient-to-br from-brand-500 to-brand-600 p-10 text-center text-white shadow-2xl">
-                <Image src="/images/brand/mark-original-on-light.png" alt="셀러브릭스 심볼" width={112} height={112} className="mx-auto mb-4 h-28 w-28 object-contain" />
+                <Image src="/images/brand/mark-original-on-light.png?v=8" alt="셀러브릭스 심볼" width={80} height={80} className="mx-auto mb-4 h-20 w-20 object-contain" />
                 <p className="font-extrabold text-xl mb-1">LIVE NOW</p>
                 <p className="text-brand-100 text-sm">셀러브릭스 스튜디오 채널</p>
                 <div className="mt-4 flex justify-center gap-4 text-sm">
@@ -253,7 +253,7 @@ export default function IntroPage() {
         <div className="container">
           <div className="grid md:grid-cols-2 gap-10 items-center">
             <div className="rounded-3xl bg-gradient-to-br from-honey-400 to-brand-500 p-10 text-white text-center shadow-xl">
-              <Image src="/images/brand/mark-original-on-light.png" alt="셀러브릭스 심볼" width={112} height={112} className="mx-auto mb-4 h-28 w-28 object-contain" />
+              <Image src="/images/brand/mark-original-on-light.png?v=8" alt="셀러브릭스 심볼" width={80} height={80} className="mx-auto mb-4 h-20 w-20 object-contain" />
               <p className="font-extrabold text-xl mb-2">검증 상품 직소싱</p>
               <p className="text-white/80 text-sm">10년+ 소싱 경력 · 최저가 공급</p>
               <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
