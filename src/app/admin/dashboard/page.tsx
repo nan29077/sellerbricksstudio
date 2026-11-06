@@ -1,12 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { kstStartOfMonth, addMonths } from "@/lib/kst";
 import { requireRole } from "@/lib/auth";
 import { formatKRW } from "@/lib/utils";
 import {
   ArrowRight, ArrowUpRight, Building2, CalendarDays,
   CheckCircle2, ChevronRight, CircleAlert, ClipboardList,
-  Globe, Settings2, Users, Wallet, TrendingUp, UserCheck,
+  Globe, Settings2, Users, Wallet, TrendingUp, UserCheck, Megaphone, Star,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -36,8 +37,8 @@ const roleTones: Record<string, string> = {
 async function getDashboardData() {
   try {
     const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const monthStart = kstStartOfMonth(now);
+    const lastMonthStart = addMonths(monthStart, -1);
 
     const [
       userCounts,
@@ -60,8 +61,8 @@ async function getDashboardData() {
           profile: { select: { name: true } },
         },
       }),
-      // 정산 대기 건수
-      prisma.settlement.count({ where: { status: "PENDING" } }),
+      // 정산 대기 건수 (창고(스튜디오) 정산서 대기 + 확정)
+      prisma.facilitySettlement.count({ where: { status: { in: ["PENDING", "CONFIRMED"] } } }),
       // 이번 달 예약 건수
       prisma.booking.count({
         where: {
@@ -85,7 +86,12 @@ async function getDashboardData() {
         ? Math.round(((thisMonthBookings - lastMonthBookings) / lastMonthBookings) * 100)
         : null;
 
+    const [pendingMarketing, lowReviews] = await Promise.all([
+      prisma.marketingApplication.count({ where: { status: "PENDING" } }),
+      prisma.facilityReview.count({ where: { rating: { lte: 2 }, isHidden: false, createdAt: { gte: addMonths(monthStart, -1) } } }),
+    ]);
     return {
+      pendingMarketing, lowReviews,
       userCounts,
       facilityCounts,
       bookingCounts,
@@ -358,7 +364,7 @@ export default async function AdminDashboard() {
           </div>
           <div className="mt-6 space-y-3">
             <Link
-              href="/admin/facilities"
+              href="/admin/facilities?status=PENDING"
               className="flex items-center justify-between gap-3 rounded-2xl bg-[#F9F7F2] p-4 transition hover:bg-brand-50"
             >
               <div className="flex items-center gap-3">
@@ -376,7 +382,7 @@ export default async function AdminDashboard() {
               </span>
             </Link>
             <Link
-              href="/admin/bookings"
+              href="/admin/bookings?status=PENDING"
               className="flex items-center justify-between gap-3 rounded-2xl bg-[#F9F7F2] p-4 transition hover:bg-brand-50"
             >
               <div className="flex items-center gap-3">
@@ -402,8 +408,8 @@ export default async function AdminDashboard() {
                   <Wallet className="h-5 w-5" />
                 </span>
                 <div>
-                  <p className="text-sm font-bold text-navy">정산 승인 대기</p>
-                  <p className="text-xs text-slate-500">정산 요청을 확인하고 승인하세요</p>
+                  <p className="text-sm font-bold text-navy">정산 처리 대기</p>
+                  <p className="text-xs text-slate-500">정산서를 확정하고 지급 처리하세요</p>
                 </div>
               </div>
               <span className="flex items-center gap-1 text-sm font-extrabold text-brand-700">
@@ -411,6 +417,18 @@ export default async function AdminDashboard() {
                 <ChevronRight className="h-4 w-4" />
               </span>
             </Link>
+            {[
+              { href: "/admin/marketing?status=PENDING", label: "마케팅 지원 신청", desc: "셀러의 새 지원 신청을 검토하세요", n: data?.pendingMarketing ?? 0, icon: Megaphone },
+              { href: "/admin/reviews?filter=low", label: "낮은 평점 리뷰", desc: "최근 2점 이하 리뷰를 점검하세요", n: data?.lowReviews ?? 0, icon: Star },
+            ].filter((x) => x.n > 0).map((x) => (
+              <Link key={x.href} href={x.href} className="flex items-center justify-between gap-3 rounded-2xl bg-[#F9F7F2] p-4 transition hover:bg-brand-50">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-violet-700"><x.icon className="h-5 w-5" /></span>
+                  <div><p className="text-sm font-bold text-navy">{x.label}</p><p className="text-xs text-slate-500">{x.desc}</p></div>
+                </div>
+                <span className="flex items-center gap-1 text-sm font-extrabold text-brand-700">{x.n}건<ChevronRight className="h-4 w-4" /></span>
+              </Link>
+            ))}
             {data && pendingFacilities === 0 && pendingBookings === 0 && pendingSettlements === 0 && (
               <p className="flex items-center gap-2 text-sm font-semibold text-emerald-700">
                 <CheckCircle2 className="h-4 w-4" />

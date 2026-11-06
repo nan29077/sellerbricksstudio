@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
+import { notify } from "@/lib/notify";
 
 // PATCH /api/facilities/[id]/inquiries/[iqId]
 // FACILITY_ADMIN: 답변 달기 + isRead 처리
@@ -40,6 +41,10 @@ export async function PATCH(
       data: updateData,
     });
 
+    if (reply !== undefined && reply.trim()) {
+      const fac = await prisma.facility.findUnique({ where: { id: params.id }, select: { name: true } });
+      await notify({ userId: inquiry.sellerId, type: "INQUIRY", title: "문의에 답변이 등록되었습니다", body: `${fac?.name ?? ""} · ${reply.trim().slice(0, 60)}`, link: "/seller/farm-reservations?tab=inquiries" });
+    }
     return NextResponse.json({ inquiry });
   } catch (e) {
     console.error(e);

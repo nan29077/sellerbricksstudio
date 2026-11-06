@@ -1,112 +1,132 @@
+import Link from "next/link";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
-import { PageHeader, StatCard } from "@/components/layout/dashboard-widgets";
+import { PageHeader } from "@/components/layout/dashboard-widgets";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatDate } from "@/lib/utils";
-import { Building2, CheckCircle2, Clock, XCircle, MapPin, Star } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty";
+import { Kpi } from "@/components/list/charts";
+import { FilterBar } from "@/components/list/filter-bar";
+import { StatusTabs } from "@/components/list/status-tabs";
+import { Pagination } from "@/components/list/pagination";
+import { CsvButton } from "@/components/list/csv-button";
+import { ResourceForm, PatchButton } from "@/components/resource-form";
+import { getPlatformFeeRate } from "@/lib/booking";
+import { formatDate, formatKRW } from "@/lib/utils";
+import { addMonths, kstStartOfMonth } from "@/lib/kst";
+import { pageOf, sp, type SP } from "@/lib/list";
+import { Building2, Clock, Ban, Star, ExternalLink } from "lucide-react";
 
 export const dynamic = "force-dynamic";
-
-const DUMMY_FACILITIES = [
-  { id: "f1", name: "강남 프리미엄 라이브 스튜디오", region: "서울 강남구", type: "STUDIO",    status: "APPROVED", createdAt: new Date("2026-01-15"), rating: 4.8, bookings: 42 },
-  { id: "f2", name: "마포구 대형 물류 창고",          region: "서울 마포구", type: "WAREHOUSE", status: "APPROVED", createdAt: new Date("2026-02-10"), rating: 4.5, bookings: 29 },
-  { id: "f3", name: "인천 냉장-냉동 전문 창고",       region: "인천 남동구", type: "WAREHOUSE", status: "PENDING",  createdAt: new Date("2026-06-10"), rating: 0,   bookings: 0  },
-  { id: "f4", name: "성수동 트렌디 스튜디오",         region: "서울 성동구", type: "STUDIO",    status: "APPROVED", createdAt: new Date("2026-03-20"), rating: 4.7, bookings: 18 },
-  { id: "f5", name: "부산 복합 물류 센터",            region: "부산 해운대", type: "WAREHOUSE", status: "PENDING",  createdAt: new Date("2026-06-14"), rating: 0,   bookings: 0  },
-];
-
-const STATUS_LABEL: Record<string, { label: string; tone: "green" | "yellow" | "red" | "gray" }> = {
-  APPROVED: { label: "승인됨",   tone: "green" },
-  PENDING:  { label: "대기중",   tone: "yellow" },
-  REJECTED: { label: "거절됨",   tone: "red" },
-  INACTIVE: { label: "비활성",   tone: "gray" },
+const BASE = "/admin/facilities";
+const STATUS: Record<string, { label: string; tone: "yellow" | "green" | "red" }> = {
+  PENDING: { label: "승인 대기", tone: "yellow" }, APPROVED: { label: "운영중", tone: "green" }, SUSPENDED: { label: "운영 정지", tone: "red" },
 };
 
-export default async function AdminFacilities() {
+export default async function AdminFacilities({ searchParams }: { searchParams: SP }) {
   await requireRole(["SUPER_ADMIN"]);
-
-  let facilities: any[] = [];
-  let counts = { total: 0, pending: 0, approved: 0 };
-
-  try {
-    const [facs, grouped] = await Promise.all([
-      prisma.facility.findMany({
-        orderBy: { createdAt: "desc" },
-        take: 50,
-        select: {
-          id: true, name: true, region: true, type: true, status: true, createdAt: true,
-          _count: { select: { bookings: true } },
-        },
-      }),
-      prisma.facility.groupBy({ by: ["status"], _count: true }),
-    ]);
-    facilities = facs;
-    counts.total = grouped.reduce((s, g) => s + g._count, 0);
-    counts.pending = grouped.find((g) => g.status === "PENDING")?._count ?? 0;
-    counts.approved = grouped.find((g) => g.status === "APPROVED")?._count ?? 0;
-  } catch { /* fallback */ }
-
-  if (facilities.length === 0) {
-    facilities = DUMMY_FACILITIES;
-    counts = { total: 31, pending: 4, approved: 27 };
-  }
+  const status = sp(searchParams, "status");
+  const type = sp(searchParams, "type");
+  const q = sp(searchParams, "q");
+  const sort = sp(searchParams, "sort");
+  const { page, size, skip, take } = pageOf(searchParams, 20);
+  const where: Prisma.FacilityWhereInput = {
+    ...(status && { status: status as any }), ...(type && { type: type as any }),
+    ...(q && { OR: [{ name: { contains: q, mode: "insensitive" } }, { region: { contains: q, mode: "insensitive" } }, { address: { contains: q, mode: "insensitive" } },
+      { owner: { email: { contains: q, mode: "insensitive" } } }, { owner: { profile: { name: { contains: q, mode: "insensitive" } } } }] }),
+  };
+  const mStart = kstStartOfMonth(new Date());
+  const [rows, total, grouped, defaultRate, feeRules] = await Promise.all([
+    prisma.facility.findMany({
+      where, skip, take,
+      orderBy: sort === "rating" ? { rating: "desc" } : sort === "price" ? { basePrice: "desc" } : [{ status: "asc" }, { createdAt: "desc" }],
+      include: {
+        owner: { select: { email: true, profile: { select: { name: true, phone: true } } } },
+        managers: { include: { manager: { select: { profile: { select: { name: true } }, email: true } } } },
+        _count: { select: { bookings: true, reviews: true, favorites: true } },
+      },
+    }),
+    prisma.facility.count({ where }),
+    prisma.facility.groupBy({ by: ["status"], _count: true }),
+    getPlatformFeeRate(),
+    prisma.commissionRule.findMany({ where: { scope: "FACILITY" } }),
+  ]);
+  const ids = rows.map((r) => r.id);
+  const [monthRev, pending] = await Promise.all([
+    prisma.booking.groupBy({ by: ["facilityId"], where: { facilityId: { in: ids }, status: { in: ["APPROVED", "COMPLETED"] }, startAt: { gte: mStart, lt: addMonths(mStart, 1) } }, _sum: { totalPrice: true }, _count: true }),
+    prisma.booking.groupBy({ by: ["facilityId"], where: { facilityId: { in: ids }, status: "PENDING" }, _count: true }),
+  ]);
+  const rev = new Map(monthRev.map((r) => [r.facilityId, r]));
+  const pend = new Map(pending.map((r) => [r.facilityId, r._count]));
+  const fee = new Map(feeRules.map((r) => [r.facilityId, r.commissionValue]));
+  const c = Object.fromEntries(grouped.map((g) => [g.status, g._count]));
+  const all = grouped.reduce((s, g) => s + g._count, 0);
 
   return (
     <div className="space-y-5">
-      <PageHeader title="창고(스튜디오) 관리" description="등록된 창고 및 스튜디오 현황을 관리합니다." />
-
-      <div className="grid grid-cols-3 gap-3">
-        <StatCard label="전체 창고(스튜디오)" value={`${counts.total}개`}   sub="" icon={Building2} />
-        <StatCard label="승인됨"   value={`${counts.approved}개`} sub="" icon={CheckCircle2} />
-        <StatCard label="대기중"   value={`${counts.pending}개`}  sub="" icon={Clock} />
+      <PageHeader title="창고(스튜디오) 관리" description="신규 등록 승인, 운영 정지, 창고(스튜디오)별 수수료율과 운영 지표를 관리합니다." />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Kpi label="전체" value={`${all}곳`} icon={Building2} tone="navy" />
+        <Kpi label="승인 대기" value={`${c.PENDING ?? 0}곳`} icon={Clock} tone={(c.PENDING ?? 0) > 0 ? "red" : "brand"} />
+        <Kpi label="운영 정지" value={`${c.SUSPENDED ?? 0}곳`} icon={Ban} tone="navy" />
+        <Kpi label="기본 수수료율" value={`${defaultRate}%`} sub={`개별 설정 ${feeRules.length}곳`} icon={Star} tone="brand" />
       </div>
-
-      {counts.pending > 0 && (
-        <div className="rounded-xl bg-yellow-50 border border-yellow-200 px-4 py-3 flex items-center gap-2">
-          <Clock className="h-4 w-4 text-yellow-600" />
-          <p className="text-sm text-yellow-800 font-semibold">승인 대기 중인 창고(스튜디오)가 {counts.pending}개 있습니다. 아래 목록에서 확인하세요.</p>
+      <StatusTabs base={BASE} params={searchParams} tabs={[{ value: "", label: "전체", count: all }, ...Object.entries(STATUS).map(([k, v]) => ({ value: k, label: v.label, count: c[k] ?? 0 }))]} />
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
+        <FilterBar className="flex-1" fields={[
+          { type: "search", key: "q", placeholder: "이름 · 지역 · 주소 · 운영자" },
+          { type: "select", key: "type", label: "유형", options: [{ value: "STUDIO", label: "스튜디오" }, { value: "WAREHOUSE", label: "창고" }] },
+          { type: "select", key: "sort", label: "정렬", options: [{ value: "rating", label: "평점 높은 순" }, { value: "price", label: "요금 높은 순" }] },
+        ]} />
+        <CsvButton label="CSV" filename="창고목록" headers={["이름", "유형", "상태", "지역", "운영자", "이메일", "시간당요금", "평점", "리뷰", "누적예약", "이번달매출", "수수료율"]}
+          rows={rows.map((f) => [f.name, f.type === "STUDIO" ? "스튜디오" : "창고", STATUS[f.status]?.label, f.region, f.owner.profile?.name, f.owner.email, f.basePrice, f.rating, f._count.reviews, f._count.bookings, rev.get(f.id)?._sum.totalPrice ?? 0, fee.get(f.id) ?? defaultRate])} />
+      </div>
+      {rows.length === 0 ? <EmptyState icon={<Building2 className="h-10 w-10" />} title="조건에 맞는 창고(스튜디오)가 없습니다" /> : (
+        <div className="space-y-3">
+          {rows.map((f) => {
+            const st = STATUS[f.status];
+            const r = rev.get(f.id);
+            const missing = [!f.bankAccount && "정산 계좌", !f.cancelPolicy && "취소 규정", !f.thumbnailUrl && "대표 이미지"].filter(Boolean);
+            return (
+              <Card key={f.id}>
+                <CardContent className="p-4 sm:p-5">
+                  <div className="flex flex-col gap-4 lg:flex-row">
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge tone={st.tone}>{st.label}</Badge>
+                        <Badge tone={f.type === "STUDIO" ? "purple" : "blue"}>{f.type === "STUDIO" ? "스튜디오" : "창고"}</Badge>
+                        {fee.has(f.id) && <Badge tone="default">수수료 {fee.get(f.id)}%</Badge>}
+                        <span className="text-[11px] text-muted-foreground">등록 {formatDate(f.createdAt)}</span>
+                      </div>
+                      <Link href={`/facilities/${f.id}`} target="_blank" className="flex items-center gap-1 text-lg font-bold text-navy hover:underline">{f.name}<ExternalLink className="h-3.5 w-3.5 text-slate-400" /></Link>
+                      <p className="text-xs text-slate-500">{f.region} · {f.address}</p>
+                      <p className="text-xs text-slate-500">운영자 {f.owner.profile?.name ?? "-"} ({f.owner.email}{f.owner.profile?.phone ? ` · ${f.owner.profile.phone}` : ""})
+                        {f.managers.length > 0 && ` · 담당 매니저 ${f.managers.map((m) => m.manager.profile?.name ?? m.manager.email).join(", ")}`}</p>
+                      {missing.length > 0 && <p className="text-[11px] font-semibold text-amber-600">미입력: {missing.join(", ")}</p>}
+                    </div>
+                    <div className="grid shrink-0 grid-cols-4 gap-2 text-center lg:w-[360px]">
+                      {[["요금/h", formatKRW(f.basePrice)], ["평점", `★${f.rating.toFixed(1)} (${f._count.reviews})`], ["이번 달", `${r?._count ?? 0}건`], ["매출", formatKRW(r?._sum.totalPrice ?? 0)]].map(([l, v]) => (
+                        <div key={l} className="rounded-xl bg-muted/50 p-2"><p className="text-[10px] text-slate-500">{l}</p><p className="truncate text-xs font-bold text-navy">{v}</p></div>
+                      ))}
+                      <p className="col-span-4 text-[11px] text-slate-500">누적 예약 {f._count.bookings}건 · 대기 {pend.get(f.id) ?? 0}건 · 찜 {f._count.favorites}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2 border-t border-[#F0ECE6] pt-3">
+                    {f.status !== "APPROVED" && <PatchButton url={`/api/admin/facilities/${f.id}`} body={{ status: "APPROVED" }} variant="success" confirmText={`'${f.name}'을(를) ${f.status === "SUSPENDED" ? "운영 재개" : "승인"}할까요?`}>{f.status === "SUSPENDED" ? "운영 재개" : "승인"}</PatchButton>}
+                    {f.status !== "SUSPENDED" && <ResourceForm url={`/api/admin/facilities/${f.id}`} method="PATCH" extraBody={{ status: "SUSPENDED" }} title="운영 정지" triggerSize="sm" triggerVariant="outline"
+                      fields={[{ name: "reason", label: "정지 사유 (운영자에게 전달)", type: "textarea", required: true }]} />}
+                    <ResourceForm url={`/api/admin/facilities/${f.id}`} method="PATCH" title="수수료율 설정" triggerSize="sm" triggerVariant="ghost"
+                      initial={{ feeRate: fee.get(f.id) ?? "" }} fields={[{ name: "feeRate", label: "플랫폼 수수료율(%)", type: "number", min: 0, max: 100, help: `비우고 저장하면 기본값 ${defaultRate}%를 사용합니다.` }]} />
+                    <Link href={`/admin/bookings?facility=${f.id}`} className="inline-flex h-9 items-center rounded-lg px-3 text-sm font-semibold text-navy hover:bg-brand-50">예약 보기</Link>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
-
-      <div className="space-y-3">
-        {facilities.map((f: any) => {
-          const st = STATUS_LABEL[f.status] ?? { label: f.status, tone: "gray" as const };
-          const bookingCount = f._count?.bookings ?? f.bookings ?? 0;
-          const rating = f.rating ?? 0;
-          return (
-            <Card key={f.id} className="hover:shadow-md transition">
-              <CardContent className="pt-4 pb-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 shrink-0">
-                    <Building2 className="h-5 w-5 text-brand-500" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                      <p className="font-bold text-navy">{f.name}</p>
-                      <Badge tone={st.tone}>{st.label}</Badge>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <MapPin className="h-3 w-3" />
-                      {f.region} · {f.type === "WAREHOUSE" ? "창고" : "스튜디오"}
-                    </div>
-                    <div className="flex items-center gap-4 mt-2 text-xs">
-                      <span className="text-muted-foreground">예약 {bookingCount}건</span>
-                      {rating > 0 && (
-                        <span className="flex items-center gap-1">
-                          <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
-                          <span className="font-semibold text-navy">{rating}</span>
-                        </span>
-                      )}
-                      <span className="text-muted-foreground">등록일 {formatDate(f.createdAt)}</span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+      <Pagination base={BASE} params={searchParams} page={page} size={size} total={total} />
     </div>
   );
 }

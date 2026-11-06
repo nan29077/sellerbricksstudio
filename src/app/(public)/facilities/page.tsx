@@ -33,7 +33,10 @@ export default async function FacilitiesPage({
   const where: Prisma.FacilityWhereInput = { status: "APPROVED" };
   if (type === "WAREHOUSE" || type === "STUDIO") where.type = type;
   if (region && region !== "전체") where.region = region;
-  if (q) where.OR = [{ name: { contains: q, mode: "insensitive" } }, { address: { contains: q, mode: "insensitive" } }];
+  if (q) where.OR = [
+    { name: { contains: q, mode: "insensitive" } }, { address: { contains: q, mode: "insensitive" } },
+    { region: { contains: q, mode: "insensitive" } }, { specialty: { contains: q, mode: "insensitive" } }, { equipment: { contains: q, mode: "insensitive" } },
+  ];
 
   const orderBy: Prisma.FacilityOrderByWithRelationInput =
     sort === "price" ? { basePrice: "asc" } : { rating: "desc" };
@@ -43,7 +46,8 @@ export default async function FacilitiesPage({
     const db = await prisma.facility.findMany({
       where, orderBy, include: { _count: { select: { products: true } } },
     });
-    facilities = db.length > 0 ? db : DUMMY;
+    // 검색 결과가 0건이면 그대로 0건을 보여준다. (DB 자체가 비어 있을 때만 데모 데이터)
+    facilities = db.length > 0 || Object.keys(where).length > 1 ? db : DUMMY;
   } catch {
     let filtered = DUMMY;
     if (type === "WAREHOUSE" || type === "STUDIO") filtered = filtered.filter((f) => f.type === type);

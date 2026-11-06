@@ -15,6 +15,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (!(s.sellerId === user.id || s.facility.ownerId === user.id || user.role === "SUPER_ADMIN")) return fail("권한이 없습니다.", 403);
     const { status } = await req.json();
     if (!ALLOWED.includes(status)) return fail("허용되지 않은 상태입니다.");
+    if (s.status === "CANCELLED" && user.role !== "SUPER_ADMIN") return fail("취소된 방송은 상태를 바꿀 수 없습니다.");
 
     if (status === "ENDED" && s.catenoidStreamId) {
       await getCatenoidAdapter().endLiveStream(s.catenoidStreamId);

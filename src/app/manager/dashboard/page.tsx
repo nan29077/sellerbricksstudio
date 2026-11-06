@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { kstStartOfMonth } from "@/lib/kst";
 import { requireRole } from "@/lib/auth";
 import { managerFacilityIds } from "@/lib/rbac";
 import { PageHeader, StatCard } from "@/components/layout/dashboard-widgets";
@@ -27,7 +28,7 @@ async function getDashboardData(userId: string) {
   if (facIds.length === 0) return null;
 
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthStart = kstStartOfMonth(now);
 
   const [
     facilities,
@@ -90,14 +91,10 @@ async function getDashboardData(userId: string) {
     prisma.managerCommissionRule.findMany({
       where: { managerId: userId },
     }),
-    // 이번 달 매출 (담당 창고(스튜디오) 라이브에서 발생한 주문)
-    prisma.order.aggregate({
-      where: {
-        liveSession: { facilityId: { in: facIds } },
-        status: { in: ["PAID", "PREPARING", "SHIPPED", "DELIVERED"] },
-        createdAt: { gte: monthStart },
-      },
-      _sum: { totalAmount: true },
+    // 이번 달 담당 창고(스튜디오) 이용료 매출 (승인·완료 예약)
+    prisma.booking.aggregate({
+      where: { facilityId: { in: facIds }, status: { in: ["APPROVED", "COMPLETED"] }, startAt: { gte: monthStart } },
+      _sum: { totalPrice: true },
     }),
   ]);
 
@@ -120,7 +117,7 @@ async function getDashboardData(userId: string) {
     recentBookings,
     upcomingBookings,
     commissionRules,
-    thisMonthRevenue: thisMonthRevenue._sum.totalAmount ?? 0,
+    thisMonthRevenue: thisMonthRevenue._sum.totalPrice ?? 0,
   };
 }
 
@@ -181,7 +178,7 @@ export default async function ManagerDashboard() {
         <StatCard
           label="이번 달 매출"
           value={thisMonthRevenue > 0 ? formatKRW(thisMonthRevenue) : "—"}
-          sub="라이브 주문 기준"
+          sub="담당 창고 이용료 기준"
           icon={Wallet}
         />
       </div>

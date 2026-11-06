@@ -1,238 +1,115 @@
-"use client";
-import { useState } from "react";
-import {
-  Building2, CalendarCheck, Clock, CheckCircle2, XCircle, Search,
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import { prisma } from "@/lib/prisma";
+import { requireRole } from "@/lib/auth";
 import { PageHeader } from "@/components/layout/dashboard-widgets";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Kpi } from "@/components/list/charts";
+import { CsvButton } from "@/components/list/csv-button";
+import { MonthCalendar } from "@/components/calendar/month-calendar";
+import { BOOKING_STATUS } from "@/lib/status";
+import { formatKRW } from "@/lib/utils";
+import { addMonths, hoursBetween, kstParts, parseMonth, monthKey } from "@/lib/kst";
+import { sp, withParams, type SP } from "@/lib/list";
+import { cn } from "@/lib/utils";
+import { Building2, Gauge, Wallet, AlertCircle } from "lucide-react";
 
-/* ───── 타입 ───── */
-type Status = "PENDING" | "APPROVED" | "REJECTED";
-type TypeFilter = "ALL" | "농장" | "목장" | "가공공장" | "물류창고" | "촬영스튜디오" | "선별창고";
+export const dynamic = "force-dynamic";
+const BASE = "/admin/farm-reservations";
+const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + (m || 0); };
 
-interface Reservation {
-  id: string;
-  facilityName: string;
-  facilityType: string;
-  sellerName: string;
-  date: string;
-  visitors: number;
-  purpose: string;
-  status: Status;
-}
+export default async function AdminFacilityOccupancy({ searchParams }: { searchParams: SP }) {
+  await requireRole(["SUPER_ADMIN"]);
+  const month = parseMonth(sp(searchParams, "month"));
+  const next = addMonths(month, 1);
+  const fid = sp(searchParams, "facility");
+  const sort = sp(searchParams, "sort") ?? "util";
+  const p = kstParts(month);
+  const days = new Date(Date.UTC(p.year, p.month, 0)).getUTCDate();
 
-/* ───── 더미 데이터 ───── */
-const DUMMY_RESERVATIONS: Reservation[] = [
-  { id: "r1", facilityName: "고창 복분자 농장",     facilityType: "농장",        sellerName: "박지현", date: "2026-07-15", visitors: 3, purpose: "콘텐츠 촬영", status: "APPROVED" },
-  { id: "r2", facilityName: "제주 감귤 농장",       facilityType: "농장",        sellerName: "홍길동", date: "2026-07-18", visitors: 5, purpose: "라이브 방송", status: "PENDING"  },
-  { id: "r3", facilityName: "서울 라이브 스튜디오", facilityType: "촬영스튜디오", sellerName: "김미래", date: "2026-07-20", visitors: 2, purpose: "라이브 방송", status: "PENDING"  },
-  { id: "r4", facilityName: "경기 물류 창고",       facilityType: "물류창고",    sellerName: "이수민", date: "2026-07-10", visitors: 4, purpose: "창고 이용",   status: "REJECTED" },
-  { id: "r5", facilityName: "횡성 한우 목장",       facilityType: "목장",        sellerName: "정유나", date: "2026-07-22", visitors: 3, purpose: "콘텐츠 촬영", status: "APPROVED" },
-  { id: "r6", facilityName: "부산 수산 가공공장",   facilityType: "가공공장",    sellerName: "최준혁", date: "2026-07-25", visitors: 2, purpose: "공장 견학",   status: "PENDING"  },
-  { id: "r7", facilityName: "충북 과일 선별장",     facilityType: "선별창고",    sellerName: "박민준", date: "2026-07-28", visitors: 6, purpose: "제품 탐색",   status: "APPROVED" },
-];
+  const [facilities, bookings, blackouts] = await Promise.all([
+    prisma.facility.findMany({ where: { status: "APPROVED" }, include: { slots: { where: { isActive: true } } } }),
+    prisma.booking.findMany({ where: { startAt: { gte: month, lt: next } }, include: { facility: { select: { name: true } }, seller: { select: { email: true, profile: { select: { name: true } } } } } }),
+    prisma.facilityBlackoutDate.findMany({ where: { date: { gte: month, lt: next } } }),
+  ]);
 
-const STATUS_MAP: Record<Status, { label: string; tone: "yellow" | "green" | "red" }> = {
-  PENDING:  { label: "대기중",   tone: "yellow" },
-  APPROVED: { label: "승인완료", tone: "green"  },
-  REJECTED: { label: "거절됨",   tone: "red"    },
-};
+  const stats = facilities.map((f) => {
+    const bs = bookings.filter((b) => b.facilityId === f.id);
+    const ok = bs.filter((b) => ["APPROVED", "COMPLETED"].includes(b.status));
+    const bookedH = ok.reduce((s, b) => s + hoursBetween(b.startAt, b.endAt), 0);
+    const off = blackouts.filter((b) => b.facilityId === f.id).length;
+    // 월 운영 가능 시간: 슬롯이 있으면 요일별 슬롯 합 × 해당 요일 수, 없으면 운영시간 × 일수
+    let openH = 0;
+    for (let d = 1; d <= days; d++) {
+      const wd = new Date(Date.UTC(p.year, p.month - 1, d)).getUTCDay();
+      openH += f.slots.length ? f.slots.filter((s) => s.weekday === wd).reduce((a, s) => a + (toMin(s.endTime) - toMin(s.startTime)) / 60, 0)
+        : Math.max(0, (toMin(f.closeTime ?? "22:00") - toMin(f.openTime ?? "09:00")) / 60);
+    }
+    openH = Math.max(0, openH * (1 - off / days));
+    const cancelled = bs.filter((b) => ["CANCELLED", "REJECTED"].includes(b.status)).length;
+    return {
+      f, count: ok.length, pending: bs.filter((b) => b.status === "PENDING").length, bookedH, openH,
+      util: openH ? Math.min(100, Math.round((bookedH / openH) * 100)) : 0,
+      revenue: ok.reduce((s, b) => s + b.totalPrice, 0), cancelRate: bs.length ? Math.round((cancelled / bs.length) * 100) : 0,
+    };
+  }).sort((a, b) => sort === "revenue" ? b.revenue - a.revenue : sort === "pending" ? b.pending - a.pending : b.util - a.util);
 
-const TYPE_BADGE_CLASS: Record<string, string> = {
-  "농장":         "bg-emerald-50 text-emerald-700",
-  "목장":         "bg-emerald-50 text-emerald-700",
-  "가공공장":     "bg-blue-50 text-blue-700",
-  "물류창고":     "bg-orange-50 text-orange-700",
-  "촬영스튜디오": "bg-purple-50 text-purple-700",
-  "선별창고":     "bg-orange-50 text-orange-700",
-};
-
-/* ───── 통계 카드 ───── */
-function StatCard({
-  label, value, icon: Icon, color,
-}: {
-  label: string; value: string;
-  icon: React.ElementType;
-  color: string;
-}) {
-  return (
-    <div className="rounded-xl border border-border bg-white p-5">
-      <div className={`flex h-9 w-9 items-center justify-center rounded-xl mb-3 ${color}`}>
-        <Icon className="h-4.5 w-4.5" />
-      </div>
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-navy">{value}</p>
-    </div>
-  );
-}
-
-/* ───── 페이지 ───── */
-export default function AdminFacilityReservations() {
-  const [reservations, setReservations] = useState<Reservation[]>(DUMMY_RESERVATIONS);
-  const [search, setSearch]             = useState("");
-  const [statusFilter, setStatusFilter] = useState<"ALL" | Status>("ALL");
-  const [typeFilter, setTypeFilter]     = useState<TypeFilter>("ALL");
-
-  const counts = {
-    total:    reservations.length,
-    pending:  reservations.filter(r => r.status === "PENDING").length,
-    approved: reservations.filter(r => r.status === "APPROVED").length,
-    rejected: reservations.filter(r => r.status === "REJECTED").length,
-  };
-
-  const filtered = reservations.filter(r => {
-    const q = search.trim().toLowerCase();
-    const matchSearch = !q || r.facilityName.includes(q) || r.sellerName.includes(q) || r.facilityType.includes(q);
-    const matchStatus = statusFilter === "ALL" || r.status === statusFilter;
-    const matchType   = typeFilter   === "ALL" || r.facilityType === typeFilter;
-    return matchSearch && matchStatus && matchType;
-  });
-
-  const changeStatus = (id: string, status: Status) => {
-    setReservations(prev => prev.map(r => r.id === id ? { ...r, status } : r));
-  };
+  const totalOpen = stats.reduce((s, x) => s + x.openH, 0);
+  const totalBooked = stats.reduce((s, x) => s + x.bookedH, 0);
+  const calRows = bookings.filter((b) => (!fid || b.facilityId === fid) && b.status !== "CANCELLED");
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="창고(스튜디오) 예약 관리"
-        description="셀러들의 창고(스튜디오) 방문 예약 신청을 검토하고 승인·거절합니다."
-      />
-
-      {/* 통계 카드 */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="전체 예약"  value={`${counts.total}건`}    icon={CalendarCheck} color="text-emerald-600 bg-emerald-50" />
-        <StatCard label="대기중"     value={`${counts.pending}건`}   icon={Clock}         color="text-yellow-600 bg-yellow-50"  />
-        <StatCard label="승인완료"   value={`${counts.approved}건`}  icon={CheckCircle2}  color="text-green-600 bg-green-50"    />
-        <StatCard label="거절됨"     value={`${counts.rejected}건`}  icon={XCircle}       color="text-red-600 bg-red-50"        />
+      <PageHeader title="창고(스튜디오)별 예약 현황" description={`${p.year}년 ${p.month}월 창고(스튜디오)별 가동률 · 매출 · 대기 건을 비교합니다.`}
+        action={<div className="flex items-center gap-2">
+          <Link href={withParams(BASE, searchParams, { month: monthKey(addMonths(month, -1)) })} className="rounded-lg border border-border bg-white px-3 py-2 text-sm">◀ 이전 달</Link>
+          <Link href={withParams(BASE, searchParams, { month: monthKey(addMonths(month, 1)) })} className="rounded-lg border border-border bg-white px-3 py-2 text-sm">다음 달 ▶</Link>
+        </div>} />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Kpi label="운영 중 창고(스튜디오)" value={`${facilities.length}곳`} icon={Building2} tone="navy" />
+        <Kpi label="평균 가동률" value={`${totalOpen ? Math.round((totalBooked / totalOpen) * 100) : 0}%`} sub={`${Math.round(totalBooked)}h / ${Math.round(totalOpen)}h`} icon={Gauge} tone="brand" />
+        <Kpi label="월 거래액" value={formatKRW(stats.reduce((s, x) => s + x.revenue, 0))} sub={`${stats.reduce((s, x) => s + x.count, 0)}건`} icon={Wallet} tone="green" />
+        <Kpi label="처리 대기" value={`${stats.reduce((s, x) => s + x.pending, 0)}건`} icon={AlertCircle} tone="red" />
       </div>
 
-      {/* 대기 알림 */}
-      {counts.pending > 0 && (
-        <div className="rounded-xl bg-yellow-50 border border-yellow-200 px-4 py-3 flex items-center gap-2">
-          <Clock className="h-4 w-4 text-yellow-600 shrink-0" />
-          <p className="text-sm text-yellow-800 font-semibold">
-            승인 대기 중인 창고(스튜디오) 예약이 {counts.pending}건 있습니다.
-          </p>
-        </div>
-      )}
-
-      {/* 검색 + 필터 */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <input
-            type="text"
-            placeholder="창고(스튜디오)명 또는 셀러명 검색"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300 transition"
-          />
-        </div>
-        <select
-          value={typeFilter}
-          onChange={e => setTypeFilter(e.target.value as TypeFilter)}
-          className="px-3 py-2.5 rounded-xl border border-border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300 transition"
-        >
-          <option value="ALL">전체 유형</option>
-          <option value="농장">농장</option>
-          <option value="목장">목장</option>
-          <option value="가공공장">가공공장</option>
-          <option value="물류창고">물류창고</option>
-          <option value="촬영스튜디오">촬영스튜디오</option>
-          <option value="선별창고">선별창고</option>
-        </select>
-        <select
-          value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value as "ALL" | Status)}
-          className="px-3 py-2.5 rounded-xl border border-border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300 transition"
-        >
-          <option value="ALL">전체 상태</option>
-          <option value="PENDING">대기중</option>
-          <option value="APPROVED">승인완료</option>
-          <option value="REJECTED">거절됨</option>
-        </select>
-      </div>
-
-      {/* 테이블 */}
-      <div className="overflow-x-auto rounded-xl border border-border bg-white shadow-sm">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border bg-muted/40">
-              {["창고(스튜디오)명", "유형", "신청 셀러", "예약일", "방문 인원", "목적", "상태", "액션"].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap">
-                  {h}
-                </th>
+      <Card>
+        <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0">
+          <CardTitle className="text-base">창고(스튜디오) 비교</CardTitle>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {[["util", "가동률순"], ["revenue", "매출순"], ["pending", "대기순"]].map(([k, l]) => (
+              <Link key={k} href={withParams(BASE, searchParams, { sort: k })} className={cn("rounded-full border px-3 py-1 text-xs font-semibold", sort === k ? "border-navy bg-navy text-white" : "border-border bg-white")}>{l}</Link>
+            ))}
+            <CsvButton label="CSV" filename={`창고별현황_${monthKey(month)}`} headers={["창고(스튜디오)", "확정건", "대기", "이용시간", "운영시간", "가동률(%)", "매출", "취소·거절률(%)"]}
+              rows={stats.map((s) => [s.f.name, s.count, s.pending, Math.round(s.bookedH), Math.round(s.openH), s.util, s.revenue, s.cancelRate])} />
+          </div>
+        </CardHeader>
+        <CardContent className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-sm">
+            <thead><tr className="border-b text-left text-xs text-slate-500">{["창고(스튜디오)", "가동률", "확정", "대기", "매출", "취소·거절", ""].map((h) => <th key={h} className="px-2 py-2 font-bold">{h}</th>)}</tr></thead>
+            <tbody>
+              {stats.map((s) => (
+                <tr key={s.f.id} className={cn("border-b border-[#F0ECE6] last:border-0", fid === s.f.id && "bg-brand-50/60")}>
+                  <td className="px-2 py-2.5"><p className="font-semibold text-navy">{s.f.name}</p><p className="text-[11px] text-slate-400">{s.f.region} · {formatKRW(s.f.basePrice)}/h</p></td>
+                  <td className="w-48 px-2 py-2.5">
+                    <div className="flex items-center gap-2"><div className="h-2 flex-1 rounded-full bg-slate-100"><div className={cn("h-full rounded-full", s.util >= 70 ? "bg-emerald-500" : s.util >= 30 ? "bg-brand-500" : "bg-red-400")} style={{ width: `${s.util}%` }} /></div><span className="w-10 text-right text-xs font-bold">{s.util}%</span></div>
+                  </td>
+                  <td className="px-2 py-2.5 text-xs">{s.count}건 · {Math.round(s.bookedH)}h</td>
+                  <td className="px-2 py-2.5">{s.pending ? <Badge tone="yellow">{s.pending}</Badge> : <span className="text-xs text-slate-400">0</span>}</td>
+                  <td className="px-2 py-2.5 text-xs font-bold">{formatKRW(s.revenue)}</td>
+                  <td className="px-2 py-2.5 text-xs">{s.cancelRate}%</td>
+                  <td className="px-2 py-2.5 text-right"><Link href={withParams(BASE, searchParams, { facility: fid === s.f.id ? undefined : s.f.id })} className="text-xs font-semibold text-brand-700 hover:underline">{fid === s.f.id ? "전체 보기" : "달력 보기"}</Link></td>
+                </tr>
               ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                  검색 결과가 없습니다.
-                </td>
-              </tr>
-            ) : (
-              filtered.map(r => {
-                const st        = STATUS_MAP[r.status];
-                const typeCls   = TYPE_BADGE_CLASS[r.facilityType] ?? "bg-gray-50 text-gray-700";
-                return (
-                  <tr key={r.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
-                    {/* 창고(스튜디오)명 */}
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 shrink-0">
-                          <Building2 className="h-3.5 w-3.5 text-emerald-600" />
-                        </div>
-                        <span className="font-medium text-navy">{r.facilityName}</span>
-                      </div>
-                    </td>
-                    {/* 유형 */}
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[11px] font-semibold ${typeCls}`}>
-                        {r.facilityType}
-                      </span>
-                    </td>
-                    {/* 셀러 */}
-                    <td className="px-4 py-3 text-navy">{r.sellerName}</td>
-                    {/* 예약일 */}
-                    <td className="px-4 py-3 text-muted-foreground text-xs">{r.date}</td>
-                    {/* 인원 */}
-                    <td className="px-4 py-3 text-navy">{r.visitors}명</td>
-                    {/* 목적 */}
-                    <td className="px-4 py-3 text-muted-foreground text-xs">{r.purpose}</td>
-                    {/* 상태 */}
-                    <td className="px-4 py-3">
-                      <Badge tone={st.tone}>{st.label}</Badge>
-                    </td>
-                    {/* 액션 */}
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5">
-                        {r.status !== "APPROVED" && (
-                          <button
-                            onClick={() => changeStatus(r.id, "APPROVED")}
-                            className="rounded-lg bg-emerald-50 text-emerald-700 text-xs font-semibold px-2.5 py-1 hover:bg-emerald-100 transition whitespace-nowrap"
-                          >
-                            승인
-                          </button>
-                        )}
-                        {r.status !== "REJECTED" && (
-                          <button
-                            onClick={() => changeStatus(r.id, "REJECTED")}
-                            className="rounded-lg bg-red-50 text-red-600 text-xs font-semibold px-2.5 py-1 hover:bg-red-100 transition whitespace-nowrap"
-                          >
-                            거절
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+
+      <div className="space-y-2">
+        <h2 className="text-lg font-extrabold text-navy">{fid ? `${facilities.find((f) => f.id === fid)?.name ?? ""} 일정` : "전체 예약 일정"}</h2>
+        <MonthCalendar month={month} base={BASE} params={searchParams} maxPerDay={4}
+          blackouts={fid ? blackouts.filter((b) => b.facilityId === fid) : []}
+          events={calRows.map((b) => ({ id: b.id, start: b.startAt, end: b.endAt, label: fid ? (b.seller.profile?.name ?? b.seller.email) : b.facility.name, tone: BOOKING_STATUS[b.status]?.tone, href: `/admin/bookings?facility=${b.facilityId}` }))} />
       </div>
     </div>
   );

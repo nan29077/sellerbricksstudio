@@ -1,106 +1,94 @@
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { PageHeader, StatCard } from "@/components/layout/dashboard-widgets";
+import { PageHeader } from "@/components/layout/dashboard-widgets";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty";
+import { Kpi } from "@/components/list/charts";
 import { ManagerCommissionEditor } from "@/components/manager-commission-editor";
-import { formatKRW } from "@/lib/utils";
+import { FacilityAssign } from "@/components/admin/facility-assign";
+import { RegisterManagerButton } from "../users/RegisterManagerModal";
+import { calcManagerCommission } from "@/lib/manager-commission";
+import { formatDateTime, formatKRW } from "@/lib/utils";
+import { addMonths, kstStartOfMonth } from "@/lib/kst";
 import { Users, Building2, DollarSign, TrendingUp } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-const DUMMY_MANAGERS = [
-  {
-    id: "m1", name: "중간관리자 (영업담당)", email: "manager@sellerbricks.kr",
-    facilityCount: 3, commissionType: "PERCENT", commissionValue: 5,
-    monthlyIncome: 1_240_000, totalIncome: 4_850_000,
-    facilities: ["강남 프리미엄 라이브 스튜디오", "성수 인더스트리얼 스튜디오", "판교 IT 테크 스튜디오"],
-  },
-  {
-    id: "m2", name: "영업팀장 (권도현)", email: "manager2@example.com",
-    facilityCount: 2, commissionType: "PERCENT", commissionValue: 7,
-    monthlyIncome: 980_000, totalIncome: 2_940_000,
-    facilities: ["마포구 대형 물류 창고", "인천 냉장-냉동 전문 창고"],
-  },
-  {
-    id: "m3", name: "지역매니저 (이준호)", email: "manager3@example.com",
-    facilityCount: 2, commissionType: "FIXED", commissionValue: 50000,
-    monthlyIncome: 850_000, totalIncome: 1_700_000,
-    facilities: ["부산 해운대 뷰 라이브룸", "수원 영통 물류 센터"],
-  },
-];
-
 export default async function AdminManagers() {
   await requireRole(["SUPER_ADMIN"]);
+  const mStart = kstStartOfMonth(new Date());
+  const [managers, facilities, links] = await Promise.all([
+    prisma.user.findMany({
+      where: { role: "MANAGER" }, orderBy: { createdAt: "asc" },
+      include: { profile: true, managerCommission: true, managedFacilities: { include: { facility: { select: { id: true, name: true, status: true } } } } },
+    }),
+    prisma.facility.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, region: true } }),
+    prisma.managerFacility.findMany({ include: { manager: { select: { profile: { select: { name: true } }, email: true } } } }),
+  ]);
+  const allFacIds = Array.from(new Set(managers.flatMap((m) => m.managedFacilities.map((x) => x.facilityId))));
+  const [monthAgg, totalAgg] = await Promise.all([
+    prisma.booking.groupBy({ by: ["facilityId"], where: { facilityId: { in: allFacIds }, status: "COMPLETED", startAt: { gte: mStart, lt: addMonths(mStart, 1) } }, _sum: { totalPrice: true }, _count: true }),
+    prisma.booking.groupBy({ by: ["facilityId"], where: { facilityId: { in: allFacIds }, status: "COMPLETED" }, _sum: { totalPrice: true }, _count: true }),
+  ]);
+  const sumFor = (ids: string[], agg: typeof monthAgg) => agg.filter((a) => ids.includes(a.facilityId)).reduce((s, a) => ({ rev: s.rev + (a._sum.totalPrice ?? 0), n: s.n + a._count }), { rev: 0, n: 0 });
 
-  let managers = DUMMY_MANAGERS;
-
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-  } catch {
-    // DB 없음 - dummy 사용
-  }
-
-  const totalManagers = managers.length;
-  const totalFacilities = managers.reduce((s, m) => s + m.facilityCount, 0);
-  const totalMonthlyIncome = managers.reduce((s, m) => s + m.monthlyIncome, 0);
-  const totalCumulative = managers.reduce((s, m) => s + m.totalIncome, 0);
+  const rows = managers.map((m) => {
+    const ids = m.managedFacilities.map((x) => x.facilityId);
+    const mo = sumFor(ids, monthAgg), tot = sumFor(ids, totalAgg);
+    const rule = m.managerCommission[0] ?? null;
+    return { m, rule, ids, mo, tot, monthCommission: calcManagerCommission(rule, mo.rev, mo.n), totalCommission: calcManagerCommission(rule, tot.rev, tot.n) };
+  });
+  const takenBy = new Map<string, string>();
+  for (const l of links) takenBy.set(l.facilityId, [takenBy.get(l.facilityId), l.manager.profile?.name ?? l.manager.email].filter(Boolean).join(", "));
+  const unassigned = facilities.filter((f) => !takenBy.has(f.id)).length;
 
   return (
     <div className="space-y-5">
-      <PageHeader title="중간관리자 관리" description="담당 창고(스튜디오) 배정과 수수료 규칙을 설정합니다." />
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="관리자 수"       value={`${totalManagers}명`}          sub="활성"      icon={Users}      />
-        <StatCard label="담당 창고(스튜디오)"        value={`${totalFacilities}개`}        sub="총합"      icon={Building2}  />
-        <StatCard label="이번 달 수수료"   value={formatKRW(totalMonthlyIncome)} sub="합산"      icon={DollarSign} />
-        <StatCard label="누적 수수료"      value={formatKRW(totalCumulative)}    sub="전체"      icon={TrendingUp} />
+      <PageHeader title="중간관리자 관리" description="영업 담당 창고(스튜디오)를 배정하고, 이용 완료 매출 기준 수수료율을 설정합니다." action={<RegisterManagerButton />} />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Kpi label="중간관리자" value={`${managers.length}명`} sub={`활성 ${managers.filter((m) => m.isActive).length}명`} icon={Users} tone="navy" />
+        <Kpi label="배정된 창고(스튜디오)" value={`${allFacIds.length}곳`} sub={`미배정 ${unassigned}곳`} icon={Building2} tone="brand" />
+        <Kpi label="이번 달 수수료 합계" value={formatKRW(rows.reduce((s, r) => s + r.monthCommission, 0))} icon={DollarSign} tone="green" />
+        <Kpi label="누적 수수료 합계" value={formatKRW(rows.reduce((s, r) => s + r.totalCommission, 0))} icon={TrendingUp} tone="blue" />
       </div>
-
-      <div className="space-y-4">
-        {managers.map((m) => (
-          <Card key={m.id}>
-            <CardContent className="pt-5">
-              <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="font-bold text-navy">{m.name}</p>
-                    <Badge tone="blue">{m.commissionType === "PERCENT" ? `${m.commissionValue}%` : formatKRW(m.commissionValue) + "/건"}</Badge>
+      <p className="rounded-xl border border-[#E9E5DC] bg-white px-4 py-3 text-xs text-slate-600">수수료 계산: <b>정률</b> = 담당 창고(스튜디오)의 이용 완료 예약 이용료 × %, <b>정액</b> = 이용 완료 1건당 금액</p>
+      {rows.length === 0 ? <EmptyState icon={<Users className="h-10 w-10" />} title="중간관리자가 없습니다" description="오른쪽 위 버튼으로 중간관리자 계정을 만들 수 있습니다." /> : (
+        <div className="space-y-3">
+          {rows.map(({ m, rule, ids, mo, tot, monthCommission, totalCommission }) => (
+            <Card key={m.id}>
+              <CardContent className="p-4 sm:p-5">
+                <div className="flex flex-col gap-4 lg:flex-row">
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-base font-bold text-navy">{m.profile?.name ?? m.email}</p>
+                      <Badge tone="blue">{rule ? (rule.commissionType === "PERCENT" ? `${rule.commissionValue}%` : `${formatKRW(rule.commissionValue)}/건`) : "수수료 미설정"}</Badge>
+                      {!m.isActive && <Badge tone="gray">정지</Badge>}
+                    </div>
+                    <p className="text-xs text-muted-foreground">{m.email}{m.profile?.phone ? ` · ${m.profile.phone}` : ""} · 최근 로그인 {m.lastLoginAt ? formatDateTime(m.lastLoginAt) : "없음"}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {m.managedFacilities.length === 0 ? <span className="text-xs text-amber-600">배정된 창고(스튜디오)가 없습니다</span> : m.managedFacilities.map((x) => (
+                        <span key={x.facilityId} className="rounded-full border border-brand-100 bg-brand-50 px-2 py-0.5 text-[11px] text-brand-700">{x.facility.name}{x.facility.status !== "APPROVED" && " (비운영)"}</span>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {[["이번 달 완료", `${mo.n}건 · ${formatKRW(mo.rev)}`], ["이번 달 수수료", formatKRW(monthCommission)], ["누적 완료", `${tot.n}건 · ${formatKRW(tot.rev)}`], ["누적 수수료", formatKRW(totalCommission)]].map(([l, v]) => (
+                        <div key={l} className="rounded-lg bg-muted/40 p-2 text-center"><p className="text-[10px] text-muted-foreground">{l}</p><p className="text-xs font-bold text-navy">{v}</p></div>
+                      ))}
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground mb-2">{m.email}</p>
-                  <div className="flex flex-wrap gap-1 mb-3">
-                    {m.facilities.map((f) => (
-                      <span key={f} className="text-[10px] bg-brand-50 text-brand-700 px-2 py-0.5 rounded-full border border-brand-100">{f}</span>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="text-center p-2 rounded-lg bg-muted/40">
-                      <p className="text-xs text-muted-foreground">담당 창고(스튜디오)</p>
-                      <p className="font-bold text-navy">{m.facilityCount}개</p>
-                    </div>
-                    <div className="text-center p-2 rounded-lg bg-muted/40">
-                      <p className="text-xs text-muted-foreground">이번 달</p>
-                      <p className="font-bold text-emerald-600">{formatKRW(m.monthlyIncome)}</p>
-                    </div>
-                    <div className="text-center p-2 rounded-lg bg-muted/40">
-                      <p className="text-xs text-muted-foreground">누적 수익</p>
-                      <p className="font-bold text-navy">{formatKRW(m.totalIncome)}</p>
-                    </div>
+                  <div className="w-full shrink-0 space-y-2 lg:w-72">
+                    <p className="text-xs font-semibold text-muted-foreground">수수료 규칙</p>
+                    <ManagerCommissionEditor managerId={m.id} type={rule?.commissionType ?? "PERCENT"} value={rule?.commissionValue ?? 0} />
+                    <FacilityAssign managerId={m.id} managerName={m.profile?.name ?? m.email} assigned={ids}
+                      all={facilities.map((f) => ({ ...f, taken: ids.includes(f.id) ? null : takenBy.get(f.id) ?? null }))} />
                   </div>
                 </div>
-                <div className="shrink-0 w-full sm:w-64">
-                  <p className="text-xs font-semibold text-muted-foreground mb-2">수수료 규칙 수정</p>
-                  <ManagerCommissionEditor
-                    managerId={m.id}
-                    type={m.commissionType}
-                    value={m.commissionValue}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

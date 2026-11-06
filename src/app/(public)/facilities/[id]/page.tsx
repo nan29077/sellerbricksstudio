@@ -64,5 +64,22 @@ export default async function FacilityDetail({ params }: { params: { id: string 
   }
 
   const pageConfig = await getFacilityPageConfig(f);
-  return <FacilityStorefront facility={f} pageConfig={pageConfig} user={user} />;
+  const [reviews, fav] = await Promise.all([
+    prisma.facilityReview.findMany({
+      where: { facilityId: f.id, isHidden: false }, orderBy: { createdAt: "desc" }, take: 20,
+      select: { id: true, rating: true, content: true, reply: true, createdAt: true, seller: { select: { profile: { select: { name: true } } } } },
+    }).catch(() => []),
+    user?.role === "SELLER" ? prisma.facilityFavorite.findUnique({ where: { userId_facilityId: { userId: user.id, facilityId: f.id } } }).catch(() => null) : Promise.resolve(null),
+  ]);
+  return <FacilityStorefront facility={f} pageConfig={pageConfig} user={user} favorited={!!fav}
+    reviews={reviews.map((r) => ({ id: r.id, rating: r.rating, content: r.content, reply: r.reply, createdAt: r.createdAt.toISOString(), author: maskName(r.seller.profile?.name) }))} />;
+}
+
+// 리뷰 작성자 이름 일부 가림 (예: 박지현 → 박*현)
+function maskName(name?: string | null) {
+  if (!name) return "셀러";
+  const n = name.replace(/\(.*\)/g, "").trim() || name;
+  if (n.length <= 1) return n;
+  if (n.length === 2) return n[0] + "*";
+  return n[0] + "*".repeat(n.length - 2) + n[n.length - 1];
 }

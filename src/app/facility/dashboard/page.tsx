@@ -6,6 +6,7 @@ import { PageHeader, StatCard } from "@/components/layout/dashboard-widgets";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatDateTime, formatKRW } from "@/lib/utils";
+import { kstStartOfMonth } from "@/lib/kst";
 import {
   Building2, CalendarCheck, Users, BarChart3,
   Clock, ArrowRight, CheckCircle2, MapPin, Star,
@@ -21,7 +22,7 @@ async function getDashboardData(userId: string) {
   if (facIds.length === 0) return null;
 
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthStart = kstStartOfMonth(now);
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
   sevenDaysAgo.setHours(0, 0, 0, 0);
@@ -81,15 +82,17 @@ async function getDashboardData(userId: string) {
       orderBy: { _count: { id: "desc" } },
       take: 5,
     }),
-    // 이번 달 총 매출 (창고(스튜디오) 이용 라이브에서 발생한 주문 기준)
-    prisma.order.aggregate({
-      where: {
-        liveSession: { facilityId: { in: facIds } },
-        status: { in: ["PAID", "PREPARING", "SHIPPED", "DELIVERED"] },
-        createdAt: { gte: monthStart },
-      },
-      _sum: { totalAmount: true },
+    // 이번 달 이용료 매출 (승인·완료 예약 기준)
+    prisma.booking.aggregate({
+      where: { facilityId: { in: facIds }, status: { in: ["APPROVED", "COMPLETED"] }, startAt: { gte: monthStart } },
+      _sum: { totalPrice: true },
     }),
+  ]);
+  const [toComplete, unrepliedReviews, unreadInquiries, missingSetup] = await Promise.all([
+    prisma.booking.count({ where: { facilityId: { in: facIds }, status: "APPROVED", endAt: { lt: now } } }),
+    prisma.facilityReview.count({ where: { facilityId: { in: facIds }, reply: null } }),
+    prisma.facilityInquiry.count({ where: { facilityId: { in: facIds }, isRead: false } }),
+    prisma.facility.count({ where: { id: { in: facIds }, OR: [{ bankAccount: null }, { cancelPolicy: null }] } }),
   ]);
 
   // 주간 차트 데이터 계산
@@ -138,7 +141,13 @@ async function getDashboardData(userId: string) {
     upcoming,
     chartData,
     sellerRank,
-    thisMonthRevenue: thisMonthRevenue._sum.totalAmount ?? 0,
+    thisMonthRevenue: thisMonthRevenue._sum.totalPrice ?? 0,
+    todos: [
+      { n: toComplete, label: "이용이 끝나 '이용 완료' 처리가 필요한 예약", href: "/facility/bookings?status=APPROVED&sort=upcoming" },
+      { n: unreadInquiries, label: "읽지 않은 셀러 문의", href: "/facility/inquiries" },
+      { n: unrepliedReviews, label: "답글을 기다리는 리뷰", href: "/facility/reviews?filter=unreplied" },
+      { n: missingSetup, label: "정산 계좌·취소 규정 미입력 창고(스튜디오)", href: "/facility/profile" },
+    ].filter((t) => t.n > 0),
   };
 }
 
@@ -195,6 +204,19 @@ export default async function FacilityDashboard() {
         </div>
       )}
 
+      {/* 할 일 */}
+      {(data?.todos.length ?? 0) > 0 && (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {data!.todos.map((t) => (
+            <Link key={t.label} href={t.href} className="flex items-center gap-3 rounded-xl border border-[#E9E5DC] bg-white px-4 py-3 text-sm shadow-sm transition hover:border-brand-300">
+              <span className="flex h-7 min-w-7 items-center justify-center rounded-full bg-navy px-2 text-xs font-bold text-white">{t.n}</span>
+              <span className="flex-1 text-slate-700">{t.label}</span>
+              <ArrowRight className="h-4 w-4 text-slate-400" />
+            </Link>
+          ))}
+        </div>
+      )}
+
       {/* 핵심 지표 4개 */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="등록 창고(스튜디오)" value={`${facilities.length}개`} sub="창고/스튜디오" icon={Building2} />
@@ -203,7 +225,7 @@ export default async function FacilityDashboard() {
         <StatCard
           label="이번 달 매출"
           value={thisMonthRevenue > 0 ? formatKRW(thisMonthRevenue) : "—"}
-          sub="라이브 주문 기준"
+          sub="승인·완료 예약 이용료"
           icon={Wallet}
         />
       </div>

@@ -27,6 +27,8 @@ export default function FacilityInquiriesPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [replyText, setReplyText] = useState<Record<string, string>>({});
   const [sending, setSending] = useState<string | null>(null);
+  const [tab, setTab] = useState<"ALL" | "UNANSWERED" | "ANSWERED" | "UNREAD">("ALL");
+  const [search, setSearch] = useState("");
 
   // 창고(스튜디오) 목록 로드 (본인 소유 창고(스튜디오)만)
   useEffect(() => {
@@ -92,6 +94,19 @@ export default function FacilityInquiriesPage() {
   }
 
   const unreadCount = inquiries.filter((q) => !q.isRead).length;
+  const unansweredCount = inquiries.filter((q) => !q.reply).length;
+  const kw = search.trim().toLowerCase();
+  const visible = inquiries.filter((q) =>
+    (tab === "ALL" || (tab === "UNANSWERED" && !q.reply) || (tab === "ANSWERED" && q.reply) || (tab === "UNREAD" && !q.isRead)) &&
+    (!kw || `${q.message} ${q.seller?.profile?.name ?? ""} ${q.seller?.email ?? ""}`.toLowerCase().includes(kw)));
+  // 평균 응답 시간 (답변 완료 건)
+  const answered = inquiries.filter((q) => q.reply && q.repliedAt);
+  const avgHours = answered.length ? Math.round(answered.reduce((s, q) => s + (new Date(q.repliedAt).getTime() - new Date(q.createdAt).getTime()) / 3600000, 0) / answered.length * 10) / 10 : null;
+  const REPLY_TEMPLATES = [
+    "문의 감사합니다. 요청하신 날짜는 예약 가능합니다. 예약 신청해 주시면 바로 확인하겠습니다.",
+    "문의 감사합니다. 해당 장비는 기본 제공되며 추가 비용은 없습니다.",
+    "아쉽게도 해당 일정은 이미 예약이 차 있습니다. 다른 날짜를 알려주시면 확인해 드리겠습니다.",
+  ];
 
   return (
     <div className="space-y-6">
@@ -120,7 +135,9 @@ export default function FacilityInquiriesPage() {
       )}
 
       {/* 요약 카드 */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Card><CardContent className="pt-4 pb-4"><p className="text-xs text-muted-foreground">답변 대기</p><p className="text-2xl font-extrabold text-red-600">{unansweredCount}</p></CardContent></Card>
+        <Card><CardContent className="pt-4 pb-4"><p className="text-xs text-muted-foreground">평균 응답 시간</p><p className="text-2xl font-extrabold text-navy">{avgHours === null ? "-" : `${avgHours}시간`}</p></CardContent></Card>
         <Card>
           <CardContent className="pt-4 pb-4 flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 shrink-0">
@@ -145,10 +162,20 @@ export default function FacilityInquiriesPage() {
         </Card>
       </div>
 
+      {/* 필터 */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="flex gap-1.5 overflow-x-auto">
+          {([["ALL", "전체", inquiries.length], ["UNANSWERED", "답변 대기", unansweredCount], ["UNREAD", "미읽음", unreadCount], ["ANSWERED", "답변 완료", inquiries.length - unansweredCount]] as const).map(([k, l, n]) => (
+            <button key={k} onClick={() => setTab(k)} className={`shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-semibold ${tab === k ? "border-navy bg-navy text-white" : "border-[#E5E0D6] bg-white text-slate-600"}`}>{l} <span className="text-[11px] opacity-70">{n}</span></button>
+          ))}
+        </div>
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="셀러명 · 내용 검색" className="h-10 flex-1 rounded-lg border border-border bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 sm:max-w-xs sm:ml-auto" />
+      </div>
+
       {/* 문의 목록 */}
       {loading ? (
         <div className="py-12 text-center text-sm text-muted-foreground">불러오는 중...</div>
-      ) : inquiries.length === 0 ? (
+      ) : visible.length === 0 ? (
         <Card>
           <CardContent className="py-16 text-center text-muted-foreground">
             <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-25" />
@@ -158,7 +185,7 @@ export default function FacilityInquiriesPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {inquiries.map((q) => {
+          {visible.map((q) => {
             const isExpanded = expanded === q.id;
             const sellerName = q.seller?.profile?.name ?? q.seller?.email ?? "셀러";
             return (
@@ -235,6 +262,12 @@ export default function FacilityInquiriesPage() {
                         <p className="text-xs font-semibold text-muted-foreground">
                           {q.reply ? "답변 수정" : "답변 작성"}
                         </p>
+                        <div className="flex flex-wrap gap-1">
+                          {REPLY_TEMPLATES.map((t) => (
+                            <button key={t} type="button" onClick={() => setReplyText((prev) => ({ ...prev, [q.id]: t }))}
+                              className="rounded-full border border-border px-2 py-0.5 text-[11px] text-slate-600 hover:border-brand-300">{t.slice(0, 20)}…</button>
+                          ))}
+                        </div>
                         <textarea
                           value={replyText[q.id] ?? q.reply ?? ""}
                           onChange={(e) =>

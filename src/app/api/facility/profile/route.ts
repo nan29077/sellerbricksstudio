@@ -1,57 +1,41 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { z, ZodError } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
+import { ok, fail, handleError } from "@/lib/http";
+import { audit } from "@/lib/audit";
 
-// PATCH /api/facility/profile
-// FACILITY_ADMIN이 자신의 창고(스튜디오) 정보(전문분야, 라이브공간 안내, 설명 등)를 수정
+const time = z.string().regex(/^([01]\d|2[0-4]):[0-5]\d$/, "시간은 HH:MM 형식입니다.");
+const opt = (max = 300) => z.string().trim().max(max).optional().nullable().transform((v) => (v === undefined ? undefined : v || null));
+const schema = z.object({
+  facilityId: z.string().min(1),
+  specialty: opt(300), liveSpaceInfo: opt(3000), description: opt(5000), equipment: opt(1000),
+  address: z.string().trim().min(1).max(300).optional(), region: z.string().trim().min(1).max(40).optional(),
+  openTime: time.optional(), closeTime: time.optional(),
+  basePrice: z.coerce.number().int().min(0).max(100_000_000).optional(),
+  minHours: z.coerce.number().int().min(1).max(24).optional(),
+  capacity: z.union([z.literal(""), z.null(), z.coerce.number().int().min(1).max(10000)]).optional().transform((v) => (v === "" ? null : v)),
+  contactPhone: opt(30), cancelPolicy: opt(2000), thumbnailUrl: opt(1000),
+  bankName: opt(40), bankAccount: opt(40), accountHolder: opt(40),
+});
+
+// PATCH /api/facility/profile — 창고(스튜디오) 관리자가 본인 창고(스튜디오)의 소개·운영·정산 정보를 수정
 export async function PATCH(req: NextRequest) {
-  const user = await getSessionUser();
-  if (!user) {
-    return NextResponse.json({ error: "로그인이 필요합니다" }, { status: 401 });
-  }
-
-  if (user.role !== "FACILITY_ADMIN") {
-    return NextResponse.json({ error: "권한이 없습니다" }, { status: 403 });
-  }
-
   try {
-    const { facilityId, specialty, liveSpaceInfo, description } = await req.json();
-    if (!facilityId) {
-      return NextResponse.json({ error: "facilityId가 필요합니다" }, { status: 400 });
-    }
+    const user = await requireRole(["FACILITY_ADMIN", "SUPER_ADMIN"]);
+    let data: z.infer<typeof schema>;
+    try { data = schema.parse(await req.json()); }
+    catch (e) { return fail(e instanceof ZodError ? e.issues[0]?.message ?? "입력값을 확인하세요." : "입력값을 확인하세요."); }
 
-    // 본인 소유 창고(스튜디오) 확인
-    const facility = await prisma.facility.findUnique({
-      where: { id: facilityId },
-      select: { id: true, ownerId: true },
-    });
-    if (!facility) {
-      return NextResponse.json({ error: "창고(스튜디오)를 찾을 수 없습니다" }, { status: 404 });
-    }
-    if (facility.ownerId !== user.id) {
-      return NextResponse.json({ error: "본인 소유 창고(스튜디오)만 수정할 수 있습니다" }, { status: 403 });
-    }
+    const facility = await prisma.facility.findUnique({ where: { id: data.facilityId }, select: { id: true, ownerId: true } });
+    if (!facility) return fail("창고(스튜디오)를 찾을 수 없습니다.", 404);
+    if (user.role !== "SUPER_ADMIN" && facility.ownerId !== user.id) return fail("본인 소유 창고(스튜디오)만 수정할 수 있습니다.", 403);
+    if (data.openTime && data.closeTime && data.openTime >= data.closeTime) return fail("마감 시간은 오픈 시간보다 뒤여야 합니다.");
 
-    const updateData: any = {};
-    if (specialty !== undefined) updateData.specialty = specialty;
-    if (liveSpaceInfo !== undefined) updateData.liveSpaceInfo = liveSpaceInfo;
-    if (description !== undefined) updateData.description = description;
-
-    const updated = await prisma.facility.update({
-      where: { id: facilityId },
-      data: updateData,
-      select: {
-        id: true,
-        name: true,
-        specialty: true,
-        liveSpaceInfo: true,
-        description: true,
-      },
-    });
-
-    return NextResponse.json({ facility: updated });
-  } catch (e) {
-    console.error(e);
-    return NextResponse.json({ error: "서버 오류" }, { status: 500 });
-  }
+    const { facilityId, ...rest } = data;
+    const patch = Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined));
+    const updated = await prisma.facility.update({ where: { id: facilityId }, data: patch });
+    await audit({ actorId: user.id, action: "FACILITY_PROFILE_UPDATE", entity: "Facility", entityId: facilityId, meta: { fields: Object.keys(patch) } });
+    return ok({ facility: updated });
+  } catch (e) { return handleError(e); }
 }

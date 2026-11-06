@@ -17,16 +17,24 @@ export default async function OrderComplete({ params }: { params: { orderId: str
   });
   if (!order) notFound();
   const os = ORDER_STATUS[order.status];
+  const heading =
+    order.status === "CANCELLED" ? "취소된 주문입니다" :
+    order.status === "REFUNDED" ? "환불된 주문입니다" :
+    order.status === "SHIPPED" ? "상품이 배송 중입니다" :
+    order.status === "DELIVERED" ? "배송이 완료되었습니다" :
+    order.status === "PREPARING" ? "상품을 준비하고 있습니다" : "주문이 완료되었습니다";
+  const finished = order.status === "CANCELLED" || order.status === "REFUNDED";
   const ps = order.payment ? PAYMENT_STATUS[order.payment.status] : null;
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <header className="border-b border-border bg-white"><div className="container max-w-2xl flex h-14 items-center gap-2"><Blocks className="h-6 w-6 text-brand-500" /><span className="font-bold text-navy">주문 완료</span></div></header>
+      <header className="border-b border-border bg-white"><div className="container max-w-2xl flex h-14 items-center gap-2"><Blocks className="h-6 w-6 text-brand-500" /><span className="font-bold text-navy">주문 내역</span></div></header>
       <div className="container max-w-2xl py-8">
         <div className="text-center mb-6">
-          <CheckCircle2 className="mx-auto h-16 w-16 text-emerald-500" />
-          <h1 className="mt-3 text-2xl font-bold text-navy">주문이 완료되었습니다</h1>
+          <CheckCircle2 className={`mx-auto h-16 w-16 ${finished ? "text-slate-300" : "text-emerald-500"}`} />
+          <h1 className="mt-3 text-2xl font-bold text-navy">{heading}</h1>
           <p className="mt-1 text-muted-foreground">주문번호 <span className="font-semibold text-navy">{order.orderNo}</span></p>
+          <p className="mt-2 text-xs text-muted-foreground">주문번호와 연락처로 <Link href="/order-lookup" className="font-semibold text-brand-700 underline underline-offset-2">주문 조회</Link>에서 언제든 다시 확인할 수 있어요.</p>
         </div>
         <Card><CardContent className="pt-5 space-y-3">
           <div className="flex justify-between text-sm"><span className="text-muted-foreground">주문상태</span><Badge tone={os.tone}>{os.label}</Badge></div>

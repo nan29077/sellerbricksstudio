@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty";
 import { ORDER_STATUS } from "@/lib/status";
 import { formatKRW, formatDateTime } from "@/lib/utils";
+import { OrderStatusActions } from "@/components/order-status-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export default async function FacilityOrders() {
   const user = await requireRole(["FACILITY_ADMIN"]);
 
   let orders: any[] = [];
+  let isDemo = false;
   try {
     const facIds = await ownedFacilityIds(user.id);
     orders = await prisma.order.findMany({
@@ -31,9 +33,10 @@ export default async function FacilityOrders() {
         seller: { select: { profile: { select: { name: true } } } },
       },
     });
-    if (orders.length === 0) orders = DUMMY_ORDERS;
+    if (orders.length === 0) { orders = DUMMY_ORDERS; isDemo = true; }
   } catch {
     orders = DUMMY_ORDERS;
+    isDemo = true;
   }
 
   return (
@@ -45,7 +48,7 @@ export default async function FacilityOrders() {
       ) : (
         <div className="mt-4 overflow-x-auto rounded-xl border border-border bg-white">
           <Table
-            headers={["주문번호", "구매자", "셀러", "세션", "금액", "상태", "주문일시"]}
+            headers={["주문번호", "구매자", "셀러", "세션", "금액", "상태", "주문일시", "처리"]}
             rows={orders.map((o: any) => {
               const st = ORDER_STATUS[o.status as keyof typeof ORDER_STATUS] ?? { label: o.status, tone: "gray" as const };
               return [
@@ -56,6 +59,7 @@ export default async function FacilityOrders() {
                 <span key="amount" className="font-semibold text-navy">{formatKRW(o.totalAmount)}</span>,
                 <Badge key="status" tone={st.tone}>{st.label}</Badge>,
                 <Td key="date">{formatDateTime(o.createdAt)}</Td>,
+                isDemo ? <span key="act" className="text-xs text-muted-foreground">예시</span> : <OrderStatusActions key="act" orderId={o.id} status={o.status} />,
               ];
             })}
           />

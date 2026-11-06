@@ -146,6 +146,11 @@ async function main() {
     },
   });
 
+  // ---------------- 플랫폼 기본 수수료율 (창고(스튜디오) 예약 정산용) ----------------
+  if (!(await prisma.commissionRule.findFirst({ where: { scope: "PLATFORM" } }))) {
+    await prisma.commissionRule.create({ data: { scope: "PLATFORM", commissionType: "PERCENT", commissionValue: 10 } });
+  }
+
   console.log("Seed 완료:", { admin: admin.email, manager: manager.email, facilityAdmin: facilityAdmin.email, seller: seller.email, facilities: facilities.length, channel: channel.channelName });
 }
 

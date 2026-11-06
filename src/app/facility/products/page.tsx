@@ -90,7 +90,7 @@ export default async function FacilityProducts() {
                   </div>
                   <div className="flex flex-col gap-2 shrink-0">
                     <ActionButton
-                      url={`/api/facility-products/${fp.id}/toggle`}
+                      url={`/api/facility-products/${fp.id}`}
                       method="PATCH"
                       body={{ isSellable: !fp.isSellable }}
                       size="sm"

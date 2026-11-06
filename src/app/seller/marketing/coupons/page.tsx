@@ -1,148 +1,114 @@
-"use client";
-
-import { useState } from "react";
-import { PageHeader, StatCard } from "@/components/layout/dashboard-widgets";
+import { prisma } from "@/lib/prisma";
+import { requireRole } from "@/lib/auth";
+import { PageHeader } from "@/components/layout/dashboard-widgets";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Ticket, Percent, Users, Clock, Plus, Copy, Pause, Play,
-} from "lucide-react";
+import { EmptyState } from "@/components/ui/empty";
+import { Kpi } from "@/components/list/charts";
+import { StatusTabs } from "@/components/list/status-tabs";
+import { CsvButton } from "@/components/list/csv-button";
+import { ResourceForm, DeleteButton, PatchButton, type Field } from "@/components/resource-form";
+import { CopyText } from "@/components/copy-text";
+import { discountLabel, periodStatus } from "@/lib/marketing-labels";
+import { formatDate, formatKRW } from "@/lib/utils";
+import { toKstInput } from "@/lib/kst";
+import { sp, type SP } from "@/lib/list";
+import { Ticket, CheckCircle2, Percent, Users } from "lucide-react";
 
-type CouponStatus = "발급중" | "일시중지" | "종료";
+export const dynamic = "force-dynamic";
+const API = "/api/seller/marketing/coupons";
 
-const DUMMY_COUPONS: {
-  id: string;
-  name: string;
-  code: string;
-  benefit: string;
-  condition: string;
-  period: string;
-  issued: number;
-  used: number;
-  status: CouponStatus;
-}[] = [
-  { id: "cp-1", name: "여름 시즌 10% 할인 쿠폰",     code: "SUMMER10",   benefit: "10% 할인 (최대 5,000원)", condition: "3만원 이상 구매",  period: "2026-07-01 ~ 2026-07-31", issued: 1520, used: 642, status: "발급중" },
-  { id: "cp-2", name: "라이브 시청자 전용 쿠폰",     code: "LIVE3000",   benefit: "3,000원 즉시 할인",        condition: "라이브 방송 중 발급", period: "2026-07-10 ~ 2026-07-24", issued: 830,  used: 415, status: "발급중" },
-  { id: "cp-3", name: "첫 구매 감사 쿠폰",           code: "WELCOME5",   benefit: "5,000원 할인",             condition: "첫 주문 1회 한정",   period: "상시",                     issued: 2410, used: 1188, status: "발급중" },
-  { id: "cp-4", name: "무료배송 쿠폰",               code: "FREESHIP",   benefit: "배송비 무료",              condition: "2만원 이상 구매",   period: "2026-07-05 ~ 2026-07-19", issued: 640,  used: 512, status: "일시중지" },
-  { id: "cp-5", name: "6월 감사제 15% 쿠폰",         code: "THANKS15",   benefit: "15% 할인 (최대 10,000원)", condition: "전 상품",            period: "2026-06-01 ~ 2026-06-30", issued: 1980, used: 1704, status: "종료" },
+const fields: Field[] = [
+  { name: "name", label: "쿠폰명", required: true, placeholder: "예: 첫 구매 10% 할인" },
+  { name: "code", label: "쿠폰 코드", required: true, half: true, help: "영문 대문자·숫자 4~20자" },
+  { name: "discountType", label: "할인 방식", type: "select", half: true, options: [{ value: "PERCENT", label: "정률(%)" }, { value: "FIXED", label: "정액(원)" }] },
+  { name: "discountValue", label: "할인 값", type: "number", min: 0, half: true, required: true },
+  { name: "maxDiscount", label: "최대 할인액(원)", type: "number", min: 0, half: true, help: "정률 할인일 때 상한" },
+  { name: "minAmount", label: "최소 주문 금액(원)", type: "number", min: 0, half: true },
+  { name: "totalQty", label: "발행 수량", type: "number", min: 0, half: true, help: "비우면 무제한" },
+  { name: "startAt", label: "사용 시작", type: "datetime", required: true, half: true },
+  { name: "endAt", label: "사용 종료", type: "datetime", required: true, half: true },
+  { name: "usedQty", label: "사용된 수량", type: "number", min: 0, half: true, help: "외부 쇼핑몰 사용 수를 직접 갱신" },
+  { name: "isActive", label: "사용 가능 (끄면 일시 중지)", type: "checkbox" },
 ];
 
-const STATUS_TONE: Record<CouponStatus, "green" | "yellow" | "gray"> = {
-  발급중: "green",
-  일시중지: "yellow",
-  종료: "gray",
-};
+function randomCode() {
+  const c = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  return "SB" + Array.from({ length: 6 }, () => c[Math.floor(Math.random() * c.length)]).join("");
+}
 
-const FILTERS: ("전체" | CouponStatus)[] = ["전체", "발급중", "일시중지", "종료"];
-
-export default function SellerMarketingCouponsPage() {
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]>("전체");
-
-  const coupons = DUMMY_COUPONS.filter((c) => filter === "전체" || c.status === filter);
-  const active = DUMMY_COUPONS.filter((c) => c.status === "발급중").length;
-  const totalIssued = DUMMY_COUPONS.reduce((sum, c) => sum + c.issued, 0);
-  const totalUsed = DUMMY_COUPONS.reduce((sum, c) => sum + c.used, 0);
-  const usageRate = totalIssued > 0 ? Math.round((totalUsed / totalIssued) * 100) : 0;
+export default async function SellerCoupons({ searchParams }: { searchParams: SP }) {
+  const user = await requireRole(["SELLER"]);
+  const filter = sp(searchParams, "status");
+  const all = await prisma.sellerCoupon.findMany({ where: { sellerId: user.id }, orderBy: { createdAt: "desc" } });
+  const withSt = all.map((c) => {
+    const p = periodStatus(c.startAt, c.endAt);
+    const soldOut = c.totalQty !== null && c.usedQty >= c.totalQty;
+    const st = !c.isActive ? { key: "PAUSED", label: "일시 중지", tone: "gray" as const }
+      : soldOut ? { key: "SOLDOUT", label: "소진", tone: "red" as const } : p;
+    return { ...c, st };
+  });
+  const rows = filter ? withSt.filter((c) => c.st.key === filter) : withSt;
+  const count = (k: string) => withSt.filter((c) => c.st.key === k).length;
+  const used = all.reduce((s, c) => s + c.usedQty, 0);
+  const issued = all.reduce((s, c) => s + (c.totalQty ?? 0), 0);
+  const now = new Date();
 
   return (
-    <div className="space-y-5">
-      <PageHeader
-        title="쿠폰 관리"
-        description="할인 쿠폰을 발급하고 사용 현황을 관리하세요."
-        action={
-          <Button onClick={() => alert("쿠폰 발급 기능은 준비 중입니다.")}>
-            <Plus className="h-4 w-4 mr-1.5" />새 쿠폰 발급
-          </Button>
-        }
-      />
+    <div className="space-y-5 pb-24 md:pb-0">
+      <PageHeader title="쿠폰 관리" description="라이브 방송에서 안내할 할인 쿠폰을 발급하고 사용 현황을 관리합니다."
+        action={<div className="flex gap-2">
+          <CsvButton filename="쿠폰목록" headers={["쿠폰명", "코드", "할인", "최소주문", "발행", "사용", "시작", "종료", "상태"]}
+            rows={withSt.map((c) => [c.name, c.code, discountLabel(c.discountType, c.discountValue), c.minAmount, c.totalQty ?? "무제한", c.usedQty, formatDate(c.startAt), formatDate(c.endAt), c.st.label])} label="CSV" />
+          <ResourceForm url={API} fields={fields} title="쿠폰 발급" initial={{ code: randomCode(), discountType: "PERCENT", discountValue: 10, minAmount: 0, usedQty: 0, isActive: true, startAt: toKstInput(now), endAt: toKstInput(new Date(now.getTime() + 30 * 86400000)) }} />
+        </div>} />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="발급중 쿠폰" value={`${active}종`}                       sub="현재 발급 중"  icon={Ticket} />
-        <StatCard label="총 발급"     value={totalIssued.toLocaleString() + "장"} sub="누적 발급 수"  icon={Users} />
-        <StatCard label="총 사용"     value={totalUsed.toLocaleString() + "장"}   sub="누적 사용 수"  icon={Clock} />
-        <StatCard label="사용률"      value={`${usageRate}%`}                     sub="발급 대비 사용" icon={Percent} />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Kpi label="사용 가능 쿠폰" value={`${count("ACTIVE")}개`} icon={Ticket} tone="green" />
+        <Kpi label="전체 쿠폰" value={`${all.length}개`} icon={Percent} tone="brand" />
+        <Kpi label="누적 사용" value={`${used.toLocaleString()}회`} icon={CheckCircle2} tone="blue" />
+        <Kpi label="사용률" value={issued ? `${Math.round((used / issued) * 100)}%` : "-"} sub="수량 제한 쿠폰 기준" icon={Users} tone="navy" />
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        {FILTERS.map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`rounded-full px-3.5 py-1.5 text-xs font-semibold border transition ${
-              filter === f
-                ? "bg-brand-500 text-white border-brand-500"
-                : "bg-white text-muted-foreground border-border hover:border-brand-300"
-            }`}
-          >
-            {f}
-          </button>
-        ))}
-      </div>
+      <StatusTabs base="/seller/marketing/coupons" params={searchParams} tabs={[
+        { value: "", label: "전체", count: all.length }, { value: "ACTIVE", label: "사용 가능", count: count("ACTIVE") },
+        { value: "UPCOMING", label: "예정", count: count("UPCOMING") }, { value: "ENDED", label: "기간 만료", count: count("ENDED") },
+        { value: "SOLDOUT", label: "소진", count: count("SOLDOUT") }, { value: "PAUSED", label: "일시 중지", count: count("PAUSED") },
+      ]} />
 
-      <div className="space-y-3">
-        {coupons.map((c) => {
-          const rate = c.issued > 0 ? Math.round((c.used / c.issued) * 100) : 0;
-          return (
-            <Card key={c.id} className="hover:shadow-md transition">
-              <CardContent className="pt-4 pb-4">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 shrink-0">
-                    <Ticket className="h-5 w-5 text-brand-500" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-semibold text-navy">{c.name}</p>
-                      <Badge tone={STATUS_TONE[c.status]}>{c.status}</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-0.5">
-                      {c.benefit} · {c.condition} · {c.period}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <code className="rounded bg-muted px-2 py-0.5 text-xs font-mono font-semibold text-navy">{c.code}</code>
-                      <button
-                        type="button"
-                        onClick={() => alert("쿠폰 코드 복사 기능은 준비 중입니다.")}
-                        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-brand-600 transition"
-                      >
-                        <Copy className="h-3 w-3" />복사
-                      </button>
-                    </div>
-                  </div>
-                  <div className="sm:w-48 shrink-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-muted-foreground">사용 {c.used.toLocaleString()} / 발급 {c.issued.toLocaleString()}</span>
-                      <span className="text-xs font-bold text-navy">{rate}%</span>
-                    </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div className="h-full bg-brand-500 rounded-full" style={{ width: `${rate}%` }} />
-                    </div>
-                    <div className="mt-2 flex justify-end">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => alert("쿠폰 상태 변경 기능은 준비 중입니다.")}
-                      >
-                        {c.status === "발급중" ? (
-                          <><Pause className="h-3.5 w-3.5 mr-1" />일시중지</>
-                        ) : (
-                          <><Play className="h-3.5 w-3.5 mr-1" />발급 재개</>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
+      {rows.length === 0 ? <EmptyState icon={<Ticket className="h-10 w-10" />} title="쿠폰이 없습니다" description="방송 시청자에게 줄 쿠폰을 발급해 보세요." /> : (
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {rows.map((c) => {
+            const pct = c.totalQty ? Math.min(100, Math.round((c.usedQty / c.totalQty) * 100)) : null;
+            return (
+              <Card key={c.id} className="overflow-hidden">
+                <div className="flex items-center justify-between bg-navy px-4 py-3 text-white">
+                  <span className="text-2xl font-black text-brand-400">{discountLabel(c.discountType, c.discountValue)}</span>
+                  <Badge tone={c.st.tone}>{c.st.label}</Badge>
                 </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-        {coupons.length === 0 && (
-          <div className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-10 text-center text-sm text-muted-foreground">
-            해당 상태의 쿠폰이 없습니다.
-          </div>
-        )}
-      </div>
+                <CardContent className="space-y-2 pt-4">
+                  <p className="font-bold text-navy">{c.name}</p>
+                  <CopyText text={c.code} />
+                  <p className="text-xs text-muted-foreground">
+                    {c.minAmount > 0 ? `${formatKRW(c.minAmount)} 이상 구매 시` : "최소 금액 없음"}{c.maxDiscount ? ` · 최대 ${formatKRW(c.maxDiscount)}` : ""}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{formatDate(c.startAt)} ~ {formatDate(c.endAt)}</p>
+                  <div>
+                    <div className="mb-1 flex justify-between text-[11px] text-slate-500"><span>사용 {c.usedQty.toLocaleString()}회</span><span>{c.totalQty ? `발행 ${c.totalQty.toLocaleString()}` : "무제한"}</span></div>
+                    {pct !== null && <div className="h-1.5 rounded-full bg-slate-100"><div className="h-full rounded-full bg-brand-500" style={{ width: `${pct}%` }} /></div>}
+                  </div>
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    <PatchButton url={`${API}/${c.id}`} body={{ usedQty: c.usedQty + 1 }} variant="outline" className="h-8 px-2.5 text-xs" disabled={c.totalQty !== null && c.usedQty >= c.totalQty}>사용 +1</PatchButton>
+                    <PatchButton url={`${API}/${c.id}`} body={{ isActive: !c.isActive }} variant="outline" className="h-8 px-2.5 text-xs">{c.isActive ? "일시 중지" : "다시 사용"}</PatchButton>
+                    <ResourceForm url={API} id={c.id} fields={fields} title="쿠폰 수정" iconOnly triggerVariant="ghost" initial={{ ...c, startAt: toKstInput(c.startAt), endAt: toKstInput(c.endAt), maxDiscount: c.maxDiscount ?? "", totalQty: c.totalQty ?? "" }} />
+                    <DeleteButton url={`${API}/${c.id}`} />
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

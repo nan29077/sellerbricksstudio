@@ -17,7 +17,8 @@ async function assertAccess(userId: string, role: string, sessionId: string) {
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await requireUser();
-    await assertAccess(user.id, user.role, params.id);
+    const session = await assertAccess(user.id, user.role, params.id);
+    if (session.status === "ENDED" || session.status === "CANCELLED") return fail("종료되거나 취소된 방송에는 상품을 추가할 수 없습니다.");
     const body = await req.json();
     const data = addLiveProductSchema.parse(body);
 
@@ -39,6 +40,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     if (data.facilityProductId) {
       const fp = await prisma.facilityProduct.findUnique({ where: { id: data.facilityProductId }, include: { product: true } });
       if (!fp) return fail("상품을 찾을 수 없습니다.", 404);
+      if (fp.facilityId !== session.facilityId) return fail("이 방송 장소의 상품만 추가할 수 있습니다.", 403);
+      if (!fp.isSellable) return fail("판매 중단된 상품입니다.");
       const exists = await prisma.liveSessionProduct.findFirst({ where: { liveSessionId: params.id, facilityProductId: fp.id } });
       if (exists) return fail("이미 추가된 상품입니다.", 409);
       snapshot = { name: fp.product.name, price: fp.salePrice, stock: fp.stock, image: fp.product.thumbnailUrl, source: "CATALOG", facilityProductId: fp.id };

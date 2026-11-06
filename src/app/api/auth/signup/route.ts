@@ -5,12 +5,21 @@ import { signupSchema } from "@/lib/validations";
 import { ok, fail, handleError } from "@/lib/http";
 import { audit } from "@/lib/audit";
 import { randomProfileIndex } from "@/lib/profile";
+import { getSettings } from "@/lib/settings";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const data = signupSchema.parse(body);
-    const exists = await prisma.user.findUnique({ where: { email: data.email } });
+    data.email = data.email.trim().toLowerCase();
+
+    // 최고관리자가 가입을 막아둔 역할은 서버에서도 거절한다.
+    const { managerDisabled, facilityDisabled } = await getSettings();
+    if ((data.role === "MANAGER" && managerDisabled) || (data.role === "FACILITY_ADMIN" && facilityDisabled)) {
+      return fail("현재 이 역할로는 가입할 수 없습니다.", 403);
+    }
+
+    const exists = await prisma.user.findFirst({ where: { email: { equals: data.email, mode: "insensitive" } } });
     if (exists) return fail("이미 가입된 이메일입니다.", 409);
 
     const passwordHash = await bcrypt.hash(data.password, 10);

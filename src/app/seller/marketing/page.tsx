@@ -1,353 +1,182 @@
-"use client";
-
-import { useState } from "react";
-import { PageHeader, StatCard } from "@/components/layout/dashboard-widgets";
+import { prisma } from "@/lib/prisma";
+import { requireRole } from "@/lib/auth";
+import { PageHeader } from "@/components/layout/dashboard-widgets";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Video, Camera, Music2, Globe, TrendingUp,
-  Users, FileText, CheckCircle2, Clock, X,
-} from "lucide-react";
+import { EmptyState } from "@/components/ui/empty";
+import { Kpi } from "@/components/list/charts";
+import { MonthCalendar } from "@/components/calendar/month-calendar";
+import { ResourceForm, DeleteButton, PatchButton, type Field } from "@/components/resource-form";
+import { PLATFORMS, PLATFORM_OPTIONS, POST_STATUS, APPLICATION_STATUS, APPLICATION_TYPES } from "@/lib/marketing-labels";
+import { formatDate, formatDateTime, formatKRW } from "@/lib/utils";
+import { addMonths, kstStartOfMonth, parseMonth, toKstInput } from "@/lib/kst";
+import { sp, type SP } from "@/lib/list";
+import { Users, CalendarClock, Send, Megaphone, ExternalLink, Share2 } from "lucide-react";
 
-// ──────────────────────────────────────────────
-// 더미 데이터
-// ──────────────────────────────────────────────
-const SNS_PLATFORMS = [
-  {
-    id: "youtube",
-    name: "YouTube",
-    icon: Video,
-    channel: "박지현 뷰티 라이브",
-    metric: "구독자",
-    count: "12,400",
-    recentPosts: 8,
-    color: "text-red-500",
-    bg: "bg-red-50",
-    border: "border-red-100",
-    connected: true,
-  },
-  {
-    id: "instagram",
-    name: "Instagram",
-    icon: Camera,
-    channel: "jihyun_beauty",
-    metric: "팔로워",
-    count: "8,500",
-    recentPosts: 24,
-    color: "text-pink-500",
-    bg: "bg-pink-50",
-    border: "border-pink-100",
-    connected: true,
-  },
-  {
-    id: "tiktok",
-    name: "TikTok",
-    icon: Music2,
-    channel: "@jihyun_live",
-    metric: "팔로워",
-    count: "3,200",
-    recentPosts: 15,
-    color: "text-slate-700",
-    bg: "bg-slate-50",
-    border: "border-slate-100",
-    connected: false,
-  },
-  {
-    id: "facebook",
-    name: "Facebook",
-    icon: Globe,
-    channel: "박지현 라이브 쇼핑",
-    metric: "좋아요",
-    count: "2,100",
-    recentPosts: 6,
-    color: "text-blue-600",
-    bg: "bg-blue-50",
-    border: "border-blue-100",
-    connected: false,
-  },
+export const dynamic = "force-dynamic";
+const BASE = "/seller/marketing";
+const API = "/api/seller/marketing";
+
+const accountFields: Field[] = [
+  { name: "platform", label: "플랫폼", type: "select", options: PLATFORM_OPTIONS, half: true },
+  { name: "handle", label: "계정명 / 채널명", required: true, half: true, placeholder: "@my_live" },
+  { name: "url", label: "채널 링크", type: "url", placeholder: "https://" },
+  { name: "followers", label: "팔로워 · 구독자 수", type: "number", min: 0, help: "주기적으로 갱신하면 마케팅 분석에서 추이를 볼 수 있어요." },
+];
+const postFields: Field[] = [
+  { name: "platform", label: "플랫폼", type: "select", options: PLATFORM_OPTIONS, half: true },
+  { name: "scheduledAt", label: "게시 일시", type: "datetime", required: true, half: true },
+  { name: "title", label: "콘텐츠 제목", required: true, placeholder: "예: 금요일 라이브 예고 숏폼" },
+  { name: "memo", label: "기획 메모", type: "textarea" },
+  { name: "status", label: "상태", type: "select", options: Object.entries(POST_STATUS).map(([value, v]) => ({ value, label: v.label })), half: true },
+  { name: "url", label: "게시물 링크", type: "url", half: true },
+  { name: "views", label: "조회수", type: "number", half: true, min: 0 },
+  { name: "likes", label: "좋아요", type: "number", half: true, min: 0 },
+  { name: "comments", label: "댓글", type: "number", half: true, min: 0 },
+  { name: "clicks", label: "링크 클릭", type: "number", half: true, min: 0 },
+];
+const applicationFields: Field[] = [
+  { name: "type", label: "지원 유형", type: "select", options: Object.entries(APPLICATION_TYPES).map(([value, label]) => ({ value, label })), half: true },
+  { name: "budget", label: "희망 예산(원)", type: "number", half: true, min: 0 },
+  { name: "title", label: "제목", required: true, placeholder: "예: 12월 겨울 신상 라이브 홍보" },
+  { name: "content", label: "신청 내용", type: "textarea", required: true, placeholder: "판매 상품, 방송 일정, 원하는 지원 내용을 적어주세요. (10자 이상)" },
+  { name: "desiredAt", label: "희망 진행일", type: "date", half: true },
 ];
 
-const APPLICATION_TYPES = [
-  "SNS 광고 지원",
-  "콘텐츠 제작",
-  "인플루언서 연결",
-  "기타",
-];
+export default async function SellerSnsMarketing({ searchParams }: { searchParams: SP }) {
+  const user = await requireRole(["SELLER"]);
+  const month = parseMonth(sp(searchParams, "month"));
+  const thisMonth = kstStartOfMonth(new Date());
 
-const DUMMY_APPLICATIONS = [
-  {
-    id: "app-1",
-    type: "SNS 광고 지원",
-    content: "신규 뷰티 상품 론칭을 위해 인스타그램·유튜브 광고 지원을 요청드립니다.",
-    budget: "500,000원",
-    date: "2026-07-20",
-    status: "승인",
-    statusTone: "green" as const,
-  },
-  {
-    id: "app-2",
-    type: "콘텐츠 제작",
-    content: "여름 기획전 홍보용 숏폼 영상 제작 지원을 요청합니다.",
-    budget: "300,000원",
-    date: "2026-07-15",
-    status: "검토중",
-    statusTone: "yellow" as const,
-  },
-  {
-    id: "app-3",
-    type: "인플루언서 연결",
-    content: "뷰티 인플루언서와 협업하여 신상품 홍보를 진행하고자 합니다.",
-    budget: "1,000,000원",
-    date: "2026-07-01",
-    status: "대기중",
-    statusTone: "gray" as const,
-  },
-];
-
-// ──────────────────────────────────────────────
-// 탭 1: SNS 지표 연동
-// ──────────────────────────────────────────────
-function SnsTab() {
-  const handleConnect = () => {
-    alert("곧 지원 예정입니다.");
-  };
+  const [accounts, posts, upcoming, postedThisMonth, apps] = await Promise.all([
+    prisma.snsAccount.findMany({ where: { sellerId: user.id }, orderBy: { followers: "desc" } }),
+    prisma.snsPost.findMany({ where: { sellerId: user.id, scheduledAt: { gte: month, lt: addMonths(month, 1) } }, orderBy: { scheduledAt: "asc" } }),
+    prisma.snsPost.findMany({ where: { sellerId: user.id, status: "PLANNED", scheduledAt: { gte: new Date(Date.now() - 86400000) } }, orderBy: { scheduledAt: "asc" }, take: 8 }),
+    prisma.snsPost.count({ where: { sellerId: user.id, status: "POSTED", scheduledAt: { gte: thisMonth, lt: addMonths(thisMonth, 1) } } }),
+    prisma.marketingApplication.findMany({ where: { sellerId: user.id }, orderBy: { createdAt: "desc" }, take: 20 }),
+  ]);
+  const totalFollowers = accounts.reduce((s, a) => s + a.followers, 0);
+  const openApps = apps.filter((a) => ["PENDING", "IN_REVIEW", "APPROVED"].includes(a.status)).length;
 
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        SNS 채널을 연동하면 구독자·팔로워 현황을 한눈에 확인할 수 있습니다.
-      </p>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="총 팔로워"   value="20,900"  sub="연동 채널 합산"     icon={Users} />
-        <StatCard label="연동 채널"   value="2개"     sub="전체 4개 중"        icon={CheckCircle2} />
-        <StatCard label="최근 게시물" value="32개"    sub="최근 30일"          icon={FileText} />
-        <StatCard label="주간 성장"   value="+340명"  sub="지난주 대비 +1.7%"  icon={TrendingUp} />
+    <div className="space-y-5 pb-24 md:pb-0">
+      <PageHeader title="SNS 마케팅" description="채널 현황, 콘텐츠 게시 일정, 셀러브릭스 마케팅 지원 신청을 한 곳에서 관리합니다." />
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Kpi label="총 팔로워" value={totalFollowers.toLocaleString()} sub={`${accounts.length}개 채널`} icon={Users} tone="brand" />
+        <Kpi label="이번 달 게시" value={`${postedThisMonth}건`} icon={Send} tone="green" />
+        <Kpi label="게시 예정" value={`${upcoming.length}건`} sub={upcoming[0] ? `다음: ${formatDateTime(upcoming[0].scheduledAt)}` : undefined} icon={CalendarClock} tone="blue" />
+        <Kpi label="진행 중 지원 신청" value={`${openApps}건`} icon={Megaphone} tone="purple" />
       </div>
-      <div className="grid sm:grid-cols-2 gap-4">
-        {SNS_PLATFORMS.map((p) => {
-          const Icon = p.icon;
-          return (
-            <Card key={p.id} className={`border ${p.border}`}>
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div className={`rounded-xl p-2.5 ${p.bg}`}>
-                    <Icon className={`h-5 w-5 ${p.color}`} />
-                  </div>
-                  {p.connected ? (
-                    <Badge tone="green">연동됨</Badge>
-                  ) : (
-                    <Badge tone="gray">미연동</Badge>
-                  )}
-                </div>
 
-                <div className="mt-3">
-                  <p className="font-semibold text-navy text-sm">{p.name}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{p.channel}</p>
-                </div>
-
-                {p.connected ? (
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <div className="rounded-lg bg-muted/40 p-2.5 text-center">
-                      <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-                        <Users className="h-3 w-3" />
-                        <span className="text-[10px]">{p.metric}</span>
-                      </div>
-                      <p className="text-base font-bold text-navy">{p.count}</p>
-                    </div>
-                    <div className="rounded-lg bg-muted/40 p-2.5 text-center">
-                      <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-                        <FileText className="h-3 w-3" />
-                        <span className="text-[10px]">최근 게시물</span>
-                      </div>
-                      <p className="text-base font-bold text-navy">{p.recentPosts}개</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-3">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full"
-                      onClick={handleConnect}
-                    >
-                      연동하기
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ──────────────────────────────────────────────
-// 탭 2: 마케팅 지원 신청
-// ──────────────────────────────────────────────
-function ApplicationTab() {
-  const [type, setType] = useState(APPLICATION_TYPES[0]);
-  const [content, setContent] = useState("");
-  const [budget, setBudget] = useState("");
-  const [date, setDate] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitted(true);
-  };
-
-  const handleReset = () => {
-    setType(APPLICATION_TYPES[0]);
-    setContent("");
-    setBudget("");
-    setDate("");
-    setSubmitted(false);
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* 신청 폼 */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">마케팅 지원 신청</CardTitle>
+        <CardHeader className="flex-row items-center justify-between space-y-0">
+          <CardTitle className="flex items-center gap-2 text-base"><Share2 className="h-4 w-4 text-brand-500" />내 SNS 채널</CardTitle>
+          <ResourceForm url={`${API}/sns-accounts`} fields={accountFields} title="채널 등록" triggerSize="sm" />
         </CardHeader>
         <CardContent>
-          {submitted ? (
-            <div className="flex flex-col items-center justify-center py-10 gap-3 text-center">
-              <div className="rounded-full bg-green-50 p-4">
-                <CheckCircle2 className="h-8 w-8 text-green-500" />
-              </div>
-              <p className="font-semibold text-navy">신청이 완료되었습니다!</p>
-              <p className="text-sm text-muted-foreground">담당자 검토 후 순차적으로 연락드리겠습니다.</p>
-              <Button variant="outline" size="sm" onClick={handleReset} className="mt-2">
-                새 신청하기
-              </Button>
+          {accounts.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">운영 중인 SNS 채널을 등록하면 팔로워 합계와 채널별 비중을 볼 수 있어요.</p> : (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {accounts.map((a) => (
+                <div key={a.id} className={`rounded-2xl border p-4 ${PLATFORMS[a.platform]?.color ?? ""}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold">{PLATFORMS[a.platform]?.label ?? a.platform}</p>
+                      <p className="truncate text-base font-extrabold text-navy">{a.handle}</p>
+                    </div>
+                    <div className="flex shrink-0">
+                      <ResourceForm url={`${API}/sns-accounts`} id={a.id} fields={accountFields} title="채널 수정" iconOnly triggerVariant="ghost" initial={a} />
+                      <DeleteButton url={`${API}/sns-accounts/${a.id}`} />
+                    </div>
+                  </div>
+                  <p className="mt-2 text-2xl font-extrabold text-navy">{a.followers.toLocaleString()}<span className="ml-1 text-xs font-medium text-slate-500">팔로워 · {totalFollowers ? Math.round((a.followers / totalFollowers) * 100) : 0}%</span></p>
+                  <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500">
+                    <span>갱신 {formatDate(a.updatedAt)}</span>
+                    {a.url && <a href={a.url} target="_blank" rel="noreferrer" className="flex items-center gap-1 font-semibold text-navy hover:underline">채널 열기<ExternalLink className="h-3 w-3" /></a>}
+                  </div>
+                </div>
+              ))}
             </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-navy mb-1.5">신청 유형</label>
-                <select
-                  value={type}
-                  onChange={(e) => setType(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-navy focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  required
-                >
-                  {APPLICATION_TYPES.map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-navy mb-1.5">신청 내용</label>
-                <textarea
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  placeholder="지원이 필요한 내용을 상세히 입력해주세요."
-                  rows={4}
-                  required
-                  className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-navy placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
-                />
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-navy mb-1.5">희망 예산</label>
-                  <input
-                    type="text"
-                    value={budget}
-                    onChange={(e) => setBudget(e.target.value)}
-                    placeholder="예: 500,000원"
-                    className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-navy placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-navy mb-1.5">희망 일정</label>
-                  <input
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-navy focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-1">
-                <Button type="submit" className="w-full sm:w-auto">
-                  신청하기
-                </Button>
-              </div>
-            </form>
           )}
         </CardContent>
       </Card>
 
-      {/* 기존 신청 내역 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">신청 내역</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {DUMMY_APPLICATIONS.map((app) => (
-            <div key={app.id} className="rounded-xl border border-border p-4 space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-semibold text-navy">{app.type}</span>
-                <Badge tone={app.statusTone}>{app.status}</Badge>
+      <div className="grid gap-5 xl:grid-cols-[1fr_340px]">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-extrabold text-navy">콘텐츠 캘린더</h2>
+            <ResourceForm url={`${API}/sns-posts`} fields={postFields} title="콘텐츠 일정 추가" triggerSize="sm" initial={{ scheduledAt: toKstInput(new Date(Date.now() + 86400000)).slice(0, 11) + "19:00" }} />
+          </div>
+          <MonthCalendar month={month} base={BASE} params={searchParams}
+            events={posts.map((p) => ({ id: p.id, start: p.scheduledAt, end: p.scheduledAt, label: `[${PLATFORMS[p.platform]?.label ?? p.platform}] ${p.title}`, tone: p.status === "POSTED" ? "green" : p.status === "CANCELLED" ? "gray" : "blue" }))} />
+        </div>
+        <Card>
+          <CardHeader><CardTitle className="text-base">다가오는 게시 일정</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {upcoming.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">예정된 콘텐츠가 없습니다.</p> : upcoming.map((p) => (
+              <div key={p.id} className="rounded-xl border border-border p-3">
+                <div className="flex items-center gap-2"><Badge tone="blue">{PLATFORMS[p.platform]?.label}</Badge><span className="text-[11px] text-muted-foreground">{formatDateTime(p.scheduledAt)}</span></div>
+                <p className="mt-1 text-sm font-semibold text-navy">{p.title}</p>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  <PatchButton url={`${API}/sns-posts/${p.id}`} body={{ status: "POSTED" }} variant="success" className="h-8 px-2.5 text-xs">게시 완료</PatchButton>
+                  <ResourceForm url={`${API}/sns-posts`} id={p.id} fields={postFields} title="콘텐츠 수정" iconOnly triggerVariant="ghost" initial={{ ...p, scheduledAt: toKstInput(p.scheduledAt) }} />
+                  <DeleteButton url={`${API}/sns-posts/${p.id}`} />
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground line-clamp-2">{app.content}</p>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <span>예산: {app.budget}</span>
-                <span>희망일: {app.date}</span>
+            ))}
+            {posts.filter((p) => p.status === "POSTED").length > 0 && (
+              <div className="border-t pt-3">
+                <p className="mb-2 text-xs font-bold text-slate-500">이 달 게시 완료 · 성과 입력</p>
+                {posts.filter((p) => p.status === "POSTED").slice(0, 6).map((p) => (
+                  <div key={p.id} className="flex items-center justify-between gap-2 py-1 text-xs">
+                    <span className="truncate">{p.title}</span>
+                    <span className="flex shrink-0 items-center gap-1 text-slate-500">👁 {(p.views ?? 0).toLocaleString()} ♥ {(p.likes ?? 0).toLocaleString()}
+                      <ResourceForm url={`${API}/sns-posts`} id={p.id} fields={postFields} title="성과 입력" iconOnly triggerVariant="ghost" initial={{ ...p, scheduledAt: toKstInput(p.scheduledAt) }} />
+                    </span>
+                  </div>
+                ))}
               </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-// ──────────────────────────────────────────────
-// 메인 페이지
-// ──────────────────────────────────────────────
-const TABS = [
-  { id: "sns", label: "SNS 지표 연동" },
-  { id: "apply", label: "마케팅 지원 신청" },
-];
-
-export default function SellerMarketingPage() {
-  const [activeTab, setActiveTab] = useState("sns");
-
-  return (
-    <div className="space-y-5">
-      <PageHeader
-        title="SNS 마케팅 관리"
-        description="인스타그램·유튜브·블로그 등 SNS 채널을 연동하고 마케팅 지원을 신청하세요."
-      />
-
-      {/* 탭 */}
-      <div className="flex gap-1 border-b border-border">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === tab.id
-                ? "border-brand-500 text-brand-600"
-                : "border-transparent text-muted-foreground hover:text-navy"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+            )}
+          </CardContent>
+        </Card>
       </div>
 
-      {activeTab === "sns" && <SnsTab />}
-      {activeTab === "apply" && <ApplicationTab />}
+      <Card>
+        <CardHeader className="flex-row items-center justify-between space-y-0">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-base"><Megaphone className="h-4 w-4 text-brand-500" />마케팅 지원 신청</CardTitle>
+            <p className="mt-1 text-xs text-muted-foreground">셀러브릭스 운영팀이 SNS 광고 · 콘텐츠 제작 · 인플루언서 연결을 지원합니다.</p>
+          </div>
+          <ResourceForm url={`${API}/applications`} fields={applicationFields} title="지원 신청" triggerSize="sm" successMessage="신청이 접수되었습니다. 검토 결과는 알림으로 알려드려요." />
+        </CardHeader>
+        <CardContent>
+          {apps.length === 0 ? <EmptyState className="py-10" title="신청 내역이 없습니다" description="라이브 홍보가 필요하면 지원을 신청해 보세요." /> : (
+            <div className="space-y-2">
+              {apps.map((a) => {
+                const st = APPLICATION_STATUS[a.status] ?? { label: a.status, tone: "gray" as const };
+                return (
+                  <div key={a.id} className="rounded-xl border border-border p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge tone={st.tone}>{st.label}</Badge>
+                      <Badge tone="gray">{APPLICATION_TYPES[a.type] ?? a.type}</Badge>
+                      <span className="text-sm font-bold text-navy">{a.title}</span>
+                      <span className="ml-auto text-[11px] text-muted-foreground">{formatDate(a.createdAt)}{a.budget ? ` · 예산 ${formatKRW(a.budget)}` : ""}</span>
+                    </div>
+                    <p className="mt-1 line-clamp-2 whitespace-pre-line text-xs text-slate-600">{a.content}</p>
+                    {a.adminNote && <p className="mt-2 rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-800"><b>운영팀 답변</b> · {a.adminNote}</p>}
+                    {a.status === "PENDING" && (
+                      <div className="mt-2 flex gap-1">
+                        <ResourceForm url={`${API}/applications`} id={a.id} fields={applicationFields} title="신청 수정" iconOnly triggerVariant="ghost" initial={{ ...a, desiredAt: toKstInput(a.desiredAt, true) }} />
+                        <DeleteButton url={`${API}/applications/${a.id}`} confirmText="신청을 철회할까요?" label="철회" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

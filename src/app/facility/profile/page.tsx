@@ -12,6 +12,30 @@ import {
   Building2, Tag, ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
+import { ResourceForm, type Field } from "@/components/resource-form";
+
+const OPS_FIELDS: Field[] = [
+  { name: "basePrice", label: "시간당 이용료(원)", type: "number", min: 0, half: true, required: true },
+  { name: "minHours", label: "최소 예약 시간", type: "number", min: 1, max: 24, half: true },
+  { name: "openTime", label: "오픈 시간", type: "time", half: true },
+  { name: "closeTime", label: "마감 시간", type: "time", half: true },
+  { name: "capacity", label: "최대 수용 인원", type: "number", min: 1, half: true },
+  { name: "contactPhone", label: "현장 연락처", half: true, help: "승인된 예약의 셀러에게만 보여요." },
+  { name: "region", label: "지역", half: true },
+  { name: "address", label: "주소", half: true },
+  { name: "equipment", label: "보유 장비", type: "textarea", help: "콤마로 구분: 4K 카메라, 링라이트, 그린스크린" },
+  { name: "thumbnailUrl", label: "대표 이미지 URL", type: "url" },
+  { name: "cancelPolicy", label: "취소·환불 규정", type: "textarea", help: "셀러가 예약할 때 동의해야 하는 규정입니다." },
+];
+const BANK_FIELDS: Field[] = [
+  { name: "bankName", label: "은행", half: true, placeholder: "국민은행" },
+  { name: "accountHolder", label: "예금주", half: true },
+  { name: "bankAccount", label: "계좌번호", placeholder: "- 없이 숫자만" },
+];
+function maskAccount(v?: string | null) {
+  if (!v) return "미등록";
+  return v.length <= 4 ? v : `${"*".repeat(Math.max(0, v.length - 4))}${v.slice(-4)}`;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +63,8 @@ export default async function FacilityProfile() {
         <EmptyState
           icon={<Building2 className="h-10 w-10" />}
           title="등록된 창고(스튜디오)가 없습니다"
-          description="관리자에게 창고(스튜디오) 등록을 요청하세요."
+          description="공간 정보를 입력해 등록을 신청하세요. 최고관리자 승인 후 셀러에게 공개됩니다."
+          action={<Link href="/facility/register" className="inline-flex h-10 items-center rounded-lg bg-brand-500 px-4 text-sm font-semibold text-navy hover:bg-brand-600">창고(스튜디오) 등록하기</Link>}
         />
       </div>
     );
@@ -47,7 +72,11 @@ export default async function FacilityProfile() {
 
   return (
     <div className="space-y-6 pb-24 md:pb-0">
-      <PageHeader title="창고(스튜디오) 정보 · 편집" description="내 창고(스튜디오) 프로필과 운영 현황을 관리하세요." />
+      <PageHeader
+        title="창고(스튜디오) 정보 · 편집"
+        description="내 창고(스튜디오) 프로필과 운영 현황을 관리하세요."
+        action={<Link href="/facility/register" className="inline-flex h-10 items-center rounded-lg border border-brand-300 bg-white px-4 text-sm font-semibold text-brand-700 hover:bg-brand-50">+ 창고(스튜디오) 추가 등록</Link>}
+      />
 
       {facilities.map((f: any) => {
         const specialties = f.specialty
@@ -69,8 +98,8 @@ export default async function FacilityProfile() {
                 <div className="flex items-start justify-between gap-3 mb-4">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <Badge tone={f.status === "APPROVED" ? "green" : "yellow"}>
-                        {f.status === "APPROVED" ? "운영중" : "검토중"}
+                      <Badge tone={f.status === "APPROVED" ? "green" : f.status === "SUSPENDED" ? "red" : "yellow"}>
+                        {f.status === "APPROVED" ? "운영중" : f.status === "SUSPENDED" ? "운영 정지" : "승인 대기"}
                       </Badge>
                       <span className="text-xs text-muted-foreground">
                         {f.type === "STUDIO" ? "라이브 스튜디오" : "창고"}
@@ -105,7 +134,7 @@ export default async function FacilityProfile() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                   {[
                     {
-                      label: "기본 이용료",
+                      label: "시간당 이용료",
                       value: formatKRW(f.basePrice ?? 0),
                       icon: Wallet,
                     },
@@ -115,9 +144,9 @@ export default async function FacilityProfile() {
                       icon: CalendarCheck,
                     },
                     {
-                      label: "예약 슬롯 수",
-                      value: `${f.slots?.length ?? 0}개`,
-                      icon: Clock,
+                      label: "평점",
+                      value: `★ ${(f.rating ?? 0).toFixed(1)}`,
+                      icon: Star,
                     },
                     {
                       label: "전문 분야 수",
@@ -133,10 +162,18 @@ export default async function FacilityProfile() {
                   ))}
                 </div>
 
-                {/* 운영 시간 */}
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-                  <Clock className="h-4 w-4 shrink-0" />
-                  <span>운영 시간: {f.openTime ?? "09:00"} ~ {f.closeTime ?? "22:00"}</span>
+                {/* 운영 정보 */}
+                <div className="mb-3 grid gap-2 rounded-xl border border-border p-3 text-sm sm:grid-cols-2">
+                  <p className="flex items-center gap-2 text-muted-foreground"><Clock className="h-4 w-4 shrink-0" />운영 {f.openTime ?? "09:00"} ~ {f.closeTime ?? "22:00"} · 최소 {f.minHours ?? 1}시간</p>
+                  <p className="text-muted-foreground">수용 인원 {f.capacity ? `${f.capacity}명` : "미입력"} · 연락처 {f.contactPhone ?? "미입력"}</p>
+                  <p className="text-muted-foreground sm:col-span-2">취소 규정: {f.cancelPolicy ? <span className="whitespace-pre-line">{f.cancelPolicy}</span> : <span className="font-semibold text-amber-600">미입력 — 분쟁 예방을 위해 입력을 권장합니다</span>}</p>
+                  <p className="text-muted-foreground sm:col-span-2">정산 계좌: {f.bankName ?? ""} {maskAccount(f.bankAccount)} {f.accountHolder ? `(${f.accountHolder})` : ""}</p>
+                  <div className="flex flex-wrap gap-2 sm:col-span-2">
+                    <ResourceForm url="/api/facility/profile" method="PATCH" extraBody={{ facilityId: f.id }} fields={OPS_FIELDS} title="운영 정보 수정" triggerSize="sm" triggerVariant="outline"
+                      initial={{ basePrice: f.basePrice, minHours: f.minHours ?? 1, openTime: f.openTime ?? "09:00", closeTime: f.closeTime ?? "22:00", capacity: f.capacity ?? "", contactPhone: f.contactPhone ?? "", region: f.region, address: f.address, equipment: f.equipment ?? "", thumbnailUrl: f.thumbnailUrl ?? "", cancelPolicy: f.cancelPolicy ?? "" }} />
+                    <ResourceForm url="/api/facility/profile" method="PATCH" extraBody={{ facilityId: f.id }} fields={BANK_FIELDS} title="정산 계좌 등록" triggerSize="sm" triggerVariant="outline"
+                      initial={{ bankName: f.bankName ?? "", accountHolder: f.accountHolder ?? "", bankAccount: f.bankAccount ?? "" }} />
+                  </div>
                 </div>
 
                 {/* 전문 분야 태그 미리보기 */}

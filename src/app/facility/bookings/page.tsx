@@ -1,101 +1,118 @@
+import Link from "next/link";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 import { ownedFacilityIds } from "@/lib/rbac";
 import { PageHeader } from "@/components/layout/dashboard-widgets";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty";
-import { ActionButton } from "@/components/action-button";
+import { FilterBar } from "@/components/list/filter-bar";
+import { StatusTabs } from "@/components/list/status-tabs";
+import { Pagination } from "@/components/list/pagination";
+import { CsvButton } from "@/components/list/csv-button";
+import { Kpi } from "@/components/list/charts";
+import { MonthCalendar } from "@/components/calendar/month-calendar";
+import { ManageBookingList } from "@/components/booking/manage-booking-list";
+import { toManageBooking } from "@/lib/booking-view";
 import { BOOKING_STATUS } from "@/lib/status";
-import { formatDateTime } from "@/lib/utils";
-import { CalendarDays } from "lucide-react";
+import { formatDateTime, formatKRW } from "@/lib/utils";
+import { addDays, addMonths, hoursBetween, kstStartOfDay, kstStartOfMonth, parseMonth } from "@/lib/kst";
+import { dateRange, pageOf, sp, withParams, type SP } from "@/lib/list";
+import { CalendarDays, List, AlertCircle, CalendarCheck, Wallet, Clock } from "lucide-react";
 
 export const dynamic = "force-dynamic";
+const BASE = "/facility/bookings";
 
-const DUMMY_BOOKINGS: any[] = [
-  {
-    id:"bk1", status:"PENDING",   purpose:"뷰티 제품 라이브 방송", expectedProducts:12,
-    startAt:new Date("2026-06-22T10:00:00"), endAt:new Date("2026-06-22T12:00:00"),
-    facility:{ name:"강남 프리미엄 라이브 스튜디오" },
-    seller:{ email:"seller@sellerbricks.kr", profile:{ name:"박지현" } },
-  },
-  {
-    id:"bk2", status:"APPROVED",  purpose:"식품 라이브 커머스", expectedProducts:8,
-    startAt:new Date("2026-06-20T14:00:00"), endAt:new Date("2026-06-20T17:00:00"),
-    facility:{ name:"강남 프리미엄 라이브 스튜디오" },
-    seller:{ email:"seller2@example.com", profile:{ name:"홍길동" } },
-  },
-  {
-    id:"bk3", status:"COMPLETED", purpose:"패션 신상품 방송", expectedProducts:15,
-    startAt:new Date("2026-06-10T13:00:00"), endAt:new Date("2026-06-10T16:00:00"),
-    facility:{ name:"강남 프리미엄 라이브 스튜디오" },
-    seller:{ email:"seller3@example.com", profile:{ name:"김미래" } },
-  },
-];
-
-export default async function FacilityBookings() {
+export default async function FacilityBookings({ searchParams }: { searchParams: SP }) {
   const user = await requireRole(["FACILITY_ADMIN"]);
+  const facIds = await ownedFacilityIds(user.id);
+  const facilities = await prisma.facility.findMany({ where: { id: { in: facIds } }, select: { id: true, name: true } });
+  const view = sp(searchParams, "view") === "calendar" ? "calendar" : "list";
+  const status = sp(searchParams, "status");
+  const fid = sp(searchParams, "facility");
+  const q = sp(searchParams, "q");
+  const sort = sp(searchParams, "sort");
+  const { page, size, skip, take } = pageOf(searchParams, 20);
 
-  let bookings: any[] = [];
-  try {
-    const facIds = await ownedFacilityIds(user.id);
-    bookings = await prisma.booking.findMany({
-      where: { facilityId: { in: facIds } },
-      orderBy: { startAt: "desc" },
-      include: { facility: true, seller: { include: { profile: true } } },
-    });
-    if (bookings.length === 0) bookings = DUMMY_BOOKINGS;
-  } catch {
-    bookings = DUMMY_BOOKINGS;
-  }
+  const scope: Prisma.BookingWhereInput = { facilityId: fid && facIds.includes(fid) ? fid : { in: facIds } };
+  const where: Prisma.BookingWhereInput = {
+    ...scope,
+    ...(status && { status: status as any }),
+    ...(dateRange(searchParams) && { startAt: dateRange(searchParams) }),
+    ...(q && { OR: [
+      { seller: { email: { contains: q, mode: "insensitive" } } },
+      { seller: { profile: { name: { contains: q, mode: "insensitive" } } } },
+      { seller: { profile: { companyName: { contains: q, mode: "insensitive" } } } },
+      { purpose: { contains: q, mode: "insensitive" } },
+    ] }),
+  };
+  const today = kstStartOfDay(new Date());
+  const month = parseMonth(sp(searchParams, "month"));
+  const mStart = kstStartOfMonth(new Date());
+  const include = { facility: { select: { name: true } }, seller: { select: { email: true, profile: { select: { name: true, phone: true, companyName: true } } } } } as const;
 
-  const pending = bookings.filter((b) => b.status === "PENDING").length;
+  const [rows, total, grouped, todayCount, monthRev, calRows, blackouts, overduePending] = await Promise.all([
+    view === "list" ? prisma.booking.findMany({
+      where, include, skip, take,
+      orderBy: sort === "upcoming" ? { startAt: "asc" } : status === "PENDING" ? { createdAt: "asc" } : { startAt: "desc" },
+    }) : Promise.resolve([]),
+    prisma.booking.count({ where }),
+    prisma.booking.groupBy({ by: ["status"], where: scope, _count: true }),
+    prisma.booking.count({ where: { ...scope, status: "APPROVED", startAt: { gte: today, lt: addDays(today, 1) } } }),
+    prisma.booking.aggregate({ where: { ...scope, status: { in: ["APPROVED", "COMPLETED"] }, startAt: { gte: mStart, lt: addMonths(mStart, 1) } }, _sum: { totalPrice: true }, _count: true }),
+    view === "calendar" ? prisma.booking.findMany({ where: { ...where, startAt: { gte: month, lt: addMonths(month, 1) } }, include }) : Promise.resolve([]),
+    view === "calendar" ? prisma.facilityBlackoutDate.findMany({ where: { facilityId: scope.facilityId as any, date: { gte: month, lt: addMonths(month, 1) } } }) : Promise.resolve([]),
+    prisma.booking.count({ where: { ...scope, status: "PENDING", startAt: { lt: addDays(new Date(), 2) } } }),
+  ]);
+
+  // 셀러별 과거 이용 횟수 (첫 이용 셀러 표시용)
+  const sellerIds = Array.from(new Set(rows.map((r) => r.sellerId)));
+  const hist = sellerIds.length ? await prisma.booking.groupBy({ by: ["sellerId"], where: { ...scope, sellerId: { in: sellerIds }, status: "COMPLETED" }, _count: true }) : [];
+  const history = new Map(hist.map((h) => [h.sellerId, h._count]));
+
+  const counts = Object.fromEntries(grouped.map((g) => [g.status, g._count]));
+  const all = grouped.reduce((s, g) => s + g._count, 0);
 
   return (
-    <div className="pb-24 md:pb-0">
-      <PageHeader
-        title="예약 관리"
-        description="셀러의 예약 요청을 승인하거나 거절하세요."
-      />
+    <div className="space-y-5 pb-24 md:pb-0">
+      <PageHeader title="예약 관리" description="셀러 예약 요청을 승인·거절하고, 이용 완료 처리와 내부 메모로 운영을 관리하세요." />
 
-      {pending > 0 && (
-        <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 mb-4 flex items-center gap-3">
-          <CalendarDays className="h-5 w-5 text-red-500 shrink-0" />
-          <p className="text-sm font-semibold text-red-700">승인 대기 예약 {pending}건이 있습니다. 빠른 처리를 부탁드립니다.</p>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Kpi label="승인 대기" value={`${counts.PENDING ?? 0}건`} sub={overduePending ? `48시간 내 이용 ${overduePending}건 급함` : "빠른 응답이 재예약률을 높여요"} icon={AlertCircle} tone={overduePending ? "red" : "brand"} />
+        <Kpi label="오늘 이용" value={`${todayCount}건`} icon={Clock} tone="blue" />
+        <Kpi label="이번 달 확정 매출" value={formatKRW(monthRev._sum.totalPrice ?? 0)} sub={`${monthRev._count}건`} icon={Wallet} tone="green" />
+        <Kpi label="완료 처리 대기" value={`${await prisma.booking.count({ where: { ...scope, status: "APPROVED", endAt: { lt: new Date() } } })}건`} sub="이용이 끝난 승인 예약" icon={CalendarCheck} tone="navy" />
+      </div>
+
+      <StatusTabs base={BASE} params={searchParams} tabs={[{ value: "", label: "전체", count: all }, ...Object.entries(BOOKING_STATUS).map(([k, v]) => ({ value: k, label: v.label, count: counts[k] ?? 0 }))]} />
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
+        <FilterBar className="flex-1" fields={[
+          { type: "search", key: "q", placeholder: "셀러 이름 · 이메일 · 회사 · 목적" },
+          ...(facilities.length > 1 ? [{ type: "select" as const, key: "facility", label: "창고(스튜디오)", options: facilities.map((f) => ({ value: f.id, label: f.name })) }] : []),
+          { type: "select", key: "sort", label: "정렬", options: [{ value: "upcoming", label: "이용일 빠른 순" }] },
+          { type: "date", key: "from", label: "이용일 시작" },
+          { type: "date", key: "to", label: "이용일 끝" },
+        ]} />
+        <div className="flex gap-2">
+          <Link href={withParams(BASE, searchParams, { view: undefined })}><Button size="sm" variant={view === "list" ? "secondary" : "outline"}><List className="h-4 w-4" />목록</Button></Link>
+          <Link href={withParams(BASE, searchParams, { view: "calendar", page: undefined })}><Button size="sm" variant={view === "calendar" ? "secondary" : "outline"}><CalendarDays className="h-4 w-4" />달력</Button></Link>
+          {view === "list" && <CsvButton label="CSV" filename="예약목록" headers={["상태", "창고(스튜디오)", "셀러", "이메일", "연락처", "시작", "이용시간", "이용료", "인원", "목적", "요청사항"]}
+            rows={rows.map((b) => [BOOKING_STATUS[b.status]?.label, b.facility.name, b.seller.profile?.name, b.seller.email, b.seller.profile?.phone, formatDateTime(b.startAt), hoursBetween(b.startAt, b.endAt), b.totalPrice, b.headcount, b.purpose, b.requestNote])} />}
         </div>
-      )}
+      </div>
 
-      {bookings.length === 0 ? (
-        <EmptyState icon={<CalendarDays className="h-10 w-10" />} title="예약 요청이 없습니다" />
+      {view === "calendar" ? (
+        <MonthCalendar month={month} base={BASE} params={searchParams} blackouts={blackouts}
+          events={calRows.map((b) => ({ id: b.id, start: b.startAt, end: b.endAt, label: b.seller.profile?.name ?? b.seller.email, tone: BOOKING_STATUS[b.status]?.tone }))} />
+      ) : rows.length === 0 ? (
+        <EmptyState icon={<CalendarDays className="h-10 w-10" />} title={status || q ? "조건에 맞는 예약이 없습니다" : "아직 예약 요청이 없습니다"}
+          description="창고(스튜디오) 페이지를 꾸미고 운영 시간대를 등록하면 셀러가 더 쉽게 예약할 수 있어요."
+          action={<Link href="/facility/schedule"><Button variant="outline">운영 시간대 설정</Button></Link>} />
       ) : (
-        <div className="space-y-3 mt-4">
-          {bookings.map((b) => {
-            const st = BOOKING_STATUS[b.status as keyof typeof BOOKING_STATUS] ?? { label: b.status, tone: "gray" as const };
-            return (
-              <Card key={b.id}>
-                <CardContent className="flex flex-col sm:flex-row sm:items-center gap-3 p-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <Badge tone={st.tone}>{st.label}</Badge>
-                      <span className="text-xs text-muted-foreground">{b.facility?.name}</span>
-                    </div>
-                    <p className="font-bold text-navy">{b.seller?.profile?.name ?? b.seller?.email ?? "셀러"}</p>
-                    <p className="text-sm text-muted-foreground">{formatDateTime(b.startAt)} ~ {formatDateTime(b.endAt)}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      목적: {b.purpose} · 예상 상품 {b.expectedProducts ?? 0}개
-                    </p>
-                  </div>
-                  {b.status === "PENDING" && (
-                    <div className="flex gap-2 shrink-0">
-                      <ActionButton url={`/api/bookings/${b.id}/approve`} method="PATCH" size="sm">승인</ActionButton>
-                      <ActionButton url={`/api/bookings/${b.id}/reject`} method="PATCH" size="sm" variant="outline">거절</ActionButton>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+        <>
+          <ManageBookingList rows={rows.map((r) => toManageBooking(r, history))} showFacility={facilities.length > 1} />
+          <Pagination base={BASE} params={searchParams} page={page} size={size} total={total} />
+        </>
       )}
     </div>
   );

@@ -1,54 +1,55 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 import { PageHeader } from "@/components/layout/dashboard-widgets";
 import { BookingForm } from "@/components/booking-form";
+import { EmptyState } from "@/components/ui/empty";
+import { Button } from "@/components/ui/button";
+import { Warehouse } from "lucide-react";
 
 export const dynamic = "force-dynamic";
-
-const DUMMY_FACILITIES = [
-  { id: "d1", name: "강남 프리미엄 라이브 스튜디오", type: "STUDIO",    region: "서울 강남구", openTime: "09:00", closeTime: "22:00" },
-  { id: "d2", name: "마포구 대형 물류 창고",          type: "WAREHOUSE", region: "서울 마포구", openTime: "08:00", closeTime: "20:00" },
-  { id: "d3", name: "성수 인더스트리얼 스튜디오",    type: "STUDIO",    region: "서울 성동구", openTime: "09:00", closeTime: "21:00" },
-  { id: "d4", name: "인천 냉장-냉동 전문 창고",       type: "WAREHOUSE", region: "인천 남동구", openTime: "08:00", closeTime: "20:00" },
-];
 
 export default async function NewBookingPage({
   searchParams,
 }: {
   searchParams: { facilityId?: string; start?: string; end?: string };
 }) {
-  await requireRole(["SELLER"]);
+  const user = await requireRole(["SELLER"]);
   const validTime = (value?: string) => value && /^([01]\d|2[0-3]):[0-5]\d$/.test(value) ? value : undefined;
 
-  let facilities: typeof DUMMY_FACILITIES = [];
-  try {
-    const db = await prisma.facility.findMany({
+  const [db, favs] = await Promise.all([
+    prisma.facility.findMany({
       where: { status: "APPROVED" },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, type: true, region: true, openTime: true, closeTime: true },
-    });
-    const mapped = db.map((f) => ({
-      id: f.id,
-      name: f.name,
-      type: f.type as string,
-      region: f.region,
-      openTime: f.openTime ?? "09:00",
-      closeTime: f.closeTime ?? "22:00",
-    }));
-    facilities = mapped.length > 0 ? mapped : DUMMY_FACILITIES;
-  } catch {
-    facilities = DUMMY_FACILITIES;
-  }
+      orderBy: [{ rating: "desc" }, { name: "asc" }],
+      select: { id: true, name: true, type: true, region: true, openTime: true, closeTime: true, basePrice: true, minHours: true, capacity: true, cancelPolicy: true },
+    }).catch(() => []),
+    prisma.facilityFavorite.findMany({ where: { userId: user.id }, select: { facilityId: true } }).catch(() => []),
+  ]);
+  // 찜한 창고(스튜디오)를 위로
+  const fav = new Set(favs.map((f) => f.facilityId));
+  const facilities = [...db].sort((a, b) => Number(fav.has(b.id)) - Number(fav.has(a.id))).map((f) => ({
+    ...f, type: f.type as string, name: fav.has(f.id) ? `★ ${f.name}` : f.name,
+    openTime: f.openTime ?? "09:00", closeTime: f.closeTime ?? "22:00",
+  }));
 
   return (
     <div>
-      <PageHeader title="예약 신청" description="방송할 창고/스튜디오와 시간을 선택하세요." />
-      <BookingForm
-        facilities={facilities}
-        defaultFacilityId={searchParams.facilityId}
-        defaultStart={validTime(searchParams.start)}
-        defaultEnd={validTime(searchParams.end)}
-      />
+      <PageHeader title="예약 신청" description="창고/스튜디오와 날짜를 고르면 그날의 예약 현황과 예상 이용료를 바로 확인할 수 있습니다." />
+      {facilities.length === 0 ? (
+        <EmptyState
+          icon={<Warehouse className="h-10 w-10" />}
+          title="예약 가능한 창고(스튜디오)가 없습니다"
+          description="승인된 창고(스튜디오)가 등록되면 예약할 수 있습니다."
+          action={<Link href="/facilities"><Button variant="outline">창고(스튜디오) 둘러보기</Button></Link>}
+        />
+      ) : (
+        <BookingForm
+          facilities={facilities}
+          defaultFacilityId={facilities.some((f) => f.id === searchParams.facilityId) ? searchParams.facilityId : undefined}
+          defaultStart={validTime(searchParams.start)}
+          defaultEnd={validTime(searchParams.end)}
+        />
+      )}
     </div>
   );
 }

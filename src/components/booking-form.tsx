@@ -18,7 +18,20 @@ type Facility = {
   region: string;
   openTime: string | null;
   closeTime: string | null;
+  basePrice?: number;
+  minHours?: number;
+  capacity?: number | null;
+  cancelPolicy?: string | null;
 };
+
+type Availability = {
+  openTime: string; closeTime: string; minHours: number; basePrice: number; capacity: number | null;
+  hasSlots: boolean; slots: { startTime: string; endTime: string }[]; closed: boolean; closedReason: string | null;
+  booked: { start: string; end: string; status: string }[];
+};
+
+const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + (m || 0); };
+const toHm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 
 type FacilityProduct = {
   id: string;
@@ -59,6 +72,11 @@ export function BookingForm({
   const [start, setStart] = useState(defaultStart ?? "10:00");
   const [end, setEnd] = useState(defaultEnd ?? "12:00");
   const [purpose, setPurpose] = useState("");
+  const [headcount, setHeadcount] = useState("");
+  const [requestNote, setRequestNote] = useState("");
+  const [agree, setAgree] = useState(false);
+  const [avail, setAvail] = useState<Availability | null>(null);
+  const [availLoading, setAvailLoading] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -89,6 +107,34 @@ export function BookingForm({
     fetchProducts(facilityId);
   }, [facilityId, fetchProducts]);
 
+  // 날짜 · 창고(스튜디오)가 바뀌면 그날의 예약 현황을 불러온다.
+  useEffect(() => {
+    if (!facilityId || !date) { setAvail(null); return; }
+    let alive = true;
+    setAvailLoading(true);
+    fetch(`/api/facilities/${facilityId}/availability?date=${date}`)
+      .then((r) => r.json())
+      .then((j) => { if (alive) setAvail(j.ok ? j.data : null); })
+      .catch(() => alive && setAvail(null))
+      .finally(() => alive && setAvailLoading(false));
+    return () => { alive = false; };
+  }, [facilityId, date]);
+
+  const durationMin = toMin(end) - toMin(start);
+  const hours = durationMin > 0 ? durationMin / 60 : 0;
+  const unitPrice = avail?.basePrice ?? currentFacilityPrice();
+  const estimate = Math.round(unitPrice * hours);
+  const minHours = avail?.minHours ?? facilities.find((f) => f.id === facilityId)?.minHours ?? 1;
+  const conflict = avail?.booked.find((b) => toMin(start) < toMin(b.end) && toMin(end) > toMin(b.start));
+
+  function currentFacilityPrice() {
+    return facilities.find((f) => f.id === facilityId)?.basePrice ?? 0;
+  }
+  function setDuration(h: number) {
+    const e = Math.min(toMin(start) + h * 60, 24 * 60);
+    setEnd(toHm(e));
+  }
+
   function toggleProduct(id: string) {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -114,6 +160,11 @@ export function BookingForm({
     setError("");
     if (!date) { setError("날짜를 선택하세요."); return; }
     if (!start || !end) { setError("시작/종료 시간을 선택하세요."); return; }
+    if (durationMin <= 0) { setError("종료 시간은 시작 시간보다 뒤여야 합니다."); return; }
+    if (hours < minHours) { setError(`최소 ${minHours}시간 이상 예약해야 합니다.`); return; }
+    if (avail?.closed) { setError(`선택한 날짜는 예약할 수 없습니다. (${avail.closedReason})`); return; }
+    if (conflict) { setError(`${conflict.start}~${conflict.end}에 이미 예약이 있습니다. 다른 시간을 선택하세요.`); return; }
+    if (currentFacility?.cancelPolicy && !agree) { setError("취소·환불 규정에 동의해 주세요."); return; }
 
     setLoading(true);
     const res = await fetch("/api/bookings", {
@@ -123,6 +174,8 @@ export function BookingForm({
         facilityId,
         purpose,
         expectedProducts: expectedProductsText || undefined,
+        headcount: headcount ? Number(headcount) : undefined,
+        requestNote: requestNote || undefined,
         startAt: `${date}T${start}:00`,
         endAt: `${date}T${end}:00`,
       }),
@@ -130,7 +183,7 @@ export function BookingForm({
     const json = await res.json();
     setLoading(false);
     if (!json.ok) { setError(json.error ?? "예약 신청에 실패했습니다."); return; }
-    router.push("/seller/bookings");
+    router.push("/seller/bookings?status=PENDING");
     router.refresh();
   }
 
@@ -189,6 +242,46 @@ export function BookingForm({
                 <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
               </div>
             </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">이용 시간</span>
+              {[1, 2, 3, 4, 6, 8].filter((h) => h >= minHours).map((h) => (
+                <button key={h} type="button" onClick={() => setDuration(h)}
+                  className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${Math.abs(hours - h) < 0.01 ? "border-navy bg-navy text-white" : "border-border bg-white text-navy hover:border-brand-300"}`}>
+                  {h}시간
+                </button>
+              ))}
+              <span className="ml-auto text-xs font-semibold text-navy">{hours > 0 ? `${hours}시간` : "-"}{minHours > 1 && ` · 최소 ${minHours}시간`}</span>
+            </div>
+
+            {date && (
+              <div className="rounded-xl border border-border bg-white p-3">
+                <p className="mb-2 text-xs font-bold text-navy">{date} 예약 현황</p>
+                {availLoading ? <p className="text-xs text-muted-foreground">확인 중...</p> : !avail ? <p className="text-xs text-muted-foreground">예약 현황을 불러오지 못했습니다.</p> : avail.closed ? (
+                  <p className="text-xs font-semibold text-red-600">예약 불가 · {avail.closedReason}</p>
+                ) : (
+                  <>
+                    <div className="relative h-7 overflow-hidden rounded-md bg-emerald-50">
+                      {(() => {
+                        const o = toMin(avail.openTime), c = Math.max(toMin(avail.closeTime), o + 60), span = c - o;
+                        const pos = (a: string, b: string) => ({ left: `${Math.max(0, (toMin(a) - o) / span * 100)}%`, width: `${Math.max(0, (Math.min(toMin(b), c) - Math.max(toMin(a), o)) / span * 100)}%` });
+                        return (
+                          <>
+                            {avail.booked.map((b, i) => <div key={i} className={`absolute inset-y-0 ${b.status === "APPROVED" ? "bg-red-300" : "bg-amber-200"}`} style={pos(b.start, b.end)} title={`${b.start}~${b.end}`} />)}
+                            {durationMin > 0 && <div className={`absolute inset-y-1 rounded border-2 ${conflict ? "border-red-600" : "border-navy"}`} style={pos(start, end)} />}
+                          </>
+                        );
+                      })()}
+                    </div>
+                    <div className="mt-1 flex justify-between text-[10px] text-muted-foreground"><span>{avail.openTime}</span><span>{avail.closeTime}</span></div>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {avail.booked.length === 0 ? "아직 예약이 없어 원하는 시간에 신청할 수 있어요." : `예약된 시간: ${avail.booked.map((b) => `${b.start}~${b.end}${b.status === "PENDING" ? "(대기)" : ""}`).join(", ")}`}
+                    </p>
+                    {avail.hasSlots && <p className="mt-0.5 text-[11px] text-muted-foreground">운영 시간대: {avail.slots.map((s) => `${s.startTime}~${s.endTime}`).join(", ")}</p>}
+                    {conflict && <p className="mt-1 text-xs font-semibold text-red-600">선택한 시간이 기존 예약({conflict.start}~{conflict.end})과 겹칩니다.</p>}
+                  </>
+                )}
+              </div>
+            )}
             <div>
               <Label>방송 목적</Label>
               <Input
@@ -196,6 +289,17 @@ export function BookingForm({
                 onChange={(e) => setPurpose(e.target.value)}
                 placeholder="예: 신상 패션 라이브 / 건강식품 특가전"
               />
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[140px_1fr]">
+              <div>
+                <Label>방문 인원</Label>
+                <Input type="number" min={1} max={currentFacility?.capacity ?? 500} value={headcount} onChange={(e) => setHeadcount(e.target.value)} placeholder="명" />
+                {currentFacility?.capacity ? <p className="mt-1 text-[11px] text-muted-foreground">최대 {currentFacility.capacity}명</p> : null}
+              </div>
+              <div>
+                <Label>요청사항</Label>
+                <Textarea value={requestNote} onChange={(e) => setRequestNote(e.target.value)} rows={2} maxLength={1000} placeholder="예: 그린스크린 세팅, 조명 사전 점검, 주차 2대" />
+              </div>
             </div>
           </div>
         </CardContent>
@@ -384,7 +488,17 @@ export function BookingForm({
               {selectedIds.size > 0 && (
                 <p><span className="font-semibold text-navy">상품:</span> {selectedIds.size}개 선택</p>
               )}
+              {headcount && <p><span className="font-semibold text-navy">인원:</span> {headcount}명</p>}
+              {unitPrice > 0 && hours > 0 && (
+                <p className="pt-1 text-sm"><span className="font-semibold text-navy">예상 이용료:</span> <span className="font-extrabold text-brand-700">{formatKRW(estimate)}</span> <span>({formatKRW(unitPrice)} × {hours}시간)</span></p>
+              )}
             </div>
+            {currentFacility?.cancelPolicy && (
+              <label className="mb-4 flex items-start gap-2 rounded-lg border border-border p-3 text-xs text-muted-foreground">
+                <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 h-4 w-4 accent-brand-500" />
+                <span><span className="font-semibold text-navy">취소·환불 규정에 동의합니다.</span><br /><span className="whitespace-pre-line">{currentFacility.cancelPolicy}</span></span>
+              </label>
+            )}
             <Button className="w-full" size="lg" disabled={loading}>
               {loading ? (
                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" />처리 중...</>

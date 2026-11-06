@@ -2,8 +2,8 @@ import { z } from "zod";
 
 export const signupSchema = z.object({
   email: z.string().email("올바른 이메일을 입력하세요."),
-  password: z.string().min(8, "비밀번호는 8자 이상이어야 합니다."),
-  name: z.string().min(1, "이름을 입력하세요."),
+  password: z.string().min(8, "비밀번호는 8자 이상이어야 합니다.").max(100),
+  name: z.string().trim().min(1, "이름을 입력하세요.").max(40),
   phone: z.string().optional(),
   companyName: z.string().optional(),
   role: z.enum(["SELLER", "FACILITY_ADMIN", "MANAGER"]),
@@ -14,8 +14,10 @@ export const bookingSchema = z.object({
   facilityId: z.string().min(1),
   startAt: z.string().min(1, "시작 시간을 선택하세요."),
   endAt: z.string().min(1, "종료 시간을 선택하세요."),
-  purpose: z.string().optional(),
-  expectedProducts: z.string().optional(),
+  purpose: z.string().max(200).optional(),
+  expectedProducts: z.string().max(500).optional(),
+  headcount: z.coerce.number().int().min(1).max(500).optional(),
+  requestNote: z.string().max(1000).optional(),
 });
 
 export const facilityProductSchema = z.object({
@@ -63,13 +65,13 @@ export const updateNumberSchema = z.object({
 
 export const checkoutSchema = z.object({
   sessionSlug: z.string().min(1),
-  buyerName: z.string().min(1, "이름을 입력하세요."),
-  buyerPhone: z.string().min(8, "연락처를 입력하세요."),
-  buyerAddress: z.string().optional(),
+  buyerName: z.string().trim().min(1, "이름을 입력하세요.").max(40),
+  buyerPhone: z.string().trim().regex(/^[0-9\-+ ]{8,20}$/, "연락처를 정확히 입력하세요."),
+  buyerAddress: z.string().trim().max(300).optional(),
   method: z.enum(["CARD", "EASY_PAY", "BANK_TRANSFER"]),
   items: z.array(z.object({
     liveSessionProductId: z.string().min(1),
-    quantity: z.coerce.number().int().min(1),
+    quantity: z.coerce.number().int().min(1).max(99, "한 상품은 최대 99개까지 주문할 수 있습니다."),
     optionLabel: z.string().optional(),
   })).min(1, "상품을 1개 이상 담아주세요."),
 });

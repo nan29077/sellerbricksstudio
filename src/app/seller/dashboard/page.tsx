@@ -5,6 +5,8 @@ import { PageHeader, StatCard } from "@/components/layout/dashboard-widgets";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatKRW, formatDate, formatDateTime } from "@/lib/utils";
+import { addDays, addMonths, kstStartOfMonth } from "@/lib/kst";
+import { BarChart } from "@/components/list/charts";
 import {
   CalendarPlus, Search, Clock, ArrowRight, Warehouse,
   CalendarDays, ExternalLink, TrendingUp, Wallet, Star,
@@ -23,7 +25,7 @@ const BOOKING_STATUS_MAP: Record<string, { label: string; color: string }> = {
 
 async function getDashboardData(userId: string) {
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthStart = kstStartOfMonth(now);
 
   const [
     totalBookings,
@@ -73,7 +75,22 @@ async function getDashboardData(userId: string) {
     }),
   ]);
 
+  const sixStart = addMonths(monthStart, -5);
+  const [reviewTodo, repliedInquiries, activePromos, plannedPosts, spendRows] = await Promise.all([
+    prisma.booking.count({ where: { sellerId: userId, status: "COMPLETED", review: null } }),
+    prisma.facilityInquiry.count({ where: { sellerId: userId, reply: { not: null }, repliedAt: { gte: addDays(now, -7) } } }),
+    prisma.sellerPromotion.count({ where: { sellerId: userId, isPublished: true, startAt: { lte: now }, endAt: { gte: now } } }),
+    prisma.snsPost.count({ where: { sellerId: userId, status: "PLANNED", scheduledAt: { gte: now, lt: addDays(now, 7) } } }),
+    prisma.booking.findMany({ where: { sellerId: userId, status: { in: ["APPROVED", "COMPLETED"] }, startAt: { gte: sixStart } }, select: { startAt: true, totalPrice: true } }),
+  ]);
+  const spending = Array.from({ length: 6 }, (_, i) => {
+    const m = addMonths(sixStart, i), n = addMonths(m, 1);
+    return { label: `${new Date(m.getTime() + 9 * 3600000).getUTCMonth() + 1}월`, value: spendRows.filter((b) => b.startAt >= m && b.startAt < n).reduce((s, b) => s + b.totalPrice, 0) };
+  });
+
   return {
+    todos: { reviewTodo, repliedInquiries, activePromos, plannedPosts },
+    spending,
     totalBookings,
     thisMonthBookings,
     pendingBookings,
@@ -101,6 +118,13 @@ export default async function SellerDashboard() {
   const upcomingBookings     = data?.upcomingBookings ?? [];
   const totalSettlementAmount = data?.totalSettlementAmount ?? 0;
   const recommendedFacilities = data?.recommendedFacilities ?? [];
+  const todos = data?.todos;
+  const todoItems = todos ? [
+    { n: todos.reviewTodo, label: "리뷰를 기다리는 이용 완료 예약", href: "/seller/bookings?status=COMPLETED", icon: Star },
+    { n: todos.repliedInquiries, label: "최근 7일 답변 받은 문의", href: "/seller/farm-reservations?tab=inquiries", icon: CheckCircle2 },
+    { n: todos.activePromos, label: "진행 중인 이벤트", href: "/seller/marketing/events?status=ACTIVE", icon: Megaphone },
+    { n: todos.plannedPosts, label: "7일 내 게시 예정 콘텐츠", href: "/seller/marketing", icon: Share2 },
+  ].filter((t) => t.n > 0) : [];
 
   return (
     <div className="space-y-6">
@@ -159,6 +183,33 @@ export default async function SellerDashboard() {
         <StatCard label="이번 달 예약"   value={`${thisMonthBookings}건`} sub={`대기 ${pendingBookings}건`} icon={CalendarDays} />
         <StatCard label="수령 정산금"    value={totalSettlementAmount > 0 ? formatKRW(totalSettlementAmount) : "—"} sub="완료된 정산 합계" icon={Wallet} />
         <StatCard label="다가오는 예약"  value={`${upcomingBookings.length}건`} sub="승인된 예약"  icon={CheckCircle2} />
+      </div>
+
+      {/* 할 일 + 월별 이용료 */}
+      <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
+        <Card>
+          <CardContent className="pt-5">
+            <p className="mb-3 text-sm font-extrabold text-navy">지금 챙길 일</p>
+            {todoItems.length === 0 ? <p className="py-4 text-center text-sm text-muted-foreground">밀린 일이 없어요. 👍</p> : (
+              <div className="space-y-2">
+                {todoItems.map((t) => (
+                  <Link key={t.label} href={t.href} className="flex items-center gap-3 rounded-xl border border-border px-3 py-2.5 transition hover:border-brand-300 hover:bg-brand-50/50">
+                    <t.icon className="h-4 w-4 text-brand-600" />
+                    <span className="flex-1 text-sm text-slate-700">{t.label}</span>
+                    <span className="rounded-full bg-navy px-2 py-0.5 text-xs font-bold text-white">{t.n}</span>
+                    <ArrowRight className="h-4 w-4 text-slate-400" />
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5">
+            <div className="mb-3 flex items-center justify-between"><p className="text-sm font-extrabold text-navy">월별 창고(스튜디오) 이용료</p><Link href="/seller/settlements" className="text-xs font-semibold text-brand-700 hover:underline">자세히</Link></div>
+            <BarChart data={data?.spending ?? []} height={100} format={(n) => formatKRW(n)} />
+          </CardContent>
+        </Card>
       </div>
 
       {/* 빠른 이동 */}

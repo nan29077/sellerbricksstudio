@@ -1,132 +1,122 @@
-"use client";
+import { prisma } from "@/lib/prisma";
+import { requireRole } from "@/lib/auth";
+import { PageHeader } from "@/components/layout/dashboard-widgets";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Kpi, BarChart, ProgressRow } from "@/components/list/charts";
+import { PLATFORMS, periodStatus } from "@/lib/marketing-labels";
+import { formatKRW } from "@/lib/utils";
+import { addMonths, kstParts, kstStartOfMonth } from "@/lib/kst";
+import { Eye, Heart, MousePointerClick, Users, Send, Ticket, Target, CalendarCheck } from "lucide-react";
 
-import { PageHeader, StatCard } from "@/components/layout/dashboard-widgets";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Eye, MousePointerClick, TrendingUp, ShoppingCart, BarChart3,
-  ArrowUpRight, ArrowDownRight,
-} from "lucide-react";
+export const dynamic = "force-dynamic";
 
-const WEEKLY_VIEWS = [
-  { day: "월", value: 1800 },
-  { day: "화", value: 2400 },
-  { day: "수", value: 2100 },
-  { day: "목", value: 3200 },
-  { day: "금", value: 2900 },
-  { day: "토", value: 4100 },
-  { day: "일", value: 3600 },
-];
+export default async function SellerMarketingAnalytics() {
+  const user = await requireRole(["SELLER"]);
+  const start = addMonths(kstStartOfMonth(new Date()), -5);
+  const [accounts, posts, promos, coupons, bookings] = await Promise.all([
+    prisma.snsAccount.findMany({ where: { sellerId: user.id } }),
+    prisma.snsPost.findMany({ where: { sellerId: user.id, status: "POSTED", scheduledAt: { gte: start } } }),
+    prisma.sellerPromotion.findMany({ where: { sellerId: user.id, isPublished: true } }),
+    prisma.sellerCoupon.findMany({ where: { sellerId: user.id } }),
+    prisma.booking.findMany({ where: { sellerId: user.id, status: { in: ["APPROVED", "COMPLETED"] }, startAt: { gte: start } }, select: { startAt: true, totalPrice: true } }),
+  ]);
 
-const CHANNELS = [
-  { name: "YouTube",   views: 12400, clicks: 980, ctr: 7.9, trend: +12.4 },
-  { name: "Instagram", views: 8500,  clicks: 610, ctr: 7.2, trend: +5.1 },
-  { name: "블로그",    views: 4200,  clicks: 240, ctr: 5.7, trend: -2.3 },
-  { name: "이벤트 페이지", views: 3100, clicks: 350, ctr: 11.3, trend: +18.9 },
-];
+  const months = Array.from({ length: 6 }, (_, i) => addMonths(start, i));
+  const label = (d: Date) => `${kstParts(d).month}월`;
+  const inMonth = (d: Date, m: Date) => d >= m && d < addMonths(m, 1);
 
-const TOP_CONTENTS = [
-  { title: "여름 세일 메인 배너",       views: 12400, clicks: 1120, ctr: 9.0 },
-  { title: "프로모션 숏폼 영상 (15초)", views: 21600, clicks: 1580, ctr: 7.3 },
-  { title: "라이브 방송 예고 썸네일",   views: 8300,  clicks: 540,  ctr: 6.5 },
-];
+  const sum = (k: "views" | "likes" | "comments" | "clicks") => posts.reduce((s, p) => s + (p[k] ?? 0), 0);
+  const views = sum("views"), likes = sum("likes"), comments = sum("comments"), clicks = sum("clicks");
+  const engagement = views ? Math.round(((likes + comments) / views) * 1000) / 10 : 0;
+  const ctr = views ? Math.round((clicks / views) * 1000) / 10 : 0;
+  const followers = accounts.reduce((s, a) => s + a.followers, 0);
 
-export default function SellerMarketingAnalyticsPage() {
-  const maxWeekly = Math.max(...WEEKLY_VIEWS.map((d) => d.value));
-  const maxChannelViews = Math.max(...CHANNELS.map((c) => c.views));
+  const byPlatform = Object.keys(PLATFORMS).map((k) => {
+    const ps = posts.filter((p) => p.platform === k);
+    const v = ps.reduce((s, p) => s + (p.views ?? 0), 0);
+    const e = ps.reduce((s, p) => s + (p.likes ?? 0) + (p.comments ?? 0), 0);
+    return { k, label: PLATFORMS[k].label, count: ps.length, views: v, rate: v ? Math.round((e / v) * 1000) / 10 : 0 };
+  }).filter((r) => r.count > 0).sort((a, b) => b.views - a.views);
+  const topPosts = [...posts].sort((a, b) => (b.views ?? 0) - (a.views ?? 0)).slice(0, 5);
+
+  const ended = promos.filter((p) => periodStatus(p.startAt, p.endAt).key === "ENDED" && p.targetAmount);
+  const couponUsed = coupons.reduce((s, c) => s + c.usedQty, 0);
 
   return (
-    <div className="space-y-5">
-      <PageHeader
-        title="마케팅 성과 분석"
-        description="조회수·클릭률·전환 등 마케팅 성과를 한눈에 확인하세요."
-      />
+    <div className="space-y-5 pb-24 md:pb-0">
+      <PageHeader title="마케팅 분석" description="최근 6개월 동안 등록한 SNS 성과·이벤트·쿠폰·방송 예약 데이터를 모아 보여줍니다." />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="총 조회수" value="28,200" sub="최근 7일 · 전주 대비 +14%" icon={Eye} />
-        <StatCard label="총 클릭"   value="2,180"  sub="배너·링크 클릭 합산"        icon={MousePointerClick} />
-        <StatCard label="평균 클릭률" value="7.7%" sub="업계 평균 4.2%"             icon={TrendingUp} />
-        <StatCard label="전환 주문" value="164건"  sub="마케팅 유입 주문"           icon={ShoppingCart} />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Kpi label="총 팔로워" value={followers.toLocaleString()} sub={`${accounts.length}개 채널`} icon={Users} tone="brand" />
+        <Kpi label="콘텐츠 조회수" value={views.toLocaleString()} sub={`게시 ${posts.length}건`} icon={Eye} tone="blue" />
+        <Kpi label="참여율" value={`${engagement}%`} sub="(좋아요+댓글)/조회" icon={Heart} tone="red" />
+        <Kpi label="링크 클릭률" value={`${ctr}%`} sub={`클릭 ${clicks.toLocaleString()}회`} icon={MousePointerClick} tone="green" />
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-5">
+      <div className="grid gap-5 lg:grid-cols-2">
         <Card>
-          <CardContent className="pt-5">
-            <div className="flex items-center gap-2 mb-4">
-              <BarChart3 className="h-4 w-4 text-brand-500" />
-              <h3 className="font-bold text-navy">이번 주 일별 조회수</h3>
-            </div>
-            <div className="flex items-end gap-2 h-32">
-              {WEEKLY_VIEWS.map((d) => (
-                <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
-                  <span className="text-[10px] text-muted-foreground font-medium">{(d.value / 1000).toFixed(1)}K</span>
-                  <div
-                    className="w-full bg-brand-500 rounded-t-sm hover:bg-brand-600 transition-all"
-                    style={{ height: `${Math.max(8, (d.value / maxWeekly) * 100)}%` }}
-                  />
-                  <span className="text-[10px] text-muted-foreground">{d.day}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
+          <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Send className="h-4 w-4 text-brand-500" />월별 게시 수</CardTitle></CardHeader>
+          <CardContent><BarChart data={months.map((m) => ({ label: label(m), value: posts.filter((p) => inMonth(p.scheduledAt, m)).length }))} format={(n) => `${n}건`} /></CardContent>
         </Card>
-
         <Card>
-          <CardContent className="pt-5">
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="h-4 w-4 text-brand-500" />
-              <h3 className="font-bold text-navy">채널별 성과</h3>
-            </div>
-            <div className="space-y-3.5">
-              {CHANNELS.map((c) => (
-                <div key={c.name}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-semibold text-navy">{c.name}</span>
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="text-muted-foreground">{c.views.toLocaleString()}회 · CTR {c.ctr}%</span>
-                      <span className={`flex items-center gap-0.5 font-semibold ${c.trend >= 0 ? "text-emerald-600" : "text-red-500"}`}>
-                        {c.trend >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                        {Math.abs(c.trend)}%
-                      </span>
-                    </div>
-                  </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-brand-500 rounded-full"
-                      style={{ width: `${(c.views / maxChannelViews) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
+          <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Eye className="h-4 w-4 text-brand-500" />월별 조회수</CardTitle></CardHeader>
+          <CardContent><BarChart data={months.map((m) => ({ label: label(m), value: posts.filter((p) => inMonth(p.scheduledAt, m)).reduce((s, p) => s + (p.views ?? 0), 0) }))} /></CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardContent className="pt-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Eye className="h-4 w-4 text-brand-500" />
-            <h3 className="font-bold text-navy">성과 상위 콘텐츠</h3>
-          </div>
-          <div className="space-y-3">
-            {TOP_CONTENTS.map((t, i) => (
-              <div key={t.title} className="flex items-center gap-3 rounded-lg border border-border p-3">
-                <div className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold shrink-0 ${
-                  i === 0 ? "bg-amber-100 text-amber-700" : i === 1 ? "bg-gray-100 text-gray-600" : "bg-orange-50 text-orange-600"
-                }`}>
-                  {i + 1}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-navy truncate">{t.title}</p>
-                  <p className="text-xs text-muted-foreground">조회 {t.views.toLocaleString()}회 · 클릭 {t.clicks.toLocaleString()}회</p>
-                </div>
-                <Badge tone={t.ctr >= 8 ? "green" : "blue"}>CTR {t.ctr}%</Badge>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <Card>
+          <CardHeader><CardTitle className="text-base">채널별 성과</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {byPlatform.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">SNS 마케팅 메뉴에서 게시 완료한 콘텐츠의 조회수·좋아요를 입력하면 채널별 성과가 표시됩니다.</p>
+              : byPlatform.map((r) => <ProgressRow key={r.k} label={r.label} value={r.views} max={byPlatform[0].views} right={`${r.views.toLocaleString()} · 참여 ${r.rate}%`} />)}
+            {accounts.length > 0 && (
+              <div className="border-t pt-3">
+                <p className="mb-2 text-xs font-bold text-slate-500">채널별 팔로워</p>
+                {accounts.sort((a, b) => b.followers - a.followers).map((a) => <ProgressRow key={a.id} label={`${PLATFORMS[a.platform]?.label} ${a.handle}`} value={a.followers} max={accounts[0].followers} tone="navy" />)}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle className="text-base">조회수 상위 콘텐츠</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {topPosts.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">데이터가 없습니다.</p> : topPosts.map((p, i) => (
+              <div key={p.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-navy text-xs font-bold text-white">{i + 1}</span>
+                <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-navy">{p.title}</p><p className="text-[11px] text-muted-foreground">{PLATFORMS[p.platform]?.label}</p></div>
+                <div className="text-right text-xs"><p className="font-bold text-navy">👁 {(p.views ?? 0).toLocaleString()}</p><p className="text-muted-foreground">♥ {(p.likes ?? 0).toLocaleString()} · 클릭 {(p.clicks ?? 0).toLocaleString()}</p></div>
               </div>
             ))}
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-3">
+        <Card>
+          <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Target className="h-4 w-4 text-brand-500" />이벤트 목표 달성</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {ended.length === 0 ? <p className="py-4 text-center text-sm text-muted-foreground">목표가 있는 종료 이벤트가 없습니다.</p> : ended.slice(0, 6).map((p) => {
+              const rate = Math.round(((p.resultAmount ?? 0) / p.targetAmount!) * 100);
+              return <ProgressRow key={p.id} label={p.title} value={Math.min(rate, 100)} max={100} right={`${rate}%`} tone={rate >= 100 ? "green" : "brand"} />;
+            })}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Ticket className="h-4 w-4 text-brand-500" />쿠폰 사용</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-3xl font-extrabold text-navy">{couponUsed.toLocaleString()}<span className="ml-1 text-sm font-medium text-muted-foreground">회 사용</span></p>
+            {coupons.sort((a, b) => b.usedQty - a.usedQty).slice(0, 5).map((c) => <ProgressRow key={c.id} label={c.name} value={c.usedQty} max={Math.max(1, coupons[0]?.usedQty ?? 1)} tone="navy" />)}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle className="flex items-center gap-2 text-base"><CalendarCheck className="h-4 w-4 text-brand-500" />월별 방송 예약 · 이용료</CardTitle></CardHeader>
+          <CardContent>
+            <BarChart height={110} data={months.map((m) => ({ label: label(m), value: bookings.filter((b) => inMonth(b.startAt, m)).reduce((s, b) => s + b.totalPrice, 0) }))} format={(n) => formatKRW(n)} />
+            <p className="mt-2 text-xs text-muted-foreground">6개월 확정 예약 {bookings.length}건 · {formatKRW(bookings.reduce((s, b) => s + b.totalPrice, 0))}</p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

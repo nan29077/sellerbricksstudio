@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { ORDER_STATUS } from "@/lib/status";
 import { formatKRW, formatDateTime } from "@/lib/utils";
+import { OrderStatusActions } from "@/components/order-status-actions";
 import { Package, ShoppingCart, TrendingUp, Truck, CheckCircle2 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -61,7 +62,7 @@ export default async function AdminOrders() {
         ))}
       </div>
 
-      <Table headers={["주문번호", "창고(스튜디오)", "셀러", "구매자", "금액", "상태", "일시"]}>
+      <Table headers={["주문번호", "창고(스튜디오)", "셀러", "구매자", "금액", "상태", "일시", "처리"]}>
         {orders.map((o) => {
           const s = ORDER_STATUS[o.status] ?? { label: o.status, tone: "gray" };
           return (
@@ -73,6 +74,7 @@ export default async function AdminOrders() {
               <Td className="font-semibold text-navy">{formatKRW(o.totalAmount)}</Td>
               <Td><Badge tone={s.tone}>{s.label}</Badge></Td>
               <Td className="text-xs text-muted-foreground">{formatDateTime(o.createdAt)}</Td>
+              <Td><OrderStatusActions orderId={o.id} status={o.status} /></Td>
             </tr>
           );
         })}

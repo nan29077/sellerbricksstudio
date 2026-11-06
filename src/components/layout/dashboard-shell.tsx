@@ -7,11 +7,12 @@ import { useState } from "react";
 import {
   LogOut, Menu, X, type LucideIcon,
   LayoutDashboard, CalendarDays, MessageSquare,
-  Warehouse, CalendarClock, Users, Building2,
+  Warehouse, CalendarClock, Users, Building2, SquarePlus,
   Settings, ScrollText, Sliders, Image as ImageIcon,
   ChevronRight, Home, Globe, TrendingUp, Megaphone,
-  Share2, BarChart3, Ticket, LayoutTemplate,
+  Share2, BarChart3, Ticket, LayoutTemplate, Star, Wallet, Coins,
 } from "lucide-react";
+import { NotificationBell } from "./notification-bell";
 import { cn } from "@/lib/utils";
 import { getProfileImage } from "@/lib/profile";
 
@@ -27,6 +28,7 @@ const ROLE_NAV: Record<string, NavSection[]> = {
       { href: "/admin/users",      label: "회원 관리", icon: Users },
       { href: "/admin/facilities", label: "창고(스튜디오) 관리", icon: Building2 },
       { href: "/admin/managers",   label: "매니저 관리", icon: Users },
+      { href: "/admin/reviews",    label: "리뷰 관리", icon: Star },
     ]},
     { title: "예약 관리", items: [
       { href: "/admin/bookings",          label: "예약 현황", icon: CalendarDays },
@@ -74,12 +76,14 @@ const ROLE_NAV: Record<string, NavSection[]> = {
     { title: "운영", items: [
       { href: "/facility/dashboard", label: "대시보드",  icon: LayoutDashboard },
       { href: "/facility/profile",   label: "창고(스튜디오) 정보 · 편집", icon: Warehouse },
+      { href: "/facility/register",  label: "창고(스튜디오) 등록", icon: SquarePlus },
       { href: "/facility/pages",     label: "창고(스튜디오) 페이지 꾸미기", icon: LayoutTemplate },
     ]},
     { title: "예약 관리", items: [
       { href: "/facility/bookings",   label: "예약 현황", icon: CalendarDays },
       { href: "/facility/schedule",   label: "일정 관리", icon: CalendarClock },
       { href: "/facility/inquiries",  label: "셀러 문의", icon: MessageSquare },
+      { href: "/facility/reviews",    label: "리뷰 관리", icon: Star },
     ]},
     { title: "창고(스튜디오) 운영", items: [
       { href: "/facility/settlements", label: "정산 내역", icon: TrendingUp },
@@ -88,10 +92,26 @@ const ROLE_NAV: Record<string, NavSection[]> = {
   ],
 };
 
+ROLE_NAV.MANAGER = [
+  { title: "영업 현황", items: [
+    { href: "/manager/dashboard",  label: "대시보드", icon: LayoutDashboard },
+    { href: "/manager/facilities", label: "담당 창고(스튜디오)", icon: Building2 },
+    { href: "/manager/bookings",   label: "예약 현황", icon: CalendarDays },
+  ]},
+  { title: "매출 · 수수료", items: [
+    { href: "/manager/sales",       label: "매출 현황", icon: Wallet },
+    { href: "/manager/commissions", label: "내 수수료", icon: Coins },
+  ]},
+  { title: "계정", items: [
+    { href: "/manager/settings", label: "설정", icon: Settings },
+  ]},
+];
+
 const ROLE_BADGE_COLOR: Record<string, string> = {
   SUPER_ADMIN:    "bg-red-100 text-red-700",
   SELLER:         "bg-brand-100 text-brand-700",
   FACILITY_ADMIN: "bg-blue-100 text-blue-700",
+  MANAGER:        "bg-purple-100 text-purple-700",
 };
 
 export function DashboardShell({
@@ -234,7 +254,8 @@ export function DashboardShell({
             priority
           />
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          <NotificationBell />
           <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", ROLE_BADGE_COLOR[role] ?? "bg-gray-100 text-gray-600")}>
             {roleLabel}
           </span>
@@ -261,7 +282,7 @@ export function DashboardShell({
         <div className="mx-auto max-w-7xl px-4 py-6 pb-24 sm:px-6 md:px-8 md:py-8 md:pb-12">
           <div className="mb-7 hidden items-center justify-between border-b border-[#E8E4DB] pb-5 md:flex">
             <div><p className="text-[10px] font-extrabold tracking-[0.2em] text-brand-700">SELLERBRICKS WORKSPACE</p><p className="mt-1 text-sm font-semibold text-slate-500">{roleLabel} <span className="mx-2 text-slate-300">/</span> <span className="text-navy">{currentPage}</span></p></div>
-            <Link href="/" className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 transition hover:text-brand-700"><Home className="h-4 w-4" />사이트 보기</Link>
+            <div className="flex items-center gap-3"><NotificationBell /><Link href="/" className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 transition hover:text-brand-700"><Home className="h-4 w-4" />사이트 보기</Link></div>
           </div>
           {children}
         </div>

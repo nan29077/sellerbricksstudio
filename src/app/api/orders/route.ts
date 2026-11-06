@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
 
     const session = await prisma.liveSession.findUnique({ where: { slug: data.sessionSlug } });
     if (!session) return fail("방송을 찾을 수 없습니다.", 404);
-    if (session.status === "CANCELLED") return fail("종료된 방송입니다.");
+    if (session.status === "CANCELLED") return fail("취소된 방송입니다.");
 
     // 상품 검증 + 금액 계산 (서버 기준)
     const lspIds = data.items.map((i) => i.liveSessionProductId);
@@ -22,10 +22,17 @@ export async function POST(req: NextRequest) {
     const map = new Map(lsps.map((l) => [l.id, l]));
     if (lsps.length !== new Set(lspIds).size) return fail("판매 종료되었거나 존재하지 않는 상품이 있습니다.");
 
+    // 같은 상품을 여러 줄로 담은 경우까지 합쳐서 재고를 확인한다.
+    const qtyByProduct = new Map<string, number>();
+    for (const i of data.items) qtyByProduct.set(i.liveSessionProductId, (qtyByProduct.get(i.liveSessionProductId) ?? 0) + i.quantity);
+    for (const [id, qty] of qtyByProduct) {
+      const l = map.get(id)!;
+      if (qty > l.stockSnapshot) return fail(`${l.nameSnapshot}: 재고가 부족합니다. (남은 수량 ${l.stockSnapshot}개)`, 409);
+    }
+
     let total = 0;
     const itemData = data.items.map((i) => {
       const l = map.get(i.liveSessionProductId)!;
-      if (i.quantity > l.stockSnapshot) throw new Error(`${l.nameSnapshot}: 재고가 부족합니다.`);
       const lineTotal = l.priceSnapshot * i.quantity;
       total += lineTotal;
       return { liveSessionProductId: l.id, displayNumber: l.displayNumber, productName: l.nameSnapshot, unitPrice: l.priceSnapshot, quantity: i.quantity, optionLabel: i.optionLabel, lineTotal };
@@ -34,6 +41,15 @@ export async function POST(req: NextRequest) {
     const adapter = getPaymentAdapter();
 
     const result = await prisma.$transaction(async (tx) => {
+      // 재고를 조건부로 먼저 차감한다. 동시에 들어온 주문이 재고를 넘기면 여기서 막혀 전체가 롤백된다.
+      for (const [id, qty] of qtyByProduct) {
+        const dec = await tx.liveSessionProduct.updateMany({
+          where: { id, isActive: true, stockSnapshot: { gte: qty } },
+          data: { stockSnapshot: { decrement: qty } },
+        });
+        if (dec.count !== 1) throw new Error(`${map.get(id)!.nameSnapshot}: 방금 재고가 소진되었습니다.`);
+      }
+
       const order = await tx.order.create({
         data: {
           orderNo: orderNo(), liveSessionId: session.id, sellerId: session.sellerId, facilityId: session.facilityId,
@@ -59,11 +75,6 @@ export async function POST(req: NextRequest) {
       await tx.payment.update({ where: { id: payment.id }, data: { status: "PAID", approvedAt: confirmed.approvedAt } });
       await tx.paymentEvent.create({ data: { paymentId: payment.id, type: "CONFIRMED", payload: JSON.stringify(confirmed) } });
       await tx.order.update({ where: { id: order.id }, data: { status: "PAID" } });
-
-      // 재고 차감
-      for (const i of itemData) {
-        await tx.liveSessionProduct.update({ where: { id: i.liveSessionProductId }, data: { stockSnapshot: { decrement: i.quantity } } });
-      }
       return order;
     });
 

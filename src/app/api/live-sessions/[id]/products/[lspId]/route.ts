@@ -3,6 +3,14 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { ok, fail, handleError } from "@/lib/http";
 import { audit } from "@/lib/audit";
+import { z } from "zod";
+
+const editSchema = z.object({
+  isActive: z.boolean().optional(),
+  stockSnapshot: z.coerce.number().int().min(0, "재고는 0 이상이어야 합니다.").max(1_000_000).optional(),
+  priceSnapshot: z.coerce.number().int().min(0, "가격은 0 이상이어야 합니다.").max(100_000_000).optional(),
+  nameSnapshot: z.string().trim().min(1, "상품명을 입력하세요.").max(100).optional(),
+}).strip();
 
 async function assertAccess(userId: string, role: string, sessionId: string) {
   const s = await prisma.liveSession.findUnique({ where: { id: sessionId }, include: { facility: true } });
@@ -22,7 +30,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     if (body.newNumber != null && body.newNumber !== lsp.displayNumber) {
       const newNumber = Number(body.newNumber);
-      if (newNumber < 1) return fail("상품번호는 1 이상이어야 합니다.");
+      if (!Number.isInteger(newNumber) || newNumber < 1 || newNumber > 9999) return fail("상품번호는 1~9999 사이의 정수여야 합니다.");
       const dup = await prisma.liveSessionProduct.findUnique({
         where: { liveSessionId_displayNumber: { liveSessionId: params.id, displayNumber: newNumber } },
       });
@@ -40,15 +48,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return ok(updated);
     }
 
-    // 기타 수정(활성/재고/가격)
+    // 기타 수정(활성/재고/가격/이름) — 값 형식과 범위를 확인한다.
+    const patch = editSchema.safeParse(body);
+    if (!patch.success) return fail(patch.error.issues[0]?.message ?? "입력값이 올바르지 않습니다.");
     const updated = await prisma.liveSessionProduct.update({
       where: { id: params.lspId },
-      data: {
-        isActive: body.isActive ?? undefined,
-        stockSnapshot: body.stockSnapshot ?? undefined,
-        priceSnapshot: body.priceSnapshot ?? undefined,
-        nameSnapshot: body.nameSnapshot ?? undefined,
-      },
+      data: patch.data,
     });
     await prisma.liveSession.update({ where: { id: params.id }, data: { numberVersion: { increment: 1 } } });
     return ok(updated);
@@ -59,9 +64,20 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   try {
     const user = await requireUser();
     await assertAccess(user.id, user.role, params.id);
-    await prisma.liveSessionProduct.delete({ where: { id: params.lspId } });
+    const lsp = await prisma.liveSessionProduct.findFirst({
+      where: { id: params.lspId, liveSessionId: params.id },
+      include: { _count: { select: { orderItems: true } } },
+    });
+    if (!lsp) return fail("상품을 찾을 수 없습니다.", 404);
+    // 이미 주문된 상품은 주문 내역 보존을 위해 판매만 중단한다.
+    const softDeleted = lsp._count.orderItems > 0;
+    if (softDeleted) {
+      await prisma.liveSessionProduct.update({ where: { id: lsp.id }, data: { isActive: false } });
+    } else {
+      await prisma.liveSessionProduct.delete({ where: { id: lsp.id } });
+    }
     await prisma.liveSession.update({ where: { id: params.id }, data: { numberVersion: { increment: 1 } } });
-    await audit({ actorId: user.id, action: "LIVE_PRODUCT_REMOVE", entity: "LiveSessionProduct", entityId: params.lspId });
-    return ok({ deleted: true });
+    await audit({ actorId: user.id, action: "LIVE_PRODUCT_REMOVE", entity: "LiveSessionProduct", entityId: params.lspId, meta: { softDeleted } });
+    return ok({ deleted: true, softDeleted });
   } catch (e) { return handleError(e); }
 }

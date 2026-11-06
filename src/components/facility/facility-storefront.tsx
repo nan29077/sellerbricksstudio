@@ -2,12 +2,15 @@ import Link from "next/link";
 import { formatKRW } from "@/lib/utils";
 import { FACILITY_PAGE_THEMES, type FacilityPageConfig } from "@/lib/facility-page";
 import { FacilityInquiryButton } from "@/components/facility/facility-inquiry-button";
+import { FavoriteButton } from "@/components/booking/favorite-button";
 import {
   ArrowRight, BadgeCheck, Boxes, CalendarDays, Camera,
   CheckCircle2, ChevronLeft, Clock3, Home, MapPin,
   MessageSquare, ShieldCheck, Store, Tag, UserRound,
-  Warehouse, Wifi,
+  Warehouse, Wifi, Star,
 } from "lucide-react";
+
+type PublicReview = { id: string; rating: number; content: string; reply: string | null; createdAt: string; author: string };
 
 const WEEK = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -29,10 +32,14 @@ export function FacilityStorefront({
   facility: f,
   pageConfig,
   user,
+  reviews = [],
+  favorited = false,
 }: {
   facility: any;
   pageConfig: FacilityPageConfig;
   user: { role?: string; id?: string } | null;
+  reviews?: PublicReview[];
+  favorited?: boolean;
 }) {
   const accent = FACILITY_PAGE_THEMES[pageConfig.theme].accent;
   const isWarehouse = f.type === "WAREHOUSE";
@@ -70,6 +77,7 @@ export function FacilityStorefront({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {user?.role === "SELLER" && <FavoriteButton facilityId={f.id} initial={favorited} className="h-10 rounded-xl border-2 border-navy px-3 shadow-[2px_2px_0_#1A1A2E]" />}
             <a href="#store-inquiry" aria-label="창고(스튜디오) 문의" className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-navy bg-white text-navy shadow-[2px_2px_0_#1A1A2E] transition hover:-translate-y-0.5">
               <MessageSquare className="h-5 w-5" />
             </a>
@@ -399,6 +407,36 @@ export function FacilityStorefront({
                 </div>
               ))}
             </div>
+          </section>
+
+          {/* 리뷰 섹션 */}
+          <section id="store-reviews" className="scroll-mt-36 rounded-[24px] border border-[#EEEAE0] bg-white p-5 shadow-sm sm:p-7">
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-brand-700">Reviews</p>
+                <h2 className="mt-1 text-xl font-black text-navy">이용 셀러 리뷰 <span className="text-brand-700">{reviews.length}</span></h2>
+                <p className="mt-1 text-xs text-slate-400">실제로 이용을 마친 셀러만 남길 수 있는 리뷰입니다</p>
+              </div>
+              <div className="text-right">
+                <p className="flex items-center gap-1 text-2xl font-black text-navy"><Star className="h-6 w-6 fill-brand-500 text-brand-500" />{Number(f.rating ?? 0).toFixed(1)}</p>
+              </div>
+            </div>
+            {reviews.length === 0 ? (
+              <p className="rounded-2xl bg-[#FBF8EE] py-8 text-center text-sm text-slate-400">아직 리뷰가 없습니다. 첫 이용 셀러가 되어보세요!</p>
+            ) : (
+              <div className="space-y-3">
+                {reviews.map((r) => (
+                  <div key={r.id} className="rounded-2xl border border-[#F0ECE3] p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold text-brand-700">{"★".repeat(r.rating)}<span className="text-slate-300">{"★".repeat(5 - r.rating)}</span></span>
+                      <span className="text-[11px] text-slate-400">{r.author} · {new Date(r.createdAt).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" })}</span>
+                    </div>
+                    <p className="mt-2 whitespace-pre-line text-sm text-slate-700">{r.content}</p>
+                    {r.reply && <p className="mt-2 rounded-xl bg-[#FBF8EE] px-3 py-2 text-xs text-slate-600"><b className="text-navy">사장님 답글</b> · {r.reply}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           {/* 문의 섹션 */}

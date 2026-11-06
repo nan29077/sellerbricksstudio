@@ -18,9 +18,13 @@ export async function POST(req: NextRequest) {
       const booking = await prisma.booking.findUnique({ where: { id: data.bookingId } });
       if (!booking || booking.sellerId !== user.id) return fail("예약을 찾을 수 없습니다.", 404);
       if (booking.status !== "APPROVED") return fail("승인된 예약만 라이브 세션을 만들 수 있습니다.");
+      if (booking.facilityId !== data.facilityId) return fail("예약한 창고(스튜디오)와 방송 장소가 다릅니다.");
       const existing = await prisma.liveSession.findUnique({ where: { bookingId: data.bookingId } });
       if (existing) return fail("이미 라이브 세션이 존재합니다.", 409);
     }
+
+    const facility = await prisma.facility.findUnique({ where: { id: data.facilityId }, select: { status: true } });
+    if (!facility || facility.status !== "APPROVED") return fail("방송할 수 없는 창고(스튜디오)입니다.", 404);
 
     const slug = slugify("live");
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";

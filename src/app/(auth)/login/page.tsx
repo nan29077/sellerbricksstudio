@@ -36,7 +36,10 @@ export default function LoginPage() {
 
   async function handleSignIn(em: string, pw: string) {
     const res = await signIn("credentials", { email: em, password: pw, redirect: false });
-    if (res?.error) return false;
+    if (res?.error) {
+      // 로그인 시도 제한에 걸린 경우 서버가 보낸 안내 문구를 그대로 보여준다.
+      return res.error.includes("시도가 너무 많") ? res.error : false;
+    }
     const me = await fetch("/api/me").then((r) => r.json()).catch(() => null);
     const requested = new URLSearchParams(window.location.search).get("callbackUrl");
     const safeCallback = requested?.startsWith("/") && !requested.startsWith("//") ? requested : null;
@@ -51,14 +54,14 @@ export default function LoginPage() {
     setError("");
     const ok = await handleSignIn(email, password);
     setLoading(false);
-    if (!ok) setError("이메일 또는 비밀번호가 올바르지 않습니다.");
+    if (ok !== true) setError(typeof ok === "string" ? ok : "이메일 또는 비밀번호가 올바르지 않습니다.");
   }
 
   async function onDemoLogin(em: string) {
     setDemoLoading(em);
     setError("");
     const ok = await handleSignIn(em, "password1234");
-    if (!ok) {
+    if (ok !== true) {
       setError("테스트 계정 로그인에 실패했습니다. DB가 연결되지 않았을 수 있습니다.");
       setDemoLoading(null);
     }

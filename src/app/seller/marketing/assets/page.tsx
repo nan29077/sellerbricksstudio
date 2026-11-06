@@ -1,128 +1,93 @@
-"use client";
-
-import { useState } from "react";
-import { PageHeader, StatCard } from "@/components/layout/dashboard-widgets";
+import { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { requireRole } from "@/lib/auth";
+import { PageHeader } from "@/components/layout/dashboard-widgets";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Image as ImageIcon, LayoutTemplate, Film, FolderOpen, Upload,
-  Download, Eye,
-} from "lucide-react";
+import { EmptyState } from "@/components/ui/empty";
+import { StatusTabs } from "@/components/list/status-tabs";
+import { FilterBar } from "@/components/list/filter-bar";
+import { ResourceForm, DeleteButton, PatchButton, type Field } from "@/components/resource-form";
+import { CopyText } from "@/components/copy-text";
+import { ASSET_TYPES } from "@/lib/marketing-labels";
+import { formatDate } from "@/lib/utils";
+import { sp, type SP } from "@/lib/list";
+import { ImageIcon, Film, Type, Link2, Star, ExternalLink } from "lucide-react";
 
-type AssetType = "배너" | "썸네일" | "상세페이지" | "영상";
+export const dynamic = "force-dynamic";
+const API = "/api/seller/marketing/assets";
+const ICON: Record<string, React.ElementType> = { IMAGE: ImageIcon, VIDEO: Film, COPY: Type, LINK: Link2 };
 
-const DUMMY_ASSETS: {
-  id: string;
-  name: string;
-  type: AssetType;
-  size: string;
-  usedIn: string;
-  views: number;
-  updatedAt: string;
-}[] = [
-  { id: "as-1", name: "여름 세일 메인 배너",        type: "배너",       size: "1920×600",  usedIn: "메인 홈 상단",     views: 12400, updatedAt: "2026-07-12" },
-  { id: "as-2", name: "라이브 방송 예고 썸네일",    type: "썸네일",     size: "1280×720",  usedIn: "라이브 목록",      views: 8300,  updatedAt: "2026-07-11" },
-  { id: "as-3", name: "신상품 상세페이지 v2",       type: "상세페이지", size: "860×4200",  usedIn: "상품 상세",        views: 5120,  updatedAt: "2026-07-08" },
-  { id: "as-4", name: "프로모션 숏폼 영상 (15초)",  type: "영상",       size: "1080×1920", usedIn: "SNS 광고",         views: 21600, updatedAt: "2026-07-05" },
-  { id: "as-5", name: "쿠폰 안내 팝업 배너",        type: "배너",       size: "800×800",   usedIn: "이벤트 팝업",      views: 3900,  updatedAt: "2026-06-28" },
-  { id: "as-6", name: "6월 감사제 썸네일 세트",     type: "썸네일",     size: "1280×720",  usedIn: "이벤트 페이지",    views: 2750,  updatedAt: "2026-06-20" },
+const fields: Field[] = [
+  { name: "title", label: "소재명", required: true, placeholder: "예: 겨울 패딩 라이브 썸네일 A안" },
+  { name: "type", label: "유형", type: "select", half: true, options: Object.entries(ASSET_TYPES).map(([value, label]) => ({ value, label })) },
+  { name: "channel", label: "사용 채널", half: true, placeholder: "인스타그램 피드 등" },
+  { name: "url", label: "파일 · 링크 주소", type: "url", placeholder: "https:// (이미지·영상은 클라우드 공유 링크)" },
+  { name: "content", label: "광고 문구 · 설명", type: "textarea", placeholder: "카피, 해시태그, 메모" },
+  { name: "tags", label: "태그", placeholder: "콤마로 구분: 겨울, 패딩, 특가" },
+  { name: "isFavorite", label: "즐겨찾기", type: "checkbox" },
 ];
 
-const TYPE_META: Record<AssetType, { tone: "brand" | "blue" | "purple" | "yellow"; icon: typeof ImageIcon }> = {
-  배너:       { tone: "brand",  icon: LayoutTemplate },
-  썸네일:     { tone: "blue",   icon: ImageIcon },
-  상세페이지: { tone: "purple", icon: FolderOpen },
-  영상:       { tone: "yellow", icon: Film },
-};
-
-const FILTERS: ("전체" | AssetType)[] = ["전체", "배너", "썸네일", "상세페이지", "영상"];
-
-export default function SellerMarketingAssetsPage() {
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]>("전체");
-  const assets = DUMMY_ASSETS.filter((a) => filter === "전체" || a.type === filter);
+export default async function SellerAssets({ searchParams }: { searchParams: SP }) {
+  const user = await requireRole(["SELLER"]);
+  const type = sp(searchParams, "type");
+  const q = sp(searchParams, "q");
+  const fav = sp(searchParams, "fav") === "1";
+  const where: Prisma.MarketingAssetWhereInput = {
+    sellerId: user.id, ...(type && { type }), ...(fav && { isFavorite: true }),
+    ...(q && { OR: [{ title: { contains: q, mode: "insensitive" } }, { tags: { contains: q, mode: "insensitive" } }, { content: { contains: q, mode: "insensitive" } }] }),
+  };
+  const [rows, grouped] = await Promise.all([
+    prisma.marketingAsset.findMany({ where, orderBy: [{ isFavorite: "desc" }, { updatedAt: "desc" }], take: 200 }),
+    prisma.marketingAsset.groupBy({ by: ["type"], where: { sellerId: user.id }, _count: true }),
+  ]);
+  const counts = Object.fromEntries(grouped.map((g) => [g.type, g._count]));
+  const total = grouped.reduce((s, g) => s + g._count, 0);
 
   return (
-    <div className="space-y-5">
-      <PageHeader
-        title="광고 소재 관리"
-        description="배너·썸네일·상세페이지 등 광고 소재를 한곳에서 관리하세요."
-        action={
-          <Button onClick={() => alert("소재 업로드 기능은 준비 중입니다.")}>
-            <Upload className="h-4 w-4 mr-1.5" />소재 업로드
-          </Button>
-        }
-      />
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="전체 소재"  value={`${DUMMY_ASSETS.length}개`} sub="등록된 소재"       icon={FolderOpen} />
-        <StatCard label="배너"       value={`${DUMMY_ASSETS.filter((a) => a.type === "배너").length}개`}   sub="메인·팝업 배너" icon={LayoutTemplate} />
-        <StatCard label="썸네일"     value={`${DUMMY_ASSETS.filter((a) => a.type === "썸네일").length}개`} sub="라이브·이벤트"  icon={ImageIcon} />
-        <StatCard label="총 노출"    value="54,070회"                    sub="최근 30일 합산"     icon={Eye} />
-      </div>
-
-      <div className="flex flex-wrap gap-1.5">
-        {FILTERS.map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`rounded-full px-3.5 py-1.5 text-xs font-semibold border transition ${
-              filter === f
-                ? "bg-brand-500 text-white border-brand-500"
-                : "bg-white text-muted-foreground border-border hover:border-brand-300"
-            }`}
-          >
-            {f}
-          </button>
-        ))}
-      </div>
-
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {assets.map((a) => {
-          const meta = TYPE_META[a.type];
-          const Icon = meta.icon;
-          return (
-            <Card key={a.id} className="hover:shadow-md transition">
-              <CardContent className="pt-4 pb-4">
-                <div className="flex h-24 items-center justify-center rounded-lg bg-muted/50 border border-border mb-3">
-                  <Icon className="h-8 w-8 text-muted-foreground/60" />
+    <div className="space-y-5 pb-24 md:pb-0">
+      <PageHeader title="광고 소재" description="썸네일·숏폼·광고 문구·랜딩 링크를 한 곳에 모아두고 바로 복사해 쓰세요."
+        action={<ResourceForm url={API} fields={fields} title="소재 추가" initial={{ type: "IMAGE" }} />} />
+      <StatusTabs base="/seller/marketing/assets" params={searchParams} paramKey="type" tabs={[
+        { value: "", label: "전체", count: total },
+        ...Object.entries(ASSET_TYPES).map(([value, label]) => ({ value, label, count: counts[value] ?? 0 })),
+      ]} />
+      <FilterBar fields={[
+        { type: "search", key: "q", placeholder: "소재명 · 태그 · 문구 검색" },
+        { type: "select", key: "fav", label: "즐겨찾기", options: [{ value: "1", label: "즐겨찾기만" }] },
+      ]} />
+      {rows.length === 0 ? <EmptyState icon={<ImageIcon className="h-10 w-10" />} title="소재가 없습니다" description="자주 쓰는 썸네일·문구를 등록해 두면 방송 준비가 빨라집니다." /> : (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {rows.map((a) => {
+            const Icon = ICON[a.type] ?? ImageIcon;
+            const isImg = a.type === "IMAGE" && a.url && /\.(png|jpe?g|webp|gif)(\?|$)/i.test(a.url);
+            return (
+              <Card key={a.id} className="flex flex-col overflow-hidden">
+                <div className="flex h-36 items-center justify-center bg-gradient-to-br from-slate-100 to-brand-50">
+                  {isImg ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={a.url!} alt={a.title} className="h-full w-full object-cover" /> : <Icon className="h-10 w-10 text-slate-400" />}
                 </div>
-                <div className="flex items-start justify-between gap-2">
-                  <p className="font-semibold text-navy text-sm truncate">{a.name}</p>
-                  <Badge tone={meta.tone}>{a.type}</Badge>
-                </div>
-                <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-                  <p>크기: {a.size} · 사용처: {a.usedIn}</p>
-                  <p>노출 {a.views.toLocaleString()}회 · 수정 {a.updatedAt}</p>
-                </div>
-                <div className="mt-3 flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => alert("미리보기 기능은 준비 중입니다.")}
-                  >
-                    <Eye className="h-3.5 w-3.5 mr-1" />미리보기
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => alert("다운로드 기능은 준비 중입니다.")}
-                  >
-                    <Download className="h-3.5 w-3.5 mr-1" />다운로드
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-        {assets.length === 0 && (
-          <div className="sm:col-span-2 lg:col-span-3 rounded-xl border border-dashed border-border bg-muted/30 px-4 py-10 text-center text-sm text-muted-foreground">
-            해당 유형의 소재가 없습니다.
-          </div>
-        )}
-      </div>
+                <CardContent className="flex flex-1 flex-col gap-2 pt-4">
+                  <div className="flex items-center gap-2"><Badge tone="gray">{ASSET_TYPES[a.type] ?? a.type}</Badge>{a.channel && <span className="truncate text-[11px] text-muted-foreground">{a.channel}</span>}
+                    <PatchButton url={`${API}/${a.id}`} body={{ isFavorite: !a.isFavorite }} variant="ghost" className="ml-auto h-8 px-2" aria-label="즐겨찾기">
+                      <Star className={`h-4 w-4 ${a.isFavorite ? "fill-brand-500 text-brand-500" : "text-slate-300"}`} />
+                    </PatchButton>
+                  </div>
+                  <p className="font-bold text-navy">{a.title}</p>
+                  {a.content && <p className="line-clamp-4 whitespace-pre-line text-xs text-slate-600">{a.content}</p>}
+                  {a.tags && <div className="flex flex-wrap gap-1">{a.tags.split(",").map((t) => t.trim()).filter(Boolean).map((t) => <span key={t} className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-slate-600">#{t}</span>)}</div>}
+                  <div className="mt-auto flex flex-wrap items-center gap-1 pt-2">
+                    {a.content && <CopyText text={a.content} label="문구 복사" />}
+                    {a.url && <a href={a.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-navy hover:bg-muted"><ExternalLink className="h-3.5 w-3.5" />열기</a>}
+                    <span className="ml-auto text-[10px] text-muted-foreground">{formatDate(a.updatedAt)}</span>
+                    <ResourceForm url={API} id={a.id} fields={fields} title="소재 수정" iconOnly triggerVariant="ghost" initial={a} />
+                    <DeleteButton url={`${API}/${a.id}`} />
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

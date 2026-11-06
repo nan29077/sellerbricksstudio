@@ -37,3 +37,15 @@ export const PAYMENT_STATUS: Record<string, { label: string; tone: "yellow" | "g
 export const PAYMENT_METHOD: Record<string, string> = {
   CARD: "신용카드", EASY_PAY: "간편결제", BANK_TRANSFER: "간편 계좌이체",
 };
+
+// 주문 처리 흐름: 각 상태에서 다음으로 바꿀 수 있는 상태
+export const ORDER_NEXT_STATUS: Record<string, string[]> = {
+  PAID: ["PREPARING", "CANCELLED"],
+  PREPARING: ["SHIPPED", "CANCELLED"],
+  SHIPPED: ["DELIVERED", "REFUNDED"],
+  DELIVERED: ["REFUNDED"],
+};
+
+export const SETTLEMENT_STATUS: Record<string, { label: string; tone: "yellow" | "blue" | "green" }> = {
+  PENDING: { label: "정산 대기", tone: "yellow" }, CONFIRMED: { label: "지급 예정", tone: "blue" }, PAID: { label: "지급 완료", tone: "green" },
+};

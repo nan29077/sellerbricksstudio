@@ -111,6 +111,8 @@ model User {
   role         Role     @default(SELLER)
   isActive     Boolean  @default(true)
   profileImageIndex Int? // 1-20 랜덤 배정 프로필 이미지 (null이면 미배정)
+  lastLoginAt  DateTime? // 마지막 로그인 시각
+  adminMemo    String?  @db.Text // 최고관리자 전용 내부 메모
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -125,6 +127,15 @@ model User {
   managerCommission  ManagerCommissionRule[]
   auditLogs          AuditLog[]
   inquiries          FacilityInquiry[]   @relation("SellerInquiries")
+  reviews            FacilityReview[]    @relation("SellerReviews")
+  favorites          FacilityFavorite[]
+  notifications      UserNotification[]
+  marketingApplications MarketingApplication[]
+  promotions         SellerPromotion[]
+  coupons            SellerCoupon[]
+  marketingAssets    MarketingAsset[]
+  snsAccounts        SnsAccount[]
+  snsPosts           SnsPost[]
 }
 
 model Profile {
@@ -158,9 +169,19 @@ model Facility {
   basePrice   Int            @default(0) // 예약료(원)
   rating      Float          @default(0)
   thumbnailUrl String?
+  contactPhone String?       // 현장 연락처
+  capacity    Int?           // 최대 수용 인원
+  minHours    Int            @default(1) // 최소 예약 시간(시간)
+  cancelPolicy String?       @db.Text // 취소·환불 규정
+  bankName    String?        // 정산 은행
+  bankAccount String?        // 정산 계좌번호
+  accountHolder String?      // 예금주
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
+  reviews       FacilityReview[]
+  favorites     FacilityFavorite[]
+  facilitySettlements FacilitySettlement[]
   images        FacilityImage[]
   slots         FacilityAvailableSlot[]
   blackoutDates FacilityBlackoutDate[]
@@ -311,13 +332,26 @@ model Booking {
   purpose        String?       // 방송 목적
   expectedProducts String?     // 예상 판매 상품
   rejectReason   String?
+  totalPrice     Int           @default(0) // 예약 이용료(원) = 시간당 요금 × 이용 시간
+  headcount      Int?          // 방문 인원
+  requestNote    String?       @db.Text // 셀러 요청사항
+  facilityMemo   String?       @db.Text // 창고(스튜디오) 내부 메모 (셀러에게 비공개)
+  cancelReason   String?
+  approvedAt     DateTime?
+  cancelledAt    DateTime?
+  completedAt    DateTime?
+  facilitySettlementId String?
+  facilitySettlement   FacilitySettlement? @relation(fields: [facilitySettlementId], references: [id])
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
   liveSession LiveSession?
+  review      FacilityReview?
 
   @@index([facilityId, startAt])
   @@index([sellerId])
+  @@index([status])
+  @@index([facilitySettlementId])
 }
 
 // ===================== Live Sessions =====================
@@ -600,4 +634,195 @@ model Setting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+// ===================== 리뷰 · 즐겨찾기 =====================
+// 이용 완료된 예약 1건당 리뷰 1개. 창고(스튜디오) 평점(rating)은 공개 리뷰 평균으로 갱신한다.
+model FacilityReview {
+  id         String   @id @default(cuid())
+  bookingId  String   @unique
+  booking    Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  facilityId String
+  facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  sellerId   String
+  seller     User     @relation("SellerReviews", fields: [sellerId], references: [id])
+  rating     Int      // 1~5
+  content    String   @db.Text
+  reply      String?  @db.Text
+  repliedAt  DateTime?
+  isHidden   Boolean  @default(false) // 최고관리자 숨김 처리
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([facilityId])
+  @@index([sellerId])
+}
+
+model FacilityFavorite {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  facilityId String
+  facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, facilityId])
+}
+
+// ===================== 창고(스튜디오) 예약 정산 =====================
+// 기간 내 이용 완료 예약의 이용료 합계에서 플랫폼 수수료를 뺀 금액을 창고(스튜디오)에 지급한다.
+model FacilitySettlement {
+  id           String           @id @default(cuid())
+  facilityId   String
+  facility     Facility         @relation(fields: [facilityId], references: [id])
+  periodStart  DateTime
+  periodEnd    DateTime
+  bookingCount Int              @default(0)
+  grossAmount  Int              // 이용료 합계
+  feeRate      Float            @default(0) // 플랫폼 수수료율(%)
+  platformFee  Int              // 플랫폼 수수료
+  payoutAmount Int              // 지급액
+  status       SettlementStatus @default(PENDING)
+  confirmedAt  DateTime?
+  paidAt       DateTime?
+  memo         String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  bookings Booking[]
+
+  @@index([facilityId])
+  @@index([status])
+}
+
+// ===================== 알림 =====================
+model UserNotification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // BOOKING|INQUIRY|REVIEW|SETTLEMENT|MARKETING|SYSTEM
+  title     String
+  body      String?
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+}
+
+// ===================== 셀러 마케팅 =====================
+// 마케팅 지원 신청 (최고관리자가 검토)
+model MarketingApplication {
+  id        String   @id @default(cuid())
+  sellerId  String
+  seller    User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  type      String   // SNS_AD|CONTENT|INFLUENCER|ETC
+  title     String
+  content   String   @db.Text
+  budget    Int?
+  desiredAt DateTime?
+  status    String   @default("PENDING") // PENDING|IN_REVIEW|APPROVED|REJECTED|DONE
+  adminNote String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sellerId])
+  @@index([status])
+}
+
+// 이벤트 · 프로모션
+model SellerPromotion {
+  id            String   @id @default(cuid())
+  sellerId      String
+  seller        User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?  @db.Text
+  channel       String?  // 진행 채널 (유튜브, 인스타그램 등)
+  discountType  CommissionType @default(PERCENT)
+  discountValue Float    @default(0)
+  startAt       DateTime
+  endAt         DateTime
+  targetAmount  Int?     // 목표 매출
+  resultAmount  Int?     // 실제 매출(직접 입력)
+  isPublished   Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([sellerId])
+}
+
+// 쿠폰
+model SellerCoupon {
+  id            String   @id @default(cuid())
+  sellerId      String
+  seller        User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  name          String
+  code          String   @unique
+  discountType  CommissionType @default(PERCENT)
+  discountValue Float
+  minAmount     Int      @default(0)
+  maxDiscount   Int?
+  totalQty      Int?     // null = 무제한
+  usedQty       Int      @default(0)
+  startAt       DateTime
+  endAt         DateTime
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([sellerId])
+}
+
+// 광고 소재 보관함
+model MarketingAsset {
+  id        String   @id @default(cuid())
+  sellerId  String
+  seller    User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  title     String
+  type      String   // IMAGE|VIDEO|COPY|LINK
+  url       String?
+  content   String?  @db.Text
+  channel   String?
+  tags      String?  // 콤마 구분
+  isFavorite Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sellerId])
+}
+
+// SNS 계정 (셀러가 직접 등록·갱신)
+model SnsAccount {
+  id        String   @id @default(cuid())
+  sellerId  String
+  seller    User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  platform  String   // YOUTUBE|INSTAGRAM|TIKTOK|FACEBOOK|NAVER|ETC
+  handle    String
+  url       String?
+  followers Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sellerId, platform, handle])
+}
+
+// SNS 콘텐츠 캘린더
+model SnsPost {
+  id          String   @id @default(cuid())
+  sellerId    String
+  seller      User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  platform    String
+  title       String
+  memo        String?  @db.Text
+  scheduledAt DateTime
+  status      String   @default("PLANNED") // PLANNED|POSTED|CANCELLED
+  url         String?
+  views       Int?
+  likes       Int?
+  comments    Int?
+  clicks      Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([sellerId, scheduledAt])
 }

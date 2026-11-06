@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
+import { notify } from "@/lib/notify";
 
 // GET /api/facilities/[id]/inquiries
 // - SELLER: 본인 문의 목록
@@ -75,7 +76,7 @@ export async function POST(
   try {
     const facility = await prisma.facility.findUnique({
       where: { id: params.id },
-      select: { id: true, status: true },
+      select: { id: true, status: true, name: true, ownerId: true },
     });
     if (!facility || facility.status !== "APPROVED") {
       return NextResponse.json({ error: "창고(스튜디오)를 찾을 수 없습니다" }, { status: 404 });
@@ -85,9 +86,10 @@ export async function POST(
       data: {
         facilityId: params.id,
         sellerId: user.id,
-        message: message.trim(),
+        message: message.trim().slice(0, 2000),
       },
     });
+    await notify({ userId: facility.ownerId, type: "INQUIRY", title: "새 셀러 문의가 도착했습니다", body: `${facility.name} · ${message.trim().slice(0, 60)}`, link: "/facility/inquiries" });
 
     return NextResponse.json({ inquiry }, { status: 201 });
   } catch (e) {

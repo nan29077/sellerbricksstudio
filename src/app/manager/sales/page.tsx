@@ -1,149 +1,73 @@
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 import { managerFacilityIds } from "@/lib/rbac";
-import { PageHeader, StatCard } from "@/components/layout/dashboard-widgets";
+import { PageHeader } from "@/components/layout/dashboard-widgets";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, Td } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { formatKRW, formatDate } from "@/lib/utils";
-import { TrendingUp, Percent, Building2, BarChart2 } from "lucide-react";
-import { computeSettlement } from "@/lib/settlement";
+import { Table } from "@/components/ui/table";
+import { EmptyState } from "@/components/ui/empty";
+import { Kpi, BarChart, ProgressRow } from "@/components/list/charts";
+import { CsvButton } from "@/components/list/csv-button";
+import { formatKRW } from "@/lib/utils";
+import { addMonths, hoursBetween, kstParts, kstStartOfMonth } from "@/lib/kst";
+import { growth } from "@/lib/list";
+import { Wallet, TrendingUp, CalendarCheck, Users } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-const DUMMY_MONTHLY_MGR = [
-  { month: "1월", commission: 620_000 },
-  { month: "2월", commission: 840_000 },
-  { month: "3월", commission: 980_000 },
-  { month: "4월", commission: 870_000 },
-  { month: "5월", commission: 1_240_000 },
-  { month: "6월", commission: 1_180_000 },
-];
-
-const DUMMY_FACILITY_SALES = [
-  { rank:1, name:"강남 프리미엄 라이브 스튜디오", region:"서울", type:"STUDIO",    orders:87, gross:42_150_000, commission:2_107_500, growth:"+12%" },
-  { rank:2, name:"성수 인더스트리얼 스튜디오",    region:"서울", type:"STUDIO",    orders:52, gross:21_600_000, commission:1_080_000, growth:"+8%"  },
-  { rank:3, name:"판교 IT 테크 스튜디오",         region:"경기", type:"STUDIO",    orders:29, gross:12_450_000, commission:  622_500, growth:"+5%"  },
-];
-
-const DUMMY_RECENT_ORDERS = [
-  { id:"o1", orderNo:"ORD-20260620-001", facility:"강남 프리미엄 라이브 스튜디오", seller:"박지현", amount: 89_000, commission: 4_450, date:"2026-06-20" },
-  { id:"o2", orderNo:"ORD-20260620-002", facility:"강남 프리미엄 라이브 스튜디오", seller:"홍길동", amount:145_000, commission: 7_250, date:"2026-06-20" },
-  { id:"o3", orderNo:"ORD-20260619-001", facility:"성수 인더스트리얼 스튜디오",    seller:"김미래", amount: 56_000, commission: 2_800, date:"2026-06-19" },
-  { id:"o4", orderNo:"ORD-20260618-001", facility:"판교 IT 테크 스튜디오",         seller:"정유나", amount:210_000, commission:10_500, date:"2026-06-18" },
-  { id:"o5", orderNo:"ORD-20260617-001", facility:"강남 프리미엄 라이브 스튜디오", seller:"이수민", amount:320_000, commission:16_000, date:"2026-06-17" },
-];
-
-function fmtShort(n: number) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-  return `${n}`;
-}
-
 export default async function ManagerSales() {
   const user = await requireRole(["MANAGER"]);
+  const ids = await managerFacilityIds(user.id);
+  if (ids.length === 0) return <div><PageHeader title="매출 현황" /><EmptyState title="배정된 창고(스튜디오)가 없습니다" /></div>;
+  const m = kstStartOfMonth(new Date());
+  const start = addMonths(m, -11);
+  const rows = await prisma.booking.findMany({
+    where: { facilityId: { in: ids }, status: { in: ["APPROVED", "COMPLETED"] }, startAt: { gte: start, lt: addMonths(m, 1) } },
+    select: { startAt: true, endAt: true, totalPrice: true, status: true, sellerId: true, facility: { select: { id: true, name: true } }, seller: { select: { email: true, profile: { select: { name: true } } } } },
+  });
+  const months = Array.from({ length: 12 }, (_, i) => addMonths(start, i));
+  const monthly = months.map((mm) => { const r = rows.filter((b) => b.startAt >= mm && b.startAt < addMonths(mm, 1)); return { label: `${kstParts(mm).month}월`, value: r.reduce((s, b) => s + b.totalPrice, 0), n: r.length }; });
+  const cur = monthly[11], prev = monthly[10];
+  const yearTotal = monthly.reduce((s, x) => s + x.value, 0);
 
-  let st = { gross: 0, orderCount: 0 };
-  let rule: any = null;
-  try {
-    const ids = await managerFacilityIds(user.id);
-    [st, rule] = await Promise.all([
-      computeSettlement({ facilityIds: ids }),
-      prisma.managerCommissionRule.findUnique({ where: { managerId: user.id } }),
-    ]);
-  } catch { /* DB not available */ }
-
-  if (st.gross === 0) {
-    st = { gross: 76_200_000, orderCount: 168 };
-    rule = rule ?? { commissionType: "PERCENT", commissionValue: 5 };
+  const byFac = new Map<string, { name: string; rev: number; n: number; h: number; cur: number }>();
+  for (const b of rows) {
+    const x = byFac.get(b.facility.id) ?? { name: b.facility.name, rev: 0, n: 0, h: 0, cur: 0 };
+    x.rev += b.totalPrice; x.n += 1; x.h += hoursBetween(b.startAt, b.endAt); if (b.startAt >= m) x.cur += b.totalPrice;
+    byFac.set(b.facility.id, x);
   }
-
-  const myIncome = rule
-    ? rule.commissionType === "PERCENT"
-      ? Math.round(st.gross * rule.commissionValue / 100)
-      : rule.commissionValue * st.orderCount
-    : 0;
-
-  const commissionLabel = rule
-    ? rule.commissionType === "PERCENT" ? `${rule.commissionValue}%` : formatKRW(rule.commissionValue) + "/건"
-    : "미설정";
-
-  const maxCommission = Math.max(...DUMMY_MONTHLY_MGR.map((m) => m.commission));
-  const totalMonthly  = DUMMY_MONTHLY_MGR.reduce((s, m) => s + m.commission, 0);
+  const facRows = Array.from(byFac.values()).sort((a, b) => b.rev - a.rev);
+  const bySeller = new Map<string, { name: string; rev: number; n: number }>();
+  for (const b of rows) {
+    const x = bySeller.get(b.sellerId) ?? { name: b.seller.profile?.name ?? b.seller.email, rev: 0, n: 0 };
+    x.rev += b.totalPrice; x.n += 1; bySeller.set(b.sellerId, x);
+  }
+  const topSellers = Array.from(bySeller.values()).sort((a, b) => b.rev - a.rev).slice(0, 8);
 
   return (
     <div className="space-y-5 pb-24 md:pb-0">
-      <PageHeader title="매출 현황" description="담당 창고(스튜디오) 매출 및 수수료 수익을 분석합니다." />
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="창고(스튜디오) 총 매출"   value={formatKRW(st.gross)}    sub={`${st.orderCount}건`}   icon={BarChart2}  />
-        <StatCard label="내 수수료율"    value={commissionLabel}         sub="설정된 규칙"           icon={Percent}    />
-        <StatCard label="내 수수료 수익" value={formatKRW(myIncome)}    sub="누적"                  icon={TrendingUp} />
-        <StatCard label="담당 창고(스튜디오)"      value={`${DUMMY_FACILITY_SALES.length}개`} sub="운영중"    icon={Building2}  />
+      <PageHeader title="매출 현황" description="담당 창고(스튜디오)의 확정 예약(승인·이용 완료) 이용료 기준 매출입니다." />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Kpi label="이번 달 매출" value={formatKRW(cur.value)} delta={growth(cur.value, prev.value)} sub="지난달 대비" icon={Wallet} tone="green" />
+        <Kpi label="이번 달 예약" value={`${cur.n}건`} delta={growth(cur.n, prev.n)} icon={CalendarCheck} tone="blue" />
+        <Kpi label="최근 12개월" value={formatKRW(yearTotal)} sub={`${rows.length}건`} icon={TrendingUp} tone="navy" />
+        <Kpi label="이용 셀러" value={`${bySeller.size}명`} sub={`재이용 ${Array.from(bySeller.values()).filter((s) => s.n > 1).length}명`} icon={Users} tone="brand" />
       </div>
-
-      {/* 월별 수수료 차트 */}
-      <Card>
-        <CardContent className="pt-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-navy">월별 수수료 수익 추이</h3>
-            <span className="text-xs text-muted-foreground">6개월 합계: {formatKRW(totalMonthly)}</span>
-          </div>
-          <div className="flex items-end gap-2 h-28 mb-2">
-            {DUMMY_MONTHLY_MGR.map((m) => (
-              <div key={m.month} className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-[10px] text-muted-foreground">{fmtShort(m.commission)}</span>
-                <div
-                  className="w-full bg-purple-500 rounded-t-sm hover:bg-purple-600 transition"
-                  style={{ height: `${Math.max(8, (m.commission / maxCommission) * 100)}%` }}
-                />
-                <span className="text-[10px] text-muted-foreground">{m.month}</span>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 창고(스튜디오)별 매출 순위 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">창고(스튜디오)별 매출 순위</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0 overflow-x-auto">
-          <Table
-            headers={["순위", "창고(스튜디오)명", "지역", "주문", "매출", "수수료 수익", "성장"]}
-            rows={DUMMY_FACILITY_SALES.map((f) => [
-              <span key="rank" className={`text-sm font-extrabold ${f.rank === 1 ? "text-amber-500" : f.rank === 2 ? "text-gray-400" : "text-orange-400"}`}>#{f.rank}</span>,
-              <span key="name" className="font-medium text-navy text-sm">{f.name}</span>,
-              <Td key="region">{f.region}</Td>,
-              <Td key="orders">{f.orders}건</Td>,
-              <span key="gross" className="font-semibold text-navy text-sm">{formatKRW(f.gross)}</span>,
-              <span key="commission" className="font-bold text-purple-600 text-sm">{formatKRW(f.commission)}</span>,
-              <Badge key="growth" tone="green">{f.growth}</Badge>,
-            ])}
-          />
-        </CardContent>
-      </Card>
-
-      {/* 최근 주문 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">최근 주문 내역</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0 overflow-x-auto">
-          <Table
-            headers={["주문번호", "창고(스튜디오)", "셀러", "금액", "수수료 수익", "날짜"]}
-            rows={DUMMY_RECENT_ORDERS.map((o) => [
-              <span key="no" className="font-mono text-xs">{o.orderNo}</span>,
-              <Td key="facility">{o.facility}</Td>,
-              <Td key="seller">{o.seller}</Td>,
-              <span key="amount" className="font-semibold text-navy text-sm">{formatKRW(o.amount)}</span>,
-              <span key="commission" className="font-bold text-purple-600 text-sm">{formatKRW(o.commission)}</span>,
-              <Td key="date">{o.date}</Td>,
-            ])}
-          />
-        </CardContent>
-      </Card>
+      <Card><CardHeader><CardTitle className="text-base">월별 매출 (12개월)</CardTitle></CardHeader><CardContent><BarChart data={monthly} format={(n) => formatKRW(n)} /></CardContent></Card>
+      <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+        <Card>
+          <CardHeader className="flex-row items-center justify-between space-y-0"><CardTitle className="text-base">창고(스튜디오)별 실적</CardTitle>
+            <CsvButton label="CSV" filename="담당창고매출" headers={["창고(스튜디오)", "12개월 매출", "건수", "이용시간", "이번 달"]} rows={facRows.map((f) => [f.name, f.rev, f.n, Math.round(f.h), f.cur])} /></CardHeader>
+          <CardContent>
+            {facRows.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">데이터가 없습니다.</p> : (
+              <Table headers={["창고(스튜디오)", "12개월", "건수", "시간", "이번 달"]} rows={facRows.map((f) => [<b key="n">{f.name}</b>, formatKRW(f.rev), `${f.n}건`, `${Math.round(f.h)}h`, formatKRW(f.cur)])} />
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle className="text-base">주요 셀러 (12개월)</CardTitle></CardHeader>
+          <CardContent className="space-y-2">{topSellers.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">데이터가 없습니다.</p> : topSellers.map((s) => <ProgressRow key={s.name} label={s.name} value={s.rev} max={topSellers[0].rev} right={`${formatKRW(s.rev)} · ${s.n}건`} />)}</CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

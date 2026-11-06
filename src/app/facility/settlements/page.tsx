@@ -1,117 +1,95 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 import { ownedFacilityIds } from "@/lib/rbac";
-import { PageHeader, StatCard } from "@/components/layout/dashboard-widgets";
+import { PageHeader } from "@/components/layout/dashboard-widgets";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, Td } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { formatKRW } from "@/lib/utils";
-import { CalendarCheck, Banknote, CheckCircle2, Info, TrendingUp, Building2 } from "lucide-react";
-import { computeSettlement } from "@/lib/settlement";
+import { Table } from "@/components/ui/table";
+import { EmptyState } from "@/components/ui/empty";
+import { Kpi, BarChart } from "@/components/list/charts";
+import { CsvButton } from "@/components/list/csv-button";
+import { getPlatformFeeRate, splitFee } from "@/lib/booking";
+import { formatDate, formatDateTime, formatKRW } from "@/lib/utils";
+import { addMonths, hoursBetween, kstParts, kstStartOfMonth } from "@/lib/kst";
+import { growth } from "@/lib/list";
+import { Banknote, Clock, CheckCircle2, TrendingUp, Info, Landmark } from "lucide-react";
 
 export const dynamic = "force-dynamic";
-
-const DUMMY_MONTHLY_FAC = [
-  { month: "1월", facilityAmt: 4_820_000 },
-  { month: "2월", facilityAmt: 6_240_000 },
-  { month: "3월", facilityAmt: 7_680_000 },
-  { month: "4월", facilityAmt: 6_900_000 },
-  { month: "5월", facilityAmt: 8_450_000 },
-  { month: "6월", facilityAmt: 7_320_000 },
-];
-
-const DUMMY_SETTLEMENT_ROWS = [
-  { id:"sf1", session:"뷰티 신상 여름 컬렉션",  facility:"강남 프리미엄 라이브 스튜디오", date:"2026-06-20", gross:1_245_000, facilityAmt:249_000, status:"정산대기" },
-  { id:"sf2", session:"패션 봄 신상 라이브",     facility:"강남 프리미엄 라이브 스튜디오", date:"2026-06-10", gross:980_000,   facilityAmt:196_000, status:"정산완료" },
-  { id:"sf3", session:"식품 특가전 라이브",       facility:"마포구 대형 물류 창고",         date:"2026-05-28", gross:1_560_000, facilityAmt:312_000, status:"정산완료" },
-  { id:"sf4", session:"뷰티 케어 스페셜 라이브", facility:"강남 프리미엄 라이브 스튜디오", date:"2026-05-15", gross:820_000,   facilityAmt:164_000, status:"정산완료" },
-  { id:"sf5", session:"여름 신상 패션쇼",         facility:"마포구 대형 물류 창고",         date:"2026-04-30", gross:670_000,   facilityAmt:134_000, status:"정산완료" },
-];
-
-function fmtShort(n: number) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-  return `${n}`;
-}
+const SETTLEMENT_STATUS: Record<string, { label: string; tone: "yellow" | "blue" | "green" }> = {
+  PENDING: { label: "정산 대기", tone: "yellow" }, CONFIRMED: { label: "지급 예정", tone: "blue" }, PAID: { label: "지급 완료", tone: "green" },
+};
 
 export default async function FacilitySettlements() {
   const user = await requireRole(["FACILITY_ADMIN"]);
+  const ids = await ownedFacilityIds(user.id);
+  const facilities = await prisma.facility.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, bankName: true, bankAccount: true, accountHolder: true } });
+  const monthStart = kstStartOfMonth(new Date());
+  const yearStart = addMonths(monthStart, -11);
 
-  let st = { gross: 0, facilityAmount: 0, orderCount: 0 };
-  try {
-    const ids = await ownedFacilityIds(user.id);
-    st = await computeSettlement({ facilityIds: ids });
-  } catch { /* DB not available */ }
-
-  if (st.gross === 0) {
-    st = { gross: 41_410_000, facilityAmount: 8_282_000, orderCount: 248 };
-  }
-
-  const maxAmt = Math.max(...DUMMY_MONTHLY_FAC.map((m) => m.facilityAmt));
+  const [settlements, unsettled, yearRows] = await Promise.all([
+    prisma.facilitySettlement.findMany({ where: { facilityId: { in: ids } }, orderBy: { periodEnd: "desc" }, include: { facility: { select: { name: true } } } }),
+    prisma.booking.findMany({ where: { facilityId: { in: ids }, status: "COMPLETED", facilitySettlementId: null }, orderBy: { startAt: "desc" }, include: { facility: { select: { name: true } }, seller: { select: { email: true, profile: { select: { name: true } } } } } }),
+    prisma.booking.findMany({ where: { facilityId: { in: ids }, status: "COMPLETED", startAt: { gte: yearStart } }, select: { startAt: true, totalPrice: true } }),
+  ]);
+  const rates = new Map(await Promise.all(ids.map(async (id) => [id, await getPlatformFeeRate(id)] as const)));
+  const expected = unsettled.reduce((s, b) => s + splitFee(b.totalPrice, rates.get(b.facilityId) ?? 10).payoutAmount, 0);
+  const waiting = settlements.filter((s) => s.status !== "PAID").reduce((a, s) => a + s.payoutAmount, 0);
+  const paid = settlements.filter((s) => s.status === "PAID").reduce((a, s) => a + s.payoutAmount, 0);
+  const months = Array.from({ length: 12 }, (_, i) => addMonths(yearStart, i));
+  const monthly = months.map((m) => ({ label: `${kstParts(m).month}월`, value: yearRows.filter((b) => b.startAt >= m && b.startAt < addMonths(m, 1)).reduce((s, b) => s + b.totalPrice, 0) }));
+  const noBank = facilities.filter((f) => !f.bankAccount);
+  const rateText = Array.from(new Set(Array.from(rates.values()))).map((r) => `${r}%`).join(", ");
 
   return (
     <div className="space-y-5 pb-24 md:pb-0">
-      <PageHeader title="정산 내역" description="창고(스튜디오) 운영 수익 및 정산 현황을 확인하세요." />
+      <PageHeader title="정산 내역" description="이용 완료된 예약의 이용료에서 플랫폼 수수료를 제외한 금액이 정산됩니다." />
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <StatCard label="창고(스튜디오) 총 매출"  value={formatKRW(st.gross)}          sub="누적"    icon={TrendingUp}   />
-        <StatCard label="창고(스튜디오) 정산금"   value={formatKRW(st.facilityAmount)} sub="20%"     icon={Banknote}     />
-        <StatCard label="총 주문"       value={`${st.orderCount}건`}         sub="정산 대상" icon={CalendarCheck} />
+      {noBank.length > 0 && (
+        <Link href="/facility/profile" className="flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+          <Landmark className="h-5 w-5" />정산 계좌가 등록되지 않은 창고(스튜디오)가 있습니다: {noBank.map((f) => f.name).join(", ")} — 정보 · 편집에서 등록하세요.
+        </Link>
+      )}
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Kpi label="정산 예정 (미정산)" value={formatKRW(expected)} sub={`이용 완료 ${unsettled.length}건`} icon={Clock} tone="brand" />
+        <Kpi label="정산 대기 · 지급 예정" value={formatKRW(waiting)} sub={`${settlements.filter((s) => s.status !== "PAID").length}건`} icon={Banknote} tone="blue" />
+        <Kpi label="누적 지급 완료" value={formatKRW(paid)} icon={CheckCircle2} tone="green" />
+        <Kpi label="이번 달 이용료" value={formatKRW(monthly[11].value)} delta={growth(monthly[11].value, monthly[10].value)} sub="지난달 대비" icon={TrendingUp} tone="navy" />
       </div>
 
-      {/* 월별 수익 차트 */}
-      <Card>
-        <CardContent className="pt-5">
-          <h3 className="font-bold text-navy mb-4">월별 창고(스튜디오) 정산금 추이</h3>
-          <div className="flex items-end gap-2 h-28 mb-2">
-            {DUMMY_MONTHLY_FAC.map((m) => (
-              <div key={m.month} className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-[10px] text-muted-foreground">{fmtShort(m.facilityAmt)}</span>
-                <div
-                  className="w-full bg-emerald-500 rounded-t-sm hover:bg-emerald-600 transition"
-                  style={{ height: `${Math.max(8, (m.facilityAmt / maxAmt) * 100)}%` }}
-                />
-                <span className="text-[10px] text-muted-foreground">{m.month}</span>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex items-start gap-2 rounded-2xl border border-[#E9E5DC] bg-white px-4 py-3 text-xs text-slate-600">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
+        <p>플랫폼 수수료율 <b className="text-navy">{rateText || "10%"}</b> · 예약을 <b>이용 완료</b>로 처리해야 정산 대상이 됩니다. 운영팀이 기간별 정산서를 만들면 &lsquo;정산 대기 → 지급 예정 → 지급 완료&rsquo; 순서로 진행됩니다.</p>
+      </div>
 
-      {/* 정산 내역 테이블 */}
+      <Card><CardHeader><CardTitle className="text-base">월별 이용 완료 매출 (12개월)</CardTitle></CardHeader><CardContent><BarChart data={monthly} format={(n) => formatKRW(n)} /></CardContent></Card>
+
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">방송별 정산 내역</CardTitle>
+        <CardHeader className="flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-base">정산서</CardTitle>
+          <CsvButton label="CSV" filename="정산서" headers={["창고(스튜디오)", "시작", "종료", "건수", "이용료합계", "수수료율", "수수료", "지급액", "상태", "지급일"]}
+            rows={settlements.map((s) => [s.facility.name, formatDate(s.periodStart), formatDate(s.periodEnd), s.bookingCount, s.grossAmount, s.feeRate, s.platformFee, s.payoutAmount, SETTLEMENT_STATUS[s.status]?.label, s.paidAt ? formatDate(s.paidAt) : ""])} />
         </CardHeader>
-        <CardContent className="pt-0 overflow-x-auto">
-          <Table
-            headers={["방송 세션", "창고(스튜디오)", "총 매출", "창고(스튜디오) 정산금", "상태"]}
-            rows={DUMMY_SETTLEMENT_ROWS.map((s) => [
-              <div key="session">
-                <p className="font-medium text-navy text-xs">{s.session}</p>
-                <p className="text-[10px] text-muted-foreground">{s.date}</p>
-              </div>,
-              <Td key="facility">{s.facility}</Td>,
-              <span key="gross" className="text-xs font-semibold">{formatKRW(s.gross)}</span>,
-              <span key="amt" className="text-xs font-bold text-emerald-600">{formatKRW(s.facilityAmt)}</span>,
-              <span key="status" className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${s.status === "정산완료" ? "bg-emerald-100 text-emerald-700" : "bg-yellow-100 text-yellow-700"}`}>
-                {s.status === "정산완료"
-                  ? <><CheckCircle2 className="h-3 w-3" />{s.status}</>
-                  : <><Building2 className="h-3 w-3" />{s.status}</>
-                }
-              </span>,
-            ])}
-          />
+        <CardContent>
+          {settlements.length === 0 ? <EmptyState className="py-10" title="아직 생성된 정산서가 없습니다" /> : (
+            <Table headers={["정산 기간", "창고(스튜디오)", "건수", "이용료 합계", "수수료", "지급액", "상태"]}
+              rows={settlements.map((s) => [
+                `${formatDate(s.periodStart)} ~ ${formatDate(s.periodEnd)}`, s.facility.name, `${s.bookingCount}건`, formatKRW(s.grossAmount),
+                <span key="f" className="text-slate-500">-{formatKRW(s.platformFee)} ({s.feeRate}%)</span>, <b key="p">{formatKRW(s.payoutAmount)}</b>,
+                <span key="s"><Badge tone={SETTLEMENT_STATUS[s.status]?.tone}>{SETTLEMENT_STATUS[s.status]?.label}</Badge>{s.paidAt && <span className="ml-1 text-[11px] text-slate-500">{formatDate(s.paidAt)}</span>}</span>,
+              ])} />
+          )}
         </CardContent>
       </Card>
 
-      <Card className="bg-muted/40">
-        <CardContent className="pt-4 pb-4 flex items-start gap-3">
-          <Info className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-          <div className="text-xs text-muted-foreground space-y-1">
-            <p>창고(스튜디오) 정산금은 방송 총 매출의 20%입니다.</p>
-            <p>정산은 매월 5일에 등록된 계좌로 자동 지급됩니다.</p>
-          </div>
+      <Card>
+        <CardHeader><CardTitle className="text-base">정산 예정 예약 ({unsettled.length}건)</CardTitle></CardHeader>
+        <CardContent>
+          {unsettled.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">정산을 기다리는 이용 완료 예약이 없습니다.</p> : (
+            <Table headers={["이용일", "창고(스튜디오)", "셀러", "이용 시간", "이용료", "예상 지급액"]}
+              rows={unsettled.slice(0, 100).map((b) => [formatDateTime(b.startAt), b.facility.name, b.seller.profile?.name ?? b.seller.email, `${hoursBetween(b.startAt, b.endAt)}시간`, formatKRW(b.totalPrice), <b key="p">{formatKRW(splitFee(b.totalPrice, rates.get(b.facilityId) ?? 10).payoutAmount)}</b>])} />
+          )}
         </CardContent>
       </Card>
     </div>

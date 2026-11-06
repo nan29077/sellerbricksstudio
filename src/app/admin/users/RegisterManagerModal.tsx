@@ -1,11 +1,14 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { UserPlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 
 export function RegisterManagerButton() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -13,7 +16,7 @@ export function RegisterManagerButton() {
   const [loading, setLoading] = useState(false);
 
   function reset() {
-    setName(""); setEmail(""); setPassword(""); setFacility("");
+    setName(""); setEmail(""); setPassword(""); setFacility(""); setError("");
   }
 
   function handleClose() {
@@ -24,22 +27,25 @@ export function RegisterManagerButton() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setError("");
     try {
       const res = await fetch("/api/admin/managers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password, facility }),
       });
-      if (res.ok) {
-        alert("중간 관리자가 등록되었습니다.");
-        handleClose();
-      } else {
-        alert("등록 기능 준비 중입니다.");
-        handleClose();
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) {
+        setError(json.error ?? "등록에 실패했습니다.");
+        return;
       }
-    } catch {
-      alert("등록 기능 준비 중입니다.");
+      const linked = json.data?.facility ? `\n담당 창고(스튜디오): ${json.data.facility}` : "";
+      const note = json.data?.note ? `\n${json.data.note}` : "";
+      alert(`중간 관리자가 등록되었습니다.${linked}${note}\n임시 비밀번호를 본인에게 안전하게 전달하세요.`);
       handleClose();
+      router.refresh();
+    } catch {
+      setError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도하세요.");
     } finally {
       setLoading(false);
     }
@@ -82,6 +88,7 @@ export function RegisterManagerButton() {
                 <Label>담당 창고(스튜디오) (선택)</Label>
                 <Input value={facility} onChange={(e) => setFacility(e.target.value)} placeholder="강남 프리미엄 스튜디오" />
               </div>
+              {error && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
               <div className="flex gap-2 pt-2">
                 <Button type="button" variant="outline" className="flex-1" onClick={handleClose}>취소</Button>
                 <Button type="submit" className="flex-1" disabled={loading}>

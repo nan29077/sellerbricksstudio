@@ -1,5 +1,17 @@
 // PaymentAdapter: PG 교체 가능한 어댑터 구조. 키 없으면 Mock 동작.
+import { createHmac, timingSafeEqual } from "crypto";
 import { PaymentMethod } from "@prisma/client";
+
+// 웹훅 서명 검증: 본문을 PAYMENT_WEBHOOK_SECRET 으로 HMAC-SHA256 한 hex 값과 비교한다.
+// 비밀키가 없으면 개발 환경에서만 통과시키고, 배포 환경에서는 항상 거절한다.
+export function verifyHmacSignature(rawBody: string, signature: string | null, secret: string | undefined): boolean {
+  if (!secret) return process.env.NODE_ENV !== "production";
+  if (!signature) return false;
+  const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
+  const given = signature.replace(/^sha256=/, "").trim();
+  if (given.length !== expected.length) return false;
+  return timingSafeEqual(Buffer.from(given), Buffer.from(expected));
+}
 
 export interface CreatePaymentInput {
   orderId: string; amount: number; method: PaymentMethod; orderName: string;
@@ -35,9 +47,7 @@ export class MockPaymentAdapter implements PaymentAdapter {
     return { success: true, pgTransactionId, status: "REFUNDED" };
   }
   verifyWebhook(rawBody: string, signature: string | null): boolean {
-    const secret = process.env.PAYMENT_WEBHOOK_SECRET;
-    if (!secret) return true; // mock: 검증 통과
-    return signature === secret; // 실제 구현에서는 HMAC 검증으로 교체
+    return verifyHmacSignature(rawBody, signature, process.env.PAYMENT_WEBHOOK_SECRET);
   }
 }
 
