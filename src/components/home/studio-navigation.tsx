@@ -119,8 +119,11 @@ function MenuItems({ account, desktop, onNavigate }: { account: Account; desktop
             <Link href={settingsHref[account.role]} aria-label="내 프로필" title={account.name} onClick={onNavigate} className={itemStyle}>
               <Image src={account.image} alt="" width={32} height={32} className="h-8 w-8 shrink-0 rounded-full border border-brand-200 bg-white object-cover" />
               <span className={cn("min-w-0", desktop && "w-full text-center")}>
-                <span className="block truncate font-extrabold text-navy">{account.name}</span>
-                <span className="mt-0.5 block truncate text-[9px] text-slate-500">{ROLE_LABELS[account.role]}</span>
+                <span className={cn("block font-extrabold text-navy", desktop ? "line-clamp-2 break-all leading-tight" : "truncate")}>{account.name}</span>
+                {/* 이름에 이미 역할명이 들어 있으면(예: "셀러", "테스트셀러") 역할을 한 번만 보여 준다 */}
+                {!account.name.replace(/\s/g, "").includes(ROLE_LABELS[account.role].replace(/\s/g, "")) && (
+                  <span className="mt-0.5 block truncate text-[9px] text-slate-500">{ROLE_LABELS[account.role]}</span>
+                )}
               </span>
             </Link>
             <button type="button" className={itemStyle} onClick={() => signOut({ callbackUrl: "/" })}><LogOut className="h-4 w-4" />로그아웃</button>

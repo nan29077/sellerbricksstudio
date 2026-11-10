@@ -1,390 +1,226 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { kstStartOfMonth } from "@/lib/kst";
 import { requireRole } from "@/lib/auth";
 import { managerFacilityIds } from "@/lib/rbac";
-import { PageHeader, StatCard } from "@/components/layout/dashboard-widgets";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { formatDate, formatDateTime, formatKRW } from "@/lib/utils";
+import { calcManagerCommission } from "@/lib/manager-commission";
+import { formatKRW } from "@/lib/utils";
+import { addDays, addMonths, hhmm, kstParts, kstStartOfDay, kstStartOfMonth, WEEKDAYS } from "@/lib/kst";
 import {
-  Briefcase, Building2, MapPin,
-  ArrowRight, CalendarDays, ExternalLink, Clock,
-  CheckCircle2, Users, TrendingUp, Wallet,
+  SOLD_ORDER_STATUSES, compactKRW, dailySeries, dday, deltaPct, greeting, hoursText, monthlySeries, openHoursPerDay, overlapHours,
+  relativeTime, todayLabel, utilization, zipSeries,
+} from "@/lib/dashboard";
+import {
+  DashHero, DataNotice, Empty, Feed, HeroButton, HeroPanel, KpiTile, Panel, Pill, ShortcutGrid, TodoList, TrendChart,
+} from "@/components/dashboard/kit";
+import {
+  BadgeAlert, BarChart3, Building2, CalendarDays, CircleDollarSign, ClipboardCheck, Coins, Gauge as GaugeIcon, Settings,
+  ShoppingBag, Star, TrendingDown, Users,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-const BOOKING_STATUS_MAP: Record<string, { label: string; color: string }> = {
-  PENDING:   { label: "승인 대기", color: "bg-yellow-100 text-yellow-700" },
-  APPROVED:  { label: "승인됨",   color: "bg-emerald-100 text-emerald-700" },
-  REJECTED:  { label: "거절됨",   color: "bg-red-100 text-red-700" },
-  CANCELLED: { label: "취소됨",   color: "bg-gray-100 text-gray-600" },
-  COMPLETED: { label: "완료",     color: "bg-blue-100 text-blue-700" },
+const STATUS: Record<string, { label: string; tone: "amber" | "green" | "red" | "slate" | "blue" }> = {
+  PENDING: { label: "승인 대기", tone: "amber" }, APPROVED: { label: "확정", tone: "green" },
+  REJECTED: { label: "거절", tone: "red" }, CANCELLED: { label: "취소", tone: "slate" }, COMPLETED: { label: "이용 완료", tone: "blue" },
 };
+const nameOf = (s: { email: string; profile: { name: string | null } | null }) => s.profile?.name || s.email.split("@")[0];
 
-async function getDashboardData(userId: string) {
+async function load(userId: string) {
   const facIds = await managerFacilityIds(userId);
-  if (facIds.length === 0) return null;
+  const rule = await prisma.managerCommissionRule.findUnique({ where: { managerId: userId } });
+  if (facIds.length === 0) return { empty: true as const, rule };
 
   const now = new Date();
+  const today = kstStartOfDay(now);
   const monthStart = kstStartOfMonth(now);
+  const nextMonth = addMonths(monthStart, 1);
+  const lastMonthStart = addMonths(monthStart, -1);
+  const lastMonthSameDay = new Date(lastMonthStart.getTime() + (now.getTime() - monthStart.getTime()));
+  const sixStart = addMonths(monthStart, -5);
+  const inFac = { facilityId: { in: facIds } };
+  const bookingSelect = { id: true, status: true, startAt: true, endAt: true, createdAt: true, facility: { select: { name: true } }, seller: { select: { email: true, profile: { select: { name: true } } } } } as const;
 
-  const [
-    facilities,
-    totalBookings,
-    pendingBookings,
-    thisMonthBookings,
-    uniqueSellers,
-    recentBookings,
-    upcomingBookings,
-    perFacilityBookings,
-    commissionRules,
-    thisMonthRevenue,
-  ] = await Promise.all([
-    // 담당 창고(스튜디오) 목록
-    prisma.facility.findMany({
-      where: { id: { in: facIds } },
-      select: { id: true, name: true, region: true, type: true },
-    }),
-    // 총 예약 수
-    prisma.booking.count({ where: { facilityId: { in: facIds } } }),
-    // 승인 대기 수
-    prisma.booking.count({ where: { facilityId: { in: facIds }, status: "PENDING" } }),
-    // 이번 달 예약 수
-    prisma.booking.count({
-      where: { facilityId: { in: facIds }, createdAt: { gte: monthStart } },
-    }),
-    // 이용 셀러 수 (unique)
-    prisma.booking.groupBy({ by: ["sellerId"], where: { facilityId: { in: facIds } } }),
-    // 최근 예약 5건 (완료 또는 전체)
-    prisma.booking.findMany({
-      where: { facilityId: { in: facIds } },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-      include: {
-        facility: { select: { name: true } },
-        seller: { select: { email: true, profile: { select: { name: true } } } },
-      },
-    }),
-    // 다가오는 승인된 예약 3건
-    prisma.booking.findMany({
-      where: {
-        facilityId: { in: facIds },
-        status: "APPROVED",
-        startAt: { gte: now },
-      },
-      orderBy: { startAt: "asc" },
-      take: 3,
-      include: {
-        facility: { select: { name: true } },
-        seller: { select: { email: true, profile: { select: { name: true } } } },
-      },
-    }),
-    // 창고(스튜디오)별 누적 예약 수
-    prisma.booking.groupBy({
-      by: ["facilityId"],
-      where: { facilityId: { in: facIds } },
-      _count: { id: true },
-    }),
-    // 매니저 커미션 룰
-    prisma.managerCommissionRule.findMany({
-      where: { managerId: userId },
-    }),
-    // 이번 달 담당 창고(스튜디오) 이용료 매출 (승인·완료 예약)
-    prisma.booking.aggregate({
-      where: { facilityId: { in: facIds }, status: { in: ["APPROVED", "COMPLETED"] }, startAt: { gte: monthStart } },
-      _sum: { totalPrice: true },
-    }),
+  const [facilities, bookings, orders, ratings, upcoming, recent, stalePending] = await Promise.all([
+    prisma.facility.findMany({ where: { id: { in: facIds } }, select: { id: true, name: true, region: true, type: true, status: true, rating: true, openTime: true, closeTime: true } }),
+    prisma.booking.findMany({ where: { ...inFac, OR: [{ startAt: { gte: sixStart } }, { createdAt: { gte: sixStart } }] }, select: { facilityId: true, sellerId: true, status: true, startAt: true, endAt: true, createdAt: true } }),
+    prisma.order.findMany({ where: { ...inFac, status: { in: [...SOLD_ORDER_STATUSES] }, createdAt: { gte: sixStart } }, select: { facilityId: true, createdAt: true, totalAmount: true } }),
+    prisma.facilityReview.groupBy({ by: ["facilityId"], where: { ...inFac, isHidden: false }, _avg: { rating: true }, _count: true }),
+    prisma.booking.findMany({ where: { ...inFac, status: { in: ["APPROVED", "PENDING"] }, startAt: { gte: now } }, orderBy: { startAt: "asc" }, take: 5, select: bookingSelect }),
+    prisma.booking.findMany({ where: inFac, orderBy: { createdAt: "desc" }, take: 6, select: bookingSelect }),
+    prisma.booking.count({ where: { ...inFac, status: "PENDING", createdAt: { lt: addDays(now, -1) } } }),
   ]);
 
-  // 창고(스튜디오)별 예약 수 맵
-  const perFacMap = new Map<string, number>();
-  for (const g of perFacilityBookings) {
-    perFacMap.set(g.facilityId, g._count.id);
-  }
-  const facilitiesWithCount = facilities.map((f) => ({
-    ...f,
-    bookingCount: perFacMap.get(f.id) ?? 0,
-  }));
+  const daysInMonth = kstParts(addDays(nextMonth, -1)).day;
+  const used = bookings.filter((b) => b.status === "APPROVED" || b.status === "COMPLETED");
+  const perFac = facilities.map((f) => {
+    const hours = overlapHours(used.filter((b) => b.facilityId === f.id), monthStart, nextMonth);
+    const r = ratings.find((x) => x.facilityId === f.id);
+    return {
+      ...f, hours, util: utilization(hours, openHoursPerDay(f), daysInMonth),
+      monthCount: bookings.filter((b) => b.facilityId === f.id && b.createdAt >= monthStart).length,
+      pending: bookings.filter((b) => b.facilityId === f.id && b.status === "PENDING").length,
+      gmv: orders.filter((o) => o.facilityId === f.id && o.createdAt >= monthStart).reduce((s, o) => s + o.totalAmount, 0),
+      avgRating: r?._avg.rating ?? null, reviews: r?._count ?? 0,
+    };
+  }).sort((a, b) => b.monthCount - a.monthCount || b.gmv - a.gmv);
+
+  const mReq = bookings.filter((b) => b.createdAt >= monthStart);
+  const pReq = bookings.filter((b) => b.createdAt >= lastMonthStart && b.createdAt < lastMonthSameDay);
+  const mOrders = orders.filter((o) => o.createdAt >= monthStart);
+  const gmv = mOrders.reduce((s, o) => s + o.totalAmount, 0);
+  const gmvPrev = orders.filter((o) => o.createdAt >= lastMonthStart && o.createdAt < lastMonthSameDay).reduce((s, o) => s + o.totalAmount, 0);
+  const completedThisMonth = bookings.filter((b) => b.status === "COMPLETED" && b.startAt >= monthStart && b.startAt < nextMonth).length;
+  const approvedThisMonth = bookings.filter((b) => b.status === "APPROVED" && b.startAt >= monthStart && b.startAt < nextMonth).length;
+  const totalHours = perFac.reduce((s, f) => s + f.hours, 0);
+  const cap = facilities.reduce((s, f) => s + openHoursPerDay(f) * daysInMonth, 0);
 
   return {
-    facilities: facilitiesWithCount,
-    totalBookings,
-    pendingBookings,
-    thisMonthBookings,
-    totalSellers: uniqueSellers.length,
-    recentBookings,
-    upcomingBookings,
-    commissionRules,
-    thisMonthRevenue: thisMonthRevenue._sum.totalPrice ?? 0,
+    empty: false as const, rule, perFac, gmv, gmvDelta: deltaPct(gmv, gmvPrev), orderCount: mOrders.length,
+    monthReq: mReq.length, reqDelta: deltaPct(mReq.length, pReq.length),
+    pending: bookings.filter((b) => b.status === "PENDING").length, stalePending,
+    sellers: new Set(used.filter((b) => b.startAt >= addDays(today, -90)).map((b) => b.sellerId)).size,
+    util: cap ? Math.min(100, Math.round((totalHours / cap) * 100)) : 0, totalHours,
+    completedThisMonth, approvedThisMonth,
+    commission: calcManagerCommission(rule, 0, completedThisMonth),
+    commissionForecast: calcManagerCommission(rule, 0, completedThisMonth + approvedThisMonth),
+    spark: dailySeries(orders.filter((o) => o.createdAt >= addDays(today, -29)), 30, (o) => o.createdAt, (o) => o.totalAmount).map((x) => x.value),
+    trend: zipSeries(
+      monthlySeries(orders, 6, (o) => o.createdAt, (o) => o.totalAmount),
+      monthlySeries(bookings.filter((b) => b.status !== "CANCELLED" && b.status !== "REJECTED"), 6, (b) => b.startAt),
+    ),
+    upcoming, recent,
   };
 }
 
 export default async function ManagerDashboard() {
   const user = await requireRole(["MANAGER"]);
+  let d: Awaited<ReturnType<typeof load>> | null = null;
+  try { d = await load(user.id); } catch { /* DB 미연결 */ }
+  const hello = `${greeting()}, ${user.name ?? "매니저"}님`;
 
-  let data: Awaited<ReturnType<typeof getDashboardData>> | null = null;
-  try {
-    data = await getDashboardData(user.id);
-  } catch { /* fallback */ }
+  if (!d) return <div className="space-y-6"><DashHero eyebrow={`MANAGER · ${todayLabel()}`} title={hello} /><DataNotice /></div>;
 
-  const facilities = data?.facilities ?? [];
-  const totalBookings = data?.totalBookings ?? 0;
-  const pendingBookings = data?.pendingBookings ?? 0;
-  const thisMonthBookings = data?.thisMonthBookings ?? 0;
-  const totalSellers = data?.totalSellers ?? 0;
-  const recentBookings = data?.recentBookings ?? [];
-  const upcomingBookings = data?.upcomingBookings ?? [];
-  const commissionRules = data?.commissionRules ?? [];
-  const thisMonthRevenue = data?.thisMonthRevenue ?? 0;
+  const ruleText = d.rule ? (d.rule.commissionType === "PERCENT" ? `이용료의 ${d.rule.commissionValue}%` : `이용 완료 1건당 ${formatKRW(d.rule.commissionValue)}`) : "커미션 규칙 미설정";
+
+  if (d.empty) {
+    return (
+      <div className="space-y-6">
+        <DashHero eyebrow={`MANAGER · ${todayLabel()}`} title={hello} description="최고관리자가 담당 창고(스튜디오)를 배정하면 예약·판매·커미션 현황이 이곳에 표시됩니다." chips={[{ label: ruleText }]} />
+        <Empty icon={Building2} text="아직 배정된 담당 창고(스튜디오)가 없습니다" />
+      </div>
+    );
+  }
+
+  const weak = d.perFac.filter((f) => f.status === "APPROVED" && f.monthCount === 0).length;
+  const lowRated = d.perFac.filter((f) => f.avgRating !== null && f.avgRating < 3.5).length;
 
   return (
-    <div className="space-y-6">
-      {/* 헤더 */}
-      <div className="flex items-start justify-between">
-        <PageHeader
-          title={`안녕하세요, ${user.name}님`}
-          description="매니저 대시보드 — 담당 창고(스튜디오) 현황을 확인하세요"
-        />
-        <Link href="/manager/facilities" className="hidden sm:block">
-          <Button variant="outline">창고(스튜디오) 관리</Button>
-        </Link>
+    <div className="space-y-6 pb-6">
+      <DashHero
+        eyebrow={`MANAGER · ${todayLabel()}`}
+        title={hello}
+        description="담당 창고(스튜디오)의 예약 응답, 가동률, 판매 성과를 살피고 관리가 필요한 곳을 먼저 챙기세요."
+        chips={[
+          ...(d.stalePending ? [{ label: `24시간+ 대기 ${d.stalePending}건`, tone: "warn" as const }] : []),
+          { label: `담당 ${d.perFac.length}곳` },
+          { label: `평균 가동률 ${d.util}%` },
+        ]}
+        actions={<><HeroButton href="/manager/bookings?status=PENDING" primary><ClipboardCheck className="h-4 w-4" />대기 예약 보기</HeroButton><HeroButton href="/manager/sales"><BarChart3 className="h-4 w-4" />매출 리포트</HeroButton></>}
+        aside={
+          <HeroPanel title="이번 달 커미션" href="/manager/commissions" cta="커미션 상세">
+            <p className="text-3xl font-extrabold">{formatKRW(d.commission)}</p>
+            <p className="mt-1 text-xs text-white/65">확정 예약까지 포함하면 {formatKRW(d.commissionForecast)} 예상</p>
+            <p className="mt-2 inline-flex rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-bold text-brand-200">{ruleText}</p>
+          </HeroPanel>
+        }
+      />
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-6">
+        <KpiTile label="담당 창고(스튜디오)" value={String(d.perFac.length)} unit="곳" sub={`운영 ${d.perFac.filter((f) => f.status === "APPROVED").length}곳`} icon={Building2} tone="sky" href="/manager/facilities" />
+        <KpiTile label="이번 달 예약 신청" value={String(d.monthReq)} unit="건" delta={d.reqDelta} sub="전월 동기 대비" icon={CalendarDays} tone="violet" href="/manager/bookings" />
+        <KpiTile emphasis label="담당 공간 판매액" value={compactKRW(d.gmv)} delta={d.gmvDelta} sub={`주문 ${d.orderCount}건`} icon={CircleDollarSign} tone="brand" spark={d.spark} href="/manager/sales" />
+        <KpiTile label="평균 가동률" value={`${d.util}%`} sub={`이용 ${hoursText(d.totalHours)}`} icon={GaugeIcon} tone="green" />
+        <KpiTile label="승인 대기" value={String(d.pending)} unit="건" sub={d.stalePending ? `24시간+ ${d.stalePending}건` : "지연 없음"} icon={ClipboardCheck} tone={d.stalePending ? "red" : "amber"} href="/manager/bookings?status=PENDING" />
+        <KpiTile label="이용 셀러" value={String(d.sellers)} unit="명" sub="최근 90일" icon={Users} tone="navy" />
       </div>
 
-      {/* 알림 배너: 승인 대기 */}
-      {pendingBookings > 0 && (
-        <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-center gap-3">
-          <Clock className="h-5 w-5 text-amber-600 shrink-0" />
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-amber-800">
-              승인 대기 중인 예약이 {pendingBookings}건 있습니다
-            </p>
-            <p className="text-xs text-amber-600">담당 창고(스튜디오)의 예약 요청을 확인해 주세요.</p>
-          </div>
-          <Link href="/manager/bookings">
-            <Button variant="outline" size="sm" className="border-amber-300 text-amber-700">
-              확인하기
-            </Button>
-          </Link>
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+        <Panel eyebrow="6 MONTHS" title="월별 판매액 · 이용 예약" action={{ href: "/manager/sales", label: "매출 보기" }}>
+          <TrendChart data={d.trend} a={{ name: "판매액", format: compactKRW }} b={{ name: "이용 예약", format: (n) => `${n}건` }} />
+        </Panel>
+        <Panel eyebrow="ATTENTION" title="관리가 필요한 곳">
+          <TodoList items={[
+            { label: "24시간 넘게 응답 없는 예약", desc: "창고(스튜디오)에 응답을 요청하세요", n: d.stalePending, href: "/manager/bookings?status=PENDING", icon: BadgeAlert, tone: "red", urgent: true },
+            { label: "승인 대기 예약", n: d.pending - d.stalePending, href: "/manager/bookings?status=PENDING", icon: ClipboardCheck, tone: "amber" },
+            { label: "이번 달 예약이 없는 창고(스튜디오)", desc: "상품·운영시간 점검이 필요해요", n: weak, href: "/manager/facilities", icon: TrendingDown, tone: "violet" },
+            { label: "평균 평점 3.5 미만", desc: "리뷰를 확인하고 개선을 도와주세요", n: lowRated, href: "/manager/facilities", icon: Star, tone: "amber" },
+            { label: "승인 심사 중인 담당 공간", n: d.perFac.filter((f) => f.status === "PENDING").length, href: "/manager/facilities", icon: Building2, tone: "sky" },
+          ]} emptyText="담당 공간 모두 잘 운영되고 있어요" />
+        </Panel>
+      </div>
+
+      <Panel eyebrow="PERFORMANCE" title="창고(스튜디오)별 이번 달 성과" action={{ href: "/manager/facilities", label: "전체 관리" }}>
+        <div className="-mx-1 overflow-x-auto">
+          <table className="w-full min-w-[640px] text-sm">
+            <thead><tr className="text-left text-[11px] font-bold text-slate-400">
+              <th className="px-1 pb-2">창고(스튜디오)</th><th className="px-1 pb-2">가동률</th><th className="px-1 pb-2 text-right">예약</th><th className="px-1 pb-2 text-right">대기</th><th className="px-1 pb-2 text-right">판매액</th><th className="px-1 pb-2 text-right">평점</th>
+            </tr></thead>
+            <tbody className="divide-y divide-[#F0ECE6]">
+              {d.perFac.map((f) => (
+                <tr key={f.id}>
+                  <td className="max-w-0 px-1 py-3">
+                    <span className="flex items-center gap-1.5"><span className="truncate font-bold text-navy">{f.name}</span>{f.status !== "APPROVED" && <Pill tone={f.status === "PENDING" ? "amber" : "red"}>{f.status === "PENDING" ? "심사 중" : "정지"}</Pill>}</span>
+                    <span className="block text-[11px] text-slate-500">{f.region} · {f.type === "WAREHOUSE" ? "창고" : "스튜디오"} · {hoursText(f.hours)}</span>
+                  </td>
+                  <td className="w-40 px-1 py-3">
+                    <div className="flex items-center gap-2"><div className="h-2 flex-1 overflow-hidden rounded-full bg-[#F1EEE8]"><div className={`h-full rounded-full ${f.util >= 80 ? "bg-rose-400" : f.util >= 40 ? "bg-brand-500" : "bg-emerald-400"}`} style={{ width: `${f.util}%` }} /></div><span className="w-9 text-right text-xs font-bold text-navy">{f.util}%</span></div>
+                  </td>
+                  <td className="px-1 py-3 text-right font-semibold text-navy">{f.monthCount}</td>
+                  <td className="px-1 py-3 text-right">{f.pending ? <Pill tone="amber">{f.pending}</Pill> : <span className="text-slate-300">0</span>}</td>
+                  <td className="px-1 py-3 text-right font-extrabold text-navy">{compactKRW(f.gmv)}</td>
+                  <td className="px-1 py-3 text-right text-slate-600">{f.avgRating ? <span className={f.avgRating < 3.5 ? "font-bold text-rose-600" : ""}>★ {f.avgRating.toFixed(1)} <span className="text-[11px] text-slate-400">({f.reviews})</span></span> : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      )}
+      </Panel>
 
-      {/* 핵심 지표 4개 */}
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <StatCard label="담당 창고(스튜디오)" value={`${facilities.length}개`} sub="창고/스튜디오" icon={Building2} />
-        <StatCard label="총 예약" value={`${totalBookings}건`} sub={`이번 달 +${thisMonthBookings}건`} icon={CalendarDays} />
-        <StatCard label="이용 셀러" value={`${totalSellers}명`} sub="누적 이용자" icon={Users} />
-        <StatCard
-          label="이번 달 매출"
-          value={thisMonthRevenue > 0 ? formatKRW(thisMonthRevenue) : "—"}
-          sub="담당 창고 이용료 기준"
-          icon={Wallet}
-        />
-      </div>
-
-      {/* 담당 창고(스튜디오) 현황 — 실 DB */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold text-navy">담당 창고(스튜디오) 현황</h3>
-          <Link href="/manager/facilities" className="text-xs text-brand-600 flex items-center gap-1">
-            전체보기 <ArrowRight className="h-3 w-3" />
-          </Link>
-        </div>
-        {facilities.length === 0 ? (
-          <Card>
-            <CardContent className="py-10 text-center text-sm text-muted-foreground">
-              <Building2 className="h-10 w-10 mx-auto mb-2 opacity-30" />
-              담당 창고(스튜디오)가 없습니다
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid sm:grid-cols-2 gap-3">
-            {facilities.map((f: any) => (
-              <Card key={f.id} className="hover:shadow-md transition">
-                <CardContent className="pt-4 pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 shrink-0">
-                      <Building2 className="h-5 w-5 text-purple-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-navy truncate">{f.name}</p>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                        <MapPin className="h-3 w-3" />
-                        {f.region} ·{" "}
-                        {f.type === "WAREHOUSE"
-                          ? "창고"
-                          : f.type === "STUDIO"
-                            ? "스튜디오"
-                            : f.type}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <div className="rounded-lg bg-muted/50 px-3 py-2 text-center">
-                      <p className="text-[10px] text-muted-foreground">누적 예약</p>
-                      <p className="text-sm font-bold text-navy">{f.bookingCount}건</p>
-                    </div>
-                    <Link href="/manager/bookings" className="block">
-                      <div className="rounded-lg bg-brand-50 px-3 py-2 text-center hover:bg-brand-100 transition cursor-pointer">
-                        <p className="text-[10px] text-brand-600">예약 관리</p>
-                        <p className="text-xs font-semibold text-brand-700">바로가기</p>
-                      </div>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* 다가오는 예약 + 커미션 규칙 */}
-      <div className="grid gap-5 xl:grid-cols-2">
-        {/* 다가오는 예약 */}
-        <Card>
-          <CardContent className="pt-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <CalendarDays className="h-4 w-4 text-brand-500" />
-                <h3 className="font-bold text-navy">다가오는 예약</h3>
-              </div>
-              <Link href="/manager/bookings" className="text-xs text-brand-600 flex items-center gap-1">
-                전체보기 <ArrowRight className="h-3 w-3" />
-              </Link>
-            </div>
-            {upcomingBookings.length === 0 ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                <CalendarDays className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                다가오는 예약이 없습니다
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {upcomingBookings.map((b: any) => {
-                  const sellerName =
-                    b.seller?.profile?.name ?? b.seller?.email ?? "셀러";
-                  return (
-                    <div key={b.id} className="flex items-start gap-3 rounded-lg border border-border p-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 shrink-0">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-navy">{sellerName}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {b.facility?.name ?? "창고(스튜디오)"}
-                        </p>
-                        {b.startAt && (
-                          <div className="flex items-center gap-1 text-xs text-brand-600 mt-1">
-                            <Clock className="h-3 w-3" />
-                            {formatDateTime(b.startAt)}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* 커미션 규칙 */}
-        <Card>
-          <CardContent className="pt-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-emerald-500" />
-                <h3 className="font-bold text-navy">커미션 규칙</h3>
-              </div>
-            </div>
-            {commissionRules.length === 0 ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                <Briefcase className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                설정된 커미션 규칙이 없습니다
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {commissionRules.map((r: any) => (
-                  <div key={r.id} className="rounded-lg border border-border p-3">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-semibold text-navy">커미션 규칙</p>
-                      <span className="text-sm font-bold text-emerald-600 shrink-0 ml-2">
-                        {r.commissionValue}{r.commissionType === "PERCENT" ? "%" : "원"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {r.commissionType === "PERCENT" ? "정률" : "정액"} 커미션
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* 최근 예약 — 실 DB */}
-      <Card>
-        <CardContent className="pt-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Briefcase className="h-4 w-4 text-brand-500" />
-              <h3 className="font-bold text-navy">최근 예약 내역</h3>
-            </div>
-            <Link href="/manager/bookings" className="text-xs text-brand-600 flex items-center gap-1">
-              전체보기 <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
-          {recentBookings.length === 0 ? (
-            <div className="py-6 text-center text-sm text-muted-foreground">예약 내역이 없습니다</div>
-          ) : (
-            <div className="space-y-2">
-              {recentBookings.map((b: any) => {
-                const sellerName =
-                  b.seller?.profile?.name ?? b.seller?.email ?? "셀러";
-                const s =
-                  BOOKING_STATUS_MAP[b.status] ??
-                  { label: b.status, color: "bg-gray-100 text-gray-600" };
+      <div className="grid gap-5 lg:grid-cols-2">
+        <Panel eyebrow="UPCOMING" title="다가오는 예약" action={{ href: "/manager/bookings", label: "전체 보기" }}>
+          {d.upcoming.length === 0 ? <Empty icon={CalendarDays} text="다가오는 예약이 없습니다" /> : (
+            <ul className="space-y-2">
+              {d.upcoming.map((b) => {
+                const p = kstParts(b.startAt);
                 return (
-                  <div
-                    key={b.id}
-                    className="flex items-center gap-3 rounded-lg border border-border p-3"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-navy">{sellerName}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {b.facility?.name ?? "창고(스튜디오)"} — {formatDate(b.createdAt)}
-                      </p>
-                    </div>
-                    <span
-                      className={`text-xs font-semibold px-2 py-1 rounded-full whitespace-nowrap shrink-0 ${s.color}`}
-                    >
-                      {s.label}
-                    </span>
-                  </div>
+                  <li key={b.id} className="flex items-center gap-3 rounded-2xl border border-[#EEEAE2] p-3">
+                    <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[#F6F2E9] text-center text-navy"><span><span className="block text-[10px] font-bold text-slate-500">{WEEKDAYS[p.weekday]}</span><span className="block text-lg font-extrabold leading-none">{p.day}</span></span></span>
+                    <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-navy">{nameOf(b.seller)}</span><span className="block truncate text-xs text-slate-500">{b.facility.name} · {hhmm(b.startAt)}–{hhmm(b.endAt)}</span></span>
+                    <span className="flex shrink-0 flex-col items-end gap-1"><Pill tone={STATUS[b.status].tone}>{STATUS[b.status].label}</Pill><span className="text-[11px] font-bold text-slate-500">{dday(b.startAt)}</span></span>
+                  </li>
                 );
               })}
-            </div>
+            </ul>
           )}
-        </CardContent>
-      </Card>
+        </Panel>
+        <Panel eyebrow="ACTIVITY" title="최근 예약 활동" action={{ href: "/manager/bookings", label: "전체 보기" }}>
+          <Feed empty="예약 내역이 없습니다" items={d.recent.map((b) => ({
+            key: b.id, title: `${nameOf(b.seller)} · ${b.facility.name}`, sub: `${STATUS[b.status].label} · 이용 ${kstParts(b.startAt).month}/${kstParts(b.startAt).day} ${hhmm(b.startAt)}`,
+            time: relativeTime(b.createdAt), icon: CalendarDays, tone: STATUS[b.status].tone, href: "/manager/bookings",
+          }))} />
+        </Panel>
+      </div>
 
-      {/* 셀러브릭스 플랫폼 바로가기 */}
-      <a href="https://sellerbricks.co.kr" target="_blank" rel="noopener noreferrer" className="block">
-        <Card className="border border-border bg-white hover:border-brand-400 hover:shadow-md transition-all">
-          <CardContent className="pt-5 pb-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-navy">셀러브릭스 플랫폼 바로가기</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  sellerbricks.co.kr에서 창고(스튜디오)·셀러를 통합 관리하세요
-                </p>
-              </div>
-              <ExternalLink className="h-5 w-5 text-brand-500 shrink-0" />
-            </div>
-          </CardContent>
-        </Card>
-      </a>
+      <Panel eyebrow="SHORTCUTS" title="바로가기">
+        <ShortcutGrid cols="sm:grid-cols-2 xl:grid-cols-5" items={[
+          { title: "예약 관리", desc: "담당 공간 예약", href: "/manager/bookings", icon: CalendarDays, tone: "violet", badge: d.pending },
+          { title: "담당 창고(스튜디오)", desc: "공간 정보·상태", href: "/manager/facilities", icon: Building2, tone: "sky" },
+          { title: "매출 리포트", desc: "판매·주문 분석", href: "/manager/sales", icon: ShoppingBag, tone: "brand" },
+          { title: "커미션", desc: "월별 수수료 내역", href: "/manager/commissions", icon: Coins, tone: "green" },
+          { title: "설정", desc: "내 정보·알림", href: "/manager/settings", icon: Settings, tone: "slate" },
+        ]} />
+      </Panel>
+      <p className="text-center text-[11px] text-slate-400"><Link href="/manager/commissions" className="hover:text-brand-700">커미션은 {ruleText} 기준으로 계산됩니다.</Link></p>
     </div>
   );
 }
