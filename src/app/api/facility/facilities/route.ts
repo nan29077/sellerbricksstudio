@@ -49,7 +49,7 @@ const createSchema = z.object({
   type: z.enum(["WAREHOUSE", "STUDIO"]),
   region: z.string().trim().min(2, "지역을 입력하세요.").max(40),
   address: z.string().trim().min(5, "주소를 입력하세요.").max(200),
-  basePrice: z.coerce.number().int().min(0, "예약료는 0원 이상이어야 합니다.").max(10_000_000),
+  basePrice: z.coerce.number().optional(), // 이용료는 무료 — 입력값은 무시하고 0으로 저장
   openTime: z.string().regex(TIME, "운영 시작 시간을 확인하세요."),
   closeTime: z.string().regex(TIME, "운영 종료 시간을 확인하세요."),
   description: z.string().trim().max(2000).optional(),
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
     const facility = await prisma.facility.create({
       data: {
         ownerId: user.id, name: d.name, type: d.type, status: "PENDING",
-        region: d.region, address: d.address, basePrice: d.basePrice,
+        region: d.region, address: d.address, basePrice: 0,
         openTime: d.openTime, closeTime: d.closeTime,
         description: d.description || null, equipment: d.equipment || null,
         specialty: d.specialty || null, liveSpaceInfo: d.liveSpaceInfo || null,

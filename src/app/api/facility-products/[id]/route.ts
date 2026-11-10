@@ -14,6 +14,12 @@ const patchSchema = z.object({
   commissionValue: z.coerce.number().min(0).optional(),
   isSellable: z.boolean().optional(),
   shippingInfo: z.string().max(500).optional(),
+  // 상품 기본 정보 (마스터 상품)
+  name: z.string().trim().min(1, "상품명을 입력하세요.").max(120).optional(),
+  category: z.string().trim().min(1).max(40).optional(),
+  sku: z.string().trim().max(60).optional(),
+  description: z.string().max(5000).optional(),
+  thumbnailUrl: z.string().trim().max(1000).optional(),
 }).strip();
 
 async function assertOwner(userId: string, fpId: string) {
@@ -27,10 +33,14 @@ async function assertOwner(userId: string, fpId: string) {
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await requireRole(["FACILITY_ADMIN"]);
-    await assertOwner(user.id, params.id);
+    const fp = await assertOwner(user.id, params.id);
     const parsed = patchSchema.safeParse(await req.json());
     if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "입력값이 올바르지 않습니다.");
-    const updated = await prisma.facilityProduct.update({ where: { id: params.id }, data: parsed.data });
+    const { name, category, sku, description, thumbnailUrl, ...fpData } = parsed.data;
+    if (fpData.commissionType === "PERCENT" && (fpData.commissionValue ?? 0) > 100) return fail("정률 수수료는 100%를 넘을 수 없습니다.");
+    const productData = Object.fromEntries(Object.entries({ name, category, sku, description, thumbnailUrl }).filter(([, v]) => v !== undefined).map(([k, v]) => [k, k === "name" || k === "category" ? v : (v || null)]));
+    if (Object.keys(productData).length) await prisma.product.update({ where: { id: fp.productId }, data: productData });
+    const updated = await prisma.facilityProduct.update({ where: { id: params.id }, data: fpData });
     await audit({ actorId: user.id, action: "PRODUCT_UPDATE", entity: "FacilityProduct", entityId: params.id });
     return ok(updated);
   } catch (e) { return handleError(e); }

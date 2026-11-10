@@ -1,5 +1,7 @@
 import { promises as fs } from "fs";
+import { randomUUID } from "crypto";
 import path from "path";
+import { isHomeBackground, type HomeBackgroundId } from "./home-backgrounds";
 
 // 사이트 전역 설정.
 // Prisma Setting 테이블에 의존하지 않고 파일(data/settings.json) 기반으로 저장한다.
@@ -15,6 +17,7 @@ export type SiteSettings = {
   liveEnabled: boolean;
   managerDisabled: boolean;
   facilityDisabled: boolean;
+  homeBackground: HomeBackgroundId;
 };
 
 export const DEFAULT_SETTINGS: SiteSettings = {
@@ -27,12 +30,14 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   liveEnabled: true,
   managerDisabled: false,
   facilityDisabled: false,
+  homeBackground: "studio",
 };
 
 const BOOL_KEYS: (keyof SiteSettings)[] = ["bannerEnabled", "liveEnabled", "managerDisabled", "facilityDisabled"];
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");
+let pendingWrite: Promise<void> = Promise.resolve();
 
 function coerce(raw: SiteSettings): SiteSettings {
   // 저장된 값과 기본값을 병합하고 타입을 보정한다.
@@ -41,6 +46,7 @@ function coerce(raw: SiteSettings): SiteSettings {
     const v = (merged as any)[key];
     (merged as any)[key] = typeof v === "boolean" ? v : v === "true";
   }
+  if (!isHomeBackground(merged.homeBackground)) merged.homeBackground = DEFAULT_SETTINGS.homeBackground;
   return merged;
 }
 
@@ -60,7 +66,13 @@ export async function getSettings(): Promise<SiteSettings> {
   }
 }
 
-export async function updateSettings(patch: Partial<SiteSettings>): Promise<void> {
+export function updateSettings(patch: Partial<SiteSettings>): Promise<void> {
+  const write = pendingWrite.then(() => writeSettings(patch));
+  pendingWrite = write.catch(() => {});
+  return write;
+}
+
+async function writeSettings(patch: Partial<SiteSettings>): Promise<void> {
   const current = await getSettings();
   const next: SiteSettings = { ...current };
   for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof SiteSettings)[]) {
@@ -70,5 +82,11 @@ export async function updateSettings(patch: Partial<SiteSettings>): Promise<void
   }
   const coerced = coerce(next);
   await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(SETTINGS_FILE, JSON.stringify(coerced, null, 2), "utf-8");
+  const temporary = path.join(DATA_DIR, `settings-${randomUUID()}.tmp`);
+  try {
+    await fs.writeFile(temporary, JSON.stringify(coerced, null, 2), "utf-8");
+    await fs.rename(temporary, SETTINGS_FILE);
+  } finally {
+    await fs.rm(temporary, { force: true }).catch(() => {});
+  }
 }

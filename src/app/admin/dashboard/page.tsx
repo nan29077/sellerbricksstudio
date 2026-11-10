@@ -345,7 +345,7 @@ export default async function AdminDashboard() {
         </div>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         {/* 확인이 필요한 작업 */}
         <section
           className="rounded-[24px] border border-[#E9E5DC] bg-white p-6 shadow-sm sm:p-7"
@@ -481,7 +481,7 @@ export default async function AdminDashboard() {
         </section>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         {/* 최근 가입 회원 */}
         <section
           className="rounded-[24px] border border-[#E9E5DC] bg-white p-6 shadow-sm sm:p-7"

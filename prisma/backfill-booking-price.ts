@@ -9,6 +9,12 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
+  // 2026-11: 창고(스튜디오) 이용료가 무료로 바뀌어 이 스크립트는 더 이상 쓰지 않습니다.
+  // 대신 prisma/backfill-free-booking.ts 를 실행하세요.
+  if (process.env.FORCE_LEGACY_PRICE !== "true") {
+    console.log("이용료 무료 정책으로 사용 중단된 스크립트입니다. npx tsx prisma/backfill-free-booking.ts 를 실행하세요.");
+    return;
+  }
   const rows = await prisma.booking.findMany({
     where: { totalPrice: 0 },
     select: { id: true, startAt: true, endAt: true, status: true, updatedAt: true, approvedAt: true, completedAt: true, facility: { select: { basePrice: true } } },

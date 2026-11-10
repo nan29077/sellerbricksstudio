@@ -18,6 +18,14 @@ export const bookingSchema = z.object({
   expectedProducts: z.string().max(500).optional(),
   headcount: z.coerce.number().int().min(1).max(500).optional(),
   requestNote: z.string().max(1000).optional(),
+  // 방송에서 판매할 창고(스튜디오) 상품과 수량
+  products: z.array(z.object({
+    facilityProductId: z.string().min(1),
+    quantity: z.coerce.number().int().min(1, "수량은 1개 이상입니다.").max(100000),
+  })).max(50, "상품은 50개까지 선택할 수 있습니다.").optional(),
+  repeatWeeks: z.coerce.number().int().min(1).max(12).optional(), // 매주 반복 횟수 (1 = 반복 없음)
+  skipConflicts: z.boolean().optional(),
+  dryRun: z.boolean().optional(),
 });
 
 export const facilityProductSchema = z.object({

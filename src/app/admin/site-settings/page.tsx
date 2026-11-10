@@ -11,7 +11,7 @@ export default async function AdminSiteSettings() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="사이트 설정" description="배너와 사이트 기본 정보를 관리합니다." />
+      <PageHeader title="사이트 설정" description="메인 PC 배경 이미지, 상단 배너와 사이트 기본 정보를 관리합니다." />
       <SiteSettingsForm initial={settings} />
     </div>
   );

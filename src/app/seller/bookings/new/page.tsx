@@ -2,39 +2,59 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 import { PageHeader } from "@/components/layout/dashboard-widgets";
-import { BookingForm } from "@/components/booking-form";
+import { BookingWizard, type WizardFacility } from "@/components/booking/booking-wizard";
 import { EmptyState } from "@/components/ui/empty";
 import { Button } from "@/components/ui/button";
-import { Warehouse } from "lucide-react";
+import { Package, Warehouse } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-export default async function NewBookingPage({
-  searchParams,
-}: {
-  searchParams: { facilityId?: string; start?: string; end?: string };
-}) {
+type SPx = { facilityId?: string; products?: string; date?: string; start?: string; end?: string; hours?: string };
+
+export default async function NewBookingPage({ searchParams }: { searchParams: SPx }) {
   const user = await requireRole(["SELLER"]);
-  const validTime = (value?: string) => value && /^([01]\d|2[0-3]):[0-5]\d$/.test(value) ? value : undefined;
+  const validTime = (v?: string) => (v && /^([01]\d|2[0-3]):[0-5]\d$/.test(v) ? v : undefined);
+  const validDate = (v?: string) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
 
   const [db, favs] = await Promise.all([
     prisma.facility.findMany({
       where: { status: "APPROVED" },
       orderBy: [{ rating: "desc" }, { name: "asc" }],
-      select: { id: true, name: true, type: true, region: true, openTime: true, closeTime: true, basePrice: true, minHours: true, capacity: true, cancelPolicy: true },
+      select: {
+        id: true, name: true, type: true, region: true, address: true, rating: true, thumbnailUrl: true, capacity: true,
+        cancelPolicy: true, bookingNotice: true, specialty: true, autoApprove: true, cancelDeadlineHours: true,
+        _count: { select: { products: { where: { isSellable: true } } } },
+      },
     }).catch(() => []),
     prisma.facilityFavorite.findMany({ where: { userId: user.id }, select: { facilityId: true } }).catch(() => []),
   ]);
-  // 찜한 창고(스튜디오)를 위로
   const fav = new Set(favs.map((f) => f.facilityId));
-  const facilities = [...db].sort((a, b) => Number(fav.has(b.id)) - Number(fav.has(a.id))).map((f) => ({
-    ...f, type: f.type as string, name: fav.has(f.id) ? `★ ${f.name}` : f.name,
-    openTime: f.openTime ?? "09:00", closeTime: f.closeTime ?? "22:00",
-  }));
+  const facilities: WizardFacility[] = [...db]
+    .sort((a, b) => Number(fav.has(b.id)) - Number(fav.has(a.id)))
+    .map((f) => ({
+      id: f.id, name: f.name, type: f.type as string, region: f.region, address: f.address, rating: f.rating, thumbnailUrl: f.thumbnailUrl,
+      productCount: f._count.products, autoApprove: f.autoApprove, capacity: f.capacity, cancelPolicy: f.cancelPolicy,
+      bookingNotice: f.bookingNotice, specialty: f.specialty, favorite: fav.has(f.id), cancelDeadlineHours: f.cancelDeadlineHours,
+    }));
+
+  // ?products=fpId:수량,fpId:수량 (상품 둘러보기에서 넘어온 선택)
+  const products: Record<string, number> = {};
+  for (const part of (searchParams.products ?? "").split(",").slice(0, 50)) {
+    const [id, q] = part.split(":");
+    if (id && /^[\w-]{5,40}$/.test(id)) products[id] = Math.max(1, Math.min(100000, Number(q) || 1));
+  }
+  const start = validTime(searchParams.start);
+  const end = validTime(searchParams.end);
+  const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
+  const hours = Number(searchParams.hours) > 0 ? Number(searchParams.hours) : start && end && toMin(end) > toMin(start) ? (toMin(end) - toMin(start)) / 60 : undefined;
 
   return (
-    <div>
-      <PageHeader title="예약 신청" description="창고/스튜디오와 날짜를 고르면 그날의 예약 현황과 예상 이용료를 바로 확인할 수 있습니다." />
+    <div className="pb-24 md:pb-0">
+      <PageHeader
+        title="예약 신청"
+        description="장소 → 판매 상품 → 일정 순서로 고르면 실시간 예약 현황을 확인하며 바로 신청할 수 있습니다. 창고(스튜디오) 이용료는 무료입니다."
+        action={<Link href="/seller/products"><Button variant="outline"><Package className="h-4 w-4" />상품부터 둘러보기</Button></Link>}
+      />
       {facilities.length === 0 ? (
         <EmptyState
           icon={<Warehouse className="h-10 w-10" />}
@@ -43,11 +63,12 @@ export default async function NewBookingPage({
           action={<Link href="/facilities"><Button variant="outline">창고(스튜디오) 둘러보기</Button></Link>}
         />
       ) : (
-        <BookingForm
+        <BookingWizard
           facilities={facilities}
-          defaultFacilityId={facilities.some((f) => f.id === searchParams.facilityId) ? searchParams.facilityId : undefined}
-          defaultStart={validTime(searchParams.start)}
-          defaultEnd={validTime(searchParams.end)}
+          defaults={{
+            facilityId: facilities.some((f) => f.id === searchParams.facilityId) ? searchParams.facilityId : undefined,
+            products, date: validDate(searchParams.date), start, hours,
+          }}
         />
       )}
     </div>

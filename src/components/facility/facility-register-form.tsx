@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Textarea, Select } from "@/components/ui/input";
 import { Warehouse, Clapperboard, CheckCircle2, Loader2 } from "lucide-react";
@@ -18,7 +18,7 @@ const REGIONS = ["서울", "경기", "인천", "부산", "대구", "대전", "�
 export function FacilityRegisterForm() {
   const router = useRouter();
   const [f, setF] = useState<FormState>({
-    name: "", type: "STUDIO", region: "서울", address: "", basePrice: "50000",
+    name: "", type: "STUDIO", region: "서울", address: "", basePrice: "0",
     openTime: "09:00", closeTime: "22:00", description: "", equipment: "", specialty: "", liveSpaceInfo: "",
   });
   const [error, setError] = useState("");
@@ -55,7 +55,7 @@ export function FacilityRegisterForm() {
           <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500" />
           <p className="mt-3 text-lg font-bold text-navy">&lsquo;{done}&rsquo; 등록 신청이 접수되었습니다</p>
           <p className="mt-1 text-sm text-muted-foreground">최고관리자가 승인하면 셀러에게 공개되고 예약을 받을 수 있습니다.</p>
-          <div className="mt-6 flex justify-center gap-2">
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
             <Button variant="outline" onClick={() => router.push("/facility/profile")}>내 창고(스튜디오) 보기</Button>
             <Button onClick={() => { setDone(null); setF((p) => ({ ...p, name: "", address: "", description: "" })); }}>하나 더 등록</Button>
           </div>
@@ -65,9 +65,10 @@ export function FacilityRegisterForm() {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-5">
+    <form onSubmit={submit} className="grid items-start gap-5 xl:grid-cols-2">
       <Card>
-        <CardContent className="pt-5 space-y-4">
+        <CardHeader><CardTitle>기본 정보</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
           <div>
             <Label>공간 유형</Label>
             <div className="grid grid-cols-2 gap-2">
@@ -109,8 +110,8 @@ export function FacilityRegisterForm() {
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
-              <Label htmlFor="fr-price">시간당 예약료 (원)</Label>
-              <Input id="fr-price" type="number" min={0} step={1000} inputMode="numeric" value={f.basePrice} onChange={(e) => set("basePrice", e.target.value)} />
+              <Label>이용료</Label>
+              <p className="flex h-11 items-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-sm font-bold text-emerald-700">무료 (셀러 이용료 없음)</p>
             </div>
             <div>
               <Label htmlFor="fr-open">운영 시작</Label>
@@ -125,7 +126,8 @@ export function FacilityRegisterForm() {
       </Card>
 
       <Card>
-        <CardContent className="pt-5 space-y-4">
+        <CardHeader><CardTitle>공간 안내</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
           <div>
             <Label htmlFor="fr-desc">소개</Label>
             <Textarea id="fr-desc" value={f.description} onChange={(e) => set("description", e.target.value)} placeholder="공간의 특징, 주차·출입 안내 등을 적어주세요." maxLength={2000} rows={4} />
@@ -147,8 +149,8 @@ export function FacilityRegisterForm() {
         </CardContent>
       </Card>
 
-      {error && <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
-      <div className="flex justify-end gap-2">
+      {error && <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 xl:col-span-2">{error}</p>}
+      <div className="flex justify-end gap-2 xl:col-span-2">
         <Button type="button" variant="outline" onClick={() => router.back()}>취소</Button>
         <Button type="submit" disabled={saving}>
           {saving ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />등록 중...</> : "등록 신청"}

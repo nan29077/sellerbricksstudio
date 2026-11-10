@@ -3,14 +3,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   LogOut, Menu, X, type LucideIcon,
   LayoutDashboard, CalendarDays, MessageSquare,
   Warehouse, CalendarClock, Users, Building2, SquarePlus,
   Settings, ScrollText, Sliders, Image as ImageIcon,
   ChevronRight, Home, Globe, TrendingUp, Megaphone,
-  Share2, BarChart3, Ticket, LayoutTemplate, Star, Wallet, Coins,
+  Share2, BarChart3, Ticket, LayoutTemplate, Star, Wallet, Coins, Package,
 } from "lucide-react";
 import { NotificationBell } from "./notification-bell";
 import { cn } from "@/lib/utils";
@@ -39,6 +39,7 @@ const ROLE_NAV: Record<string, NavSection[]> = {
       { href: "/admin/marketing",   label: "마케팅 지원",  icon: Megaphone },
     ]},
     { title: "시스템 설정", items: [
+      { href: "/admin/support",         label: "고객 문의 관리", icon: MessageSquare },
       { href: "/admin/site-settings",   label: "사이트 설정",    icon: ImageIcon },
       { href: "/admin/site-management", label: "사이트 관리",    icon: Globe },
       { href: "/admin/live-settings",   label: "메뉴 권한 설정", icon: Sliders },
@@ -55,6 +56,7 @@ const ROLE_NAV: Record<string, NavSection[]> = {
       { href: "/seller/bookings",  label: "예약 관리", icon: CalendarDays, requiresFacility: true },
     ]},
     { title: "창고·스튜디오", items: [
+      { href: "/seller/products",           label: "판매 상품 둘러보기", icon: Package, requiresFacility: true },
       { href: "/facilities",                label: "창고(스튜디오) 검색", icon: Warehouse },
       { href: "/seller/farm-reservations",  label: "창고(스튜디오) 예약 현황",      icon: Building2, requiresFacility: true },
     ]},
@@ -78,6 +80,7 @@ const ROLE_NAV: Record<string, NavSection[]> = {
       { href: "/facility/profile",   label: "창고(스튜디오) 정보 · 편집", icon: Warehouse },
       { href: "/facility/register",  label: "창고(스튜디오) 등록", icon: SquarePlus },
       { href: "/facility/pages",     label: "창고(스튜디오) 페이지 꾸미기", icon: LayoutTemplate },
+      { href: "/facility/products",  label: "상품 관리", icon: Package },
     ]},
     { title: "예약 관리", items: [
       { href: "/facility/bookings",   label: "예약 현황", icon: CalendarDays },
@@ -133,6 +136,17 @@ export function DashboardShell({
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const menu = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const closeOnDesktop = (event: MediaQueryListEvent) => {
+      if (event.matches) menu.current?.close();
+    };
+    desktop.addEventListener("change", closeOnDesktop);
+    return () => desktop.removeEventListener("change", closeOnDesktop);
+  }, [open]);
 
   const sections: NavSection[] = (ROLE_NAV[role] ?? [])
     .map((s) => ({
@@ -152,11 +166,11 @@ export function DashboardShell({
   };
   const currentPage = navItems.find((item) => isActive(item.href))?.label ?? "워크스페이스";
 
-  const SidebarContent = ({ onNav }: { onNav?: () => void }) => (
-    <div className="flex flex-col h-full">
+  const renderSidebar = (onNav?: () => void) => (
+    <div className="flex h-full min-h-0 flex-col">
       <Link
         href="/"
-        className="flex h-20 items-center gap-2 border-b border-white/10 px-5 shrink-0"
+        className="flex h-[68px] shrink-0 items-center border-b border-white/10 px-5"
         onClick={onNav}
       >
         <Image
@@ -164,7 +178,7 @@ export function DashboardShell({
           alt="셀러브릭스 스튜디오"
           width={168}
           height={30}
-          className="h-[30px] w-auto object-contain"
+          className={cn("h-[30px] w-auto object-contain", onNav && "max-w-[150px]")}
           priority
         />
       </Link>
@@ -187,7 +201,7 @@ export function DashboardShell({
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-5 space-y-5">
+      <nav aria-label="업무 메뉴" className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4 [scrollbar-width:thin]">
         {sections.map((section) => (
           <div key={section.title} className="space-y-0.5">
             <p className="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">
@@ -200,6 +214,7 @@ export function DashboardShell({
                   key={n.href}
                   href={n.href}
                   onClick={onNav}
+                  aria-current={active ? "page" : undefined}
                   className={cn(
                     "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
                     active
@@ -208,7 +223,7 @@ export function DashboardShell({
                   )}
                 >
                   <n.icon className={cn("h-4 w-4 shrink-0", active ? "text-navy" : "text-white/45")} />
-                  <span className="flex-1">{n.label}</span>
+                  <span className="min-w-0 flex-1 break-keep">{n.label}</span>
                   {active && <ChevronRight className="h-3 w-3 opacity-60" />}
                 </Link>
               );
@@ -238,58 +253,65 @@ export function DashboardShell({
   );
 
   return (
-    <div className="min-h-screen bg-[#F7F6F2]">
-      <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col border-r border-navy bg-[#141A2E] shadow-xl z-30">
-        <SidebarContent />
+    <div className="min-h-svh bg-[#F7F6F2] lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] xl:grid-cols-[15rem_minmax(0,1fr)]">
+      <aside className="sticky top-0 hidden h-svh self-start border-r border-navy bg-[#141A2E] lg:block">
+        {renderSidebar()}
       </aside>
 
-      <header className="md:hidden sticky top-0 z-40 flex h-16 items-center justify-between border-b border-[#ECE8E0] bg-white/95 px-4 shadow-sm backdrop-blur">
+      <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-2 border-b border-[#ECE8E0] bg-white/95 px-4 shadow-sm backdrop-blur lg:hidden">
         <Link href="/" className="flex items-center">
           <Image
             src="/images/brand/logo-original-on-light.png?v=8"
             alt="셀러브릭스 스튜디오"
             width={146}
             height={26}
-            className="h-[26px] w-auto object-contain"
+            className="h-[23px] w-auto object-contain sm:h-[26px]"
             priority
           />
         </Link>
         <div className="flex items-center gap-1">
           <NotificationBell />
-          <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", ROLE_BADGE_COLOR[role] ?? "bg-gray-100 text-gray-600")}>
+          <span className={cn("hidden rounded-full px-2 py-0.5 text-xs font-semibold min-[420px]:inline-flex", ROLE_BADGE_COLOR[role] ?? "bg-gray-100 text-gray-600")}>
             {roleLabel}
           </span>
-          <button className="tap p-2 rounded-lg hover:bg-muted" onClick={() => setOpen(!open)} aria-label="메뉴">
-            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          <button type="button" className="tap rounded-lg p-2 hover:bg-muted" onClick={() => { menu.current?.showModal(); setOpen(true); }} aria-controls="dashboard-menu" aria-haspopup="dialog" aria-expanded={open} aria-label="메뉴 열기">
+            <Menu className="h-5 w-5" />
           </button>
         </div>
       </header>
 
-      {open && (
-        <div className="md:hidden fixed inset-0 z-50 flex">
-          <div className="w-72 max-w-[85vw] bg-[#141A2E] flex flex-col h-full shadow-2xl border-r border-navy">
-            <SidebarContent onNav={() => setOpen(false)} />
-          </div>
-          <div
-            className="flex-1 bg-black/30 backdrop-blur-sm"
-            onClick={() => setOpen(false)}
-            aria-hidden="true"
-          />
+      <dialog
+        ref={menu}
+        id="dashboard-menu"
+        aria-label="업무 메뉴"
+        onClose={() => setOpen(false)}
+        onClick={(event) => { if (event.target === event.currentTarget) menu.current?.close(); }}
+        className="fixed inset-y-0 left-0 right-auto m-0 h-full max-h-none w-72 max-w-[85vw] overflow-hidden border-r border-navy bg-[#141A2E] text-white shadow-2xl backdrop:bg-black/40 backdrop:backdrop-blur-sm lg:hidden"
+      >
+        <div className="relative h-full">
+          <button type="button" aria-label="메뉴 닫기" onClick={() => menu.current?.close()} className="absolute right-3 top-3 z-10 grid w-11 place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white">
+            <X className="h-5 w-5" />
+          </button>
+          {renderSidebar(() => menu.current?.close())}
         </div>
-      )}
+      </dialog>
 
-      <div className="md:pl-64">
-        <div className="mx-auto max-w-7xl px-4 py-6 pb-24 sm:px-6 md:px-8 md:py-8 md:pb-12">
-          <div className="mb-7 hidden items-center justify-between border-b border-[#E8E4DB] pb-5 md:flex">
-            <div><p className="text-[10px] font-extrabold tracking-[0.2em] text-brand-700">SELLERBRICKS WORKSPACE</p><p className="mt-1 text-sm font-semibold text-slate-500">{roleLabel} <span className="mx-2 text-slate-300">/</span> <span className="text-navy">{currentPage}</span></p></div>
-            <div className="flex items-center gap-3"><NotificationBell /><Link href="/" className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 transition hover:text-brand-700"><Home className="h-4 w-4" />사이트 보기</Link></div>
+      <div className="min-w-0">
+        <header className="sticky top-0 z-30 hidden h-[68px] items-center justify-between gap-4 border-b border-[#E8E4DB] bg-white/95 px-7 backdrop-blur lg:flex 2xl:px-9">
+          <div className="min-w-0">
+            <p className="text-[10px] font-extrabold tracking-[0.18em] text-brand-800">SELLERBRICKS WORKSPACE</p>
+            <p className="mt-1 truncate text-sm font-semibold text-slate-600">{roleLabel} <span className="mx-2 text-slate-400">/</span> <span className="text-navy">{currentPage}</span></p>
           </div>
+          <div className="flex shrink-0 items-center gap-3"><NotificationBell /><Link href="/" className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-xs font-bold text-slate-600 transition hover:bg-brand-50 hover:text-brand-800"><Home className="h-4 w-4" />사이트 보기</Link></div>
+        </header>
+        <main className="min-w-0 px-4 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] pt-5 sm:px-6 sm:pt-6 lg:px-7 lg:pb-10 2xl:px-9">
           {children}
-        </div>
+        </main>
       </div>
 
       <nav
-        className="md:hidden fixed bottom-0 inset-x-0 z-40 grid border-t border-border bg-white safe-area-inset-bottom shadow-lg"
+        aria-label="모바일 업무 메뉴"
+        className="safe-area-inset-bottom fixed inset-x-0 bottom-0 z-40 grid border-t border-border bg-white shadow-lg lg:hidden"
         style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}
       >
         {tabs.map((n) => {
@@ -298,13 +320,14 @@ export function DashboardShell({
             <Link
               key={n.href}
               href={n.href}
+              aria-current={active ? "page" : undefined}
               className={cn(
-                "flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
+                "flex min-h-[56px] min-w-0 flex-col items-center justify-center gap-1 px-1 py-1.5 text-center text-[10px] font-medium leading-tight transition-colors",
                 active ? "text-brand-600" : "text-muted-foreground",
               )}
             >
               <n.icon className={cn("h-5 w-5", active && "text-brand-600")} />
-              {n.label}
+              <span className="line-clamp-2 break-keep">{n.label}</span>
             </Link>
           );
         })}

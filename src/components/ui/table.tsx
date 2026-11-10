@@ -9,7 +9,7 @@ export function Table({
   className?: string;
 }) {
   return (
-    <div className={cn("overflow-x-auto rounded-xl border border-border bg-white", className)}>
+    <div className={cn("min-w-0 max-w-full overflow-x-auto rounded-xl border border-border bg-white", className)}>
       <table className="w-full text-sm">
         <thead className="bg-muted/50">
           <tr>

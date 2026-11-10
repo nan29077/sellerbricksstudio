@@ -1,65 +1,161 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
-import { dateKey, hhmm, hoursBetween, kstParts, kstStartOfDay, WEEKDAYS } from "./kst";
+import { notify } from "./notify";
+import { addDays, dateKey, kstParts, kstStartOfDay, parseDateKey, WEEKDAYS } from "./kst";
+import { formatDateTime } from "./utils";
+import {
+  policyOf, openWindows, startOptions, summarizeDay, validateRequest, toHm,
+  type BusyBlock, type BookingPolicy, type DaySummary, type Interval, type StartOption,
+} from "./booking-engine";
 
-// 예약 이용료 = 시간당 요금 × 이용 시간 (30분 단위 반올림 없이 비례 계산)
-export function calcBookingPrice(basePrice: number, startAt: Date, endAt: Date): number {
-  return Math.round(basePrice * hoursBetween(startAt, endAt));
+type Db = Prisma.TransactionClient | typeof prisma;
+
+// 창고(스튜디오) 이용료는 무료. (과거 호환용으로 함수만 남겨둔다)
+export function calcBookingPrice(_basePrice?: number, _startAt?: Date, _endAt?: Date): number {
+  return 0;
 }
 
-// 예약 가능 여부 검사 (운영시간 · 휴무일 · 요일별 운영 슬롯 · 최소 시간 · 중복)
+export const FACILITY_POLICY_SELECT = {
+  id: true, name: true, ownerId: true, status: true, openTime: true, closeTime: true, minHours: true, capacity: true,
+  bookingUnitMinutes: true, bufferMinutes: true, minLeadHours: true, maxAdvanceDays: true, maxHours: true,
+  autoApprove: true, cancelDeadlineHours: true, bookingNotice: true, cancelPolicy: true,
+  slots: { where: { isActive: true }, select: { weekday: true, startTime: true, endTime: true, isActive: true } },
+} satisfies Prisma.FacilitySelect;
+
+export type FacilityWithPolicy = Prisma.FacilityGetPayload<{ select: typeof FACILITY_POLICY_SELECT }>;
+
+const minutesFrom = (day: Date, d: Date) => Math.round((d.getTime() - day.getTime()) / 60000);
+
+// 같은 창고(스튜디오)의 예약 생성·변경을 한 줄로 세워 동시에 같은 시간을 잡는 것을 막는다. (트랜잭션 안에서만 호출)
+export async function lockFacility(tx: Prisma.TransactionClient, facilityId: string) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${facilityId}))`;
+}
+
+// 하루치 운영 구간 · 점유 구간 로드
+export async function loadDay(facility: FacilityWithPolicy, day: Date, opts: { excludeBookingId?: string; db?: Db } = {}) {
+  const db = opts.db ?? prisma;
+  const next = addDays(day, 1);
+  const policy = policyOf(facility);
+  const [blackout, bookings] = await Promise.all([
+    db.facilityBlackoutDate.findFirst({ where: { facilityId: facility.id, date: { gte: day, lt: next } } }),
+    db.booking.findMany({
+      where: {
+        facilityId: facility.id, status: { in: ["PENDING", "APPROVED"] },
+        startAt: { lt: next }, endAt: { gt: day },
+        ...(opts.excludeBookingId && { id: { not: opts.excludeBookingId } }),
+      },
+      select: { id: true, startAt: true, endAt: true, status: true }, orderBy: { startAt: "asc" },
+    }),
+  ]);
+  const weekday = kstParts(day).weekday;
+  const windows = openWindows(policy, facility.slots, weekday, !!blackout);
+  const busy: BusyBlock[] = bookings.map((b) => ({
+    id: b.id, status: b.status, start: Math.max(0, minutesFrom(day, b.startAt)), end: Math.min(24 * 60, minutesFrom(day, b.endAt)),
+  }));
+  const closedReason = blackout ? (blackout.reason ?? "휴무일") : windows.length === 0 ? `${WEEKDAYS[weekday]}요일 휴무` : null;
+  return { policy, windows, busy, weekday, closedReason };
+}
+
+export function earliestMinFor(day: Date, policy: BookingPolicy, now = new Date()) {
+  return minutesFrom(day, new Date(now.getTime() + policy.minLeadHours * 3600000));
+}
+
+export function daysAheadOf(day: Date, now = new Date()) {
+  return Math.round((day.getTime() - kstStartOfDay(now).getTime()) / 86400000);
+}
+
+export async function getFacilityWithPolicy(facilityId: string, db: Db = prisma) {
+  return db.facility.findUnique({ where: { id: facilityId }, select: FACILITY_POLICY_SELECT });
+}
+
+// 날짜 하루의 예약 화면용 데이터 (개인정보 없음)
+export async function getDaySchedule(facility: FacilityWithPolicy, date: string, durationMin?: number, excludeBookingId?: string) {
+  const day = parseDateKey(date);
+  if (!day) throw new Error("날짜 형식이 올바르지 않습니다.");
+  const { policy, windows, busy, closedReason } = await loadDay(facility, day, { excludeBookingId });
+  const dur = Math.max(policy.minHours * 60, Math.min(policy.maxHours * 60, durationMin ?? policy.minHours * 60));
+  const daysAhead = daysAheadOf(day);
+  const outOfRange = daysAhead < 0 || daysAhead > policy.maxAdvanceDays;
+  const options: StartOption[] = outOfRange ? [] : startOptions({ policy, windows, busy, durationMin: dur, earliestMin: earliestMinFor(day, policy) });
+  return {
+    date, policy, durationMin: dur,
+    windows: windows.map((w) => ({ start: toHm(w.start), end: w.end >= 1440 ? "24:00" : toHm(w.end) })),
+    booked: busy.map((b) => ({ start: toHm(b.start), end: b.end >= 1440 ? "24:00" : toHm(b.end), status: b.status })),
+    options,
+    closed: windows.length === 0 || outOfRange,
+    closedReason: outOfRange ? (daysAhead < 0 ? "지난 날짜" : `최대 ${policy.maxAdvanceDays}일 뒤까지 예약 가능`) : closedReason,
+  };
+}
+
+// 기간 달력 (최대 62일)
+export async function getRangeSummary(facility: FacilityWithPolicy, from: Date, days: number): Promise<DaySummary[]> {
+  const n = Math.min(62, Math.max(1, days));
+  const end = addDays(from, n);
+  const policy = policyOf(facility);
+  const [blackouts, bookings] = await Promise.all([
+    prisma.facilityBlackoutDate.findMany({ where: { facilityId: facility.id, date: { gte: from, lt: end } } }),
+    prisma.booking.findMany({
+      where: { facilityId: facility.id, status: { in: ["PENDING", "APPROVED"] }, startAt: { lt: end }, endAt: { gt: from } },
+      select: { startAt: true, endAt: true, status: true },
+    }),
+  ]);
+  const off = new Map(blackouts.map((b) => [dateKey(b.date), b.reason ?? "휴무일"]));
+  const out: DaySummary[] = [];
+  for (let i = 0; i < n; i++) {
+    const day = addDays(from, i);
+    const key = dateKey(day);
+    const weekday = kstParts(day).weekday;
+    const windows = openWindows(policy, facility.slots, weekday, off.has(key));
+    const next = addDays(day, 1);
+    const busy: BusyBlock[] = bookings.filter((b) => b.startAt < next && b.endAt > day)
+      .map((b) => ({ status: b.status, start: Math.max(0, minutesFrom(day, b.startAt)), end: Math.min(1440, minutesFrom(day, b.endAt)) }));
+    const ahead = daysAheadOf(day);
+    out.push(summarizeDay({
+      date: key, weekday, policy, windows, busy, earliestMin: earliestMinFor(day, policy),
+      outOfRange: ahead < 0 || ahead > policy.maxAdvanceDays, closedReason: off.get(key) ?? (windows.length ? null : `${WEEKDAYS[weekday]}요일 휴무`),
+    }));
+  }
+  return out;
+}
+
+// 예약 가능 여부 최종 검사 (운영 시간대 · 휴무일 · 단위 · 최소/최대 시간 · 선예약 기간 · 준비시간 포함 중복)
 export async function checkBookingAvailability(params: {
-  facilityId: string; startAt: Date; endAt: Date; excludeBookingId?: string;
+  facilityId: string; startAt: Date; endAt: Date; excludeBookingId?: string; db?: Db; facility?: FacilityWithPolicy | null;
 }): Promise<string | null> {
-  const { facilityId, startAt, endAt } = params;
-  const facility = await prisma.facility.findUnique({
-    where: { id: facilityId },
-    include: { slots: { where: { isActive: true } } },
-  });
+  const db = params.db ?? prisma;
+  const facility = params.facility ?? await getFacilityWithPolicy(params.facilityId, db);
   if (!facility) return "창고(스튜디오)를 찾을 수 없습니다.";
-  if (endAt <= startAt) return "종료 시간은 시작 시간보다 뒤여야 합니다.";
-  if (startAt.getTime() < Date.now() - 5 * 60 * 1000) return "지난 시간은 예약할 수 없습니다.";
-
-  const hours = hoursBetween(startAt, endAt);
-  if (hours < (facility.minHours ?? 1)) return `최소 ${facility.minHours}시간 이상 예약해야 합니다.`;
-  if (hours > 24) return "한 번에 24시간을 넘겨 예약할 수 없습니다.";
-
-  const s = kstParts(startAt), e = kstParts(new Date(endAt.getTime() - 1));
-  const sameDay = s.year === e.year && s.month === e.month && s.day === e.day;
-  const startHm = hhmm(startAt);
-  const endHm = hhmm(endAt) === "00:00" ? "24:00" : hhmm(endAt);
-
-  if (sameDay && facility.openTime && facility.closeTime) {
-    if (startHm < facility.openTime || endHm > facility.closeTime) {
-      return `운영 시간(${facility.openTime}~${facility.closeTime}) 안에서 예약하세요.`;
-    }
-  }
-
-  // 요일별 운영 슬롯이 등록돼 있으면 해당 요일 슬롯 안에 들어와야 한다.
-  if (sameDay && facility.slots.length > 0) {
-    const daySlots = facility.slots.filter((sl) => sl.weekday === s.weekday);
-    if (daySlots.length === 0) return `${WEEKDAYS[s.weekday]}요일은 운영하지 않습니다.`;
-    const inside = daySlots.some((sl) => startHm >= sl.startTime && endHm <= sl.endTime);
-    if (!inside) {
-      const list = daySlots.map((sl) => `${sl.startTime}~${sl.endTime}`).join(", ");
-      return `${WEEKDAYS[s.weekday]}요일 예약 가능 시간은 ${list} 입니다.`;
-    }
-  }
-
+  const { startAt, endAt } = params;
+  if (!(startAt instanceof Date) || isNaN(startAt.getTime()) || isNaN(endAt.getTime())) return "예약 시간이 올바르지 않습니다.";
   const day = kstStartOfDay(startAt);
-  const blackout = await prisma.facilityBlackoutDate.findFirst({
-    where: { facilityId, date: { gte: day, lt: new Date(endAt.getTime()) } },
+  const { policy, windows, busy, weekday, closedReason } = await loadDay(facility, day, { excludeBookingId: params.excludeBookingId, db });
+  const startMin = minutesFrom(day, startAt);
+  const endMin = minutesFrom(day, endAt);
+  return validateRequest({
+    policy, windows, busy, startMin, endMin, sameDay: endMin <= 24 * 60,
+    minutesUntilStart: Math.round((startAt.getTime() - Date.now()) / 60000),
+    daysAhead: daysAheadOf(day), weekdayLabel: WEEKDAYS[weekday], closedReason,
   });
-  if (blackout) return `${dateKey(blackout.date)}은(는) 휴무일입니다.${blackout.reason ? ` (${blackout.reason})` : ""}`;
+}
 
-  const overlap = await prisma.booking.findFirst({
-    where: {
-      facilityId, status: { in: ["PENDING", "APPROVED"] },
-      startAt: { lt: endAt }, endAt: { gt: startAt },
-      ...(params.excludeBookingId && { id: { not: params.excludeBookingId } }),
-    },
-  });
-  if (overlap) return "해당 시간대에 이미 예약이 있습니다. 다른 시간을 선택하세요.";
-  return null;
+// 비어난 시간대에 대기 신청한 셀러에게 알림
+export async function notifyWaitlist(facilityId: string, startAt: Date, endAt: Date) {
+  try {
+    const rows = await prisma.bookingWaitlist.findMany({
+      where: { facilityId, status: "WAITING", startAt: { lt: endAt }, endAt: { gt: startAt } },
+      include: { facility: { select: { name: true } } },
+    });
+    if (!rows.length) return;
+    await prisma.bookingWaitlist.updateMany({ where: { id: { in: rows.map((r) => r.id) } }, data: { status: "NOTIFIED", notifiedAt: new Date() } });
+    for (const r of rows) {
+      const date = dateKey(r.startAt);
+      await notify({
+        userId: r.sellerId, type: "BOOKING", title: "대기하던 시간에 자리가 났어요",
+        body: `${r.facility.name} · ${formatDateTime(r.startAt)} — 먼저 예약하는 셀러에게 확정됩니다.`,
+        link: `/seller/bookings/new?facilityId=${facilityId}&date=${date}&start=${toHm(kstParts(r.startAt).hour * 60 + kstParts(r.startAt).minute)}`,
+      });
+    }
+  } catch { /* 알림 실패는 무시 */ }
 }
 
 // 플랫폼 수수료율(%) — CommissionRule(scope=PLATFORM) 최신값, 창고(스튜디오)별 값이 있으면 우선
@@ -97,3 +193,5 @@ export const BOOKING_TRANSITIONS: Record<string, string[]> = {
   PENDING: ["APPROVED", "REJECTED", "CANCELLED"],
   APPROVED: ["COMPLETED", "CANCELLED"],
 };
+
+export type { Interval };

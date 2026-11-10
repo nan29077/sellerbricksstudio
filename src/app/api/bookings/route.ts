@@ -1,47 +1,44 @@
 import { NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { ZodError } from "zod";
 import { requireRole } from "@/lib/auth";
 import { bookingSchema } from "@/lib/validations";
 import { ok, fail, handleError } from "@/lib/http";
-import { formatDateTime, parseKST } from "@/lib/utils";
-import { audit } from "@/lib/audit";
-import { calcBookingPrice, checkBookingAvailability } from "@/lib/booking";
-import { notify } from "@/lib/notify";
+import { parseKST } from "@/lib/utils";
+import { createBookings } from "@/lib/booking-actions";
 
+// POST /api/bookings — 셀러 예약 신청
+// body: { facilityId, startAt, endAt, purpose?, headcount?, requestNote?, products?: [{facilityProductId, quantity}],
+//         repeatWeeks?: 1~12, skipConflicts?: boolean, dryRun?: boolean }
+// - 창고(스튜디오) 이용료는 무료입니다.
+// - dryRun=true 이면 저장하지 않고 날짜별 예약 가능 여부만 돌려줍니다. (반복 예약 미리보기)
 export async function POST(req: NextRequest) {
   try {
     const user = await requireRole(["SELLER"]);
-    const body = await req.json();
-    const data = bookingSchema.parse(body);
+    let data;
+    try { data = bookingSchema.parse(await req.json()); }
+    catch (e) { return fail(e instanceof ZodError ? e.issues[0]?.message ?? "입력값을 확인하세요." : "입력값을 확인하세요."); }
+
     // 예약 일시는 항상 KST 기준으로 해석 (서버/사용자 로컬 타임존 무관)
     const startAt = parseKST(data.startAt);
     const endAt = parseKST(data.endAt);
+    if (isNaN(startAt.getTime()) || isNaN(endAt.getTime())) return fail("예약 시간이 올바르지 않습니다.");
     if (endAt <= startAt) return fail("종료 시간은 시작 시간보다 뒤여야 합니다.");
 
-    const facility = await prisma.facility.findUnique({ where: { id: data.facilityId } });
-    if (!facility || facility.status !== "APPROVED") return fail("예약할 수 없는 창고(스튜디오)입니다.", 404);
-    if (facility.capacity && data.headcount && data.headcount > facility.capacity) {
-      return fail(`최대 수용 인원은 ${facility.capacity}명입니다.`);
+    try {
+      const result = await createBookings(user, {
+        facilityId: data.facilityId, startAt, endAt, purpose: data.purpose, headcount: data.headcount ?? null,
+        requestNote: data.requestNote ?? null, products: data.products, repeatWeeks: data.repeatWeeks,
+        skipConflicts: data.skipConflicts, dryRun: data.dryRun,
+      });
+      if (data.dryRun) return ok({ results: result.results, autoApproved: result.autoApproved });
+      return ok({
+        bookings: result.created.map((b) => ({ id: b.id, code: b.code, status: b.status, startAt: b.startAt, endAt: b.endAt })),
+        results: result.results, autoApproved: result.autoApproved,
+      }, 201);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "예약 신청에 실패했습니다.";
+      if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") throw e;
+      return fail(msg, 409);
     }
-
-    // 운영시간 · 휴무일 · 요일 슬롯 · 최소 이용시간 · 중복 예약 검사
-    const reason = await checkBookingAvailability({ facilityId: facility.id, startAt, endAt });
-    if (reason) return fail(reason, 409);
-
-    const booking = await prisma.booking.create({
-      data: {
-        facilityId: data.facilityId, sellerId: user.id, startAt, endAt,
-        purpose: data.purpose, expectedProducts: data.expectedProducts, status: "PENDING",
-        headcount: data.headcount ?? null, requestNote: data.requestNote?.trim() || null,
-        totalPrice: calcBookingPrice(facility.basePrice, startAt, endAt),
-      },
-    });
-    await audit({ actorId: user.id, action: "BOOKING_CREATE", entity: "Booking", entityId: booking.id });
-    await notify({
-      userId: facility.ownerId, type: "BOOKING", title: "새 예약 요청이 들어왔습니다",
-      body: `${facility.name} · ${formatDateTime(startAt)}${data.purpose ? ` · ${data.purpose}` : ""}`,
-      link: `/facility/bookings?status=PENDING`,
-    });
-    return ok(booking, 201);
   } catch (e) { return handleError(e); }
 }

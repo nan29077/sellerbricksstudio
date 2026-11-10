@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 import { ownedFacilityIds } from "@/lib/rbac";
@@ -8,94 +9,134 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty";
 import { ActionButton } from "@/components/action-button";
-import { formatKRW } from "@/lib/utils";
-import { Package, Plus } from "lucide-react";
+import { ResourceForm, type Field } from "@/components/resource-form";
+import { FilterBar } from "@/components/list/filter-bar";
+import { Kpi } from "@/components/list/charts";
+import { formatKRW, calcSellerCommission } from "@/lib/utils";
+import { sp, type SP } from "@/lib/list";
+import { PRODUCT_CATEGORIES } from "@/lib/product-categories";
+import { Package, Plus, CalendarCheck, AlertTriangle, Radio, ScanLine } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-const DUMMY_PRODUCTS: any[] = [
-  {
-    id:"fp1", isSellable:true, salePrice:35000, stock:120, commissionType:"PERCENT", commissionValue:10, createdAt:new Date("2026-05-01"),
-    facility:{ name:"강남 프리미엄 라이브 스튜디오" },
-    product:{ name:"수분 크림 세트 (3종)", category:"뷰티", thumbnailUrl:"https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=200&q=70&auto=format&fit=crop" },
-  },
-  {
-    id:"fp2", isSellable:true, salePrice:89000, stock:45, commissionType:"PERCENT", commissionValue:8, createdAt:new Date("2026-05-10"),
-    facility:{ name:"강남 프리미엄 라이브 스튜디오" },
-    product:{ name:"에어팟 케이스 패션 컬렉션", category:"패션잡화", thumbnailUrl:"https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=200&q=70&auto=format&fit=crop" },
-  },
-  {
-    id:"fp3", isSellable:false, salePrice:22000, stock:0, commissionType:"PERCENT", commissionValue:12, createdAt:new Date("2026-04-15"),
-    facility:{ name:"강남 프리미엄 라이브 스튜디오" },
-    product:{ name:"수제 반찬 세트 (5종)", category:"식품", thumbnailUrl:"https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&q=70&auto=format&fit=crop" },
-  },
+const EDIT_FIELDS: Field[] = [
+  { name: "name", label: "상품명", required: true },
+  { name: "category", label: "카테고리", type: "select", options: PRODUCT_CATEGORIES.map((c) => ({ value: c, label: c })), half: true },
+  { name: "sku", label: "SKU", half: true },
+  { name: "salePrice", label: "판매가(원)", type: "number", min: 0, half: true, required: true },
+  { name: "consumerPrice", label: "소비자가(원)", type: "number", min: 0, half: true },
+  { name: "stock", label: "재고", type: "number", min: 0, half: true, required: true },
+  { name: "shippingInfo", label: "배송 정보", half: true, placeholder: "3,000원 (5만원 이상 무료)" },
+  { name: "commissionType", label: "셀러 수수료 방식", type: "select", options: [{ value: "PERCENT", label: "정률 (%)" }, { value: "FIXED", label: "정액 (원)" }], half: true },
+  { name: "commissionValue", label: "셀러 수수료 값", type: "number", min: 0, half: true },
+  { name: "thumbnailUrl", label: "대표 이미지 URL", type: "url" },
+  { name: "description", label: "상품 설명", type: "textarea", help: "셀러가 상품을 고를 때 보는 설명입니다. 특징·구성·방송 포인트를 적어주세요." },
 ];
 
-export default async function FacilityProducts() {
+export default async function FacilityProducts({ searchParams }: { searchParams: SP }) {
   const user = await requireRole(["FACILITY_ADMIN"]);
+  const facIds = await ownedFacilityIds(user.id);
+  const q = sp(searchParams, "q");
+  const state = sp(searchParams, "state");
+  const fid = sp(searchParams, "facility");
 
-  let products: any[] = [];
-  try {
-    const facIds = await ownedFacilityIds(user.id);
-    products = await prisma.facilityProduct.findMany({
-      where: { facilityId: { in: facIds } },
-      include: { product: true, facility: true },
-      orderBy: { createdAt: "desc" },
-    });
-    if (products.length === 0) products = DUMMY_PRODUCTS;
-  } catch {
-    products = DUMMY_PRODUCTS;
-  }
+  const where: Prisma.FacilityProductWhereInput = {
+    facilityId: fid && facIds.includes(fid) ? fid : { in: facIds },
+    ...(state === "on" && { isSellable: true }),
+    ...(state === "off" && { isSellable: false }),
+    ...(state === "low" && { isSellable: true, stock: { lte: 10 } }),
+    ...(q && { OR: [{ product: { name: { contains: q, mode: "insensitive" } } }, { product: { sku: { contains: q, mode: "insensitive" } } }] }),
+  };
+  const now = new Date();
+  const [facilities, products, upcomingReq] = await Promise.all([
+    prisma.facility.findMany({ where: { id: { in: facIds } }, select: { id: true, name: true } }),
+    prisma.facilityProduct.findMany({
+      where, orderBy: [{ isSellable: "desc" }, { createdAt: "desc" }],
+      include: { product: true, facility: { select: { name: true } }, _count: { select: { bookingProducts: true, liveSessionProducts: true } } },
+    }),
+    // 다가오는 예약(대기·승인)에서 요청된 상품별 수량
+    prisma.bookingProduct.groupBy({
+      by: ["facilityProductId"],
+      where: { facilityProduct: { facilityId: { in: facIds } }, status: { not: "UNAVAILABLE" }, booking: { status: { in: ["PENDING", "APPROVED"] }, endAt: { gt: now } } },
+      _sum: { quantity: true }, _count: true,
+    }).catch(() => []),
+  ]);
+  const req = new Map(upcomingReq.map((r) => [r.facilityProductId, { qty: r._sum.quantity ?? 0, n: r._count }]));
+  const onSale = products.filter((p) => p.isSellable).length;
+  const shortage = products.filter((p) => p.isSellable && (req.get(p.id)?.qty ?? 0) > p.stock).length;
+  const lowStock = products.filter((p) => p.isSellable && p.stock <= 10).length;
 
   return (
-    <div className="pb-24 md:pb-0">
+    <div className="space-y-5 pb-24 md:pb-0">
       <PageHeader
         title="상품 관리"
-        description="창고(스튜디오)에서 판매 가능한 상품과 셀러 수수료를 관리하세요."
-        action={
-          <Link href="/facility/products/new">
-            <Button><Plus className="h-5 w-5 mr-1" />상품 등록</Button>
-          </Link>
-        }
+        description="등록한 상품은 셀러의 '판매 상품 둘러보기'와 예약 화면에 노출됩니다. 셀러가 상품을 골라 예약하면 판매 예정 수량을 미리 확인할 수 있어요."
+        action={<div className="flex gap-2">
+          <Link href="/facility/products/scan"><Button variant="outline"><ScanLine className="h-4 w-4" />바코드 등록</Button></Link>
+          <Link href="/facility/products/new"><Button><Plus className="h-4 w-4" />상품 등록</Button></Link>
+        </div>}
       />
-      {products.length === 0 ? (
-        <EmptyState
-          icon={<Package className="h-10 w-10" />}
-          title="등록된 상품이 없습니다"
-          action={<Link href="/facility/products/new"><Button>첫 상품 등록</Button></Link>}
-        />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Kpi label="판매 중 상품" value={`${onSale}개`} sub={`전체 ${products.length}개`} icon={Package} tone="brand" />
+        <Kpi label="다가오는 예약 요청" value={`${upcomingReq.reduce((a, r) => a + r._count, 0)}건`} sub={`${upcomingReq.reduce((a, r) => a + (r._sum.quantity ?? 0), 0).toLocaleString()}개 판매 예정`} icon={CalendarCheck} tone="blue" />
+        <Kpi label="재고 부족 예상" value={`${shortage}개`} sub="요청 수량 > 재고" icon={AlertTriangle} tone={shortage ? "red" : "green"} />
+        <Kpi label="재고 10개 이하" value={`${lowStock}개`} icon={Radio} tone="navy" />
+      </div>
+
+      <FilterBar fields={[
+        { type: "search", key: "q", placeholder: "상품명 · SKU" },
+        { type: "select", key: "state", label: "상태", options: [{ value: "on", label: "판매중" }, { value: "off", label: "판매 중단" }, { value: "low", label: "재고 10개 이하" }] },
+        ...(facilities.length > 1 ? [{ type: "select" as const, key: "facility", label: "창고(스튜디오)", options: facilities.map((f) => ({ value: f.id, label: f.name })) }] : []),
+      ]} />
+
+      {facilities.length === 0 ? (
+        <EmptyState icon={<Package className="h-10 w-10" />} title="먼저 창고(스튜디오)를 등록하세요" action={<Link href="/facility/register"><Button>창고(스튜디오) 등록</Button></Link>} />
+      ) : products.length === 0 ? (
+        <EmptyState icon={<Package className="h-10 w-10" />} title={q || state ? "조건에 맞는 상품이 없습니다" : "등록된 상품이 없습니다"}
+          description="상품을 등록하면 셀러가 상품을 보고 바로 예약할 수 있습니다."
+          action={<Link href="/facility/products/new"><Button>첫 상품 등록</Button></Link>} />
       ) : (
-        <div className="space-y-3 mt-4">
-          {products.map((fp: any) => {
-            const sellerPct = fp.commissionType === "PERCENT"
-              ? 100 - fp.commissionValue
-              : Math.round(((fp.salePrice - fp.commissionValue) / fp.salePrice) * 100);
+        <div className="space-y-3">
+          {products.map((fp) => {
+            const unit = calcSellerCommission(fp.salePrice, fp.commissionType, fp.commissionValue);
+            const r = req.get(fp.id);
+            const short = !!r && r.qty > fp.stock;
             return (
-              <Card key={fp.id}>
-                <CardContent className="flex gap-4 p-4">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={fp.product.thumbnailUrl ?? ""} alt="" className="h-16 w-16 rounded-lg object-cover bg-muted shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <Badge tone={fp.isSellable ? "green" : "gray"}>{fp.isSellable ? "판매중" : "중단"}</Badge>
-                      <span className="text-xs text-muted-foreground">{fp.product.category}</span>
-                    </div>
-                    <p className="font-bold text-navy truncate">{fp.product.name}</p>
-                    <p className="text-sm text-muted-foreground">{fp.facility?.name}</p>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                      <span>판매가 <span className="font-semibold text-navy">{formatKRW(fp.salePrice)}</span></span>
-                      <span>재고 {fp.stock}개</span>
-                      <span>셀러 수령 {sellerPct}%</span>
+              <Card key={fp.id} className={fp.isSellable ? "" : "opacity-70"}>
+                <CardContent className="flex flex-col gap-3 p-4 sm:flex-row">
+                  <div className="flex min-w-0 flex-1 gap-4">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    {fp.product.thumbnailUrl ? <img src={fp.product.thumbnailUrl} alt="" className="h-20 w-20 shrink-0 rounded-xl bg-muted object-cover" />
+                      : <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-muted"><Package className="h-7 w-7 text-slate-300" /></div>}
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                        <Badge tone={fp.isSellable ? "green" : "gray"}>{fp.isSellable ? "판매중" : "중단"}</Badge>
+                        <span className="text-xs text-muted-foreground">{fp.product.category}{fp.product.sku && ` · ${fp.product.sku}`}</span>
+                        {facilities.length > 1 && <span className="text-xs text-slate-500">· {fp.facility.name}</span>}
+                      </div>
+                      <p className="truncate font-bold text-navy">{fp.product.name}</p>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                        <span>판매가 <b className="text-navy">{formatKRW(fp.salePrice)}</b></span>
+                        <span className={fp.stock <= 10 ? "font-semibold text-amber-700" : ""}>재고 {fp.stock.toLocaleString()}개</span>
+                        <span>셀러 수익 {formatKRW(unit)}/개{fp.commissionType === "PERCENT" && ` (${fp.commissionValue}%)`}</span>
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap gap-1.5 text-[11px]">
+                        <span className="rounded-full bg-blue-50 px-2 py-0.5 font-semibold text-blue-700">누적 예약 {fp._count.bookingProducts}회</span>
+                        <span className="rounded-full bg-purple-50 px-2 py-0.5 font-semibold text-purple-700">라이브 판매 {fp._count.liveSessionProducts}회</span>
+                        {r && <span className={`rounded-full px-2 py-0.5 font-semibold ${short ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-700"}`}>다가오는 예약 {r.n}건 · {r.qty.toLocaleString()}개 예정{short && " · 재고 부족"}</span>}
+                      </div>
                     </div>
                   </div>
-                  <div className="flex flex-col gap-2 shrink-0">
-                    <ActionButton
-                      url={`/api/facility-products/${fp.id}`}
-                      method="PATCH"
-                      body={{ isSellable: !fp.isSellable }}
-                      size="sm"
-                      variant="outline"
-                    >{fp.isSellable ? "중단" : "활성화"}</ActionButton>
+                  <div className="flex shrink-0 gap-2 sm:flex-col">
+                    <ResourceForm url="/api/facility-products" id={fp.id} fields={EDIT_FIELDS} title="상품 수정" triggerLabel="수정" triggerSize="sm" triggerVariant="outline"
+                      initial={{
+                        name: fp.product.name, category: fp.product.category, sku: fp.product.sku ?? "", salePrice: fp.salePrice, consumerPrice: fp.consumerPrice,
+                        stock: fp.stock, shippingInfo: fp.shippingInfo ?? "", commissionType: fp.commissionType, commissionValue: fp.commissionValue,
+                        thumbnailUrl: fp.product.thumbnailUrl ?? "", description: fp.product.description ?? "",
+                      }} />
+                    <ActionButton url={`/api/facility-products/${fp.id}`} method="PATCH" body={{ isSellable: !fp.isSellable }} size="sm" variant="outline">
+                      {fp.isSellable ? "판매 중단" : "판매 재개"}
+                    </ActionButton>
                   </div>
                 </CardContent>
               </Card>

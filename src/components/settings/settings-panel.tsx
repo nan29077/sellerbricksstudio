@@ -161,16 +161,18 @@ export function SettingsPanel(props: SettingsPanelProps) {
       </div>
 
       {/* 탭 네비게이션 */}
-      <div className="flex flex-wrap gap-1 border-b border-border">
+      <div className="flex flex-wrap gap-1 rounded-2xl border border-border bg-white p-1.5">
         {TABS.map((t) => {
           const active = tab === t.key;
           return (
             <button
               key={t.key}
+              type="button"
+              aria-pressed={active}
               onClick={() => setTab(t.key)}
               className={cn(
-                "flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors",
-                active ? "border-brand-500 text-brand-600" : "border-transparent text-muted-foreground hover:text-navy",
+                "flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors sm:px-4",
+                active ? "bg-navy text-white" : "text-muted-foreground hover:bg-brand-50 hover:text-navy",
               )}
             >
               <t.icon className="h-4 w-4" />
@@ -186,72 +188,74 @@ export function SettingsPanel(props: SettingsPanelProps) {
 
       {/* ===== 프로필 관리 ===== */}
       {tab === "profile" && (
-        <div className="rounded-2xl border border-border bg-white p-6 space-y-6 max-w-3xl">
-          <div className="flex items-center gap-4">
-            <Image
-              src={getProfileImage(imageIndex)}
-              alt="프로필"
-              width={72}
-              height={72}
-              className="rounded-full object-cover border border-brand-200 bg-white"
-              style={{ height: 72, width: 72 }}
-            />
-            <div>
-              <p className="font-bold text-navy">프로필 사진</p>
-              <p className="text-xs text-muted-foreground">사진을 바꾸기 전까지 랜덤 배정된 이미지가 표시됩니다.</p>
+        <div className="space-y-5 rounded-2xl border border-border bg-white p-4 sm:p-6">
+          <div className="grid items-start gap-6 xl:grid-cols-2">
+            <div className="min-w-0 space-y-4">
+              <div className="flex items-center gap-4">
+                <Image
+                  src={getProfileImage(imageIndex)}
+                  alt="프로필"
+                  width={72}
+                  height={72}
+                  className="h-[72px] w-[72px] shrink-0 rounded-full border border-brand-200 bg-white object-cover"
+                />
+                <div>
+                  <p className="font-bold text-navy">프로필 사진</p>
+                  <p className="text-xs text-muted-foreground">사진을 바꾸기 전까지 랜덤 배정된 이미지가 표시됩니다.</p>
+                </div>
+              </div>
+              <div>
+                <p className="mb-2 text-sm font-medium text-navy">프로필 사진 선택</p>
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(44px,48px))] gap-2">
+                  {Array.from({ length: 20 }, (_, i) => i + 1).map((idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setImageIndex(idx)}
+                      className={cn(
+                        "relative aspect-square overflow-hidden rounded-full border-2 transition",
+                        imageIndex === idx ? "border-brand-500 ring-2 ring-brand-200" : "border-transparent hover:border-brand-300",
+                      )}
+                      aria-label={`프로필 이미지 ${idx}`}
+                      aria-pressed={imageIndex === idx}
+                    >
+                      <Image src={getProfileImage(idx)} alt="" fill className="object-cover" sizes="48px" />
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
-
-          {/* 사진 선택 그리드 */}
-          <div>
-            <Label>프로필 사진 선택</Label>
-            <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
-              {Array.from({ length: 20 }, (_, i) => i + 1).map((idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => setImageIndex(idx)}
-                  className={cn(
-                    "relative aspect-square rounded-full overflow-hidden border-2 transition",
-                    imageIndex === idx ? "border-brand-500 ring-2 ring-brand-200" : "border-transparent hover:border-brand-300",
-                  )}
-                  aria-label={`프로필 이미지 ${idx}`}
-                >
-                  <Image src={getProfileImage(idx)} alt="" fill className="object-cover" sizes="48px" />
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <Label>이름</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="이름" />
-            </div>
-            <div>
-              <Label>연락처</Label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="010-0000-0000" />
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <Label>SNS 링크</Label>
-            <div className="flex items-center gap-2">
-              <Instagram className="h-5 w-5 text-pink-500 shrink-0" />
-              <Input value={sns.instagram} onChange={(e) => setSns({ ...sns, instagram: e.target.value })} placeholder="인스타그램 URL 또는 @핸들" />
-            </div>
-            <div className="flex items-center gap-2">
-              <Youtube className="h-5 w-5 text-red-500 shrink-0" />
-              <Input value={sns.youtube} onChange={(e) => setSns({ ...sns, youtube: e.target.value })} placeholder="유튜브 채널 URL" />
-            </div>
-            <div className="flex items-center gap-2">
-              <Music2 className="h-5 w-5 text-navy shrink-0" />
-              <Input value={sns.tiktok} onChange={(e) => setSns({ ...sns, tiktok: e.target.value })} placeholder="틱톡 URL 또는 @핸들" />
+            <div className="min-w-0 space-y-4 border-t border-border pt-5 xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor="settings-name">이름</Label>
+                  <Input id="settings-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="이름" />
+                </div>
+                <div>
+                  <Label htmlFor="settings-phone">연락처</Label>
+                  <Input id="settings-phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="010-0000-0000" />
+                </div>
+              </div>
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-navy">SNS 링크</p>
+                <div className="flex items-center gap-2">
+                  <Instagram className="h-5 w-5 shrink-0 text-pink-500" />
+                  <Input aria-label="인스타그램" value={sns.instagram} onChange={(e) => setSns({ ...sns, instagram: e.target.value })} placeholder="인스타그램 URL 또는 @핸들" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Youtube className="h-5 w-5 shrink-0 text-red-500" />
+                  <Input aria-label="유튜브" value={sns.youtube} onChange={(e) => setSns({ ...sns, youtube: e.target.value })} placeholder="유튜브 채널 URL" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Music2 className="h-5 w-5 shrink-0 text-navy" />
+                  <Input aria-label="틱톡" value={sns.tiktok} onChange={(e) => setSns({ ...sns, tiktok: e.target.value })} placeholder="틱톡 URL 또는 @핸들" />
+                </div>
+              </div>
             </div>
           </div>
 
           {profileMsg && <Banner tone={profileMsg.tone} text={profileMsg.text} />}
-          <div className="flex justify-end">
+          <div className="flex justify-end border-t pt-4">
             <Button onClick={saveProfile} disabled={profileSaving}>{profileSaving ? "저장 중…" : "프로필 저장"}</Button>
           </div>
         </div>
@@ -259,7 +263,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
 
       {/* ===== 비밀번호 변경 ===== */}
       {tab === "password" && (
-        <div className="rounded-2xl border border-border bg-white p-6 space-y-4 max-w-lg">
+        <div className="max-w-2xl space-y-4 rounded-2xl border border-border bg-white p-4 sm:p-6">
           <div>
             <Label>현재 비밀번호</Label>
             <Input type="password" value={pw.current} onChange={(e) => setPw({ ...pw, current: e.target.value })} placeholder="현재 비밀번호" autoComplete="current-password" />
@@ -281,13 +285,13 @@ export function SettingsPanel(props: SettingsPanelProps) {
 
       {/* ===== 알림 설정 ===== */}
       {tab === "notifications" && (
-        <div className="rounded-2xl border border-border bg-white p-2 max-w-2xl divide-y divide-border">
+        <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
           {[
             { key: "order" as const, title: "주문 알림", desc: "새 주문·주문 상태 변경 시 알림을 받습니다." },
             { key: "settlement" as const, title: "정산 알림", desc: "정산 확정·지급 시 알림을 받습니다." },
             { key: "live" as const, title: "라이브 알림", desc: "라이브 방송 예약·시작 시 알림을 받습니다." },
           ].map((row) => (
-            <div key={row.key} className="flex items-center justify-between gap-4 px-4 py-4">
+            <div key={row.key} className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-white p-4">
               <div>
                 <p className="font-bold text-navy">{row.title}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{row.desc}</p>
@@ -295,6 +299,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
               <button
                 type="button"
                 role="switch"
+                aria-label={row.title}
                 aria-checked={notif[row.key]}
                 onClick={() => toggleNotif(row.key)}
                 className={cn(
@@ -314,16 +319,16 @@ export function SettingsPanel(props: SettingsPanelProps) {
 
       {/* ===== 계정 정보 ===== */}
       {tab === "account" && (
-        <div className="rounded-2xl border border-border bg-white p-6 max-w-2xl">
-          <dl className="divide-y divide-border">
+        <div className="rounded-2xl border border-border bg-white p-4 sm:p-6">
+          <dl className="grid gap-3 sm:grid-cols-3">
             {[
               { label: "이메일", value: email },
               { label: "역할", value: roleLabel },
               { label: "가입일", value: createdAtLabel },
             ].map((r) => (
-              <div key={r.label} className="flex items-center justify-between py-3.5">
+              <div key={r.label} className="min-w-0 rounded-xl bg-[#F7F6F2] p-4">
                 <dt className="text-sm text-muted-foreground">{r.label}</dt>
-                <dd className="text-sm font-semibold text-navy">{r.value}</dd>
+                <dd className="mt-1 break-words text-sm font-semibold text-navy">{r.value}</dd>
               </div>
             ))}
           </dl>
@@ -333,7 +338,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
 
       {/* ===== 예약 현황 ===== */}
       {tab === "bookings" && showBookings && (
-        <div className="rounded-2xl border border-border bg-white overflow-hidden max-w-3xl">
+        <div className="overflow-hidden rounded-2xl border border-border bg-white">
           {bookings.length === 0 ? (
             <div className="p-10 text-center">
               <Calendar className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />

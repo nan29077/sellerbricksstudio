@@ -120,6 +120,7 @@ model User {
   ownedFacilities    Facility[]          @relation("FacilityOwner")
   managedFacilities  ManagerFacility[]
   bookings           Booking[]           @relation("SellerBookings")
+  bookingWaitlist    BookingWaitlist[]
   liveSessions       LiveSession[]       @relation("SellerLiveSessions")
   orders             Order[]             @relation("SellerOrders")
   kakaoChannels      KakaoChannel[]
@@ -127,6 +128,7 @@ model User {
   managerCommission  ManagerCommissionRule[]
   auditLogs          AuditLog[]
   inquiries          FacilityInquiry[]   @relation("SellerInquiries")
+  supportInquiries   SupportInquiry[]
   reviews            FacilityReview[]    @relation("SellerReviews")
   favorites          FacilityFavorite[]
   notifications      UserNotification[]
@@ -136,6 +138,33 @@ model User {
   marketingAssets    MarketingAsset[]
   snsAccounts        SnsAccount[]
   snsPosts           SnsPost[]
+}
+
+enum SupportCategory {
+  ACCOUNT
+  SPACE_BOOKING
+  LIVE
+  ORDER_PAYMENT
+  SETTLEMENT
+  PARTNERSHIP
+  OTHER
+}
+
+model SupportInquiry {
+  id          String          @id @default(uuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    SupportCategory
+  subject     String          @db.VarChar(100)
+  message     String          @db.Text
+  reference   String?         @db.VarChar(100)
+  reply       String?         @db.Text
+  answeredAt  DateTime?
+  createdAt   DateTime        @default(now())
+
+  @@index([userId, createdAt])
+  @@index([answeredAt, createdAt])
+  @@index([category, createdAt])
 }
 
 model Profile {
@@ -166,7 +195,7 @@ model Facility {
   liveSpaceInfo String?      // 라이브 공간 안내 (조명/카메라/인터넷 등)
   openTime    String?        // "09:00"
   closeTime   String?        // "22:00"
-  basePrice   Int            @default(0) // 예약료(원)
+  basePrice   Int            @default(0) // (사용 안 함) 창고(스튜디오) 이용료는 무료 — 과거 데이터 호환용
   rating      Float          @default(0)
   thumbnailUrl String?
   contactPhone String?       // 현장 연락처
@@ -176,9 +205,19 @@ model Facility {
   bankName    String?        // 정산 은행
   bankAccount String?        // 정산 계좌번호
   accountHolder String?      // 예금주
+  // ---- 예약 정책 (창고(스튜디오)별) ----
+  bookingUnitMinutes  Int     @default(60)  // 예약 시작 단위(분): 30 | 60
+  bufferMinutes       Int     @default(0)   // 예약 사이 준비·정리 시간(분)
+  minLeadHours        Int     @default(0)   // 최소 몇 시간 전까지 예약 가능
+  maxAdvanceDays      Int     @default(60)  // 최대 며칠 앞까지 예약 가능
+  maxHours            Int     @default(12)  // 1회 최대 이용 시간
+  autoApprove         Boolean @default(false) // 즉시 확정(승인 절차 생략)
+  cancelDeadlineHours Int     @default(24)  // 셀러 직접 취소·변경 마감(이용 시작 n시간 전)
+  bookingNotice       String? @db.Text      // 예약 안내사항(셀러에게 표시)
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
+  waitlist      BookingWaitlist[]
   reviews       FacilityReview[]
   favorites     FacilityFavorite[]
   facilitySettlements FacilitySettlement[]
@@ -315,6 +354,7 @@ model FacilityProduct {
   updatedAt       DateTime       @updatedAt
 
   liveSessionProducts LiveSessionProduct[]
+  bookingProducts     BookingProduct[]
 
   @@index([facilityId])
 }
@@ -332,7 +372,10 @@ model Booking {
   purpose        String?       // 방송 목적
   expectedProducts String?     // 예상 판매 상품
   rejectReason   String?
-  totalPrice     Int           @default(0) // 예약 이용료(원) = 시간당 요금 × 이용 시간
+  totalPrice     Int           @default(0) // (사용 안 함) 이용료 무료 — 항상 0
+  code           String?       @unique     // 예약번호 (예: SB-261110-7K3Q)
+  groupId        String?                   // 반복 예약 묶음 id
+  rescheduleCount Int          @default(0) // 일정 변경 횟수
   headcount      Int?          // 방문 인원
   requestNote    String?       @db.Text // 셀러 요청사항
   facilityMemo   String?       @db.Text // 창고(스튜디오) 내부 메모 (셀러에게 비공개)
@@ -347,8 +390,10 @@ model Booking {
 
   liveSession LiveSession?
   review      FacilityReview?
+  products    BookingProduct[]
 
   @@index([facilityId, startAt])
+  @@index([groupId])
   @@index([sellerId])
   @@index([status])
   @@index([facilitySettlementId])
@@ -825,4 +870,44 @@ model SnsPost {
   updatedAt   DateTime @updatedAt
 
   @@index([sellerId, scheduledAt])
+}
+
+// ===================== 예약 상품 · 대기 =====================
+// 셀러가 예약할 때 방송에서 판매하려고 고른 창고(스튜디오) 상품. 라이브 세션을 만들면 자동으로 판매 상품에 들어간다.
+model BookingProduct {
+  id                String          @id @default(cuid())
+  bookingId         String
+  booking           Booking         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  facilityProductId String
+  facilityProduct   FacilityProduct @relation(fields: [facilityProductId], references: [id])
+  quantity          Int             @default(1) // 방송 판매 예정 수량
+  nameSnapshot      String
+  priceSnapshot     Int
+  commissionType    CommissionType  @default(PERCENT)
+  commissionValue   Float           @default(0)
+  status            String          @default("REQUESTED") // REQUESTED | CONFIRMED | UNAVAILABLE
+  facilityNote      String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@unique([bookingId, facilityProductId])
+  @@index([facilityProductId])
+}
+
+// 이미 다른 예약이 잡힌 시간에 대기 신청. 해당 예약이 취소·거절되면 알림을 보낸다.
+model BookingWaitlist {
+  id         String    @id @default(cuid())
+  facilityId String
+  facility   Facility  @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  sellerId   String
+  seller     User      @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  startAt    DateTime
+  endAt      DateTime
+  note       String?
+  status     String    @default("WAITING") // WAITING | NOTIFIED | BOOKED | CANCELLED
+  notifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([facilityId, startAt])
+  @@index([sellerId, status])
 }

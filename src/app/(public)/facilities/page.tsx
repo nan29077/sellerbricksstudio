@@ -39,7 +39,7 @@ export default async function FacilitiesPage({
   ];
 
   const orderBy: Prisma.FacilityOrderByWithRelationInput =
-    sort === "price" ? { basePrice: "asc" } : { rating: "desc" };
+    sort === "price" ? { products: { _count: "desc" } } : { rating: "desc" };
 
   let facilities: any[] = [];
   try {
@@ -88,7 +88,7 @@ export default async function FacilitiesPage({
           </select>
           <select name="sort" defaultValue={sort ?? ""} className="h-10 rounded-lg border border-border px-2 text-sm bg-white">
             <option value="">인기순</option>
-            <option value="price">가격순</option>
+            <option value="price">상품 많은 순</option>
           </select>
           <button type="submit" className="h-10 rounded-lg bg-brand-500 text-white text-sm font-semibold hover:bg-brand-600 transition">
             검색
@@ -151,7 +151,7 @@ export default async function FacilitiesPage({
                   </p>
                   <div className="mt-3 flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">{f._count?.products ?? 0}개 상품 판매 가능</span>
-                    <span className="font-bold text-navy text-sm">{formatKRW(f.basePrice)}<span className="text-xs font-normal text-muted-foreground">/시간</span></span>
+                    <span className="text-sm font-bold text-emerald-700">이용료 무료</span>
                   </div>
                 </CardContent>
               </Card>

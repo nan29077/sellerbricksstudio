@@ -1,0 +1,69 @@
+export type SpaceType = "STUDIO" | "WAREHOUSE";
+
+export const SPACE_TYPE_LABELS: Record<SpaceType, string> = { STUDIO: "스튜디오", WAREHOUSE: "창고" };
+
+export type SpaceCard = {
+  id: string;
+  name: string;
+  type: SpaceType;
+  region: string;
+  location: string;
+  image: string;
+  price: number | null;
+  demo: boolean;
+  tags: string[];
+};
+
+type ShowcaseSpace = SpaceCard & { description: string };
+type ShowcaseInput = [id: string, name: string, region: string, district: string, price: number, tags: string[], description: string];
+
+const studios: ShowcaseInput[] = [
+  ["s01", "성수 데이라이트 스튜디오", "서울", "성동구", 85000, ["자연광", "제품 촬영"], "넓은 창과 아이보리 배경, 낮은 원목 진열대를 활용한 자연광 촬영 공간입니다."],
+  ["s02", "강남 뷰티 라이브룸", "서울", "강남구", 110000, ["뷰티", "메이크업 존"], "파스텔 톤 세트와 메이크업 테이블을 갖춘 뷰티 시연용 라이브 공간입니다."],
+  ["s03", "고양 키친온에어", "경기", "고양시", 95000, ["쿠킹", "아일랜드"], "넓은 아일랜드에서 조리 과정과 상품을 동시에 보여줄 수 있는 주방형 세트입니다."],
+  ["s04", "송도 프레임 스테이지", "인천", "연수구", 75000, ["제품 촬영", "암막"], "암막 커튼과 테이블 세트를 활용해 제품 클로즈업을 연출하는 공간입니다."],
+  ["s05", "해운대 웨이브 스튜디오", "부산", "해운대구", 90000, ["라이프스타일", "자연광"], "차분한 바다색 소품과 밝은 로프트를 활용한 라이프스타일 촬영 공간입니다."],
+  ["s06", "수성 패션 피팅룸", "대구", "수성구", 65000, ["패션", "피팅 존"], "이동식 행거와 전신 거울을 활용해 착장 소개와 실시간 피팅을 진행할 수 있는 공간입니다."],
+  ["s07", "광주 메이커스 라이브", "광주", "동구", 60000, ["공방", "상품 시연"], "공방 분위기의 작업대에서 제작 과정을 보여주기 좋은 촬영 세트입니다."],
+  ["s08", "제주 스톤앤라이트", "제주", "제주시", 80000, ["로컬 상품", "라이프스타일"], "현무암과 원목을 배경으로 제주 로컬 상품을 소개하는 세트입니다."],
+  ["s09", "마포 브릭 온에어", "서울", "마포구", 115000, ["라이브커머스", "멀티캠"], "네이비 톤 무대와 제품 소개 테이블을 구성한 라이브커머스 세트입니다."],
+  ["s10", "대전 클로즈업 스튜디오", "대전", "유성구", 70000, ["제품 촬영", "라이브커머스"], "촬영 장비 가까이에서 제품의 디테일을 소개할 수 있는 소형 라이브 무대입니다."],
+  ["s11", "제주 그린하우스 라이브", "제주", "서귀포시", 105000, ["현장 방송", "신선식품"], "작물 재배 현장과 상품을 한 화면에 담을 수 있는 산지 라이브 콘셉트입니다."],
+];
+
+const warehouses: ShowcaseInput[] = [
+  ["w01", "김포 브릭스 풀필먼트", "경기", "김포시", 70000, ["풀필먼트", "포장대"], "높은 팔레트 랙과 포장대를 갖춘 입출고·상품 검수 공간입니다."],
+  ["w02", "인천 콜드체인 허브", "인천", "중구", 120000, ["냉장 보관", "신선식품"], "신선 상품을 분류하고 출고하는 냉장 물류 공간을 가정한 예시입니다."],
+  ["w03", "용인 패킹앤라이브", "경기", "용인시", 80000, ["촬영 겸용", "검수"], "물류 공간과 유리로 구분된 촬영 코너를 오가며 준비할 수 있는 구조입니다."],
+  ["w04", "부산 도크사이드 물류센터", "부산", "강서구", 105000, ["하역장", "파렛트"], "하역장과 재고 보관 랙이 연결된 출고 중심의 창고입니다."],
+  ["w05", "대구 텍스타일 풀필먼트", "대구", "달서구", 65000, ["의류 보관", "포장대"], "의류 재고를 규격 박스에 보관하고 상품 검수를 진행하는 소형 풀필먼트 공간입니다."],
+  ["w06", "대전 센트럴 패킹랩", "대전", "대덕구", 55000, ["소량 출고", "포장대"], "소규모 브랜드가 적은 물량을 분류하고 포장하기에 적합한 콘셉트입니다."],
+  ["w07", "제주 프레시 디스패치", "제주", "제주시", 90000, ["신선식품", "산지 출고"], "재사용 상자로 농산물을 분류하고 출하할 수 있게 설계한 공간입니다."],
+  ["w08", "서울 웨스트 픽앤팩", "서울", "강서구", 75000, ["풀필먼트", "촬영 겸용"], "정리된 랙과 작업대를 이용해 방송용 상품과 출고 물량을 준비하는 공간입니다."],
+  ["w09", "광주 라스트마일 창고", "광주", "광산구", 60000, ["소량 출고", "검수"], "상품 검수와 소량 출고를 중심으로 운영하는 도심형 물류 공간입니다."],
+  ["w10", "제주 밭담 집하장", "제주", "서귀포시", 68000, ["산지 집하", "로컬 상품"], "농가에서 수확한 상품을 선별하고 출고 전 모아두는 집하장 콘셉트입니다."],
+];
+
+function showcaseImage(id: string): string {
+  return `/images/home/showcase/${id}.webp`;
+}
+
+export function registeredSpaceThumbnail(id: string, type: SpaceType): string {
+  const spaces = type === "STUDIO" ? studios : warehouses;
+  let hash = 0;
+  for (const char of id) {
+    hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  }
+  return showcaseImage(spaces[hash % spaces.length][0]);
+}
+
+function toShowcaseSpace(type: SpaceType, [id, name, region, district, price, tags, description]: ShowcaseInput): ShowcaseSpace {
+  return { id, name, type, region, location: `${region} ${district}`, image: showcaseImage(id), price, demo: true, tags, description };
+}
+
+export const SHOWCASE_SPACES: ShowcaseSpace[] = [
+  ...studios.flatMap((studio, index) => [
+    toShowcaseSpace("STUDIO", studio),
+    ...(warehouses[index] ? [toShowcaseSpace("WAREHOUSE", warehouses[index])] : []),
+  ]),
+];

@@ -218,7 +218,7 @@ export default async function FacilityDashboard() {
       )}
 
       {/* 핵심 지표 4개 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <StatCard label="등록 창고(스튜디오)" value={`${facilities.length}개`} sub="창고/스튜디오" icon={Building2} />
         <StatCard label="총 예약" value={`${totalBookings}건`} sub={`대기 ${pendingBookings}건`} icon={CalendarCheck} />
         <StatCard label="이용 셀러" value={`${totalSellers}명`} sub="누적 이용자" icon={Users} />
@@ -231,7 +231,7 @@ export default async function FacilityDashboard() {
       </div>
 
       {/* 주간 예약 차트 + 셀러 랭킹 */}
-      <div className="grid lg:grid-cols-2 gap-5">
+      <div className="grid gap-5 xl:grid-cols-2">
         {/* 이번 주 일별 예약 — 실 DB */}
         <Card>
           <CardContent className="pt-5">

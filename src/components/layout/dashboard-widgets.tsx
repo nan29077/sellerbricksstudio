@@ -14,10 +14,10 @@ export function StatCard({
   icon?: LucideIcon | React.ElementType;
 }) {
   return (
-    <div className="rounded-[22px] border border-[#E9E5DC] bg-white p-6 shadow-sm">
-      {Icon && <span className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-700"><Icon className="h-5 w-5" /></span>}
+    <div className="min-w-0 rounded-[22px] border border-[#E9E5DC] bg-white p-4 shadow-sm sm:p-5">
+      {Icon && <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-800"><Icon className="h-5 w-5" /></span>}
       <p className="text-sm font-medium text-slate-500">{label}</p>
-      <p className="mt-1 text-2xl font-extrabold tracking-tight text-navy">{value}</p>
+      <p className="mt-1 break-words text-xl font-extrabold tracking-tight text-navy sm:text-2xl">{value}</p>
       {sub && <p className="mt-2 text-xs text-slate-500">{sub}</p>}
     </div>
   );
@@ -31,9 +31,9 @@ export function PageHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="mb-7 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-navy sm:text-3xl">{title}</h1>
+    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+      <div className="min-w-0">
+        <h1 className="break-words text-2xl font-extrabold tracking-tight text-navy sm:text-3xl">{title}</h1>
         {description && <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>}
       </div>
       {action}
@@ -50,7 +50,7 @@ export function Table({
   className?: string;
 }) {
   return (
-    <div className={`overflow-x-auto rounded-[22px] border border-[#E9E5DC] bg-white shadow-sm ${className ?? ""}`}>
+    <div className={`min-w-0 max-w-full overflow-x-auto rounded-[22px] border border-[#E9E5DC] bg-white shadow-sm ${className ?? ""}`}>
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-[#EEEAE2] bg-[#F9F7F2]">

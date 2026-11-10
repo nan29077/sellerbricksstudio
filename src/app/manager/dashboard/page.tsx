@@ -171,7 +171,7 @@ export default async function ManagerDashboard() {
       )}
 
       {/* 핵심 지표 4개 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <StatCard label="담당 창고(스튜디오)" value={`${facilities.length}개`} sub="창고/스튜디오" icon={Building2} />
         <StatCard label="총 예약" value={`${totalBookings}건`} sub={`이번 달 +${thisMonthBookings}건`} icon={CalendarDays} />
         <StatCard label="이용 셀러" value={`${totalSellers}명`} sub="누적 이용자" icon={Users} />
@@ -240,7 +240,7 @@ export default async function ManagerDashboard() {
       </div>
 
       {/* 다가오는 예약 + 커미션 규칙 */}
-      <div className="grid lg:grid-cols-2 gap-5">
+      <div className="grid gap-5 xl:grid-cols-2">
         {/* 다가오는 예약 */}
         <Card>
           <CardContent className="pt-5">

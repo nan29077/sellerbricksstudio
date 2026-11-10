@@ -240,8 +240,8 @@ export function FacilityStorefront({
 
             <div className="flex flex-col justify-between bg-[#171B30] p-5 text-white sm:p-7 lg:p-8">
               <div>
-                <p className="text-xs font-bold text-white/55">기본 이용료 · 1시간</p>
-                <p className="mt-2 text-3xl font-black text-[#FFD552]">{formatKRW(f.basePrice)}</p>
+                <p className="text-xs font-bold text-white/55">창고(스튜디오) 이용료</p>
+                <p className="mt-2 text-3xl font-black text-[#FFD552]">무료</p>
                 <div className="mt-5 space-y-3 border-t border-white/10 pt-5">
                   <p className="flex items-center gap-2 text-xs font-bold text-white/75">
                     <Clock3 className="h-4 w-4 text-[#FFD552]" /> 운영 {f.openTime ?? "09:00"}–{f.closeTime ?? "22:00"}
@@ -348,7 +348,7 @@ export function FacilityStorefront({
                         <p className="mt-0.5 text-xs text-slate-400">예약 가능 시간</p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-xs font-black text-brand-700">{formatKRW(slot.price ?? f.basePrice)}</p>
+                        <p className="text-xs font-black text-emerald-700">무료</p>
                         <ArrowRight className="mt-1 h-4 w-4 text-slate-300 group-hover:text-brand-500" />
                       </div>
                     </Link>
@@ -371,7 +371,7 @@ export function FacilityStorefront({
                 { icon: isWarehouse ? Warehouse : Camera, label: "창고(스튜디오) 유형", value: isWarehouse ? "물류 창고" : "라이브 스튜디오" },
                 { icon: MapPin, label: "위치", value: f.address ?? f.region },
                 { icon: Clock3, label: "운영 시간", value: `${f.openTime ?? "09:00"} – ${f.closeTime ?? "22:00"}` },
-                { icon: Store, label: "기본 이용료", value: `${formatKRW(f.basePrice)} / 시간` },
+                { icon: Store, label: "이용료", value: "무료" },
               ].map((item) => (
                 <div key={item.label} className="rounded-2xl bg-[#F8F9FB] p-4">
                   <item.icon className="h-5 w-5 text-brand-600" />

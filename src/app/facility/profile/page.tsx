@@ -15,7 +15,6 @@ import Link from "next/link";
 import { ResourceForm, type Field } from "@/components/resource-form";
 
 const OPS_FIELDS: Field[] = [
-  { name: "basePrice", label: "시간당 이용료(원)", type: "number", min: 0, half: true, required: true },
   { name: "minHours", label: "최소 예약 시간", type: "number", min: 1, max: 24, half: true },
   { name: "openTime", label: "오픈 시간", type: "time", half: true },
   { name: "closeTime", label: "마감 시간", type: "time", half: true },
@@ -26,6 +25,18 @@ const OPS_FIELDS: Field[] = [
   { name: "equipment", label: "보유 장비", type: "textarea", help: "콤마로 구분: 4K 카메라, 링라이트, 그린스크린" },
   { name: "thumbnailUrl", label: "대표 이미지 URL", type: "url" },
   { name: "cancelPolicy", label: "취소·환불 규정", type: "textarea", help: "셀러가 예약할 때 동의해야 하는 규정입니다." },
+];
+// 예약 정책 — 셀러 예약 화면의 시작 시간 · 이용 시간 · 확정 방식에 바로 반영된다. (이용료는 무료)
+const POLICY_FIELDS: Field[] = [
+  { name: "autoApprove", label: "즉시 확정 (승인 없이 바로 예약 확정)", type: "checkbox", help: "끄면 예약마다 승인/거절을 직접 처리합니다." },
+  { name: "bookingUnitMinutes", label: "예약 시작 단위", type: "select", half: true, options: [{ value: "60", label: "정시 (1시간)" }, { value: "30", label: "30분" }] },
+  { name: "bufferMinutes", label: "예약 사이 준비시간(분)", type: "number", min: 0, max: 240, half: true, help: "세팅·정리를 위해 예약 사이에 비워둘 시간" },
+  { name: "minHours", label: "최소 이용 시간", type: "number", min: 1, max: 24, half: true },
+  { name: "maxHours", label: "최대 이용 시간", type: "number", min: 1, max: 24, half: true },
+  { name: "minLeadHours", label: "최소 몇 시간 전 예약", type: "number", min: 0, max: 336, half: true, help: "0 = 바로 예약 가능" },
+  { name: "maxAdvanceDays", label: "최대 며칠 앞까지 예약", type: "number", min: 1, max: 365, half: true },
+  { name: "cancelDeadlineHours", label: "셀러 직접 변경·취소 마감(시간 전)", type: "number", min: 0, max: 336, help: "승인된 예약은 이용 시작 이 시간 전까지만 셀러가 직접 변경·취소할 수 있습니다." },
+  { name: "bookingNotice", label: "예약 안내사항", type: "textarea", help: "예약 화면에 표시됩니다. 예: 상품 입고는 방송 하루 전까지, 주차 2대 가능" },
 ];
 const BANK_FIELDS: Field[] = [
   { name: "bankName", label: "은행", half: true, placeholder: "국민은행" },
@@ -134,8 +145,8 @@ export default async function FacilityProfile() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                   {[
                     {
-                      label: "시간당 이용료",
-                      value: formatKRW(f.basePrice ?? 0),
+                      label: "예약 방식",
+                      value: f.autoApprove ? "즉시 확정" : "승인 후 확정",
                       icon: Wallet,
                     },
                     {
@@ -164,13 +175,16 @@ export default async function FacilityProfile() {
 
                 {/* 운영 정보 */}
                 <div className="mb-3 grid gap-2 rounded-xl border border-border p-3 text-sm sm:grid-cols-2">
-                  <p className="flex items-center gap-2 text-muted-foreground"><Clock className="h-4 w-4 shrink-0" />운영 {f.openTime ?? "09:00"} ~ {f.closeTime ?? "22:00"} · 최소 {f.minHours ?? 1}시간</p>
+                  <p className="flex items-center gap-2 text-muted-foreground"><Clock className="h-4 w-4 shrink-0" />운영 {f.openTime ?? "09:00"} ~ {f.closeTime ?? "22:00"} · {f.minHours ?? 1}~{f.maxHours ?? 12}시간 · 이용료 무료</p>
+                  <p className="text-muted-foreground sm:col-span-2">예약 정책: {f.autoApprove ? "즉시 확정" : "승인 후 확정"} · {(f.bookingUnitMinutes ?? 60) === 30 ? "30분" : "정시"} 단위 · 준비시간 {f.bufferMinutes ?? 0}분 · {f.minLeadHours ? `${f.minLeadHours}시간 전까지` : "바로"} 예약 · 최대 {f.maxAdvanceDays ?? 60}일 앞 · 변경·취소 {f.cancelDeadlineHours ?? 24}시간 전 마감</p>
                   <p className="text-muted-foreground">수용 인원 {f.capacity ? `${f.capacity}명` : "미입력"} · 연락처 {f.contactPhone ?? "미입력"}</p>
                   <p className="text-muted-foreground sm:col-span-2">취소 규정: {f.cancelPolicy ? <span className="whitespace-pre-line">{f.cancelPolicy}</span> : <span className="font-semibold text-amber-600">미입력 — 분쟁 예방을 위해 입력을 권장합니다</span>}</p>
                   <p className="text-muted-foreground sm:col-span-2">정산 계좌: {f.bankName ?? ""} {maskAccount(f.bankAccount)} {f.accountHolder ? `(${f.accountHolder})` : ""}</p>
                   <div className="flex flex-wrap gap-2 sm:col-span-2">
                     <ResourceForm url="/api/facility/profile" method="PATCH" extraBody={{ facilityId: f.id }} fields={OPS_FIELDS} title="운영 정보 수정" triggerSize="sm" triggerVariant="outline"
-                      initial={{ basePrice: f.basePrice, minHours: f.minHours ?? 1, openTime: f.openTime ?? "09:00", closeTime: f.closeTime ?? "22:00", capacity: f.capacity ?? "", contactPhone: f.contactPhone ?? "", region: f.region, address: f.address, equipment: f.equipment ?? "", thumbnailUrl: f.thumbnailUrl ?? "", cancelPolicy: f.cancelPolicy ?? "" }} />
+                      initial={{ minHours: f.minHours ?? 1, openTime: f.openTime ?? "09:00", closeTime: f.closeTime ?? "22:00", capacity: f.capacity ?? "", contactPhone: f.contactPhone ?? "", region: f.region, address: f.address, equipment: f.equipment ?? "", thumbnailUrl: f.thumbnailUrl ?? "", cancelPolicy: f.cancelPolicy ?? "" }} />
+                    <ResourceForm url="/api/facility/profile" method="PATCH" extraBody={{ facilityId: f.id }} fields={POLICY_FIELDS} title="예약 정책 설정" triggerSize="sm" triggerVariant="outline"
+                      initial={{ autoApprove: !!f.autoApprove, bookingUnitMinutes: String(f.bookingUnitMinutes ?? 60), bufferMinutes: f.bufferMinutes ?? 0, minHours: f.minHours ?? 1, maxHours: f.maxHours ?? 12, minLeadHours: f.minLeadHours ?? 0, maxAdvanceDays: f.maxAdvanceDays ?? 60, cancelDeadlineHours: f.cancelDeadlineHours ?? 24, bookingNotice: f.bookingNotice ?? "" }} />
                     <ResourceForm url="/api/facility/profile" method="PATCH" extraBody={{ facilityId: f.id }} fields={BANK_FIELDS} title="정산 계좌 등록" triggerSize="sm" triggerVariant="outline"
                       initial={{ bankName: f.bankName ?? "", accountHolder: f.accountHolder ?? "", bankAccount: f.bankAccount ?? "" }} />
                   </div>

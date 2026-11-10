@@ -12,8 +12,16 @@ const schema = z.object({
   specialty: opt(300), liveSpaceInfo: opt(3000), description: opt(5000), equipment: opt(1000),
   address: z.string().trim().min(1).max(300).optional(), region: z.string().trim().min(1).max(40).optional(),
   openTime: time.optional(), closeTime: time.optional(),
-  basePrice: z.coerce.number().int().min(0).max(100_000_000).optional(),
   minHours: z.coerce.number().int().min(1).max(24).optional(),
+  // 예약 정책
+  bookingUnitMinutes: z.coerce.number().int().refine((v) => v === 30 || v === 60, "예약 단위는 30분 또는 60분입니다.").optional(),
+  bufferMinutes: z.coerce.number().int().min(0).max(240).optional(),
+  minLeadHours: z.coerce.number().int().min(0).max(336).optional(),
+  maxAdvanceDays: z.coerce.number().int().min(1).max(365).optional(),
+  maxHours: z.coerce.number().int().min(1).max(24).optional(),
+  autoApprove: z.union([z.boolean(), z.enum(["true", "false"])]).optional().transform((v) => (v === undefined ? undefined : v === true || v === "true")),
+  cancelDeadlineHours: z.coerce.number().int().min(0).max(336).optional(),
+  bookingNotice: opt(2000),
   capacity: z.union([z.literal(""), z.null(), z.coerce.number().int().min(1).max(10000)]).optional().transform((v) => (v === "" ? null : v)),
   contactPhone: opt(30), cancelPolicy: opt(2000), thumbnailUrl: opt(1000),
   bankName: opt(40), bankAccount: opt(40), accountHolder: opt(40),
@@ -31,6 +39,7 @@ export async function PATCH(req: NextRequest) {
     if (!facility) return fail("창고(스튜디오)를 찾을 수 없습니다.", 404);
     if (user.role !== "SUPER_ADMIN" && facility.ownerId !== user.id) return fail("본인 소유 창고(스튜디오)만 수정할 수 있습니다.", 403);
     if (data.openTime && data.closeTime && data.openTime >= data.closeTime) return fail("마감 시간은 오픈 시간보다 뒤여야 합니다.");
+    if (data.minHours && data.maxHours && data.maxHours < data.minHours) return fail("최대 이용 시간은 최소 예약 시간보다 길어야 합니다.");
 
     const { facilityId, ...rest } = data;
     const patch = Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined));

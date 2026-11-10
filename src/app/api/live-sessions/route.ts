@@ -53,6 +53,31 @@ export async function POST(req: NextRequest) {
         catenoidLogs: { create: { action: "CREATE", payload: JSON.stringify(stream) } },
       },
     });
+    // 예약할 때 고른 상품을 판매 상품으로 자동 등록 (상품번호 1번부터, 준비 불가 표시된 상품 제외)
+    if (data.bookingId) {
+      const picked = await prisma.bookingProduct.findMany({
+        where: { bookingId: data.bookingId, status: { not: "UNAVAILABLE" }, facilityProduct: { isSellable: true } },
+        include: { facilityProduct: { include: { product: true } } }, orderBy: { createdAt: "asc" },
+      });
+      if (picked.length) {
+        await prisma.$transaction(async (tx) => {
+          let n = 0;
+          for (const bp of picked) {
+            n += 1;
+            const fp = bp.facilityProduct;
+            const lsp = await tx.liveSessionProduct.create({
+              data: {
+                liveSessionId: session.id, displayNumber: n, sortOrder: n - 1, facilityProductId: fp.id,
+                nameSnapshot: fp.product.name, priceSnapshot: fp.salePrice, stockSnapshot: fp.stock,
+                imageSnapshot: fp.product.thumbnailUrl, source: "CATALOG",
+              },
+            });
+            await tx.liveProductNumberHistory.create({ data: { liveSessionId: session.id, liveSessionProductId: lsp.id, newNumber: n, changedBy: user.id } });
+          }
+          await tx.liveSession.update({ where: { id: session.id }, data: { numberVersion: { increment: 1 } } });
+        });
+      }
+    }
     await audit({ actorId: user.id, action: "LIVE_CREATE", entity: "LiveSession", entityId: session.id });
     return ok(session, 201);
   } catch (e) { return handleError(e); }

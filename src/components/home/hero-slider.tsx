@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowRight, ChevronLeft, ChevronRight, Play } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 
 const slides = [
   {
@@ -43,65 +43,66 @@ const slides = [
 
 export function HeroSlider() {
   const [current, setCurrent] = useState(0);
+  const [playing, setPlaying] = useState(false);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setCurrent((index) => (index + 1) % slides.length), 7500);
-    return () => window.clearInterval(timer);
+    setPlaying(!window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   }, []);
 
+  useEffect(() => {
+    if (!playing) return;
+    const timer = window.setInterval(() => setCurrent((index) => (index + 1) % slides.length), 7500);
+    return () => window.clearInterval(timer);
+  }, [playing]);
+
   const slide = slides[current];
-  const change = (direction: number) => setCurrent((index) => (index + direction + slides.length) % slides.length);
+  const select = (index: number) => {
+    setPlaying(false);
+    setCurrent((index + slides.length) % slides.length);
+  };
 
   return (
-    <section className="relative isolate overflow-hidden bg-navy text-white sm:min-h-[680px] lg:min-h-[710px]" aria-label="셀러브릭스 주요 서비스">
-      <div className="relative aspect-[3/2] overflow-hidden sm:absolute sm:inset-0 sm:aspect-auto">
+    <section className="relative isolate mx-3 mt-4 flex min-h-[min(550px,calc(100svh-112px))] flex-col justify-end overflow-hidden rounded-[24px] bg-navy text-white shadow-[0_20px_48px_#1A1A2E30] sm:mx-6 sm:mt-7 sm:min-h-[458px] sm:rounded-[30px]" aria-label="셀러브릭스 주요 서비스">
+      <div className="absolute inset-x-0 top-0 -z-10 h-[67%] overflow-hidden sm:inset-0 sm:h-full" aria-hidden="true">
         {slides.map((item, index) => (
-          <div key={item.image} className={`absolute inset-0 transition-opacity duration-700 ${index === current ? "opacity-100" : "opacity-0"}`} aria-hidden="true">
+          <div key={item.image} className={`absolute inset-0 transition-opacity duration-700 motion-reduce:transition-none ${index === current ? "opacity-100" : "opacity-0"}`}>
             <picture>
               <source media="(max-width: 639px)" srcSet={item.mobileImage} type="image/webp" />
-              <Image src={item.image} alt="" fill priority={index === 0} loading={index === 0 ? undefined : "eager"} sizes="100vw" unoptimized className="object-cover" />
+              <Image src={item.image} alt="" fill priority={index === 0} loading={index === 0 ? undefined : "eager"} sizes="(min-width: 1040px) 668px, 100vw" unoptimized className="object-cover object-[60%_center]" />
             </picture>
           </div>
         ))}
-        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-navy to-transparent sm:hidden" />
-      </div>
-      <div className="absolute inset-0 hidden bg-gradient-to-r from-[#11172d] via-[#11172d]/85 to-[#11172d]/5 sm:block" />
-      <div className="absolute inset-0 hidden bg-gradient-to-t from-[#11172d]/55 via-transparent to-transparent sm:block" />
-      <div className="absolute -left-20 top-1/3 hidden h-80 w-80 rounded-full bg-brand-500/10 blur-3xl sm:block" />
-
-      <div className="container relative z-10 flex items-center pb-24 pt-5 sm:min-h-[680px] sm:py-24 lg:min-h-[710px]">
-        <div className="w-full max-w-[690px] sm:pb-0">
-          <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[10px] font-bold tracking-[0.12em] text-brand-200 backdrop-blur-sm sm:mb-7 sm:px-4 sm:py-2 sm:text-xs sm:tracking-[0.18em]">
-            <span className="h-2 w-2 rounded-full bg-brand-400 shadow-[0_0_12px_#F5A623]" />
-            {slide.eyebrow}
-          </span>
-          <h1 className="break-keep text-[clamp(1.55rem,7vw,2.6rem)] font-extrabold leading-[1.2] tracking-[-0.055em] sm:text-[clamp(2.5rem,4.7vw,4.7rem)] sm:leading-[1.16]">
-            {slide.title}<br />
-            <span className="text-[#FFD05A]">{slide.highlight}</span>
-          </h1>
-          <p className="mt-4 max-w-[575px] text-sm leading-6 text-white/80 sm:mt-7 sm:text-lg sm:leading-8">{slide.description}</p>
-          <div className="mt-6 flex flex-col gap-2.5 sm:mt-9 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-            <Link href={slide.primary.href} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-brand-500 px-6 text-sm font-bold text-navy shadow-[0_14px_36px_rgba(245,166,35,0.28)] transition hover:-translate-y-0.5 hover:bg-[#FFC353]">
-              {slide.primary.label}<ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link href={slide.secondary.href} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-white/35 bg-white/10 px-6 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/20">
-              <Play className="h-4 w-4 fill-current" />{slide.secondary.label}
-            </Link>
-          </div>
-          <div className="mt-11 hidden flex-wrap gap-x-5 gap-y-2 text-xs font-medium tracking-wide text-white/55 sm:flex sm:text-sm">
-            <span>공간 탐색</span><span className="text-brand-400">✦</span><span>라이브 운영</span><span className="text-brand-400">✦</span><span>판매 관리</span><span className="text-brand-400">✦</span><span>정산 확인</span>
-          </div>
-        </div>
+        <div className="absolute inset-0 bg-gradient-to-t from-navy from-[4%] via-navy/35 via-[38%] to-transparent sm:bg-gradient-to-r sm:from-[#17172B] sm:from-0% sm:via-[#17172B]/80 sm:via-50% sm:to-[#17172B]/20" />
       </div>
 
-      <div className="absolute bottom-6 left-4 right-4 z-20 flex items-center justify-between gap-3 sm:bottom-8 sm:left-auto sm:right-10 sm:w-[430px]">
-        <div className="flex items-center gap-3 text-xs font-bold tracking-[0.12em] text-white/75">
-          <span className="text-brand-300">0{current + 1}</span><span className="h-px w-10 bg-white/40" /><span>0{slides.length}</span>
-          <span className="hidden whitespace-nowrap font-medium tracking-normal text-white/60 sm:inline">{slide.caption}</span>
+      <div className="absolute right-4 top-4 hidden gap-1 sm:flex">
+        <button type="button" onClick={() => select(current - 1)} aria-label="이전 배너" className="grid w-11 place-items-center rounded-full bg-navy/55 text-white backdrop-blur-sm hover:bg-navy/80"><ChevronLeft className="h-5 w-5" /></button>
+        <button type="button" onClick={() => select(current + 1)} aria-label="다음 배너" className="grid w-11 place-items-center rounded-full bg-navy/55 text-white backdrop-blur-sm hover:bg-navy/80"><ChevronRight className="h-5 w-5" /></button>
+      </div>
+
+      <div className="px-5 pb-3 pt-20 sm:px-9 sm:pb-5">
+        <p className="text-[10px] font-extrabold tracking-[0.18em] text-brand-200 sm:text-xs">{slide.eyebrow}</p>
+        <h1 className="mt-3 break-keep text-[clamp(1.65rem,7vw,2.45rem)] font-black leading-[1.14] tracking-[-0.055em] sm:text-[2.6rem]">
+          {slide.title}<br /><span className="text-[#FFD05A]">{slide.highlight}</span>
+        </h1>
+        <p className="mt-4 max-w-[395px] break-keep text-sm leading-6 text-white/85">{slide.description}</p>
+        <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1">
+          <Link href={slide.primary.href} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand-500 px-4 text-xs font-extrabold text-navy hover:bg-brand-400 sm:px-5 sm:text-sm">
+            {slide.primary.label}<ArrowRight className="h-4 w-4" />
+          </Link>
+          <Link href={slide.secondary.href} className="inline-flex min-h-11 items-center text-xs font-semibold text-white underline decoration-white/55 underline-offset-4 hover:text-brand-200 sm:text-sm">{slide.secondary.label}</Link>
         </div>
-        <div className="flex gap-2">
-          <button type="button" onClick={() => change(-1)} aria-label="이전 배너" className="flex h-11 w-11 items-center justify-center rounded-full border border-white/30 bg-white/10 backdrop-blur-sm transition hover:bg-white/25"><ChevronLeft className="h-5 w-5" /></button>
-          <button type="button" onClick={() => change(1)} aria-label="다음 배너" className="flex h-11 w-11 items-center justify-center rounded-full border border-white/30 bg-white/10 backdrop-blur-sm transition hover:bg-white/25"><ChevronRight className="h-5 w-5" /></button>
+        <div className="mt-2 flex items-center gap-2">
+          {slides.map((item, index) => (
+            <button key={item.image} type="button" onClick={() => select(index)} aria-label={`${index + 1}번 배너`} aria-current={index === current ? "true" : undefined} className="grid w-6 place-items-center">
+              <span className={`h-1.5 rounded-full transition-all ${index === current ? "w-6 bg-brand-300" : "w-2 bg-white/45"}`} />
+            </button>
+          ))}
+          <span className="text-[10px] font-bold tabular-nums text-white/75">0{current + 1} / 0{slides.length}</span>
+          <button type="button" onClick={() => setPlaying(!playing)} aria-label={playing ? "자동 재생 일시정지" : "자동 재생 시작"} className="grid w-9 place-items-center text-white/85 hover:text-brand-200">
+            {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+          </button>
+          <span className="ml-auto hidden text-[10px] text-white/70 sm:inline">{slide.caption}</span>
         </div>
       </div>
     </section>

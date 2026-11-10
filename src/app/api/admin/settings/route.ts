@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/auth";
 import { ok, fail, handleError } from "@/lib/http";
 import { audit } from "@/lib/audit";
 import { getSettings, updateSettings, DEFAULT_SETTINGS, type SiteSettings } from "@/lib/settings";
+import { isHomeBackground } from "@/lib/home-backgrounds";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,10 @@ export async function PATCH(req: NextRequest) {
   try {
     const user = await requireRole(["SUPER_ADMIN"]);
     const body = await req.json();
+    if (!body || typeof body !== "object" || Array.isArray(body)) return fail("설정 형식이 올바르지 않습니다.");
+    if ("homeBackground" in body && !isHomeBackground(body.homeBackground)) {
+      return fail("제공된 PC 배경 이미지 중 하나를 선택해 주세요.");
+    }
 
     // 허용된 키만 추려서 저장
     const patch: Partial<SiteSettings> = {};

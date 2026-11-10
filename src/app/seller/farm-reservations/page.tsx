@@ -47,7 +47,6 @@ export default async function SellerReservationOverview({ searchParams }: { sear
     prisma.facilityInquiry.count({ where: { sellerId: user.id, reply: { not: null }, repliedAt: { gte: addDays(new Date(), -7) } } }),
   ]);
 
-  const monthTotal = monthBookings.filter((b) => ["APPROVED", "COMPLETED"].includes(b.status)).reduce((s, b) => s + b.totalPrice, 0);
 
   return (
     <div className="space-y-5 pb-24 md:pb-0">
@@ -71,7 +70,7 @@ export default async function SellerReservationOverview({ searchParams }: { sear
               events={monthBookings.map((b) => ({ id: b.id, start: b.startAt, end: b.endAt, label: b.facility.name, tone: BOOKING_STATUS[b.status]?.tone, href: `/seller/bookings?q=${encodeURIComponent(b.facility.name)}` }))} />
             <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
               {Object.entries(BOOKING_STATUS).map(([k, v]) => <span key={k} className="flex items-center gap-1"><Badge tone={v.tone}>{v.label}</Badge></span>)}
-              <span className="ml-auto font-semibold text-navy">이 달 확정 이용료 {formatKRW(monthTotal)}</span>
+              <span className="ml-auto font-semibold text-navy">이 달 확정 {monthBookings.filter((b) => ["APPROVED", "COMPLETED"].includes(b.status)).length}건 · 이용료 무료</span>
             </div>
           </div>
           <Card>
@@ -106,7 +105,7 @@ export default async function SellerReservationOverview({ searchParams }: { sear
                 <p className="flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3 w-3" />{f.region} · {f.address}</p>
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-1 text-xs"><Star className="h-3.5 w-3.5 fill-brand-500 text-brand-500" />{f.rating.toFixed(1)} <span className="text-muted-foreground">({f._count.reviews})</span></span>
-                  <span className="font-bold text-navy">{formatKRW(f.basePrice)}<span className="text-xs font-normal text-muted-foreground">/시간</span></span>
+                  <span className="text-sm font-bold text-emerald-700">이용료 무료</span>
                 </div>
                 {f.status !== "APPROVED" ? <p className="text-xs font-semibold text-red-500">현재 예약을 받지 않는 곳입니다.</p> : (
                   <Link href={`/seller/bookings/new?facilityId=${f.id}`}><Button className="mt-1 w-full" size="sm">바로 예약</Button></Link>

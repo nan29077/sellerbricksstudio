@@ -44,12 +44,13 @@ export default async function FacilityBookings({ searchParams }: { searchParams:
       { seller: { profile: { name: { contains: q, mode: "insensitive" } } } },
       { seller: { profile: { companyName: { contains: q, mode: "insensitive" } } } },
       { purpose: { contains: q, mode: "insensitive" } },
+      { code: { contains: q, mode: "insensitive" } },
     ] }),
   };
   const today = kstStartOfDay(new Date());
   const month = parseMonth(sp(searchParams, "month"));
   const mStart = kstStartOfMonth(new Date());
-  const include = { facility: { select: { name: true } }, seller: { select: { email: true, profile: { select: { name: true, phone: true, companyName: true } } } } } as const;
+  const include = { facility: { select: { name: true } }, seller: { select: { email: true, profile: { select: { name: true, phone: true, companyName: true } } } }, products: { orderBy: { createdAt: "asc" as const } } } as const;
 
   const [rows, total, grouped, todayCount, monthRev, calRows, blackouts, overduePending] = await Promise.all([
     view === "list" ? prisma.booking.findMany({
@@ -80,14 +81,14 @@ export default async function FacilityBookings({ searchParams }: { searchParams:
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="승인 대기" value={`${counts.PENDING ?? 0}건`} sub={overduePending ? `48시간 내 이용 ${overduePending}건 급함` : "빠른 응답이 재예약률을 높여요"} icon={AlertCircle} tone={overduePending ? "red" : "brand"} />
         <Kpi label="오늘 이용" value={`${todayCount}건`} icon={Clock} tone="blue" />
-        <Kpi label="이번 달 확정 매출" value={formatKRW(monthRev._sum.totalPrice ?? 0)} sub={`${monthRev._count}건`} icon={Wallet} tone="green" />
+        <Kpi label="이번 달 확정 예약" value={`${monthRev._count}건`} sub="승인 · 이용 완료 (이용료 무료)" icon={Wallet} tone="green" />
         <Kpi label="완료 처리 대기" value={`${await prisma.booking.count({ where: { ...scope, status: "APPROVED", endAt: { lt: new Date() } } })}건`} sub="이용이 끝난 승인 예약" icon={CalendarCheck} tone="navy" />
       </div>
 
       <StatusTabs base={BASE} params={searchParams} tabs={[{ value: "", label: "전체", count: all }, ...Object.entries(BOOKING_STATUS).map(([k, v]) => ({ value: k, label: v.label, count: counts[k] ?? 0 }))]} />
       <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
         <FilterBar className="flex-1" fields={[
-          { type: "search", key: "q", placeholder: "셀러 이름 · 이메일 · 회사 · 목적" },
+          { type: "search", key: "q", placeholder: "셀러 이름 · 이메일 · 회사 · 목적 · 예약번호" },
           ...(facilities.length > 1 ? [{ type: "select" as const, key: "facility", label: "창고(스튜디오)", options: facilities.map((f) => ({ value: f.id, label: f.name })) }] : []),
           { type: "select", key: "sort", label: "정렬", options: [{ value: "upcoming", label: "이용일 빠른 순" }] },
           { type: "date", key: "from", label: "이용일 시작" },
@@ -96,8 +97,8 @@ export default async function FacilityBookings({ searchParams }: { searchParams:
         <div className="flex gap-2">
           <Link href={withParams(BASE, searchParams, { view: undefined })}><Button size="sm" variant={view === "list" ? "secondary" : "outline"}><List className="h-4 w-4" />목록</Button></Link>
           <Link href={withParams(BASE, searchParams, { view: "calendar", page: undefined })}><Button size="sm" variant={view === "calendar" ? "secondary" : "outline"}><CalendarDays className="h-4 w-4" />달력</Button></Link>
-          {view === "list" && <CsvButton label="CSV" filename="예약목록" headers={["상태", "창고(스튜디오)", "셀러", "이메일", "연락처", "시작", "이용시간", "이용료", "인원", "목적", "요청사항"]}
-            rows={rows.map((b) => [BOOKING_STATUS[b.status]?.label, b.facility.name, b.seller.profile?.name, b.seller.email, b.seller.profile?.phone, formatDateTime(b.startAt), hoursBetween(b.startAt, b.endAt), b.totalPrice, b.headcount, b.purpose, b.requestNote])} />}
+          {view === "list" && <CsvButton label="CSV" filename="예약목록" headers={["예약번호", "상태", "창고(스튜디오)", "셀러", "이메일", "연락처", "시작", "이용시간", "인원", "목적", "판매 예정 상품", "요청사항"]}
+            rows={rows.map((b) => [b.code, BOOKING_STATUS[b.status]?.label, b.facility.name, b.seller.profile?.name, b.seller.email, b.seller.profile?.phone, formatDateTime(b.startAt), hoursBetween(b.startAt, b.endAt), b.headcount, b.purpose, b.products.map((p) => `${p.nameSnapshot}×${p.quantity}`).join(" / "), b.requestNote])} />}
         </div>
       </div>
 

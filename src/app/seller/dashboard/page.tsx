@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
@@ -7,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import { formatKRW, formatDate, formatDateTime } from "@/lib/utils";
 import { addDays, addMonths, kstStartOfMonth } from "@/lib/kst";
 import { BarChart } from "@/components/list/charts";
+import { registeredSpaceThumbnail } from "@/lib/showcase";
 import {
   CalendarPlus, Search, Clock, ArrowRight, Warehouse,
   CalendarDays, ExternalLink, TrendingUp, Wallet, Star,
-  CheckCircle2, Building2, MapPin, Share2, Megaphone,
+  CheckCircle2, MapPin, Share2, Megaphone,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -71,7 +73,7 @@ async function getDashboardData(userId: string) {
       where: { status: "APPROVED" },
       orderBy: { rating: "desc" },
       take: 3,
-      select: { id: true, name: true, type: true, region: true, basePrice: true, rating: true, thumbnailUrl: true },
+      select: { id: true, name: true, type: true, region: true, basePrice: true, rating: true },
     }),
   ]);
 
@@ -178,7 +180,7 @@ export default async function SellerDashboard() {
       )}
 
       {/* 핵심 지표 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <StatCard label="누적 예약"      value={`${totalBookings}건`}   sub="전체 예약 합계"        icon={CalendarPlus} />
         <StatCard label="이번 달 예약"   value={`${thisMonthBookings}건`} sub={`대기 ${pendingBookings}건`} icon={CalendarDays} />
         <StatCard label="수령 정산금"    value={totalSettlementAmount > 0 ? formatKRW(totalSettlementAmount) : "—"} sub="완료된 정산 합계" icon={Wallet} />
@@ -186,7 +188,7 @@ export default async function SellerDashboard() {
       </div>
 
       {/* 할 일 + 월별 이용료 */}
-      <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
         <Card>
           <CardContent className="pt-5">
             <p className="mb-3 text-sm font-extrabold text-navy">지금 챙길 일</p>
@@ -213,7 +215,7 @@ export default async function SellerDashboard() {
       </div>
 
       {/* 빠른 이동 */}
-      <div className="grid sm:grid-cols-4 gap-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
           { icon: Search,     label: "창고·스튜디오 검색", desc: "창고(스튜디오) 검색 및 예약",    href: "/facilities",          color: "text-blue-600 bg-blue-50" },
           { icon: CalendarPlus,label: "예약 신청",         desc: "새 예약 만들기",       href: "/seller/bookings/new", color: "text-brand-600 bg-brand-50" },
@@ -237,7 +239,7 @@ export default async function SellerDashboard() {
       </div>
 
       {/* 다가오는 예약 + 추천 창고(스튜디오) */}
-      <div className="grid lg:grid-cols-2 gap-5">
+      <div className="grid gap-5 xl:grid-cols-2">
         {/* 다가오는 예약 */}
         <Card>
           <CardContent className="pt-5">
@@ -309,17 +311,10 @@ export default async function SellerDashboard() {
             </div>
             {recommendedFacilities.length > 0 ? (
               <div className="space-y-3">
-                {recommendedFacilities.map((f: any) => (
+                {recommendedFacilities.map((f) => (
                   <Link key={f.id} href={`/facilities/${f.id}`} className="block">
                     <div className="flex items-center gap-3 rounded-xl border border-border p-3 hover:border-brand-300 hover:bg-brand-50/40 transition">
-                      {f.thumbnailUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={f.thumbnailUrl} alt={f.name} className="h-12 w-16 rounded-lg object-cover shrink-0" />
-                      ) : (
-                        <div className="flex h-12 w-16 items-center justify-center rounded-lg bg-brand-50 shrink-0">
-                          <Building2 className="h-6 w-6 text-brand-400" />
-                        </div>
-                      )}
+                      <Image src={registeredSpaceThumbnail(f.id, f.type)} alt="" width={64} height={48} unoptimized className="h-12 w-16 shrink-0 rounded-lg object-cover" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-navy truncate">{f.name}</p>
                         <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
@@ -339,6 +334,7 @@ export default async function SellerDashboard() {
                     </div>
                   </Link>
                 ))}
+                <p className="text-[11px] text-slate-500">썸네일은 생성형 연출 이미지입니다</p>
               </div>
             ) : (
               <div className="py-8 text-center text-sm text-muted-foreground">

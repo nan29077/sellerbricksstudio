@@ -1,35 +1,34 @@
 import { NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { ok, fail, handleError } from "@/lib/http";
-import { addDays, hhmm, kstParts, parseDateKey } from "@/lib/kst";
+import { getDaySchedule, getFacilityWithPolicy } from "@/lib/booking";
+import { getSessionUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
-// GET /api/facilities/[id]/availability?date=YYYY-MM-DD
-// 해당 날짜(KST)의 운영시간, 요일 슬롯, 휴무 여부, 이미 잡힌 예약 시간대를 돌려준다. (개인정보 없음)
+// GET /api/facilities/[id]/availability?date=YYYY-MM-DD&hours=2&exclude=<bookingId>
+// 해당 날짜(KST)의 운영 구간, 예약 정책, 이미 잡힌 시간대, 선택한 이용 시간 기준 "시작 가능 시각" 목록. (개인정보 없음)
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const day = parseDateKey(req.nextUrl.searchParams.get("date"));
-    if (!day) return fail("날짜 형식이 올바르지 않습니다.");
-    const f = await prisma.facility.findUnique({
-      where: { id: params.id },
-      select: { id: true, status: true, openTime: true, closeTime: true, minHours: true, basePrice: true, capacity: true,
-        slots: { where: { isActive: true }, select: { weekday: true, startTime: true, endTime: true } } },
-    });
+    const date = req.nextUrl.searchParams.get("date");
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail("날짜 형식이 올바르지 않습니다.");
+    const f = await getFacilityWithPolicy(params.id);
     if (!f || f.status !== "APPROVED") return fail("창고(스튜디오)를 찾을 수 없습니다.", 404);
-    const next = addDays(day, 1);
-    const [blackout, bookings] = await Promise.all([
-      prisma.facilityBlackoutDate.findFirst({ where: { facilityId: f.id, date: { gte: day, lt: next } } }),
-      prisma.booking.findMany({
-        where: { facilityId: f.id, status: { in: ["PENDING", "APPROVED"] }, startAt: { lt: next }, endAt: { gt: day } },
-        select: { startAt: true, endAt: true, status: true }, orderBy: { startAt: "asc" },
-      }),
-    ]);
-    const weekday = kstParts(day).weekday;
-    const slots = f.slots.filter((s) => s.weekday === weekday).sort((a, b) => a.startTime.localeCompare(b.startTime));
+    const hours = Number(req.nextUrl.searchParams.get("hours"));
+    // 일정 변경 시 본인 예약은 점유에서 제외 (본인 예약일 때만)
+    let exclude: string | undefined;
+    const ex = req.nextUrl.searchParams.get("exclude");
+    if (ex) {
+      const user = await getSessionUser().catch(() => null);
+      const b = user ? await prisma.booking.findUnique({ where: { id: ex }, select: { sellerId: true, facilityId: true, facility: { select: { ownerId: true } } } }) : null;
+      if (b && b.facilityId === f.id && (b.sellerId === user!.id || b.facility.ownerId === user!.id || user!.role === "SUPER_ADMIN")) exclude = ex;
+    }
+    const day = await getDaySchedule(f, date, Number.isFinite(hours) && hours > 0 ? Math.round(hours * 60) : undefined, exclude);
+    const { policy } = day;
     return ok({
-      openTime: f.openTime ?? "09:00", closeTime: f.closeTime ?? "22:00", minHours: f.minHours, basePrice: f.basePrice, capacity: f.capacity,
-      hasSlots: f.slots.length > 0, slots, closed: !!blackout || (f.slots.length > 0 && slots.length === 0),
-      closedReason: blackout ? (blackout.reason ?? "휴무일") : (f.slots.length > 0 && slots.length === 0 ? "운영하지 않는 요일" : null),
-      booked: bookings.map((b) => ({ start: b.startAt < day ? "00:00" : hhmm(b.startAt), end: b.endAt >= next ? "24:00" : hhmm(b.endAt), status: b.status })),
+      ...day,
+      // 이전 화면 호환 필드
+      openTime: policy.openTime, closeTime: policy.closeTime, minHours: policy.minHours, capacity: policy.capacity, basePrice: 0,
+      hasSlots: f.slots.length > 0, slots: day.windows.map((w) => ({ startTime: w.start, endTime: w.end })),
+      notice: f.bookingNotice, cancelPolicy: f.cancelPolicy,
     });
   } catch (e) { return handleError(e); }
 }
