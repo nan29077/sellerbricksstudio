@@ -1,4 +1,5 @@
-/** @type {import('next').NextConfig} */
+import { PHASE_DEVELOPMENT_SERVER } from "next/constants.js";
+
 // 보안 헤더: 다른 사이트에 iframe 으로 끼워 넣기(클릭재킹) 차단, MIME 추측 차단, 리퍼러 최소화, 브라우저 권한 제한.
 // CSP 는 스크립트를 막지 않는 안전한 항목만 적용한다 (Next.js 인라인 스크립트와 충돌하지 않게).
 const securityHeaders = [
@@ -14,7 +15,10 @@ const securityHeaders = [
 // 예) IMAGE_HOSTS="my-bucket.s3.ap-northeast-2.amazonaws.com,cdn.example.com"  (외부 이미지는 기본적으로 최적화 없이 그대로 표시)
 const imageHosts = (process.env.IMAGE_HOSTS ?? "").split(",").map((h) => h.trim()).filter(Boolean);
 
-const nextConfig = {
+/** @type {(phase: string) => import('next').NextConfig} */
+const nextConfig = (phase) => ({
+  // 개발 서버와 프로덕션 빌드가 서로의 청크와 매니페스트를 덮어쓰지 않도록 한다.
+  distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next-dev" : ".next",
   reactStrictMode: true,
   poweredByHeader: false,
   images: { remotePatterns: imageHosts.map((hostname) => ({ protocol: "https", hostname })) },
@@ -23,5 +27,5 @@ const nextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
-};
+});
 export default nextConfig;

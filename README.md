@@ -390,7 +390,7 @@ npx tsx prisma/backfill-free-booking.ts     # 기존 요금·이용료 0원 처�
 
 ## 개발 서버 · DB 동기화 (Windows)
 
-- `dev.bat` — 이 프로젝트의 남아 있는 개발 서버를 먼저 정리한 뒤 3007 포트로 시작합니다. `.next` 에 `next build` 결과(BUILD_ID)가 남아 있으면 지우고 시작합니다. (개발 서버를 켠 채로 `next build` 를 실행하면 같은 `.next` 폴더가 섞여 화면의 CSS가 모두 빠집니다. 빌드·E2E 전에는 `stop-dev.bat` 으로 서버를 먼저 끄세요.) `npm run dev` 는 시작 전에 `scripts/ensure-db.mjs` 를 실행해 `schema.prisma` 가 바뀌었으면 Prisma Client 재생성과 `prisma db push` 를 자동으로 합니다.
+- `dev.bat` — 이 프로젝트의 남아 있는 개발 서버를 먼저 정리한 뒤 3007 포트로 시작합니다. 개발 서버는 `.next-dev`, 프로덕션 빌드와 서버는 `.next`를 사용합니다. `npm run dev`는 시작 전에 `scripts/ensure-db.mjs`를 실행해 `schema.prisma`가 바뀌었으면 Prisma Client 재생성과 `prisma db push`를 자동으로 합니다.
 - `stop-dev.bat` — 창을 닫았는데도 http://localhost:3007 이 계속 열려 있을 때 실행합니다. 3007 포트를 쓰는 프로세스와 이 폴더에서 실행된 node 프로세스(백그라운드 AI 도구가 띄운 서버 포함)를 종료하고, 무엇을 종료했는지 보여 줍니다.
 - `db-sync.bat` — 여러 화면에서 "데이터를 불러오지 못했습니다" / "일시적인 오류가 발생했습니다"가 뜨면 실행합니다. 서버 종료 → Prisma Client 재생성 + DB 구조 반영 → 서버 재시작 순서로 진행합니다.
 - 원인: Windows 에서는 실행 중인 서버가 Prisma 엔진 파일을 잠가 `prisma generate` 가 실패합니다. 그러면 코드와 DB 구조가 어긋나 여러 화면이 동시에 오류를 냅니다.
