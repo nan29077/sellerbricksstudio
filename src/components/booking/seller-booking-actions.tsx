@@ -67,10 +67,10 @@ export function SellerBookingActions({ booking, review }: Props) {
   }
   function downloadIcs() {
     const ics = [
-      "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//SellerBricks//Studio//KO", "BEGIN:VEVENT",
+      "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Storage Market//Booking//KO", "BEGIN:VEVENT",
       `UID:${booking.id}@sellerbricks`, `DTSTAMP:${icsDate(new Date().toISOString())}`,
       `DTSTART:${icsDate(booking.startAt)}`, `DTEND:${icsDate(booking.endAt)}`,
-      `SUMMARY:[셀러브릭스] ${booking.facilityName}${booking.purpose ? ` - ${booking.purpose}` : ""}`,
+      `SUMMARY:[스토리지마켓] ${booking.facilityName}${booking.purpose ? ` - ${booking.purpose}` : ""}`,
       booking.code ? `DESCRIPTION:예약번호 ${booking.code}` : "",
       booking.address ? `LOCATION:${booking.address}` : "", "END:VEVENT", "END:VCALENDAR",
     ].filter(Boolean).join("\r\n");

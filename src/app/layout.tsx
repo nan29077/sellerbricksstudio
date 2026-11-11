@@ -2,11 +2,11 @@ import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 import { Providers } from "@/components/providers";
+import { SITE_NAME as siteName } from "@/lib/site-brand";
 
-const siteName = "셀러브릭스 스튜디오";
 const shareTitle = "좋은 상품이 더 멀리 닿는 라이브";
-const shareDescription = "창고(스튜디오) 찾기부터 라이브 준비와 판매 관리까지, 셀러브릭스 스튜디오가 함께합니다.";
-const shareImage = "/images/social/share-card-v7.jpg";
+const shareDescription = `창고(스튜디오) 찾기부터 라이브 준비와 판매 관리까지, ${siteName}이 함께합니다.`;
+const shareImage = "/images/social/share-card-v8.jpg";
 
 function getSiteUrl(): URL {
   const configuredUrl = process.env.NEXT_PUBLIC_APP_URL;
@@ -17,15 +17,15 @@ function getSiteUrl(): URL {
   const protocol = requestHeaders.get("x-forwarded-proto")?.split(",")[0]?.trim()
     ?? (host?.startsWith("localhost") || host?.startsWith("127.0.0.1") ? "http" : "https");
 
-  for (const candidate of [
-    configuredUrl,
-    vercelUrl ? `https://${vercelUrl}` : undefined,
-    host ? `${protocol}://${host}` : undefined,
+  for (const [source, candidate] of [
+    ["configured", configuredUrl],
+    ["vercel", vercelUrl ? `https://${vercelUrl}` : undefined],
+    ["request", host ? `${protocol}://${host}` : undefined],
   ]) {
     if (!candidate) continue;
     try {
       const url = new URL(candidate);
-      const configuredIsLocal = candidate === configuredUrl && ["localhost", "127.0.0.1"].includes(url.hostname);
+      const configuredIsLocal = source === "configured" && ["localhost", "127.0.0.1"].includes(url.hostname);
       if (configuredIsLocal && host) continue;
       if (url.protocol === "http:" || url.protocol === "https:") return url;
     } catch {

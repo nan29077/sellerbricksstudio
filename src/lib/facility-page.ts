@@ -8,7 +8,7 @@ export const FACILITY_PROFILE_IMAGES = PROFILE_ANIMALS.map((animal, index) => ({
 }));
 
 export const FACILITY_PAGE_THEMES = {
-  gold: { label: "셀러브릭스 골드", accent: "#F5A623" },
+  gold: { label: "스토리지마켓 골드", accent: "#F5A623" },
   blue: { label: "신뢰 블루", accent: "#3B82F6" },
   green: { label: "성장 그린", accent: "#10B981" },
   coral: { label: "크리에이터 코랄", accent: "#F97360" },

@@ -1,10 +1,11 @@
 import { appAlert } from "@/components/ui/app-dialog";
+import { SITE_LOGO, SITE_NAME, SITE_NAME_EN } from "@/lib/site-brand";
 /* ────────────────────────────────────────────────────────────
    PDF 생성 — 허니비 테마 (html2canvas + jsPDF CDN 동적 로드)
    ※ 이 파일은 .ts (not .tsx) 로 분리 — TSX 파서 충돌 방지
 ──────────────────────────────────────────────────────────── */
 
-export async function generateSellerBricksPdf(
+export async function generateStorageMarketPdf(
   setLoading: (v: boolean) => void
 ): Promise<void> {
   setLoading(true);
@@ -31,6 +32,7 @@ export async function generateSellerBricksPdf(
     });
     const year  = new Date().getFullYear();
     const origin = window.location.origin;
+    const logoUrl = origin + SITE_LOGO.dark;
     const W = 794;
     const H = 1122;
     const F = "'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif";
@@ -45,7 +47,7 @@ export async function generateSellerBricksPdf(
       '<div style="position:absolute;bottom:32px;left:0;right:0;display:flex;' +
       'justify-content:space-between;padding:0 60px;color:#78716C;font-size:11px;' +
       'font-family:' + F + ';box-sizing:border-box;">' +
-        '<span>SELLERBRICKS STUDIO</span><span>' + n + '</span>' +
+        '<span>' + SITE_NAME_EN + '</span><span>' + n + '</span>' +
       '</div>';
 
     /* ── 페이지 HTML ── */
@@ -61,14 +63,14 @@ export async function generateSellerBricksPdf(
         'border-radius:50%;background:#E8921A;opacity:0.07;"></div>' +
         '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;' +
         'height:100%;padding:80px;box-sizing:border-box;text-align:center;position:relative;">' +
-          '<img src="' + origin + '/images/brand/logo-original-on-dark.png?v=8" ' +
-          'style="height:34px;margin-bottom:44px;object-fit:contain;" />' +
+          '<img src="' + logoUrl + '" alt="' + SITE_NAME + '" ' +
+          'style="width:390px;height:auto;margin-bottom:44px;object-fit:contain;" />' +
           '<div style="background:#F5A623;color:#1C1917;font-size:11px;font-weight:700;' +
           'letter-spacing:2px;padding:5px 18px;border-radius:20px;margin-bottom:32px;">' +
             'OFFICIAL INTRODUCTION ' + year +
           '</div>' +
           '<div style="color:#FFFFFF;font-size:54px;font-weight:900;line-height:1.1;' +
-          'letter-spacing:-2px;margin-bottom:14px;">SELLERBRICKS<br/>STUDIO</div>' +
+          'letter-spacing:-2px;margin-bottom:14px;">' + SITE_NAME + '</div>' +
           '<div style="color:#F5A623;font-size:17px;font-weight:600;margin-bottom:52px;">' +
             '라이브 커머스 셀러를 위한 올인원 플랫폼' +
           '</div>' +
@@ -113,7 +115,7 @@ export async function generateSellerBricksPdf(
         '<div style="padding:56px 60px 0;">' +
           badge('SECTION 01 — 서비스 개요') +
           '<h2 style="color:#1C1917;font-size:34px;font-weight:900;margin:0 0 14px;line-height:1.2;">' +
-            '셀러브릭스 스튜디오란?' +
+            '스토리지마켓이란?' +
           '</h2>' +
           '<p style="color:#78716C;font-size:14px;line-height:1.85;margin:0 0 36px;">' +
             '라이브 커머스 셀러(인플루언서)와 농가·공장을 연결하는 B2B 올인원 플랫폼입니다.<br/>' +
@@ -303,8 +305,8 @@ export async function generateSellerBricksPdf(
         'border-radius:50%;background:#E8921A;opacity:0.06;"></div>' +
         '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;' +
         'height:100%;padding:80px;box-sizing:border-box;text-align:center;position:relative;">' +
-          '<img src="' + origin + '/images/brand/logo-original-on-dark.png?v=8" ' +
-          'style="height:30px;margin-bottom:36px;object-fit:contain;" />' +
+          '<img src="' + logoUrl + '" alt="' + SITE_NAME + '" ' +
+          'style="width:315px;height:auto;margin-bottom:36px;object-fit:contain;" />' +
           '<div style="color:#F5A623;font-size:12px;font-weight:700;letter-spacing:2px;margin-bottom:16px;">' +
             'GET STARTED TODAY' +
           '</div>' +
@@ -313,7 +315,7 @@ export async function generateSellerBricksPdf(
           '</div>' +
           '<p style="color:rgba(255,255,255,0.55);font-size:15px;margin:0 0 48px;' +
           'max-width:380px;line-height:1.75;">' +
-            '방송에만 집중하세요.<br/>나머지는 셀러브릭스 스튜디오가 모두 합니다.' +
+            '방송에만 집중하세요.<br/>나머지는 스토리지마켓이 모두 합니다.' +
           '</p>' +
           '<div style="background:#F5A623;border-radius:20px;padding:30px 52px;margin-bottom:32px;">' +
             '<div style="color:#1C1917;font-size:12px;font-weight:700;margin-bottom:10px;">도입 문의</div>' +
@@ -324,7 +326,7 @@ export async function generateSellerBricksPdf(
         '</div>' +
         '<div style="position:absolute;bottom:32px;left:0;right:0;text-align:center;' +
         'color:rgba(255,255,255,0.18);font-size:11px;font-family:' + F + ';">' +
-          '© ' + year + ' SELLERBRICKS STUDIO. All rights reserved.' +
+          '© ' + year + ' ' + SITE_NAME_EN + '. All rights reserved.' +
         '</div>' +
       '</div>'
     );
@@ -357,7 +359,7 @@ export async function generateSellerBricksPdf(
     }
 
     document.body.removeChild(wrapper);
-    pdf.save("셀러브릭스스튜디오_소개서.pdf");
+    pdf.save(`${SITE_NAME}_소개서.pdf`);
 
   } catch (err) {
     console.error("PDF 생성 실패:", err);

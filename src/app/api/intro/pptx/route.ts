@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
+import path from "node:path";
 import { clientIp, consume, MINUTE } from "@/lib/rate-limit";
+import { SITE_LOGO, SITE_NAME } from "@/lib/site-brand";
 
 function pptxResponse(buf: Buffer) {
   return new NextResponse(new Uint8Array(buf), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-      "Content-Disposition": "attachment; filename*=UTF-8''%EC%85%80%EB%9F%AC%EB%B8%8C%EB%A6%AD%EC%8A%A4%EC%8A%A4%ED%8A%9C%EB%94%94%EC%98%A4_%EC%86%8C%EA%B0%9C%EC%84%9C.pptx",
+      "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(`${SITE_NAME}_소개서.pptx`)}`,
       "Cache-Control": "public, max-age=3600",
     },
   });
@@ -23,8 +25,8 @@ export async function GET(req: Request) {
     const pptx = new PptxGenJS();
 
     pptx.layout = "LAYOUT_WIDE";
-    pptx.title = "셀러브릭스 스튜디오 소개서";
-    pptx.author = "셀러브릭스 스튜디오";
+    pptx.title = `${SITE_NAME} 소개서`;
+    pptx.author = SITE_NAME;
 
     const BRAND = "#F5A623";
     const NAVY = "#1A1A2E";
@@ -58,10 +60,14 @@ export async function GET(req: Request) {
       const s = pptx.addSlide();
       s.background = { color: NAVY };
       s.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 13.33, h: 0.08, fill: { color: BRAND } });
-      s.addText("셀러브릭스 스튜디오", { x: 1.5, y: 1.8, w: 10, h: 1.2, fontSize: 44, bold: true, color: BRAND, align: "center" });
-      s.addText("SELLERBRICKS STUDIO", { x: 1.5, y: 2.9, w: 10, h: 0.5, fontSize: 18, color: "888888", align: "center", charSpacing: 4 });
+      s.addImage({
+        path: path.join(process.cwd(), "public", SITE_LOGO.dark),
+        altText: SITE_NAME,
+        x: 3.06, y: 1.8, w: 7.2, h: 7.2 * SITE_LOGO.height / SITE_LOGO.width,
+      });
+      s.addText(SITE_NAME, { x: 1.5, y: 2.83, w: 10, h: 0.62, fontSize: 30, bold: true, color: BRAND, align: "center" });
       s.addShape(pptx.ShapeType.rect, { x: 5.0, y: 3.55, w: 3.33, h: 0.04, fill: { color: BRAND } });
-      s.addText("셀러에게 필요한 모든 것, 셀러브릭스 스튜디오가 지원합니다", {
+      s.addText("셀러에게 필요한 모든 것, 스토리지마켓이 지원합니다", {
         x: 1.0, y: 3.8, w: 11.33, h: 0.6, fontSize: 15, color: WHITE, align: "center",
       });
       s.addText("오직 방송에만 집중하세요 — 나머지는 우리가 합니다", {
@@ -78,7 +84,7 @@ export async function GET(req: Request) {
       s.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 13.33, h: 0.08, fill: { color: BRAND } });
       s.addText("목차", { x: 0.5, y: 0.5, w: 12, h: 0.8, fontSize: 32, bold: true, color: NAVY });
       const items = [
-        "01  셀러브릭스 플랫폼 완전 지원",
+        "01  스토리지마켓 플랫폼 완전 지원",
         "02  자체 송출 라이브커머스",
         "03  마케팅 전문 지원 (10년+)",
         "04  방송 지원 & 전문 스튜디오",
@@ -86,7 +92,7 @@ export async function GET(req: Request) {
         "06  결제 지원",
         "07  세무 지원",
         "08  지역 농가 살리기 프로젝트",
-        "09  셀러브릭스 스튜디오를 선택해야 하는 이유",
+        "09  스토리지마켓을 선택해야 하는 이유",
       ];
       items.forEach((item, i) => {
         const col = i % 2;
@@ -97,7 +103,7 @@ export async function GET(req: Request) {
 
     /* ── 슬라이드 3: 플랫폼 지원 ── */
     addSectionSlide(
-      "셀러브릭스 플랫폼 완전 지원",
+      "스토리지마켓 플랫폼 완전 지원",
       "정산·CS·주문·고객·상품·라이브커머스 관리를 자체 플랫폼으로 원스톱 제공",
       ["정산 관리 — 캠페인별 자동 정산", "CS 관리 — 고객 문의 통합 처리", "주문서 관리 — 소셜+일반 통합", "고객(구독자) 관리", "상품 관리", "라이브커머스 관리"],
       "★ 핵심 서비스",
@@ -106,7 +112,7 @@ export async function GET(req: Request) {
     /* ── 슬라이드 4: 라이브커머스 ── */
     addSectionSlide(
       "자체 송출 라이브커머스",
-      "셀러브릭스 스튜디오 자체 라이브커머스 채널 운영 — 원스톱 방송 서비스",
+      "스토리지마켓 자체 라이브커머스 채널 운영 — 원스톱 방송 서비스",
       ["전문 장비·조명·세트 완비 스튜디오", "자체 라이브커머스 채널 운영", "방송 전 상품 세팅 완전 대행", "방송 후 정산까지 원스톱", "실시간 주문·CS 즉시 대응"],
       "자체 송출 채널",
     );
@@ -122,7 +128,7 @@ export async function GET(req: Request) {
     /* ── 슬라이드 6: 방송 지원 ── */
     addSectionSlide(
       "전문 스튜디오 방송 지원",
-      "창고를 전전할 필요 없습니다 — 셀러브릭스 스튜디오가 제공합니다",
+      "창고를 전전할 필요 없습니다 — 스토리지마켓이 제공합니다",
       ["전문 장비·조명·세트 완비 스튜디오", "방송 장비 지원", "지역 현장 방송 연계 (현지 직방송)", "방송 전 세팅부터 방송 후 정산까지"],
       "방송 지원",
     );
@@ -181,8 +187,8 @@ export async function GET(req: Request) {
     {
       const s = pptx.addSlide();
       s.background = { color: LIGHT };
-      s.addText("Why 셀러브릭스 스튜디오", { x: 0.5, y: 0.3, w: 12, h: 0.35, fontSize: 10, bold: true, color: "C2760B" });
-      s.addText("셀러브릭스 스튜디오를 선택해야 하는 이유", { x: 0.5, y: 0.75, w: 12, h: 0.7, fontSize: 28, bold: true, color: NAVY });
+      s.addText("Why 스토리지마켓", { x: 0.5, y: 0.3, w: 12, h: 0.35, fontSize: 10, bold: true, color: "C2760B" });
+      s.addText("스토리지마켓을 선택해야 하는 이유", { x: 0.5, y: 0.75, w: 12, h: 0.7, fontSize: 28, bold: true, color: NAVY });
       const reasons = [
         { no: "01", t: "플랫폼 완전 지원", d: "정산·CS·주문·고객 관리 원스톱" },
         { no: "02", t: "10년+ 마케팅 전문팀", d: "채널 성장 · 콘텐츠 기획 · 분석" },
@@ -208,7 +214,7 @@ export async function GET(req: Request) {
       const s = pptx.addSlide();
       s.background = { color: BRAND };
       s.addText("지금 바로 시작하세요", { x: 1, y: 2.0, w: 11.33, h: 1.0, fontSize: 40, bold: true, color: WHITE, align: "center" });
-      s.addText("방송에만 집중하세요. 나머지는 셀러브릭스 스튜디오가 모두 합니다.", {
+      s.addText("방송에만 집중하세요. 나머지는 스토리지마켓이 모두 합니다.", {
         x: 1, y: 3.1, w: 11.33, h: 0.6, fontSize: 16, color: "1A1A2E", align: "center",
       });
       s.addText("📩 hello@sellerbricks.kr  |  📞 1588-0000  |  🌐 sellerbricks.kr", {

@@ -20,7 +20,7 @@ export default async function StudioLayout({ children }: { children: React.React
         <StudioTopBar account={account} />
         <main id="studio-content">{children}</main>
         <footer className="border-t border-[#E8E5DD] bg-white px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))] pt-6 text-xs text-slate-500 lg:pb-6">
-          © {new Date().getFullYear()} Sellerbricks Studio
+          © {new Date().getFullYear()} 스토리지마켓
         </footer>
       </div>
       <div className={styles.rail}>

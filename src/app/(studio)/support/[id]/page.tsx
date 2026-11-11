@@ -8,7 +8,7 @@ import { SUPPORT_CATEGORIES } from "@/lib/support";
 import { formatDateTime } from "@/lib/utils";
 import { InquiryStatus } from "@/components/support/inquiry-status";
 
-export const metadata = { title: "문의 상세 | 셀러브릭스 스튜디오", robots: { index: false, follow: false } };
+export const metadata = { title: "문의 상세 | 스토리지마켓", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
 export default async function SupportDetail({ params }: { params: { id: string } }) {

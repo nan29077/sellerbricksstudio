@@ -100,7 +100,7 @@ export default async function BrandStorefront({ params, searchParams }: { params
           <ShopImage src={shop.bannerUrl} fallback={BRAND_ARTWORK[0].url} eager className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-r from-navy/90 via-navy/45 to-transparent" />
           <div className="absolute inset-0 flex flex-col justify-center px-5 pb-5 text-white sm:px-9">
-            <p className="mb-2 text-xs font-bold text-brand-200">셀러브릭스 브랜드샵</p>
+            <p className="mb-2 text-xs font-bold text-brand-200">스토리지마켓 브랜드샵</p>
             <h1 className="line-clamp-2 break-words text-2xl font-black sm:text-4xl">{shop.name}</h1>
             {shop.tagline && <p className="mt-2 line-clamp-2 max-w-sm text-sm">{shop.tagline}</p>}
           </div>
@@ -109,7 +109,7 @@ export default async function BrandStorefront({ params, searchParams }: { params
           <div className="flex items-center gap-3">
             <ShopImage src={shop.logoUrl} fallback={shopAvatar} className="h-14 w-14 rounded-full border bg-white object-cover" />
             <div><h2 className="font-black text-navy">{shop.name}</h2>
-              <p className="mt-0.5 text-xs font-semibold text-slate-600">{published ? "셀러브릭스 파트너 브랜드" : "비공개 미리보기"}</p></div>
+              <p className="mt-0.5 text-xs font-semibold text-slate-600">{published ? "스토리지마켓 파트너 브랜드" : "비공개 미리보기"}</p></div>
           </div>
           {shop.description && <p className="mt-4 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-600">{shop.description}</p>}
           {!user && <Link href={login} className={`${buttonVariants({ size: "sm" })} mt-4`}>로그인하고 신청하기</Link>}

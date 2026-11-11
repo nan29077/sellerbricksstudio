@@ -74,7 +74,7 @@ export function BrandOrderButton({ productId, name, kind, unitPrice, stock, maxQ
           <div className="rounded-xl bg-brand-50 p-3 text-sm">
             <p className="font-bold">{sample ? "샘플 금액" : "예상 공급 금액"} <span className="float-right">{free ? "무료" : formatKRW(unitPrice * quantity)}</span></p>
             <p className="mt-1 text-xs text-slate-600">
-              {free ? "접수 후 브랜드사의 확인을 기다려 주세요." : sample ? "셀러브릭스에서 바로 결제됩니다. 브랜드사가 반려하거나 발송 전에 취소하면 자동 환불됩니다." : "위탁 입고라 지금 결제하지 않습니다. 판매된 수량만큼 플랫폼이 브랜드사에 정산합니다."}
+              {free ? "접수 후 브랜드사의 확인을 기다려 주세요." : sample ? "스토리지마켓에서 바로 결제됩니다. 브랜드사가 반려하거나 발송 전에 취소하면 자동 환불됩니다." : "위탁 입고라 지금 결제하지 않습니다. 판매된 수량만큼 플랫폼이 브랜드사에 정산합니다."}
             </p>
             {limitNote && <p className="mt-1 text-xs font-semibold text-brand-800">{limitNote}</p>}
           </div>

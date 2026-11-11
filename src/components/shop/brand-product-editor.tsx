@@ -88,7 +88,7 @@ export function BrandProductEditor({ shopId, product }: { shopId: string; produc
         <Label className="block">샘플 단가 (원)<Input type="number" name="samplePrice" min={0} max={100_000_000} defaultValue={product?.samplePrice ?? ""} placeholder="미제공은 비우고, 무료는 0" /></Label>
         <Label className="block">샘플 재고<Input type="number" name="sampleStock" required min={0} max={1_000_000} defaultValue={product?.sampleStock ?? 0} /></Label>
         <Label className="block">계정당 신청 한도 (0 = 무제한)<Input type="number" name="sampleLimitPerBuyer" min={0} max={100} defaultValue={product?.sampleLimitPerBuyer ?? 1} /></Label>
-        <p className="text-xs text-slate-600 sm:col-span-3">유료 샘플은 셀러브릭스에서 결제되고, 반려·취소하면 자동 환불됩니다. 샘플 매출은 브랜드 정산에 포함됩니다.</p>
+        <p className="text-xs text-slate-600 sm:col-span-3">유료 샘플은 스토리지마켓에서 결제되고, 반려·취소하면 자동 환불됩니다. 샘플 매출은 브랜드 정산에 포함됩니다.</p>
       </fieldset>
       <div className="grid gap-3 sm:grid-cols-2">
         <Label className="block sm:col-span-2">대표 이미지<ImageUrlInput name="imageUrl" defaultValue={product?.imageUrl} folder="product" /></Label>

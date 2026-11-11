@@ -9,7 +9,7 @@ import { Pagination } from "@/components/list/pagination";
 import { SupportFaq, SupportInquiryForm } from "@/components/support/help-center";
 import { InquiryStatus } from "@/components/support/inquiry-status";
 
-export const metadata = { title: "고객지원 | 셀러브릭스 스튜디오" };
+export const metadata = { title: "고객지원 | 스토리지마켓" };
 export const dynamic = "force-dynamic";
 
 export default async function SupportPage({ searchParams }: { searchParams: SP }) {
@@ -33,7 +33,7 @@ export default async function SupportPage({ searchParams }: { searchParams: SP }
   return (
     <div className="space-y-5 px-4 pb-12 pt-4 sm:px-6 sm:pt-6">
       <section className="rounded-[26px] bg-navy p-5 text-white sm:p-8">
-        <p className="flex items-center gap-2 text-xs font-extrabold tracking-[0.16em] text-brand-300"><Headset className="h-5 w-5" />SELLERBRICKS SUPPORT</p>
+        <p className="flex items-center gap-2 text-xs font-extrabold tracking-[0.16em] text-brand-300"><Headset className="h-5 w-5" />STORAGE MARKET SUPPORT</p>
         <h1 className="mt-3 break-keep text-3xl font-black tracking-tight sm:text-4xl">무엇을 도와드릴까요?</h1>
         <p className="mt-3 max-w-md break-keep text-sm leading-6 text-white/80">예약부터 주문, 정산까지 궁금한 점을 찾아보고 운영팀에 직접 문의할 수 있어요.</p>
         <nav aria-label="고객지원 바로가기" className="mt-5 flex flex-wrap gap-2">

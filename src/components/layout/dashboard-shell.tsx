@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
+import { SiteLogo } from "@/components/layout/site-logo";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
@@ -213,17 +214,10 @@ export function DashboardShell({
     <div className="flex h-full min-h-0 flex-col">
       <Link
         href="/"
-        className="flex h-[68px] shrink-0 items-center border-b border-white/10 px-5"
+        className="flex h-[68px] shrink-0 items-center border-b border-white/10 px-3"
         onClick={onNav}
       >
-        <Image
-          src="/images/brand/logo-original-on-dark.png?v=8"
-          alt="셀러브릭스 스튜디오"
-          width={168}
-          height={30}
-          className={cn("h-[30px] w-auto object-contain", onNav && "max-w-[150px]")}
-          priority
-        />
+        <SiteLogo theme="dark" className="w-[200px]" priority />
       </Link>
 
       <div className="mx-3 mt-4 rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-3 shrink-0">
@@ -308,14 +302,7 @@ export function DashboardShell({
             <Menu className="h-5 w-5" />
           </button>
           <Link href="/" className="flex min-w-0 items-center">
-            <Image
-              src="/images/brand/logo-original-on-light.png?v=8"
-              alt="셀러브릭스 스튜디오"
-              width={146}
-              height={26}
-              className="h-[23px] w-auto object-contain sm:h-[26px]"
-              priority
-            />
+            <SiteLogo className="w-[min(200px,calc(100vw-148px))]" priority />
           </Link>
         </div>
         <div className="flex items-center gap-1">
@@ -350,7 +337,7 @@ export function DashboardShell({
       <div className="min-w-0">
         <header className="sticky top-0 z-30 hidden h-[68px] items-center justify-between gap-4 border-b border-[#E8E4DB] bg-white/95 px-7 backdrop-blur lg:flex 2xl:px-9">
           <div className="min-w-0">
-            <p className="text-[11px] font-extrabold tracking-[0.18em] text-brand-800">SELLERBRICKS WORKSPACE</p>
+            <p className="text-[11px] font-extrabold tracking-[0.18em] text-brand-800">STORAGE MARKET WORKSPACE</p>
             <p className="mt-1 truncate text-sm font-semibold text-slate-600">{roleLabel} <span className="mx-2 text-slate-400">/</span> <span className="text-navy">{currentPage}</span></p>
           </div>
           <div className="flex shrink-0 items-center gap-3"><NotificationBell /><Link href="/" className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-xs font-bold text-slate-600 transition hover:bg-brand-50 hover:text-brand-800"><Home className="h-4 w-4" />사이트 보기</Link></div>

@@ -24,7 +24,7 @@ export default function ForgotPasswordPage() {
       <h1 className="text-2xl font-bold text-navy">비밀번호 찾기</h1>
       <p className="mt-1 text-sm text-muted-foreground">가입한 이메일로 비밀번호 재설정 링크를 보내 드립니다.</p>
       <div className="mt-4 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
-        <b className="text-navy">아이디를 잊으셨나요?</b> 셀러브릭스 스튜디오는 가입한 이메일 주소가 아이디입니다. 이메일이 기억나지 않으면 <Link href="/support" className="font-semibold text-brand-700 underline underline-offset-2">고객센터</Link>에 가입 시 이름과 연락처를 남겨 주세요.
+        <b className="text-navy">아이디를 잊으셨나요?</b> 스토리지마켓은 가입한 이메일 주소가 아이디입니다. 이메일이 기억나지 않으면 <Link href="/support" className="font-semibold text-brand-700 underline underline-offset-2">고객센터</Link>에 가입 시 이름과 연락처를 남겨 주세요.
       </div>
       <form onSubmit={onSubmit} className="mt-5 space-y-4">
         <div><Label htmlFor="fp-email">가입한 이메일</Label><Input id="fp-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required /></div>

@@ -86,7 +86,7 @@ export function FacilityStorefront({
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-black text-navy sm:text-base">{pageConfig.pageTitle}</p>
-              <p className="text-[11px] font-semibold text-muted-foreground">셀러브릭스 파트너 창고(스튜디오)</p>
+              <p className="text-[11px] font-semibold text-muted-foreground">스토리지마켓 파트너 창고(스튜디오)</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -262,7 +262,7 @@ export function FacilityStorefront({
                     <CheckCircle2 className="h-4 w-4 text-emerald-400" /> 예약 후 진행 상태 확인
                   </p>
                   <p className="flex items-center gap-2 text-xs font-bold text-white/75">
-                    <ShieldCheck className="h-4 w-4 text-emerald-400" /> 셀러브릭스 안전 예약
+                    <ShieldCheck className="h-4 w-4 text-emerald-400" /> 스토리지마켓 안전 예약
                   </p>
                 </div>
               </div>

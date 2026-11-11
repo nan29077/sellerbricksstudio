@@ -72,7 +72,7 @@ export default function LoginPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold text-navy">로그인</h1>
-      <p className="mt-1 text-sm text-muted-foreground">셀러 브릭스 계정으로 로그인하세요.</p>
+      <p className="mt-1 text-sm text-muted-foreground">스토리지마켓 계정으로 로그인하세요.</p>
 
       <form onSubmit={onSubmit} className="mt-6 space-y-4">
         <div><Label>이메일</Label><Input aria-label="이메일" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required /></div>

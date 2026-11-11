@@ -60,7 +60,7 @@ export default async function SellerSnsMarketing({ searchParams }: { searchParam
 
   return (
     <div className="space-y-5 pb-24 md:pb-0">
-      <PageHeader title="SNS 마케팅" description="채널 현황, 콘텐츠 게시 일정, 셀러브릭스 마케팅 지원 신청을 한 곳에서 관리합니다." />
+      <PageHeader title="SNS 마케팅" description="채널 현황, 콘텐츠 게시 일정, 스토리지마켓 마케팅 지원 신청을 한 곳에서 관리합니다." />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="총 팔로워" value={totalFollowers.toLocaleString()} sub={`${accounts.length}개 채널`} icon={Users} tone="brand" />
@@ -145,7 +145,7 @@ export default async function SellerSnsMarketing({ searchParams }: { searchParam
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <div>
             <CardTitle className="flex items-center gap-2 text-base"><Megaphone className="h-4 w-4 text-brand-500" />마케팅 지원 신청</CardTitle>
-            <p className="mt-1 text-xs text-muted-foreground">셀러브릭스 운영팀이 SNS 광고 · 콘텐츠 제작 · 인플루언서 연결을 지원합니다.</p>
+            <p className="mt-1 text-xs text-muted-foreground">스토리지마켓 운영팀이 SNS 광고 · 콘텐츠 제작 · 인플루언서 연결을 지원합니다.</p>
           </div>
           <ResourceForm url={`${API}/applications`} fields={applicationFields} title="지원 신청" triggerSize="sm" successMessage="신청이 접수되었습니다. 검토 결과는 알림으로 알려드려요." />
         </CardHeader>

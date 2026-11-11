@@ -1,25 +1,16 @@
-"""Build the Seller Bricks Studio logo set.
+"""Build the dark STORAGE MARKET logo, standalone marks, and browser icons.
 
-The symbol is the studio mark (gold warehouse + play button + red REC dot),
-drawn in code on the same 64-unit grid as studio-favicon-source.svg. The
-SELLERBRICKS lettering comes from the transparent crop at
-public/images/brand/original-logo-source.png, with STUDIO set beneath it.
-This script makes light/dark logo variants, the standalone marks and the
-browser icons. Requires Pillow and a bold Latin font.
+The approved light logo is the wordmark source. The warehouse, play button,
+and REC dot follow the grid in studio-favicon-source.svg. Requires Pillow.
 """
 
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 
 ROOT = Path(__file__).resolve().parents[1]
 BRAND = ROOT / "public" / "images" / "brand"
-SOURCE = Image.open(BRAND / "original-logo-source.png").convert("RGBA")
-FONT = Path("C:/Windows/Fonts/arialbd.ttf")
-if not FONT.is_file():
-    FONT = Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf")
-
 NAVY = (26, 26, 46, 255)
 # Lifted navy so the mark tile stays visible on navy page backgrounds.
 NAVY_ON_DARK = (43, 49, 84, 255)
@@ -54,65 +45,25 @@ def draw_mark(size: int, tile=NAVY, full_bleed: bool = False) -> Image.Image:
     return im.resize((size,size),Image.Resampling.LANCZOS)
 
 
-def is_gold(red: int, green: int, blue: int) -> bool:
-    return red > blue + 40 and green > blue + 25 and red > green + 10
+def make_dark_logo(mark: Image.Image) -> None:
+    """Lift the charcoal lettering for dark backgrounds and reuse the gold lettering."""
+    with Image.open(BRAND / "storage-market-logo-on-light.png") as light_logo:
+        dark_logo = light_logo.convert("RGBA")
+    pixels = dark_logo.load()
+    for y in range(dark_logo.height):
+        for x in range(mark.width, dark_logo.width):
+            r, g, b, a = pixels[x, y]
+            if a and max(r, g, b) <= 60 and max(r, g, b) - min(r, g, b) < 9:
+                pixels[x, y] = (236, 240, 246, a)
+    dark_logo.paste(mark, (0, 0))
+    dark_logo.save(BRAND / "storage-market-logo-on-dark.png", optimize=True)
 
 
-def variant(image: Image.Image, dark_background: bool) -> Image.Image:
-    if not dark_background:
-        return image.copy()
-    pixels = []
-    for index, (red, green, blue, alpha) in enumerate(image.get_flattened_data()):
-        x = index % image.width
-        if is_gold(red, green, blue):
-            pixels.append((red, green, blue, alpha))
-        elif 80 <= x < 234 and max(red, green, blue) < 70:
-            # Recolor only the solid SELLER letter interiors.
-            pixels.append((222, 227, 235, alpha))
-        elif x < 80 and max(red, green, blue) < 135:
-            # Only recolor the speech-bubble symbol around the play button.
-            # Muted blue gray keeps the mark visible on navy without turning it white.
-            pixels.append((86, 96, 120, alpha))
-        else:
-            # Remove the source raster's outline. Transparency lets the exact
-            # page background show through in the footer, sidebar and cards.
-            pixels.append((0, 0, 0, 0))
-    result = Image.new("RGBA", image.size)
-    result.putdata(pixels)
-    return result
-
-
-def make_wordmark(name: str, dark_background: bool) -> None:
-    scale = 3
-    # Lettering only: the old symbol lives in x < 80 of the source crop.
-    letters = variant(SOURCE, dark_background).crop((80, 0, SOURCE.width, SOURCE.height))
-    letters = letters.resize((letters.width * scale, letters.height * scale), Image.Resampling.LANCZOS)
-    text = Image.new("RGBA", (letters.width + 12, letters.height + 96), (0, 0, 0, 0))
-    text.alpha_composite(letters, (0, 0))
-
-    draw = ImageDraw.Draw(text)
-    font = ImageFont.truetype(str(FONT), 72)
-    x = 0
-    for letter in "STUDIO":
-        draw.text((round(x), 220), letter, font=font, fill="#D5DCE8" if dark_background else "#202126")
-        x += draw.textlength(letter, font=font) + 16
-
-    top, bottom = text.getbbox()[1], text.getbbox()[3]
-    # The mark is as tall as the SELLERBRICKS + STUDIO block.
-    mark = draw_mark(bottom - top + 8, NAVY_ON_DARK if dark_background else NAVY)
-    gap = 30
-    canvas = Image.new("RGBA", (mark.width + gap + text.width, text.height), (0, 0, 0, 0))
-    canvas.alpha_composite(mark, (0, max(0, top - 4)))
-    canvas.alpha_composite(text, (mark.width + gap, 0))
-    bounds = canvas.getbbox()
-    canvas = canvas.crop((0, bounds[1], bounds[2] + 8, bounds[3] + 6))
-    canvas.save(BRAND / name, optimize=True)
-
-
-make_wordmark("logo-original-on-light.png", False)
-make_wordmark("logo-original-on-dark.png", True)
-draw_mark(240, NAVY).save(BRAND / "mark-original-on-light.png", optimize=True)
-draw_mark(240, NAVY_ON_DARK).save(BRAND / "mark-original-on-dark.png", optimize=True)
+light_mark = draw_mark(240, NAVY)
+dark_mark = draw_mark(240, NAVY_ON_DARK)
+light_mark.save(BRAND / "mark-original-on-light.png", optimize=True)
+dark_mark.save(BRAND / "mark-original-on-dark.png", optimize=True)
+make_dark_logo(dark_mark)
 
 draw_mark(64, NAVY).save(ROOT / "src" / "app" / "icon.png", optimize=True)
 favicon = draw_mark(256, NAVY)

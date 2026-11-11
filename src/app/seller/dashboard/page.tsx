@@ -271,7 +271,7 @@ export default async function SellerDashboard() {
           { title: "마케팅 지원", desc: "SNS·광고 소재·이벤트", href: "/seller/marketing", icon: Megaphone, tone: "violet" },
           { title: "카카오 알림톡", desc: "구독자 알림 관리", href: "/seller/kakao", icon: MessageSquare, tone: "amber" },
           { title: "예약 캘린더", desc: "월간 일정 보기", href: "/seller/bookings?view=calendar", icon: CheckCircle2, tone: "sky" },
-          { title: "셀러브릭스 플랫폼", desc: "sellerbricks.co.kr", href: "https://sellerbricks.co.kr", icon: ExternalLink, tone: "slate" },
+          { title: "스토리지마켓 플랫폼", desc: "sellerbricks.co.kr", href: "https://sellerbricks.co.kr", icon: ExternalLink, tone: "slate" },
         ]} />
       </Panel>
     </div>

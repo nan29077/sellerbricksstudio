@@ -1,12 +1,12 @@
 import Link from "next/link";
-import Image from "next/image";
+import { SiteLogo } from "@/components/layout/site-logo";
 
-export const metadata = { title: "페이지를 찾을 수 없습니다 | 셀러브릭스 스튜디오" };
+export const metadata = { title: "페이지를 찾을 수 없습니다 | 스토리지마켓" };
 
 export default function NotFound() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-[#F7F6F2] px-4 text-center">
-      <Image src="/images/brand/mark-original-on-light.png?v=8" alt="" width={64} height={64} className="h-16 w-16" />
+      <SiteLogo className="w-[230px] sm:w-[280px]" />
       <p className="mt-6 text-sm font-bold tracking-[0.2em] text-brand-600">404</p>
       <h1 className="mt-2 text-2xl font-extrabold text-navy sm:text-3xl">페이지를 찾을 수 없습니다</h1>
       <p className="mt-3 max-w-md text-sm leading-6 text-slate-500">

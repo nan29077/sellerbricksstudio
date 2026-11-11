@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import Image from "next/image";
+import { SiteLogo } from "@/components/layout/site-logo";
 import Link from "next/link";
 import {
   LayoutDashboard, CreditCard, MessageSquare, ShoppingCart, Users, Package, Radio,
@@ -9,7 +9,7 @@ import {
   Receipt, Calculator, Headphones,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { generateSellerBricksPdf } from "./pdfGenerator";
+import { generateStorageMarketPdf } from "./pdfGenerator";
 
 /* ────────────────────────────────
    데이터
@@ -106,11 +106,11 @@ export default function IntroPage() {
         <div className="container relative z-10 text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/20 px-4 py-1.5 text-white text-sm font-semibold mb-6" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}>
             <Zap className="h-4 w-4" />
-            셀러브릭스 스튜디오 공식 소개서
+            스토리지마켓 공식 소개서
           </div>
           <h1 className="text-3xl md:text-5xl font-extrabold text-white leading-tight mb-5">
             셀러에게 필요한 모든 것,<br />
-            <span className="text-brand-400">셀러브릭스 스튜디오</span>가 지원합니다
+            <span className="text-brand-400">스토리지마켓</span>가 지원합니다
           </h1>
           <p className="text-white/70 text-lg md:text-xl max-w-2xl mx-auto mb-8 leading-relaxed">
             오직 방송에만 집중하세요 — 나머지는 우리가 합니다
@@ -126,7 +126,7 @@ export default function IntroPage() {
               variant="outline"
               className="border-white/30 text-white bg-white/10 hover:bg-white/20 gap-2 h-12"
               disabled={pdfLoading}
-              onClick={() => generateSellerBricksPdf(setPdfLoading)}
+              onClick={() => generateStorageMarketPdf(setPdfLoading)}
             >
               {pdfLoading
                 ? <Loader2 className="h-4 w-4 animate-spin" />
@@ -137,16 +137,16 @@ export default function IntroPage() {
         </div>
       </section>
 
-      {/* -- 섹션 1: 셀러브릭스 플랫폼 지원 -- */}
+      {/* -- 섹션 1: 스토리지마켓 플랫폼 지원 -- */}
       <section className="py-16 md:py-20 bg-white relative overflow-hidden">
         <div className="container">
           <div className="text-center mb-12">
             <SectionBadge>★ 핵심 서비스</SectionBadge>
             <h2 className="text-3xl md:text-4xl font-extrabold text-navy mb-3">
-              셀러브릭스 플랫폼 완전 지원
+              스토리지마켓 플랫폼 완전 지원
             </h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              셀러브릭스 자체 플랫폼을 셀러에게 무상으로 완전 지원합니다.<br />
+              스토리지마켓 자체 플랫폼을 셀러에게 무상으로 완전 지원합니다.<br />
               <strong className="text-navy">셀러는 오직 방송에만 집중할 수 있습니다.</strong>
             </p>
           </div>
@@ -155,7 +155,7 @@ export default function IntroPage() {
           </div>
           <div className="mt-10 rounded-2xl bg-brand-50 border border-brand-200 p-6 text-center">
             <p className="text-brand-700 font-bold text-lg">
-              복잡한 플랫폼 운영? 셀러브릭스 스튜디오가 대신합니다.
+              복잡한 플랫폼 운영? 스토리지마켓이 대신합니다.
             </p>
             <p className="text-brand-600/80 text-sm mt-1">정산 · CS · 주문 · 고객 · 상품 · 라이브 — 6가지 관리를 원스톱 처리</p>
           </div>
@@ -169,10 +169,10 @@ export default function IntroPage() {
             <div>
               <SectionBadge>자체 송출 채널</SectionBadge>
               <h2 className="text-3xl md:text-4xl font-extrabold text-navy mb-4">
-                셀러브릭스 스튜디오<br />자체 라이브커머스
+                스토리지마켓<br />자체 라이브커머스
               </h2>
               <p className="text-muted-foreground leading-relaxed mb-6">
-                셀러브릭스 스튜디오 자체 라이브커머스 채널을 운영합니다.
+                스토리지마켓 자체 라이브커머스 채널을 운영합니다.
                 방송 전 상품 세팅부터 방송 후 정산까지 완전한 원스톱 서비스를 제공합니다.
               </p>
               <ul className="space-y-3">
@@ -192,9 +192,11 @@ export default function IntroPage() {
             </div>
             <div className="relative flex items-center justify-center">
               <div className="rounded-3xl bg-gradient-to-br from-brand-500 to-brand-600 p-10 text-center text-white shadow-2xl">
-                <Image src="/images/brand/mark-original-on-light.png?v=8" alt="셀러브릭스 심볼" width={80} height={80} className="mx-auto mb-4 h-20 w-20 object-contain" />
+                <div className="mx-auto mb-4 flex min-h-16 max-w-[264px] items-center rounded-xl bg-white px-3">
+                  <SiteLogo className="w-full" />
+                </div>
                 <p className="font-extrabold text-xl mb-1">LIVE NOW</p>
-                <p className="text-brand-100 text-sm">셀러브릭스 스튜디오 채널</p>
+                <p className="text-brand-100 text-sm">스토리지마켓 채널</p>
                 <div className="mt-4 flex justify-center gap-4 text-sm">
                   <span className="bg-white/20 rounded-lg px-3 py-1.5">전문 장비</span>
                   <span className="bg-white/20 rounded-lg px-3 py-1.5">조명 완비</span>
@@ -239,7 +241,7 @@ export default function IntroPage() {
             <SectionBadge>방송 지원</SectionBadge>
             <h2 className="text-3xl md:text-4xl font-extrabold text-navy mb-3">전문 스튜디오 방송 지원</h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              창고를 전전할 필요 없습니다. 셀러브릭스 스튜디오가 제공합니다.
+              창고를 전전할 필요 없습니다. 스토리지마켓이 제공합니다.
             </p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -253,7 +255,9 @@ export default function IntroPage() {
         <div className="container">
           <div className="grid md:grid-cols-2 gap-10 items-center">
             <div className="rounded-3xl bg-gradient-to-br from-honey-400 to-brand-500 p-10 text-white text-center shadow-xl">
-              <Image src="/images/brand/mark-original-on-light.png?v=8" alt="셀러브릭스 심볼" width={80} height={80} className="mx-auto mb-4 h-20 w-20 object-contain" />
+              <div className="mx-auto mb-4 flex min-h-16 max-w-[264px] items-center rounded-xl bg-white px-3">
+                <SiteLogo className="w-full" />
+              </div>
               <p className="font-extrabold text-xl mb-2">검증 상품 직소싱</p>
               <p className="text-white/80 text-sm">10년+ 소싱 경력 · 최저가 공급</p>
               <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
@@ -268,7 +272,7 @@ export default function IntroPage() {
                 검증된 상품을<br />최저가로 공급
               </h2>
               <p className="text-muted-foreground leading-relaxed mb-6">
-                셀러브릭스가 직접 소싱한 검증 상품을 셀러에게 최저가로 공급합니다.
+                스토리지마켓이 직접 소싱한 검증 상품을 셀러에게 최저가로 공급합니다.
                 10년 이상 경력 기반의 다양한 제품군으로 방송 경쟁력을 높이세요.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -315,7 +319,7 @@ export default function IntroPage() {
             <SectionBadge>세무 지원</SectionBadge>
             <h2 className="text-3xl md:text-4xl font-extrabold text-navy mb-3">복잡한 세무, 우리가 해결</h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              세무 처리가 복잡하다면 셀러브릭스 스튜디오의 전문 세무 지원을 받으세요.
+              세무 처리가 복잡하다면 스토리지마켓의 전문 세무 지원을 받으세요.
             </p>
           </div>
           <div className="grid sm:grid-cols-3 gap-5">
@@ -357,7 +361,7 @@ export default function IntroPage() {
             </p>
             <p className="text-white/60 text-sm max-w-lg mx-auto">
               산지에서 직접 진행하는 라이브방송으로 유통 단계를 줄이고 농가 수익을 높입니다.
-              셀러브릭스 스튜디오는 단순한 플랫폼을 넘어 지역 경제 활성화에 기여합니다.
+              스토리지마켓은 단순한 플랫폼을 넘어 지역 경제 활성화에 기여합니다.
             </p>
           </div>
         </div>
@@ -367,9 +371,9 @@ export default function IntroPage() {
       <section className="py-16 md:py-20 bg-[#FFFBF0]">
         <div className="container">
           <div className="text-center mb-12">
-            <SectionBadge>Why 셀러브릭스 스튜디오</SectionBadge>
+            <SectionBadge>Why 스토리지마켓</SectionBadge>
             <h2 className="text-3xl md:text-4xl font-extrabold text-navy mb-3">
-              셀러브릭스 스튜디오를 선택해야 하는 이유
+              스토리지마켓을 선택해야 하는 이유
             </h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
               다른 플랫폼과 다릅니다. 셀러가 필요한 모든 것을 한 곳에서.
@@ -399,7 +403,7 @@ export default function IntroPage() {
           </h2>
           <p className="text-white/80 max-w-xl mx-auto mb-8 text-lg leading-relaxed">
             방송에만 집중하세요.<br />
-            나머지는 셀러브릭스 스튜디오가 모두 합니다.
+            나머지는 스토리지마켓이 모두 합니다.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/signup/seller">

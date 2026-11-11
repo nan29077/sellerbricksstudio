@@ -45,7 +45,7 @@ export function SignupForm({ role }: { role: keyof typeof ROLE_LABEL }) {
     <div>
       <h1 className="text-2xl font-bold text-navy">{ROLE_LABEL[role]} 회원가입</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        {brand ? "가입하면 브랜드샵이 만들어지고, 최고관리자 승인 후 셀러·창고(스튜디오)에 공개됩니다." : "셀러 브릭스에 오신 것을 환영합니다."}
+        {brand ? "가입하면 브랜드샵이 만들어지고, 최고관리자 승인 후 셀러·창고(스튜디오)에 공개됩니다." : "스토리지마켓에 오신 것을 환영합니다."}
       </p>
       <form onSubmit={onSubmit} className="mt-6 space-y-4">
         <div><Label htmlFor="su-name">{brand ? "담당자명" : "이름 / 담당자명"}</Label><Input id="su-name" autoComplete="name" value={form.name} onChange={set("name")} required maxLength={40} /></div>

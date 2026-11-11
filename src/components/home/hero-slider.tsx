@@ -62,7 +62,7 @@ export function HeroSlider() {
   };
 
   return (
-    <section className="relative isolate mx-3 mt-4 flex min-h-[min(550px,calc(100svh-112px))] flex-col justify-end overflow-hidden rounded-[24px] bg-navy text-white shadow-[0_20px_48px_#1A1A2E30] sm:mx-6 sm:mt-7 sm:min-h-[458px] sm:rounded-[30px]" aria-label="셀러브릭스 주요 서비스">
+    <section className="relative isolate mx-3 mt-4 flex min-h-[min(550px,calc(100svh-112px))] flex-col justify-end overflow-hidden rounded-[24px] bg-navy text-white shadow-[0_20px_48px_#1A1A2E30] sm:mx-6 sm:mt-7 sm:min-h-[458px] sm:rounded-[30px]" aria-label="스토리지마켓 주요 서비스">
       <div className="absolute inset-x-0 top-0 -z-10 h-[67%] overflow-hidden sm:inset-0 sm:h-full" aria-hidden="true">
         {slides.map((item, index) => (
           <div key={item.image} className={`absolute inset-0 transition-opacity duration-700 motion-reduce:transition-none ${index === current ? "opacity-100" : "opacity-0"}`}>

@@ -65,7 +65,7 @@ export function SiteSettingsForm({ initial }: { initial: SiteSettings }) {
         <CardContent className="space-y-4">
           <div>
             <Label>사이트 이름</Label>
-            <Input aria-label="사이트 이름" value={form.siteName} onChange={(e) => set("siteName", e.target.value)} placeholder="셀러 브릭스" />
+            <Input aria-label="사이트 이름" value={form.siteName} onChange={(e) => set("siteName", e.target.value)} placeholder="스토리지마켓" />
           </div>
           <div>
             <Label>사이트 설명</Label>

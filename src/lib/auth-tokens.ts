@@ -33,15 +33,15 @@ export async function peekToken(token: string, type: TokenType) {
 export async function sendVerifyEmail(userId: string, email: string) {
   const token = await issueToken(userId, "EMAIL_VERIFY");
   const link = appUrl(`/verify-email?token=${token}`);
-  const result = await sendMail(email, "[셀러브릭스 스튜디오] 이메일 주소를 인증해 주세요",
-    `안녕하세요. 셀러브릭스 스튜디오 가입을 환영합니다.\n\n아래 링크를 눌러 이메일 주소를 인증해 주세요. (3일 동안 유효)\n${link}\n\n본인이 가입하지 않았다면 이 메일을 무시해 주세요.`);
+  const result = await sendMail(email, "[스토리지마켓] 이메일 주소를 인증해 주세요",
+    `안녕하세요. 스토리지마켓 가입을 환영합니다.\n\n아래 링크를 눌러 이메일 주소를 인증해 주세요. (3일 동안 유효)\n${link}\n\n본인이 가입하지 않았다면 이 메일을 무시해 주세요.`);
   return { ...result, devLink: result.provider === "console" ? link : undefined };
 }
 
 export async function sendResetEmail(userId: string, email: string) {
   const token = await issueToken(userId, "PASSWORD_RESET");
   const link = appUrl(`/reset-password?token=${token}`);
-  const result = await sendMail(email, "[셀러브릭스 스튜디오] 비밀번호 재설정 안내",
+  const result = await sendMail(email, "[스토리지마켓] 비밀번호 재설정 안내",
     `비밀번호 재설정을 요청하셨습니다.\n\n아래 링크에서 새 비밀번호를 정해 주세요. (30분 동안 한 번만 사용할 수 있습니다)\n${link}\n\n요청하지 않았다면 이 메일을 무시해 주세요. 비밀번호는 바뀌지 않습니다.`);
   return { ...result, devLink: result.provider === "console" ? link : undefined };
 }

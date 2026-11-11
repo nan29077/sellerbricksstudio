@@ -17,7 +17,7 @@ async function main() {
     update: {},
     create: {
       email: "admin@sellerbricks.kr", passwordHash: pw, role: Role.SUPER_ADMIN, profileImageIndex: 1,
-      profile: { create: { name: "최고관리자", companyName: "셀러브릭스" } },
+      profile: { create: { name: "최고관리자", companyName: "스토리지마켓" } },
     },
   });
 
@@ -162,7 +162,7 @@ async function main() {
     update: {},
     create: {
       code: "LIVE_OPEN", name: "라이브 시작 안내",
-      content: "[셀러 브릭스] 오늘 오후 8시 라이브 방송이 시작됩니다. 아래 링크에서 상품번호로 간편하게 구매하세요. {방송링크}",
+      content: "[스토리지마켓] 오늘 오후 8시 라이브 방송이 시작됩니다. 아래 링크에서 상품번호로 간편하게 구매하세요. {방송링크}",
     },
   });
 

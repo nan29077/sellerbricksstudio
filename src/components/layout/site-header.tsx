@@ -1,11 +1,11 @@
 "use client";
 import Link from "next/link";
-import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { SiteLogo } from "@/components/layout/site-logo";
 import { ROLE_HOME } from "@/lib/rbac";
 
 export function SiteHeader() {
@@ -30,14 +30,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-[#ECE8E0] bg-white/95 backdrop-blur-xl">
       <div className="container flex h-[72px] items-center justify-between">
         <Link href="/" className="flex items-center gap-1">
-          <Image
-            src="/images/brand/logo-original-on-light.png?v=8"
-            alt="셀러브릭스 스튜디오"
-            width={180}
-            height={32}
-            className="h-8 w-auto object-contain"
-            priority
-          />
+          <SiteLogo className="w-[215px] sm:w-[250px]" priority />
         </Link>
         <nav className="hidden md:flex items-center gap-1 rounded-full bg-[#F7F5EF] p-1">
           {nav.map((n) => (

@@ -54,20 +54,22 @@ def main() -> None:
     draw = ImageDraw.Draw(card)
     font_path = find_font(args.font)
 
-    logo = Image.open(ROOT / "public" / "images" / "brand" / "logo-original-on-dark.png").convert("RGBA")
-    logo.thumbnail((270, 60), Image.Resampling.LANCZOS)
+    logo = Image.open(ROOT / "public" / "images" / "brand" / "storage-market-logo-on-dark.png").convert("RGBA")
+    logo.thumbnail((420, 60), Image.Resampling.LANCZOS)
     card.alpha_composite(logo, (72, 78))
 
     gold = "#FFD05A"
     white = "#FFFFFF"
     muted = "#D8DCE8"
-    kicker = "SELLERBRICKS STUDIO"
+    kicker = "스토리지마켓"
     first = "좋은 상품이,"
     second = "더 멀리 닿는 라이브."
     detail = "창고(스튜디오) 찾기  ·  라이브 준비  ·  판매 관리"
 
-    draw.rounded_rectangle((72, 201, 474, 249), radius=24, fill=(25, 30, 49, 230), outline=(245, 166, 35, 160), width=2)
-    draw.text((94, 211), kicker, font=ImageFont.truetype(str(font_path), 21), fill=gold)
+    kicker_font = ImageFont.truetype(str(font_path), 21)
+    kicker_width = round(draw.textlength(kicker, font=kicker_font))
+    draw.rounded_rectangle((72, 201, 116 + kicker_width, 249), radius=24, fill=(25, 30, 49, 230), outline=(245, 166, 35, 160), width=2)
+    draw.text((94, 225), kicker, font=kicker_font, anchor="lm", fill=gold)
     draw.rounded_rectangle((72, 284, 78, 444), radius=3, fill=gold)
     draw.text((100, 283), first, font=fit_font(draw, first, font_path, 57, 610), fill=white, stroke_width=1, stroke_fill="#11172B")
     draw.text((100, 368), second, font=fit_font(draw, second, font_path, 57, 610), fill=gold, stroke_width=1, stroke_fill="#11172B")
@@ -75,7 +77,7 @@ def main() -> None:
     draw.text((73, 523), detail, font=fit_font(draw, detail, font_path, 25, 620), fill=muted)
 
     output = SOCIAL / "share-card.png"
-    share_jpg = SOCIAL / "share-card-v7.jpg"
+    share_jpg = SOCIAL / "share-card-v8.jpg"
     rgb_card = card.convert("RGB")
     rgb_card.save(output, optimize=True)
     rgb_card.save(share_jpg, quality=90, optimize=True, progressive=True)

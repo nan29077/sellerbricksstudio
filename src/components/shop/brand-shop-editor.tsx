@@ -98,7 +98,7 @@ export function BrandShopEditor({ shop, name, isOwner = true }: { shop?: ShopFie
         <Label htmlFor="sample-payment">주문자 안내 메모 (선택)</Label>
         <Textarea id="sample-payment" name="paymentInstructions" defaultValue={shop?.paymentInstructions}
           placeholder="샘플 배송 일정, 교환·반품 안내 등" maxLength={600} rows={3} />
-        <p className="mt-1 text-xs text-slate-600">샘플 신청자에게 표시됩니다. 결제는 셀러브릭스에서 처리되므로 계좌번호는 적지 않아도 됩니다.</p>
+        <p className="mt-1 text-xs text-slate-600">샘플 신청자에게 표시됩니다. 결제는 스토리지마켓에서 처리되므로 계좌번호는 적지 않아도 됩니다.</p>
       </div>
       {message && <p role={error ? "alert" : "status"} className={error ? "text-sm text-red-700" : "text-sm text-emerald-700"}>{message}</p>}
       <Button disabled={busy}>{busy ? "저장 중…" : shop ? "샵 정보 저장" : "브랜드샵 만들기"}</Button>

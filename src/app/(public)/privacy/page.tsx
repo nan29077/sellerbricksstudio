@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-export const metadata: Metadata = { title: "개인정보처리방침 | 셀러브릭스 스튜디오" };
+export const metadata: Metadata = { title: "개인정보처리방침 | 스토리지마켓" };
 
 // ⚠ 기본 처리방침 초안입니다. 서비스 오픈 전에 실제 수탁사·보관 기간·책임자 연락처를 반영한 최종본으로 바꿔 주세요.
 const ROWS: [string, string, string, string][] = [

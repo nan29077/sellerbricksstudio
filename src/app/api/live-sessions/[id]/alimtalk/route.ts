@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/auth";
 import { ok, fail, handleError } from "@/lib/http";
 import { getKakaoAdapter } from "@/lib/adapters/kakao";
 import { audit } from "@/lib/audit";
+import { normalizeLegacyBrand, SITE_NAME } from "@/lib/site-brand";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -17,7 +18,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     if (channel.subscribers.length === 0) return fail("발송할 가입자가 없습니다.");
 
     const template = await prisma.notificationTemplate.findUnique({ where: { code: templateCode ?? "LIVE_OPEN" } });
-    const raw = template?.content ?? "[셀러 브릭스] 라이브 방송 안내 {방송링크}";
+    const raw = normalizeLegacyBrand(template?.content ?? `[${SITE_NAME}] 라이브 방송 안내 {방송링크}`);
     const link = session.buyerLinkUrl ?? "";
     const content = raw.replace("{방송링크}", link);
 

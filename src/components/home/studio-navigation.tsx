@@ -11,6 +11,7 @@ import {
   Map, Menu, ShoppingBag, UserCircle, Warehouse, X,
 } from "lucide-react";
 import { NotificationBell } from "@/components/layout/notification-bell";
+import { SiteLogo } from "@/components/layout/site-logo";
 import { ROLE_HOME, ROLE_LABELS } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 
@@ -33,7 +34,7 @@ export function StudioTopBar({ account }: { account: Account }) {
     <>
       <header className="sticky top-0 z-40 flex h-[62px] items-center justify-between border-b border-[#E4E8EC] bg-[#F8F9FA]/95 px-4 backdrop-blur-md sm:h-[66px] sm:px-6">
         <Link href="/" className="flex min-h-11 items-center">
-          <Image src="/images/brand/logo-original-on-light.png?v=8" alt="셀러브릭스 스튜디오" width={154} height={32} priority className="h-8 w-auto object-contain" />
+          <SiteLogo className="w-[min(215px,calc(100vw-144px))] sm:w-[250px]" priority />
         </Link>
         <div className="flex items-center gap-2">
           {account ? <NotificationBell /> : (
@@ -48,7 +49,7 @@ export function StudioTopBar({ account }: { account: Account }) {
       </header>
       <dialog ref={menu} aria-labelledby="studio-menu-title" className="fixed inset-y-0 left-auto right-0 m-0 h-full max-h-none w-72 max-w-[88vw] overflow-y-auto rounded-l-[24px] bg-[#F8F9FA] p-4 text-navy shadow-xl backdrop:bg-navy/55 lg:hidden">
         <div className="mb-3 flex items-center justify-between px-1">
-          <h2 id="studio-menu-title" className="font-extrabold">셀러브릭스 메뉴</h2>
+          <h2 id="studio-menu-title" className="font-extrabold">스토리지마켓 메뉴</h2>
           <button type="button" onClick={() => menu.current?.close()} aria-label="메뉴 닫기" className="grid w-11 place-items-center rounded-xl hover:bg-brand-50"><X className="h-5 w-5" /></button>
         </div>
         <MenuItems account={account} desktop={false} onNavigate={() => menu.current?.close()} />
@@ -85,7 +86,7 @@ export function StudioNavigation({ account }: { account: Account }) {
     <>
       <div className="row-start-2 max-h-[calc(100svh-102px)] w-full overflow-y-auto rounded-[24px] border border-white/90 bg-[#F8F9FA]/95 p-2 text-navy shadow-[0_12px_35px_#1A1A2E30] backdrop-blur-md [scrollbar-width:thin] [@media(max-height:740px)]:row-start-1">
         <MenuItems account={account} desktop />
-        <p aria-hidden="true" className="pb-1 pt-2 text-center text-[11px] font-black tracking-[0.13em] text-slate-500">SELLERBRICKS</p>
+        <p aria-hidden="true" className="pb-1 pt-2 text-center text-[11px] font-black tracking-[0.13em] text-slate-500">STORAGE MARKET</p>
       </div>
       <Link href="/support" aria-current={pathname === "/support" ? "page" : undefined} className="row-start-3 mb-1 flex min-h-11 items-center justify-center gap-1.5 self-end rounded-full border border-white/20 bg-navy px-3 text-[11px] font-bold text-white shadow-lg transition hover:bg-navy-700 [@media(max-height:740px)]:row-start-2">
         <Headset className="h-4 w-4 text-brand-300" />문의하기

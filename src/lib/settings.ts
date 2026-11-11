@@ -2,6 +2,7 @@ import { promises as fs } from "fs";
 import { randomUUID } from "crypto";
 import path from "path";
 import { isHomeBackground, type HomeBackgroundId } from "./home-backgrounds";
+import { normalizeLegacyBrand, SITE_NAME } from "./site-brand";
 
 // 사이트 전역 설정.
 // Prisma Setting 테이블에 의존하지 않고 파일(data/settings.json) 기반으로 저장한다.
@@ -21,10 +22,10 @@ export type SiteSettings = {
 };
 
 export const DEFAULT_SETTINGS: SiteSettings = {
-  siteName: "셀러 브릭스",
+  siteName: SITE_NAME,
   siteDescription: "라이브 커머스 셀러를 위한 올인원 셀러 매니지먼트 플랫폼",
   bannerEnabled: false,
-  bannerText: "🎉 셀러브릭스 셀러 매니지먼트, 지금 무료로 시작하세요!",
+  bannerText: `🎉 ${SITE_NAME} 셀러 매니지먼트, 지금 무료로 시작하세요!`,
   bannerLinkLabel: "자세히 보기",
   bannerLinkUrl: "/signup",
   liveEnabled: true,
@@ -45,6 +46,9 @@ function coerce(raw: SiteSettings): SiteSettings {
   for (const key of BOOL_KEYS) {
     const v = (merged as any)[key];
     (merged as any)[key] = typeof v === "boolean" ? v : v === "true";
+  }
+  for (const key of ["siteName", "siteDescription", "bannerText"] as const) {
+    merged[key] = typeof merged[key] === "string" ? normalizeLegacyBrand(merged[key]) : DEFAULT_SETTINGS[key];
   }
   if (!isHomeBackground(merged.homeBackground)) merged.homeBackground = DEFAULT_SETTINGS.homeBackground;
   return merged;
