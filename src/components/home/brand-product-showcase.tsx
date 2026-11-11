@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, Flame, Gift, PackagePlus, ShoppingBag, Sparkles, Star } from "lucide-react";
 import { ShopImage } from "@/components/shop/shop-image";
-import { brandArtworkFor } from "@/lib/brands";
+import { brandArtworkFor, brandProductHref } from "@/lib/brands";
+import { generatedBrandProductArtwork } from "@/lib/brand-product-artwork";
 import type { HomeBrandProduct, HomeBrandProducts } from "@/lib/home-brand-products";
 import { cn, formatKRW } from "@/lib/utils";
 
@@ -25,14 +26,15 @@ const emptyMessages: Record<keyof HomeBrandProducts, string> = {
 };
 
 function ProductCard({ product, rank }: { product: HomeBrandProduct; rank?: number }) {
+  const artwork = generatedBrandProductArtwork(product.shop.name, product);
   const sample = product.samplePrice !== null && product.sampleStock > 0
     ? (product.samplePrice === 0 ? "무료 샘플" : "유료 샘플") : null;
 
   return (
-    <Link href={`/brands/${product.shop.id}?product=${encodeURIComponent(product.id)}#shop-products`}
+    <Link href={brandProductHref(product.shop.id, product.id)}
       className="group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-[#EAE3D7] bg-white transition hover:border-brand-400 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700">
       <div className="relative aspect-square overflow-hidden bg-[#F4F0E9]">
-        <ShopImage src={product.imageUrl} fallback={brandArtworkFor(product.category)} className="h-full w-full object-cover transition duration-300 group-hover:scale-105 motion-reduce:transition-none" />
+        <ShopImage src={product.imageUrl} fallback={artwork?.cover ?? brandArtworkFor(product.category)} className="h-full w-full object-cover transition duration-300 group-hover:scale-105 motion-reduce:transition-none" />
         {rank !== undefined && <span aria-label={`판매량 ${rank}위`} className="absolute left-2 top-2 grid h-7 min-w-7 place-items-center rounded-lg bg-navy px-1.5 text-xs font-black tabular-nums text-white">{rank}</span>}
         {sample && <span className="absolute bottom-2 left-2 rounded-full bg-white px-2 py-1 text-[11px] font-bold text-navy shadow-sm">{sample}</span>}
       </div>

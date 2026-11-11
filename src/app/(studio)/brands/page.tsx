@@ -3,7 +3,8 @@ import { ArrowUpRight, ClipboardList, Gift, PackagePlus, Search, ShoppingBag, Sp
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
-import { BRAND_CATEGORIES, PUBLIC_BRAND_SHOP, brandArtworkFor } from "@/lib/brands";
+import { BRAND_CATEGORIES, PUBLIC_BRAND_SHOP, brandArtworkFor, brandProductHref } from "@/lib/brands";
+import { generatedBrandProductArtwork } from "@/lib/brand-product-artwork";
 import { categoryFilterValues } from "@/lib/categories";
 import { BRAND_ARTWORK } from "@/lib/shop-artwork";
 import { reportDbError } from "@/lib/db-error";
@@ -129,8 +130,8 @@ export default async function BrandDirectory({ searchParams }: { searchParams: S
           <h2 className="mb-3 flex items-center gap-1.5 text-lg font-black text-navy"><Sparkles className="h-5 w-5 text-brand-600" />새로 들어온 상품</h2>
           <div className="-mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-2">
             {data.fresh.map((p) => (
-              <Link key={p.id} href={`/brands/${p.shop.id}#shop-products`} className="w-40 shrink-0 snap-start overflow-hidden rounded-2xl border bg-white shadow-sm hover:border-brand-300">
-                <ShopImage src={p.imageUrl} fallback={brandArtworkFor(p.category)} className="aspect-square w-full object-cover" />
+              <Link key={p.id} href={brandProductHref(p.shop.id, p.id)} className="w-40 shrink-0 snap-start overflow-hidden rounded-2xl border bg-white shadow-sm hover:border-brand-300">
+                <ShopImage src={p.imageUrl} fallback={generatedBrandProductArtwork(p.shop.name, p)?.cover ?? brandArtworkFor(p.category)} className="aspect-square w-full object-cover" />
                 <div className="p-2.5">
                   <p className="truncate text-[11px] text-slate-500">{p.shop.name}</p>
                   <p className="line-clamp-2 min-h-[2.5rem] text-sm font-bold leading-5 text-navy">{p.name}</p>

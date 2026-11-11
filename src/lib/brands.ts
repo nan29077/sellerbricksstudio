@@ -17,6 +17,10 @@ export const BRAND_REQUEST_KIND: Record<BrandRequestKind, string> = {
 };
 export const BRAND_BUYER_ROLES: Role[] = ["SELLER", "FACILITY_ADMIN"];
 
+export function brandProductHref(shopId: string, productId: string) {
+  return `/brands/${shopId}?product=${encodeURIComponent(productId)}#shop-products`;
+}
+
 export function brandArtworkFor(category: string) {
   const main = normalizeCategory(category);
   const index = main === "코스메틱" ? 0 : main === "의류" ? 1 : main === "패션잡화" || main === "주얼리·시계" ? 2 : main === "식품" || main === "농수산물" || main === "건강식품" ? 3 : 4;
