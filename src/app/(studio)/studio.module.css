@@ -30,10 +30,11 @@
   }
 
   .background {
+    --background-left: var(--studio-left);
+    --background-center: var(--studio-width);
     display: block;
     position: fixed;
     inset: 0;
-    background: linear-gradient(rgb(26 26 46 / 8%), rgb(26 26 46 / 16%)), var(--studio-image) center / cover no-repeat;
   }
 
   .column {

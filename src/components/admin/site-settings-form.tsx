@@ -1,12 +1,11 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea, Label } from "@/components/ui/input";
 import type { SiteSettings } from "@/lib/settings";
-import { HOME_BACKGROUNDS, homeBackgroundImage } from "@/lib/home-backgrounds";
+import { HomeBackgroundPicker } from "@/components/admin/home-background-picker";
 import { api } from "@/lib/client-api";
 import { Save, Image as ImageIcon, Globe, CheckCircle2 } from "lucide-react";
 
@@ -48,43 +47,12 @@ export function SiteSettingsForm({ initial }: { initial: SiteSettings }) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <ImageIcon className="h-5 w-5 text-brand-500" />메인 PC 배경 이미지
+            <ImageIcon className="h-5 w-5 text-brand-500" />메인 여백 배경
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="mb-4 text-sm leading-6 text-slate-600">PC에서 모바일형 화면 뒤에 표시할 배경을 고르고 설정을 저장하세요.</p>
-          <div className="relative mb-4 grid aspect-[2/1] max-h-72 grid-cols-[1fr_36%_1fr] overflow-hidden rounded-2xl bg-navy" aria-hidden="true">
-            <Image src={homeBackgroundImage(form.homeBackground)} alt="" fill sizes="(min-width: 1280px) 900px, 100vw" className="object-cover" />
-            <div className="absolute inset-0 bg-navy/40" />
-            <div className="relative col-start-2 flex flex-col gap-2 bg-[#FCFBF8] p-2 shadow-xl sm:p-4">
-              <div className="h-2 w-3/5 rounded-full bg-navy/20" />
-              <div className="h-2/5 rounded-lg bg-navy/90" />
-              <div className="grid flex-1 grid-cols-2 gap-2"><span className="rounded-lg bg-brand-100" /><span className="rounded-lg bg-brand-100" /></div>
-            </div>
-            <div className="relative my-auto ml-3 flex w-1/2 flex-col gap-2 rounded-xl bg-navy/80 p-2 sm:p-3">
-              <div className="h-2 rounded-full bg-white/30" />
-              <div className="h-2 rounded-full bg-white/30" />
-              <div className="h-3 rounded-full bg-brand-500" />
-            </div>
-          </div>
-          <fieldset className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5" disabled={busy}>
-            <legend className="sr-only">배경 이미지 선택</legend>
-            {HOME_BACKGROUNDS.map((background) => (
-              <label key={background.id} className="relative cursor-pointer">
-                <input type="radio" name="home-background" className="peer sr-only" checked={form.homeBackground === background.id} onChange={() => set("homeBackground", background.id)} />
-                <span className="block h-full overflow-hidden rounded-xl border-2 border-transparent bg-muted peer-checked:border-brand-500 peer-focus-visible:ring-2 peer-focus-visible:ring-navy">
-                  <span className="relative block aspect-video bg-navy">
-                    <Image src={homeBackgroundImage(background.id)} alt="" fill sizes="(min-width: 1280px) 230px, (min-width: 640px) 50vw, 100vw" className="object-cover" />
-                    {form.homeBackground === background.id && <CheckCircle2 aria-hidden="true" className="absolute right-2 top-2 h-6 w-6 rounded-full bg-navy text-brand-300" />}
-                  </span>
-                  <span className="block px-3 py-2">
-                    <span className="block text-sm font-bold text-navy">{background.label}</span>
-                    <span className="mt-0.5 block text-xs leading-5 text-slate-600">{background.description}</span>
-                  </span>
-                </span>
-              </label>
-            ))}
-          </fieldset>
+          <p className="mb-4 text-sm leading-6 text-slate-600">PC 양옆에 표시할 배경을 고르고 아래 설정 저장 버튼을 눌러주세요.</p>
+          <HomeBackgroundPicker value={form.homeBackground} onChange={(value) => set("homeBackground", value)} disabled={busy} />
         </CardContent>
       </Card>
       {/* 사이트 관리 */}

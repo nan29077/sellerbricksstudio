@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { NotificationBell } from "./notification-bell";
 import { cn } from "@/lib/utils";
-import { getProfileImage } from "@/lib/profile";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; requiresLive?: boolean; requiresFacility?: boolean };
 export type NavSection = { title: string; items: NavItem[] };
@@ -40,6 +39,7 @@ const ROLE_NAV: Record<string, NavSection[]> = {
     ]},
     { title: "시스템 설정", items: [
       { href: "/admin/support",         label: "고객 문의 관리", icon: MessageSquare },
+      { href: "/admin/home-background", label: "메인 여백 관리", icon: ImageIcon },
       { href: "/admin/site-settings",   label: "사이트 설정",    icon: ImageIcon },
       { href: "/admin/site-management", label: "사이트 관리",    icon: Globe },
       { href: "/admin/live-settings",   label: "메뉴 권한 설정", icon: Sliders },
@@ -121,7 +121,7 @@ export function DashboardShell({
   role,
   roleLabel,
   userName,
-  profileImageIndex,
+  avatarSrc,
   liveEnabled = true,
   facilityDisabled = false,
   children,
@@ -129,7 +129,7 @@ export function DashboardShell({
   role: string;
   roleLabel: string;
   userName: string;
-  profileImageIndex?: number | null;
+  avatarSrc: string;
   liveEnabled?: boolean;
   facilityDisabled?: boolean;
   children: React.ReactNode;
@@ -186,10 +186,11 @@ export function DashboardShell({
       <div className="mx-3 mt-4 rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-3 shrink-0">
         <div className="flex items-center gap-2.5">
           <Image
-            src={getProfileImage(profileImageIndex)}
+            src={avatarSrc}
             alt={userName}
             width={36}
             height={36}
+            unoptimized
             className="h-10 w-10 rounded-full object-cover shrink-0 border border-white/20 bg-white"
           />
           <div className="min-w-0">

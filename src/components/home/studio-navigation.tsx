@@ -117,7 +117,7 @@ function MenuItems({ account, desktop, onNavigate }: { account: Account; desktop
         {account ? (
           <>
             <Link href={settingsHref[account.role]} aria-label="내 프로필" title={account.name} onClick={onNavigate} className={itemStyle}>
-              <Image src={account.image} alt="" width={32} height={32} className="h-8 w-8 shrink-0 rounded-full border border-brand-200 bg-white object-cover" />
+              <Image src={account.image} alt="" width={32} height={32} unoptimized className="h-8 w-8 shrink-0 rounded-full border border-brand-200 bg-white object-cover" />
               <span className={cn("min-w-0", desktop && "w-full text-center")}>
                 <span className={cn("block font-extrabold text-navy", desktop ? "line-clamp-2 break-all leading-tight" : "truncate")}>{account.name}</span>
                 {/* 이름에 이미 역할명이 들어 있으면(예: "셀러", "테스트셀러") 역할을 한 번만 보여 준다 */}

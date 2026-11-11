@@ -1,13 +1,14 @@
 "use client";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Settings, User, Lock, Bell, Calendar, Info,
   Instagram, Youtube, Music2, CheckCircle2, AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
-import { getProfileImage } from "@/lib/profile";
+import { PROFILE_ANIMALS, getProfileImage } from "@/lib/profile";
 import { cn } from "@/lib/utils";
 
 type BookingRow = { id: string; facilityName: string; dateLabel: string; status: string };
@@ -21,6 +22,7 @@ export type SettingsPanelProps = {
   companyName: string;
   createdAtLabel: string;
   profileImageIndex: number;
+  avatarUrl: string | null;
   isDemo: boolean;
   showBookings: boolean;
   bookings: BookingRow[];
@@ -33,6 +35,30 @@ const BOOKING_STATUS: Record<string, { label: string; cls: string }> = {
   CANCELLED: { label: "취소됨",   cls: "bg-gray-100 text-gray-600" },
   COMPLETED: { label: "완료",     cls: "bg-blue-100 text-blue-700" },
 };
+
+const PROFILE_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+async function prepareProfilePhoto(file: File): Promise<string> {
+  if (!PROFILE_PHOTO_TYPES.includes(file.type) || file.size > 10 * 1024 * 1024) {
+    throw new Error("10MB 이하의 JPG, PNG, WebP 사진을 선택해 주세요.");
+  }
+
+  const photo = await createImageBitmap(file);
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = 320;
+    canvas.height = 320;
+    const context = canvas.getContext("2d", { alpha: false });
+    if (!context) throw new Error("사진을 준비할 수 없습니다.");
+    const side = Math.min(photo.width, photo.height);
+    context.fillStyle = "#fff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(photo, (photo.width - side) / 2, (photo.height - side) / 2, side, side, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", 0.86);
+  } finally {
+    photo.close();
+  }
+}
 
 function Banner({ tone, text }: { tone: "success" | "error"; text: string }) {
   const Icon = tone === "success" ? CheckCircle2 : AlertCircle;
@@ -48,6 +74,7 @@ function Banner({ tone, text }: { tone: "success" | "error"; text: string }) {
 }
 
 export function SettingsPanel(props: SettingsPanelProps) {
+  const router = useRouter();
   const { role, roleLabel, email, createdAtLabel, isDemo, showBookings, bookings } = props;
 
   const TABS = [
@@ -65,6 +92,10 @@ export function SettingsPanel(props: SettingsPanelProps) {
   const [phone, setPhone] = useState(props.phone);
   const [sns, setSns] = useState({ instagram: "", youtube: "", tiktok: "" });
   const [imageIndex, setImageIndex] = useState(props.profileImageIndex);
+  const [avatarUrl, setAvatarUrl] = useState(props.avatarUrl);
+  const [photoChanged, setPhotoChanged] = useState(false);
+  const [readingPhoto, setReadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMsg, setProfileMsg] = useState<{ tone: "success" | "error"; text: string } | null>(null);
 
@@ -89,6 +120,24 @@ export function SettingsPanel(props: SettingsPanelProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  async function choosePhoto(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = "";
+    if (!file) return;
+    setReadingPhoto(true);
+    setPhotoError("");
+    setProfileMsg(null);
+    try {
+      setAvatarUrl(await prepareProfilePhoto(file));
+      setPhotoChanged(true);
+    } catch (error) {
+      setPhotoError(error instanceof DOMException ? "사진을 열 수 없습니다. 다른 사진을 선택해 주세요." :
+        error instanceof Error ? error.message : "사진을 불러오지 못했습니다.");
+    } finally {
+      setReadingPhoto(false);
+    }
+  }
+
   async function saveProfile() {
     setProfileSaving(true);
     setProfileMsg(null);
@@ -97,15 +146,20 @@ export function SettingsPanel(props: SettingsPanelProps) {
       const res = await fetch("/api/me/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, phone, profileImageIndex: imageIndex }),
+        body: JSON.stringify({
+          name, phone, profileImageIndex: imageIndex,
+          ...(photoChanged ? { avatarUrl } : {}),
+        }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || json?.ok === false) {
         setProfileMsg({ tone: "error", text: json?.error ?? "저장에 실패했습니다." });
       } else if (json?.data?.demo) {
-        setProfileMsg({ tone: "success", text: "SNS·프로필 사진 선택은 이 브라우저에 반영됐습니다. (데모 계정은 서버 저장 안 됨)" });
+        setProfileMsg({ tone: "success", text: "데모 화면에 선택이 반영되었습니다. 저장하려면 회원 계정으로 로그인해 주세요." });
       } else {
         setProfileMsg({ tone: "success", text: "프로필이 저장되었습니다." });
+        setPhotoChanged(false);
+        router.refresh();
       }
     } catch {
       setProfileMsg({ tone: "error", text: "네트워크 오류로 저장하지 못했습니다." });
@@ -193,33 +247,55 @@ export function SettingsPanel(props: SettingsPanelProps) {
             <div className="min-w-0 space-y-4">
               <div className="flex items-center gap-4">
                 <Image
-                  src={getProfileImage(imageIndex)}
+                  src={avatarUrl ?? getProfileImage(imageIndex)}
                   alt="프로필"
                   width={72}
                   height={72}
+                  unoptimized
                   className="h-[72px] w-[72px] shrink-0 rounded-full border border-brand-200 bg-white object-cover"
                 />
                 <div>
                   <p className="font-bold text-navy">프로필 사진</p>
-                  <p className="text-xs text-muted-foreground">사진을 바꾸기 전까지 랜덤 배정된 이미지가 표시됩니다.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{avatarUrl ? "내 사진이 프로필에 우선 표시됩니다." : "선택한 동물 캐릭터가 프로필에 표시됩니다."}</p>
                 </div>
               </div>
               <div>
-                <p className="mb-2 text-sm font-medium text-navy">프로필 사진 선택</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="relative">
+                    <input type="file" accept={PROFILE_PHOTO_TYPES.join(",")} onChange={choosePhoto} disabled={profileSaving || readingPhoto} className="peer sr-only" />
+                    <span className="inline-flex min-h-11 cursor-pointer items-center rounded-lg border bg-white px-4 text-sm font-semibold text-navy hover:bg-brand-50 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-500 peer-disabled:pointer-events-none peer-disabled:opacity-50">
+                      {readingPhoto ? "사진 준비 중…" : avatarUrl ? "내 사진 바꾸기" : "내 사진 선택"}
+                    </span>
+                  </label>
+                  {avatarUrl && <Button type="button" variant="ghost" disabled={profileSaving || readingPhoto} onClick={() => {
+                    setAvatarUrl(null);
+                    setPhotoChanged(true);
+                    setPhotoError("");
+                    setProfileMsg(null);
+                  }}>내 사진 제거</Button>}
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">JPG, PNG, WebP · 10MB 이하</p>
+                {photoError && <p role="alert" className="mt-2 text-xs text-red-700">{photoError}</p>}
+              </div>
+              <div>
+                <p className="mb-2 text-sm font-medium text-navy">동물 캐릭터 선택</p>
+                {avatarUrl && <p className="mb-2 text-xs text-muted-foreground">내 사진을 제거하면 여기서 선택한 캐릭터가 표시됩니다.</p>}
                 <div className="grid grid-cols-[repeat(auto-fill,minmax(44px,48px))] gap-2">
-                  {Array.from({ length: 20 }, (_, i) => i + 1).map((idx) => (
+                  {PROFILE_ANIMALS.map((animal, index) => (
                     <button
-                      key={idx}
+                      key={animal.id}
                       type="button"
-                      onClick={() => setImageIndex(idx)}
+                      disabled={profileSaving}
+                      onClick={() => { setImageIndex(index + 1); setProfileMsg(null); }}
                       className={cn(
                         "relative aspect-square overflow-hidden rounded-full border-2 transition",
-                        imageIndex === idx ? "border-brand-500 ring-2 ring-brand-200" : "border-transparent hover:border-brand-300",
+                        imageIndex === index + 1 ? "border-brand-500 ring-2 ring-brand-200" : "border-transparent hover:border-brand-300",
                       )}
-                      aria-label={`프로필 이미지 ${idx}`}
-                      aria-pressed={imageIndex === idx}
+                      aria-label={animal.label}
+                      title={animal.label}
+                      aria-pressed={imageIndex === index + 1}
                     >
-                      <Image src={getProfileImage(idx)} alt="" fill className="object-cover" sizes="48px" />
+                      <Image src={getProfileImage(index + 1)} alt="" fill unoptimized className="object-cover" />
                     </button>
                   ))}
                 </div>
@@ -256,7 +332,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
 
           {profileMsg && <Banner tone={profileMsg.tone} text={profileMsg.text} />}
           <div className="flex justify-end border-t pt-4">
-            <Button onClick={saveProfile} disabled={profileSaving}>{profileSaving ? "저장 중…" : "프로필 저장"}</Button>
+            <Button onClick={saveProfile} disabled={profileSaving || readingPhoto}>{profileSaving ? "저장 중…" : "프로필 저장"}</Button>
           </div>
         </div>
       )}

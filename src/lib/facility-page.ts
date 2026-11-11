@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { getProfileImage, stableProfileIndex } from "@/lib/profile";
+import { PROFILE_ANIMALS, getProfileImage, legacyProfileImageIndex, stableProfileIndex } from "@/lib/profile";
 
 export const FACILITY_BANNERS = [
   { url: "/images/facility-banners/warehouse-premium.webp", label: "프리미엄 물류 창고" },
@@ -9,9 +9,9 @@ export const FACILITY_BANNERS = [
   { url: "/images/facility-banners/beauty-live.webp", label: "뷰티·패션 라이브" },
 ] as const;
 
-export const FACILITY_PROFILE_IMAGES = Array.from({ length: 20 }, (_, index) => ({
+export const FACILITY_PROFILE_IMAGES = PROFILE_ANIMALS.map((animal, index) => ({
   url: getProfileImage(index + 1),
-  label: `프로필 ${index + 1}`,
+  label: animal.label,
 }));
 
 export const FACILITY_PAGE_THEMES = {
@@ -81,12 +81,14 @@ export function parseFacilityPageConfig(
   if (!value) return defaults;
   try {
     const parsed = JSON.parse(value) as Partial<FacilityPageConfig>;
+    const profileUrl = parsed.profileImageUrl?.trim();
+    const legacyIndex = profileUrl ? legacyProfileImageIndex(profileUrl) : null;
     return {
       ...defaults,
       ...parsed,
       theme: parsed.theme && parsed.theme in FACILITY_PAGE_THEMES ? parsed.theme : defaults.theme,
       bannerUrl: parsed.bannerUrl?.trim() || defaults.bannerUrl,
-      profileImageUrl: parsed.profileImageUrl?.trim() || defaults.profileImageUrl,
+      profileImageUrl: legacyIndex ? getProfileImage(legacyIndex) : profileUrl || defaults.profileImageUrl,
     };
   } catch {
     return defaults;

@@ -1,6 +1,6 @@
 // 기존 회원 프로필 이미지 소급 배정 (one-time)
 // 실행: npx tsx prisma/backfill-profile-image.ts
-// - profileImageIndex 가 null 인 유저에게 1~20 랜덤 값을 배정합니다.
+// - profileImageIndex 가 null 인 유저에게 동물 프로필 번호를 배정합니다.
 // - 이미 값이 있는 유저는 건너뜁니다.
 
 import { PrismaClient } from "@prisma/client";

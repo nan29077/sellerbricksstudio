@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     const user = await prisma.user.create({
       data: {
         email: data.email, passwordHash, role: data.role,
-        profileImageIndex: randomProfileIndex(), // 가입 시 1~20 랜덤 프로필 이미지 배정
+        profileImageIndex: randomProfileIndex(),
         profile: { create: { name: data.name, phone: data.phone, companyName: data.companyName } },
       },
     });

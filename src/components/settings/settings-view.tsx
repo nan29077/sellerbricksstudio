@@ -1,7 +1,7 @@
 import { getSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ROLE_LABELS } from "@/lib/rbac";
-import { resolveProfileImageIndex } from "@/lib/profile-server";
+import { resolveProfileAvatar } from "@/lib/profile";
 import { SettingsPanel } from "./settings-panel";
 
 function fmtDate(d: Date): string {
@@ -23,7 +23,7 @@ export async function SettingsView({ role, showBookings = false }: { role: strin
   if (!u) return null; // 레이아웃에서 이미 로그인 가드됨
 
   const isDemo = u.id.startsWith("demo-");
-  const profileImageIndex = await resolveProfileImageIndex(u);
+  let avatar = resolveProfileAvatar(null, null, u.email ?? u.id);
 
   let name = u.name ?? "";
   let phone = "";
@@ -33,6 +33,7 @@ export async function SettingsView({ role, showBookings = false }: { role: strin
   try {
     const dbUser = await prisma.user.findUnique({ where: { id: u.id }, include: { profile: true } });
     if (dbUser) {
+      avatar = resolveProfileAvatar(dbUser.profileImageIndex, dbUser.profile?.avatarUrl, u.email ?? u.id);
       name = dbUser.profile?.name ?? name;
       phone = dbUser.profile?.phone ?? "";
       companyName = dbUser.profile?.companyName ?? "";
@@ -67,7 +68,8 @@ export async function SettingsView({ role, showBookings = false }: { role: strin
       phone={phone}
       companyName={companyName}
       createdAtLabel={createdAtLabel}
-      profileImageIndex={profileImageIndex}
+      profileImageIndex={avatar.imageIndex}
+      avatarUrl={avatar.photoUrl}
       isDemo={isDemo}
       showBookings={showBookings}
       bookings={bookings}

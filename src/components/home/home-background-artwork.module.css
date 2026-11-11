@@ -1,0 +1,42 @@
+.artwork {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #f5f1e8;
+}
+
+.left,
+.right {
+  position: absolute;
+  inset-block: 0;
+  overflow: hidden;
+}
+
+.left {
+  left: 0;
+  width: var(--background-left, 27%);
+}
+
+.right {
+  left: calc(var(--background-left, 27%) + var(--background-center, 42%));
+  right: 0;
+}
+
+.sideImage {
+  position: absolute;
+  top: 0;
+  width: 400%;
+  max-width: none;
+  height: 100%;
+  object-fit: cover;
+}
+
+.left .sideImage {
+  left: 0;
+  object-position: 12.5% center;
+}
+
+.right .sideImage {
+  right: 0;
+  object-position: 87.5% center;
+}

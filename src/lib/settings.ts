@@ -30,7 +30,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   liveEnabled: true,
   managerDisabled: false,
   facilityDisabled: false,
-  homeBackground: "studio",
+  homeBackground: "studio-people",
 };
 
 const BOOL_KEYS: (keyof SiteSettings)[] = ["bannerEnabled", "liveEnabled", "managerDisabled", "facilityDisabled"];

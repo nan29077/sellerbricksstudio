@@ -110,7 +110,7 @@ model User {
   passwordHash String
   role         Role     @default(SELLER)
   isActive     Boolean  @default(true)
-  profileImageIndex Int? // 1-20 랜덤 배정 프로필 이미지 (null이면 미배정)
+  profileImageIndex Int? // 1-30 동물 프로필 번호 (null이면 계정 기준 기본값)
   lastLoginAt  DateTime? // 마지막 로그인 시각
   adminMemo    String?  @db.Text // 최고관리자 전용 내부 메모
   createdAt    DateTime @default(now())

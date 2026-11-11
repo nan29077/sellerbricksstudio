@@ -105,7 +105,7 @@ export function FacilityPageEditor({
                 <UserRound className="h-5 w-5 text-brand-700" />
                 <h2 className="font-extrabold text-navy">창고(스튜디오) 프로필 이미지</h2>
               </div>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">창고(스튜디오)마다 20개 이미지 중 하나가 자동 배정됩니다. 원하는 이미지로 선택해 고정할 수도 있습니다.</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">동물 캐릭터 30종 중 하나를 자동으로 표시합니다. 원하는 캐릭터를 선택할 수도 있습니다.</p>
             </div>
           </div>
           <div className="p-5">
