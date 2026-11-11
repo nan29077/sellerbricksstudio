@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { ArrowRight, CalendarDays, ClipboardList, Headset, Radio, Wallet } from "lucide-react";
+import { ArrowRight, CalendarDays, Camera, ClipboardList, Headset, PackageCheck, Radio, Wallet } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
 import { getHomeBrandProducts } from "@/lib/home-brand-products";
 import { registeredSpaceThumbnail, SHOWCASE_SPACES, type SpaceCard } from "@/lib/showcase";
 import { BrandProductShowcase } from "@/components/home/brand-product-showcase";
 import { HeroSlider } from "@/components/home/hero-slider";
+import { HomeFeatureBanner } from "@/components/home/home-feature-banner";
 import { SpaceMarketplace } from "@/components/home/space-marketplace";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +45,12 @@ const steps = [
   { icon: Wallet, title: "판매·정산 확인", description: "방송 후 주문과 정산 내역을 확인하세요." },
 ];
 
+const liveChecklist = [
+  { icon: Camera, title: "공간과 장비", description: "예약 가능 시간, 기본 조명·마이크 제공 여부, 인터넷 연결을 확인하세요." },
+  { icon: PackageCheck, title: "상품과 재고", description: "시연할 샘플과 판매 가능한 수량을 확인하고, 옵션별 가격을 정리하세요." },
+  { icon: ClipboardList, title: "방송 순서", description: "상품 소개 순서와 번호를 맞춰 두고, 방송 전에 화면과 소리를 점검하세요." },
+];
+
 export default async function HomePage() {
   const [{ spaces, available }, settings, brandProducts] = await Promise.all([getRegisteredSpaces(), getSettings(), getHomeBrandProducts()]);
 
@@ -59,7 +66,27 @@ export default async function HomePage() {
       )}
       <HeroSlider />
       <BrandProductShowcase data={brandProducts} />
+      <HomeFeatureBanner
+        id="brand-samples-heading"
+        title="다음 방송 상품, 샘플부터 살펴보세요"
+        description="직접 써보거나 시연해 보고 싶은 상품이 있다면, 샘플을 신청할 수 있는 브랜드를 찾아보세요."
+        image="/images/home/banner-brand-samples.webp"
+        href="/brands?sample=1"
+        linkLabel="샘플 가능한 브랜드 보기"
+        tone="light"
+        className="mt-7 sm:mt-9"
+      />
       <SpaceMarketplace spaces={[...spaces, ...SHOWCASE_SPACES]} registeredAvailable={available} />
+      <HomeFeatureBanner
+        id="live-prep-heading"
+        title="첫 라이브를 준비하고 있나요?"
+        description="공간을 고른 뒤, 장비부터 상품 소개 순서까지 방송 전에 챙길 항목을 확인해 보세요."
+        image="/images/home/banner-live-prep.webp"
+        href="#live-checklist"
+        linkLabel="방송 준비 체크리스트"
+        tone="dark"
+        className="mb-8 sm:mb-10"
+      />
       <section className="border-y border-[#E8E5DD] bg-white px-4 py-9 sm:px-6 sm:py-12">
         <p className="text-[11px] font-extrabold tracking-[0.2em] text-brand-700">YOUR LIVE WORKFLOW</p>
         <h2 className="mt-2 break-keep text-2xl font-black tracking-tight text-navy sm:text-3xl">공간을 찾은 뒤에도 함께합니다</h2>
@@ -74,12 +101,33 @@ export default async function HomePage() {
         </div>
         <Link href="/intro" className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-bold text-brand-700 hover:text-navy">서비스 자세히 보기<ArrowRight className="h-4 w-4" /></Link>
       </section>
+      <section id="live-checklist" aria-labelledby="live-checklist-heading" className="scroll-mt-20 px-4 pt-9 sm:px-6 sm:pt-12">
+        <h2 id="live-checklist-heading" className="break-keep text-2xl font-black tracking-tight text-navy sm:text-3xl">방송 전 체크리스트</h2>
+        <ul className="mt-4 divide-y divide-[#E8E5DD] overflow-hidden rounded-2xl border border-[#E8E5DD] bg-white sm:grid sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          {liveChecklist.map(({ icon: Icon, title, description }) => (
+            <li key={title} className="flex gap-3 p-4 sm:block">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-100 text-brand-800">
+                <Icon aria-hidden="true" className="h-4 w-4" />
+              </span>
+              <div className="sm:mt-3">
+                <h3 className="text-sm font-extrabold text-navy">{title}</h3>
+                <p className="mt-1 break-keep text-sm leading-6 text-slate-600">{description}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
       <section className="px-4 py-9 sm:px-6 sm:py-12">
         <div className="rounded-[24px] bg-navy p-5 text-white sm:p-7">
           <Headset className="h-6 w-6 text-brand-300" />
           <h2 className="mt-3 text-xl font-extrabold">이용에 도움이 필요하신가요?</h2>
           <p className="mt-2 text-sm leading-6 text-white/75">자주 묻는 질문을 찾아보거나, 운영팀에 1:1 문의를 남기세요.</p>
-          <Link href="/support" className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full bg-brand-500 px-5 text-sm font-extrabold text-navy hover:bg-brand-400">문의하기<ArrowRight className="h-4 w-4" /></Link>
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <Link href="/support#faq" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand-500 px-4 text-sm font-extrabold text-navy hover:bg-brand-400">
+              자주 묻는 질문<ArrowRight aria-hidden="true" className="h-4 w-4" />
+            </Link>
+            <Link href="/support#new-inquiry" className="inline-flex min-h-11 items-center px-1 text-sm font-bold text-white underline decoration-white/50 underline-offset-4 hover:text-brand-200">1:1 문의하기</Link>
+          </div>
         </div>
       </section>
     </>
