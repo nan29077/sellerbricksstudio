@@ -1,7 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { reportDbError, type DbIssue } from "@/lib/db-error";
 import { requireRole } from "@/lib/auth";
+import { runBookingMaintenance } from "@/lib/booking-automation";
 import { formatKRW } from "@/lib/utils";
 import { addDays, addMonths, hhmm, kstParts, kstStartOfMonth, WEEKDAYS } from "@/lib/kst";
 import { LIVE_STATUS } from "@/lib/status";
@@ -9,6 +11,7 @@ import { registeredSpaceThumbnail } from "@/lib/showcase";
 import {
   SOLD_ORDER_STATUSES, compactKRW, dailySeries, dday, deltaPct, greeting, hoursText, monthlySeries, overlapHours, todayLabel, zipSeries,
 } from "@/lib/dashboard";
+import { ProductMixPanel } from "@/components/dashboard/product-mix";
 import {
   DashHero, DataNotice, Empty, HeroButton, HeroPanel, KpiTile, Panel, Pill, RankList, ShortcutGrid, TodoList, TrendChart,
 } from "@/components/dashboard/kit";
@@ -36,7 +39,7 @@ async function load(userId: string) {
     orders, bookings, upcoming, lives, topProducts, settlePending, settlePaid,
     reviewTodo, repliedInquiries, activePromos, plannedPosts, toShip, notPrepared, favorites, frequent,
   ] = await Promise.all([
-    prisma.order.findMany({ where: { sellerId: userId, status: sold, createdAt: { gte: sixStart < lastMonthStart ? sixStart : lastMonthStart } }, select: { createdAt: true, totalAmount: true, liveSessionId: true } }),
+    prisma.order.findMany({ where: { sellerId: userId, status: sold, createdAt: { gte: sixStart < lastMonthStart ? sixStart : lastMonthStart } }, select: { createdAt: true, totalAmount: true, refundedAmount: true, liveSessionId: true } }),
     prisma.booking.findMany({ where: { sellerId: userId, createdAt: { gte: lastMonthStart } }, select: { createdAt: true, startAt: true, endAt: true, status: true } }),
     prisma.booking.findMany({
       where: { sellerId: userId, status: { in: ["APPROVED", "PENDING"] }, endAt: { gte: now } },
@@ -77,23 +80,23 @@ async function load(userId: string) {
 
   const mOrders = orders.filter((o) => o.createdAt >= monthStart);
   const pOrders = orders.filter((o) => o.createdAt >= lastMonthStart && o.createdAt < lastMonthSameDay);
-  const gmv = mOrders.reduce((s, o) => s + o.totalAmount, 0);
+  const gmv = mOrders.reduce((s, o) => s + (o.totalAmount - o.refundedAmount), 0);
   const mBookings = bookings.filter((b) => b.createdAt >= monthStart);
   const pBookings = bookings.filter((b) => b.createdAt < lastMonthSameDay);
   const usedHours = overlapHours(bookings.filter((b) => b.status === "APPROVED" || b.status === "COMPLETED"), monthStart, addMonths(monthStart, 1));
 
   const gmvBySession = new Map<string, number>();
-  for (const o of orders) gmvBySession.set(o.liveSessionId, (gmvBySession.get(o.liveSessionId) ?? 0) + o.totalAmount);
+  for (const o of orders) gmvBySession.set(o.liveSessionId, (gmvBySession.get(o.liveSessionId) ?? 0) + (o.totalAmount - o.refundedAmount));
 
   const liveMonths = await prisma.liveSession.findMany({ where: { sellerId: userId, status: { in: ["LIVE", "ENDED"] }, createdAt: { gte: sixStart } }, select: { createdAt: true, scheduledStart: true } });
 
   return {
-    gmv, gmvDelta: deltaPct(gmv, pOrders.reduce((s, o) => s + o.totalAmount, 0)),
+    gmv, gmvDelta: deltaPct(gmv, pOrders.reduce((s, o) => s + (o.totalAmount - o.refundedAmount), 0)),
     orderCount: mOrders.length, aov: mOrders.length ? gmv / mOrders.length : 0,
     bookingCount: mBookings.length, bookingDelta: deltaPct(mBookings.length, pBookings.length), usedHours,
-    gmvDaily: dailySeries(orders.filter((o) => o.createdAt >= addDays(now, -29)), 30, (o) => o.createdAt, (o) => o.totalAmount),
+    gmvDaily: dailySeries(orders.filter((o) => o.createdAt >= addDays(now, -29)), 30, (o) => o.createdAt, (o) => (o.totalAmount - o.refundedAmount)),
     trend: zipSeries(
-      monthlySeries(orders.filter((o) => o.createdAt >= sixStart), 6, (o) => o.createdAt, (o) => o.totalAmount),
+      monthlySeries(orders.filter((o) => o.createdAt >= sixStart), 6, (o) => o.createdAt, (o) => (o.totalAmount - o.refundedAmount)),
       monthlySeries(liveMonths, 6, (l) => l.scheduledStart ?? l.createdAt),
     ),
     upcoming, lives: lives.map((l) => ({ ...l, gmv: gmvBySession.get(l.id) ?? 0 })),
@@ -106,12 +109,14 @@ async function load(userId: string) {
 
 export default async function SellerDashboard() {
   const user = await requireRole(["SELLER"]);
+  if (!user.id.startsWith("demo-")) await runBookingMaintenance({ sellerId: user.id });
   let d: Awaited<ReturnType<typeof load>> | null = null;
-  try { d = await load(user.id); } catch { /* DB 미연결 */ }
+  let issue: DbIssue = "unknown";
+  try { d = await load(user.id); } catch (e) { issue = reportDbError("seller-dashboard", e); }
 
   const hello = `${greeting()}, ${user.name ?? "셀러"}님`;
   if (!d) {
-    return <div className="space-y-6"><DashHero eyebrow={`SELLER · ${todayLabel()}`} title={hello} /><DataNotice /></div>;
+    return <div className="space-y-6"><DashHero eyebrow={`SELLER · ${todayLabel()}`} title={hello} /><DataNotice issue={issue} /></div>;
   }
 
   const next = d.upcoming[0];
@@ -134,7 +139,7 @@ export default async function SellerDashboard() {
             <HeroPanel title="다음 일정" href={next.liveSession ? `/seller/live-sessions/${next.liveSession.id}` : next.status === "APPROVED" ? `/seller/live-sessions?bookingId=${next.id}` : "/seller/bookings"} cta={next.liveSession ? "라이브 관리" : next.status === "APPROVED" ? "라이브 준비하기" : "예약 확인"}>
               <div className="flex items-center gap-3">
                 <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-brand-500 text-center text-navy">
-                  <span><span className="block text-[10px] font-bold">{np.month}월</span><span className="block text-xl font-extrabold leading-none">{np.day}</span></span>
+                  <span><span className="block text-[11px] font-bold">{np.month}월</span><span className="block text-xl font-extrabold leading-none">{np.day}</span></span>
                 </span>
                 <div className="min-w-0">
                   <p className="flex items-center gap-1.5"><span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-extrabold text-brand-200">{dday(next.startAt)}</span><span className="text-xs text-white/60">{BOOKING_LABEL[next.status]?.label}</span></p>
@@ -185,7 +190,7 @@ export default async function SellerDashboard() {
                   <li key={b.id}>
                     <Link href="/seller/bookings" className="flex items-center gap-3 rounded-2xl border border-[#EEEAE2] p-3 transition hover:border-brand-300 hover:bg-brand-50/40">
                       <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[#F6F2E9] text-center text-navy">
-                        <span><span className="block text-[10px] font-bold text-slate-500">{WEEKDAYS[p.weekday]}</span><span className="block text-lg font-extrabold leading-none">{p.day}</span></span>
+                        <span><span className="block text-[11px] font-bold text-slate-500">{WEEKDAYS[p.weekday]}</span><span className="block text-lg font-extrabold leading-none">{p.day}</span></span>
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-bold text-navy">{b.facility.name}</span>
@@ -207,6 +212,8 @@ export default async function SellerDashboard() {
             items={d.topProducts.map((p) => ({ key: p.productName, name: p.productName, sub: `${(p._sum.quantity ?? 0).toLocaleString("ko-KR")}개 판매`, value: p._sum.lineTotal ?? 0, valueLabel: compactKRW(p._sum.lineTotal ?? 0) }))} />
         </Panel>
       </div>
+
+      <ProductMixPanel scope={{ sellerId: user.id }} />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <Panel eyebrow="LIVE REPORT" title="최근 라이브 성과" action={{ href: "/seller/live-sessions", label: "라이브 관리" }}>
@@ -245,7 +252,7 @@ export default async function SellerDashboard() {
                       <span className="block truncate text-sm font-bold text-navy">{f.name}</span>
                       <span className="flex items-center gap-1 text-xs text-slate-500"><MapPin className="h-3 w-3" />{f.region} · {f.type === "WAREHOUSE" ? "창고" : "스튜디오"} · <Star className="h-3 w-3 fill-amber-400 text-amber-400" />{f.rating.toFixed(1)}</span>
                     </span>
-                    <span className="flex shrink-0 flex-col items-end gap-1"><Pill tone={f.tag === "찜" ? "red" : f.tag === "추천" ? "brand" : "violet"}>{f.tag}</Pill><span className="text-[10px] font-bold text-emerald-600">이용료 무료</span></span>
+                    <span className="flex shrink-0 flex-col items-end gap-1"><Pill tone={f.tag === "찜" ? "red" : f.tag === "추천" ? "brand" : "violet"}>{f.tag}</Pill><span className="text-[11px] font-bold text-emerald-600">이용료 무료</span></span>
                   </Link>
                 </li>
               ))}

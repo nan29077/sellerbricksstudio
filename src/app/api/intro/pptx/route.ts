@@ -1,8 +1,24 @@
 import { NextResponse } from "next/server";
+import { clientIp, consume, MINUTE } from "@/lib/rate-limit";
+
+function pptxResponse(buf: Buffer) {
+  return new NextResponse(new Uint8Array(buf), {
+    headers: {
+      "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "Content-Disposition": "attachment; filename*=UTF-8''%EC%85%80%EB%9F%AC%EB%B8%8C%EB%A6%AD%EC%8A%A4%EC%8A%A4%ED%8A%9C%EB%94%94%EC%98%A4_%EC%86%8C%EA%B0%9C%EC%84%9C.pptx",
+      "Cache-Control": "public, max-age=3600",
+    },
+  });
+}
 
 // PptxGenJS를 서버사이드에서 사용
-export async function GET() {
+// 소개서는 내용이 고정이라 한 번 만든 파일을 재사용한다. (호출마다 새로 만들지 않음)
+let cached: { at: number; buf: Buffer } | null = null;
+
+export async function GET(req: Request) {
   try {
+    if (!(await consume(`pptx:${clientIp(req)}`, 20, 10 * MINUTE))) return new Response("요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.", { status: 429 });
+    if (cached && Date.now() - cached.at < 6 * 3600000) return pptxResponse(cached.buf);
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const PptxGenJS = require("pptxgenjs");
     const pptx = new PptxGenJS();
@@ -202,17 +218,11 @@ export async function GET() {
     }
 
     const buffer = await pptx.write({ outputType: "arraybuffer" });
-    const bytes = new Uint8Array(buffer as ArrayBuffer);
-
-    return new NextResponse(bytes, {
-      headers: {
-        "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        "Content-Disposition": 'attachment; filename*=UTF-8\'\'%EC%85%80%EB%9F%AC%EB%B8%8C%EB%A6%AD%EC%8A%A4%EC%8A%A4%ED%8A%9C%EB%94%94%EC%98%A4_%EC%86%8C%EA%B0%9C%EC%84%9C.pptx',
-      },
-    });
+    cached = { at: Date.now(), buf: Buffer.from(buffer as ArrayBuffer) };
+    return pptxResponse(cached.buf);
   } catch (err: any) {
     console.error("PPTX generation error:", err);
-    return new NextResponse(JSON.stringify({ error: "PPT 생성 실패", detail: String(err?.message ?? err) }), {
+    return new NextResponse(JSON.stringify({ error: "PPT 생성 실패" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });

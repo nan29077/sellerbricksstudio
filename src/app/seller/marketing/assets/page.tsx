@@ -74,11 +74,11 @@ export default async function SellerAssets({ searchParams }: { searchParams: SP 
                   </div>
                   <p className="font-bold text-navy">{a.title}</p>
                   {a.content && <p className="line-clamp-4 whitespace-pre-line text-xs text-slate-600">{a.content}</p>}
-                  {a.tags && <div className="flex flex-wrap gap-1">{a.tags.split(",").map((t) => t.trim()).filter(Boolean).map((t) => <span key={t} className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-slate-600">#{t}</span>)}</div>}
+                  {a.tags && <div className="flex flex-wrap gap-1">{a.tags.split(",").map((t) => t.trim()).filter(Boolean).map((t) => <span key={t} className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-slate-600">#{t}</span>)}</div>}
                   <div className="mt-auto flex flex-wrap items-center gap-1 pt-2">
                     {a.content && <CopyText text={a.content} label="문구 복사" />}
                     {a.url && <a href={a.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-navy hover:bg-muted"><ExternalLink className="h-3.5 w-3.5" />열기</a>}
-                    <span className="ml-auto text-[10px] text-muted-foreground">{formatDate(a.updatedAt)}</span>
+                    <span className="ml-auto text-[11px] text-muted-foreground">{formatDate(a.updatedAt)}</span>
                     <ResourceForm url={API} id={a.id} fields={fields} title="소재 수정" iconOnly triggerVariant="ghost" initial={a} />
                     <DeleteButton url={`${API}/${a.id}`} />
                   </div>

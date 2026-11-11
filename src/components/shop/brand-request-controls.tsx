@@ -20,7 +20,7 @@ const actionLabels = {
 };
 
 export function BrandRequestControls({ request, manager }: {
-  request: { id: string; status: BrandRequestStatus; kind: BrandRequestKind; unitPrice: number }; manager: boolean;
+  request: { id: string; status: BrandRequestStatus; kind: BrandRequestKind; unitPrice: number; paymentStatus?: string }; manager: boolean;
 }) {
   const router = useRouter();
   const [selected, setSelected] = useState("");
@@ -35,7 +35,11 @@ export function BrandRequestControls({ request, manager }: {
     setBusy(true);
     setError("");
     try {
-      await submitBrandCommand({ action: "transition", requestId: request.id, status: selected, trackingNumber: fields.trackingNumber });
+      await submitBrandCommand({
+        action: "transition", requestId: request.id, status: selected,
+        ...(fields.trackingNumber && { trackingNumber: fields.trackingNumber }), ...(fields.carrier && { carrier: fields.carrier }),
+        ...(fields.reason && { reason: fields.reason }),
+      });
       setSelected("");
       router.refresh();
     } catch (error) {
@@ -51,11 +55,17 @@ export function BrandRequestControls({ request, manager }: {
         <Select required value={selected} onChange={(event) => setSelected(event.target.value)}>
           <option value="">처리할 작업 선택</option>
           {actions.map((status) => (
-            <option key={status} value={status}>{request.status === "AWAITING_PAYMENT" && status === "APPROVED" ? "입금 확인" : actionLabels[status]}</option>
+            <option key={status} value={status}>{request.status === "AWAITING_PAYMENT" && status === "APPROVED" ? "입금 확인"
+              : request.kind === "SUPPLY" && status === "COMPLETED" ? "입고 확인 (창고 재고 반영)"
+              : request.paymentStatus === "PAID" && (status === "REJECTED" || status === "CANCELLED") ? `${actionLabels[status]} (자동 환불)` : actionLabels[status]}</option>
           ))}
         </Select>
       </Label>
-      {selected === "SHIPPED" && <Label className="block flex-1">택배사와 운송장 번호<Input name="trackingNumber" maxLength={100} required /></Label>}
+      {selected === "SHIPPED" && <>
+        <Label className="block flex-1">택배사<Input name="carrier" maxLength={30} placeholder="CJ대한통운" /></Label>
+        <Label className="block flex-1">운송장 번호<Input name="trackingNumber" maxLength={100} required /></Label>
+      </>}
+      {(selected === "REJECTED" || (manager && selected === "CANCELLED")) && <Label className="block basis-full">사유{selected === "REJECTED" ? " (필수)" : ""}<Input name="reason" maxLength={300} required={selected === "REJECTED"} /></Label>}
       <Button variant="outline" disabled={!selected || busy}>적용</Button>
       {selected === "REFUNDED" && <p className="basis-full text-xs text-slate-600">구매자에게 직접 환불한 뒤 처리해 주세요.</p>}
       {selected === "APPROVED" && request.status === "AWAITING_PAYMENT" && <p className="basis-full text-xs text-slate-600">계좌의 실제 입금 내역을 확인한 뒤 처리해 주세요.</p>}

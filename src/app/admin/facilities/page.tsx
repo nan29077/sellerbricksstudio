@@ -107,7 +107,7 @@ export default async function AdminFacilities({ searchParams }: { searchParams: 
                     </div>
                     <div className="grid shrink-0 grid-cols-4 gap-2 text-center lg:w-[360px]">
                       {[["요금/h", formatKRW(f.basePrice)], ["평점", `★${f.rating.toFixed(1)} (${f._count.reviews})`], ["이번 달", `${r?._count ?? 0}건`], ["매출", formatKRW(r?._sum.totalPrice ?? 0)]].map(([l, v]) => (
-                        <div key={l} className="rounded-xl bg-muted/50 p-2"><p className="text-[10px] text-slate-500">{l}</p><p className="truncate text-xs font-bold text-navy">{v}</p></div>
+                        <div key={l} className="rounded-xl bg-muted/50 p-2"><p className="text-[11px] text-slate-500">{l}</p><p className="truncate text-xs font-bold text-navy">{v}</p></div>
                       ))}
                       <p className="col-span-4 text-[11px] text-slate-500">누적 예약 {f._count.bookings}건 · 대기 {pend.get(f.id) ?? 0}건 · 찜 {f._count.favorites}</p>
                     </div>

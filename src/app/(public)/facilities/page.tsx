@@ -75,18 +75,18 @@ export default async function FacilitiesPage({
       <form className="mt-5 flex flex-col gap-3 rounded-xl border border-border bg-white p-4" action="/facilities" method="get">
         <div className="flex items-center gap-2 rounded-lg border border-border px-3">
           <Search className="h-4 w-4 text-muted-foreground" />
-          <input name="q" defaultValue={q} placeholder="창고(스튜디오)명 또는 지역 검색" className="h-11 flex-1 bg-transparent text-sm outline-none" />
+          <input name="q" aria-label="창고(스튜디오)명 또는 지역 검색" defaultValue={q} placeholder="창고(스튜디오)명 또는 지역 검색" className="h-11 flex-1 bg-transparent text-sm outline-none" />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <select name="type" defaultValue={type ?? ""} className="h-10 rounded-lg border border-border px-2 text-sm bg-white">
+          <select name="type" aria-label="창고 종류" defaultValue={type ?? ""} className="h-10 rounded-lg border border-border px-2 text-sm bg-white">
             <option value="">전체 구분</option>
             <option value="WAREHOUSE">창고</option>
             <option value="STUDIO">스튜디오</option>
           </select>
-          <select name="region" defaultValue={region ?? ""} className="h-10 rounded-lg border border-border px-2 text-sm bg-white">
+          <select name="region" aria-label="지역" defaultValue={region ?? ""} className="h-10 rounded-lg border border-border px-2 text-sm bg-white">
             {REGIONS.map((r) => <option key={r} value={r === "전체" ? "" : r}>{r}</option>)}
           </select>
-          <select name="sort" defaultValue={sort ?? ""} className="h-10 rounded-lg border border-border px-2 text-sm bg-white">
+          <select name="sort" aria-label="정렬" defaultValue={sort ?? ""} className="h-10 rounded-lg border border-border px-2 text-sm bg-white">
             <option value="">인기순</option>
             <option value="price">상품 많은 순</option>
           </select>

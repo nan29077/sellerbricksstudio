@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { PoChips, PO_CHIP_INCLUDE } from "@/components/brand/po-chips";
 import { requireRole } from "@/lib/auth";
 import { PageHeader } from "@/components/layout/dashboard-widgets";
 import { Table, Td } from "@/components/ui/table";
@@ -7,6 +8,7 @@ import { EmptyState } from "@/components/ui/empty";
 import { ORDER_STATUS } from "@/lib/status";
 import { formatKRW, formatDateTime } from "@/lib/utils";
 import { OrderStatusActions } from "@/components/order-status-actions";
+import { ORDER_ACTION_INCLUDE, orderActionProps } from "@/lib/order-action-props";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +29,7 @@ export default async function SellerOrders() {
     orders = await prisma.order.findMany({
       where: { sellerId: user.id },
       orderBy: { createdAt: "desc" },
-      include: { liveSession: true, _count: { select: { items: true } } },
+      include: { liveSession: true, _count: { select: { items: true } }, purchaseOrders: PO_CHIP_INCLUDE, ...ORDER_ACTION_INCLUDE },
     });
     if (orders.length === 0) { orders = DUMMY_ORDERS; isDemo = true; }
   } catch {
@@ -53,9 +55,9 @@ export default async function SellerOrders() {
                 <Td key="session">{o.liveSession?.title ?? "-"}</Td>,
                 <Td key="items">{o._count?.items ?? 0}개</Td>,
                 <span key="amount" className="font-semibold text-navy">{formatKRW(o.totalAmount)}</span>,
-                <Badge key="status" tone={st.tone}>{st.label}</Badge>,
+                <div key="status"><Badge tone={st.tone}>{st.label}</Badge><PoChips pos={o.purchaseOrders} /></div>,
                 <Td key="date">{formatDateTime(o.createdAt)}</Td>,
-                isDemo ? <span key="act" className="text-xs text-muted-foreground">예시</span> : <OrderStatusActions key="act" orderId={o.id} status={o.status} />,
+                isDemo ? <span key="act" className="text-xs text-muted-foreground">예시</span> : <OrderStatusActions key="act" {...orderActionProps(o)} />,
               ];
             })}
           />

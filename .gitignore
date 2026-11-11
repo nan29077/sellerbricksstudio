@@ -5,3 +5,10 @@ node_modules
 *.log
 .DS_Store
 prisma/dev.db
+_backup/
+_to_delete/
+.sync-test.tmp
+tsconfig.tsbuildinfo
+_typecheck/
+public/uploads/
+commit-push.bat

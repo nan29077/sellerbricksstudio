@@ -81,7 +81,7 @@ export function HeroSlider() {
       </div>
 
       <div className="px-5 pb-3 pt-20 sm:px-9 sm:pb-5">
-        <p className="text-[10px] font-extrabold tracking-[0.18em] text-brand-200 sm:text-xs">{slide.eyebrow}</p>
+        <p className="text-[11px] font-extrabold tracking-[0.18em] text-brand-200 sm:text-xs">{slide.eyebrow}</p>
         <h1 className="mt-3 break-keep text-[clamp(1.65rem,7vw,2.45rem)] font-black leading-[1.14] tracking-[-0.055em] sm:text-[2.6rem]">
           {slide.title}<br /><span className="text-[#FFD05A]">{slide.highlight}</span>
         </h1>
@@ -98,11 +98,11 @@ export function HeroSlider() {
               <span className={`h-1.5 rounded-full transition-all ${index === current ? "w-6 bg-brand-300" : "w-2 bg-white/45"}`} />
             </button>
           ))}
-          <span className="text-[10px] font-bold tabular-nums text-white/75">0{current + 1} / 0{slides.length}</span>
+          <span className="text-[11px] font-bold tabular-nums text-white/75">0{current + 1} / 0{slides.length}</span>
           <button type="button" onClick={() => setPlaying(!playing)} aria-label={playing ? "자동 재생 일시정지" : "자동 재생 시작"} className="grid w-9 place-items-center text-white/85 hover:text-brand-200">
             {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           </button>
-          <span className="ml-auto hidden text-[10px] text-white/70 sm:inline">{slide.caption}</span>
+          <span className="ml-auto hidden text-[11px] text-white/70 sm:inline">{slide.caption}</span>
         </div>
       </div>
     </section>

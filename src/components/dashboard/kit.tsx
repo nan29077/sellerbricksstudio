@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight, CheckCircle2, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DB_ISSUE_HELP, type DbIssue } from "@/lib/db-error";
 
 /**
  * 역할별 대시보드 공용 위젯 (서버 컴포넌트 전용, 외부 차트 라이브러리 없음)
@@ -95,7 +96,7 @@ export function Panel({ eyebrow, title, action, children, className, bodyClassNa
     <section className={cn("min-w-0 rounded-[24px] border border-[#E9E5DC] bg-white p-5 shadow-sm sm:p-6", className)}>
       <div className="mb-4 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          {eyebrow && <p className="text-[10px] font-extrabold tracking-[0.18em] text-brand-700">{eyebrow}</p>}
+          {eyebrow && <p className="text-[11px] font-extrabold tracking-[0.18em] text-brand-700">{eyebrow}</p>}
           <h2 className="mt-0.5 break-keep text-base font-extrabold text-navy sm:text-lg">{title}</h2>
         </div>
         {isLink ? (
@@ -113,7 +114,7 @@ export function SectionTitle({ eyebrow, title, right }: { eyebrow: string; title
   return (
     <div className="mb-3 flex items-end justify-between gap-3">
       <div>
-        <p className="text-[10px] font-extrabold tracking-[0.18em] text-brand-700">{eyebrow}</p>
+        <p className="text-[11px] font-extrabold tracking-[0.18em] text-brand-700">{eyebrow}</p>
         <h2 className="mt-0.5 text-lg font-extrabold text-navy sm:text-xl">{title}</h2>
       </div>
       {right}
@@ -135,11 +136,12 @@ export function Empty({ icon: I, text, action }: { icon?: Icon; text: string; ac
   );
 }
 
-export function DataNotice() {
+export function DataNotice({ issue = "unknown" }: { issue?: DbIssue }) {
+  const help = DB_ISSUE_HELP[issue];
   return (
     <div role="status" className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
-      <p className="font-bold">데이터를 불러오지 못했습니다</p>
-      <p className="mt-1 text-amber-800">데이터베이스 연결을 확인해 주세요. 연결되면 수치가 자동으로 표시됩니다.</p>
+      <p className="font-bold">{help.title}</p>
+      <p className="mt-1 break-keep text-amber-800">{help.body}</p>
     </div>
   );
 }
@@ -249,8 +251,9 @@ export function TrendChart({ data, a, b, height = 170 }: {
         {b && (
           <div className="absolute inset-0 flex items-end">
             {data.map((d, i) => (
-              <div key={i} className="flex h-full flex-1 items-end justify-center px-[18%]">
-                <div className="w-full max-w-[22px] rounded-t-[5px] bg-navy/[0.13]" style={{ height: `${Math.max((d.b ?? 0) > 0 ? 3 : 0, ((d.b ?? 0) / maxB) * 80)}%` }} />
+              <div key={i} className="flex h-full min-w-0 flex-1 items-end justify-center">
+                {/* 막대 너비는 칸 너비 기준(%)으로. 예전 px-[18%] 는 차트 전체 너비 기준이라 모바일에서 화면 밖으로 넘쳤다 */}
+                <div className="w-[64%] max-w-[22px] rounded-t-[5px] bg-navy/[0.13]" style={{ height: `${Math.max((d.b ?? 0) > 0 ? 3 : 0, ((d.b ?? 0) / maxB) * 80)}%` }} />
               </div>
             ))}
           </div>
@@ -275,7 +278,7 @@ export function TrendChart({ data, a, b, height = 170 }: {
       </div>
       <div className="mt-2 flex">
         {data.map((d, i) => (
-          <span key={i} className="flex-1 truncate text-center text-[10px] text-slate-400">{i % step === (n - 1) % step ? d.label : ""}</span>
+          <span key={i} className="flex-1 truncate text-center text-[11px] text-slate-400">{i % step === (n - 1) % step ? d.label : ""}</span>
         ))}
       </div>
     </div>
@@ -301,7 +304,7 @@ export function Donut({ segments, centerValue, centerLabel, size = 132 }: {
           })}
         </svg>
         <div className="absolute inset-0 grid place-items-center text-center">
-          <div><p className="text-lg font-extrabold leading-none text-navy">{centerValue}</p><p className="mt-1 text-[10px] font-semibold text-slate-500">{centerLabel}</p></div>
+          <div><p className="text-lg font-extrabold leading-none text-navy">{centerValue}</p><p className="mt-1 text-[11px] font-semibold text-slate-500">{centerLabel}</p></div>
         </div>
       </div>
       <ul className="w-full min-w-0 space-y-2">
@@ -345,7 +348,7 @@ export function Heatmap({ rows, cols, values, unit = "건" }: { rows: string[]; 
     <div className="overflow-x-auto">
       <div className="grid min-w-[340px] gap-1" style={{ gridTemplateColumns: `28px repeat(${cols.length}, minmax(0,1fr))` }}>
         <span />
-        {cols.map((c) => <span key={c} className="pb-1 text-center text-[10px] font-semibold text-slate-400">{c}</span>)}
+        {cols.map((c) => <span key={c} className="pb-1 text-center text-[11px] font-semibold text-slate-400">{c}</span>)}
         {rows.map((r, ri) => (
           <div key={r} className="contents">
             <span className="self-center text-[11px] font-bold text-slate-500">{r}</span>
@@ -353,7 +356,7 @@ export function Heatmap({ rows, cols, values, unit = "건" }: { rows: string[]; 
               const t = v / max;
               return (
                 <span key={ci} title={`${r} ${cols[ci]} · ${v}${unit}`}
-                  className={cn("grid h-7 place-items-center rounded-md text-[10px] font-bold", t > 0.55 ? "text-navy" : "text-slate-500")}
+                  className={cn("grid h-7 place-items-center rounded-md text-[11px] font-bold", t > 0.55 ? "text-navy" : "text-slate-500")}
                   style={{ background: v === 0 ? "#F6F4EF" : `rgba(245,166,35,${0.15 + t * 0.75})` }}>
                   {v > 0 ? v : ""}
                 </span>
@@ -362,7 +365,7 @@ export function Heatmap({ rows, cols, values, unit = "건" }: { rows: string[]; 
           </div>
         ))}
       </div>
-      <div className="mt-3 flex items-center justify-end gap-1.5 text-[10px] text-slate-400">
+      <div className="mt-3 flex items-center justify-end gap-1.5 text-[11px] text-slate-400">
         적음{[0.15, 0.35, 0.6, 0.9].map((o) => <span key={o} className="h-2.5 w-4 rounded-sm" style={{ background: `rgba(245,166,35,${o})` }} />)}많음
       </div>
     </div>
@@ -379,7 +382,7 @@ export function Gauge({ value, label, tone = "brand" }: { value: number; label: 
         <circle cx="21" cy="21" r="15.915" fill="none" stroke={TONES[tone].hex} strokeWidth="4.5" strokeLinecap="round" strokeDasharray={`${v} ${100 - v}`} />
       </svg>
       <div className="absolute inset-0 grid place-items-center text-center">
-        <div><p className="text-lg font-extrabold leading-none text-navy">{v}%</p><p className="mt-0.5 text-[10px] text-slate-500">{label}</p></div>
+        <div><p className="text-lg font-extrabold leading-none text-navy">{v}%</p><p className="mt-0.5 text-[11px] text-slate-500">{label}</p></div>
       </div>
     </div>
   );
@@ -428,7 +431,7 @@ export function TodoList({ items, emptyText = "지금 처리할 일이 없어요
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-1.5 text-sm font-bold text-navy">
                   <span className="truncate">{t.label}</span>
-                  {t.urgent && <span className="shrink-0 rounded-full bg-rose-500 px-1.5 py-px text-[9px] font-extrabold text-white">긴급</span>}
+                  {t.urgent && <span className="shrink-0 rounded-full bg-rose-500 px-1.5 py-px text-[11px] font-extrabold text-white">긴급</span>}
                 </span>
                 {t.desc && <span className="block truncate text-xs text-slate-500">{t.desc}</span>}
               </span>
@@ -514,7 +517,7 @@ export function DayTimeline({ rows, from = 8, to = 24, now }: {
     <div className="overflow-x-auto">
       <div className="min-w-[560px]">
         <div className="relative ml-28 h-5">
-          {ticks.map((t) => <span key={t} className="absolute -translate-x-1/2 text-[10px] font-semibold text-slate-400" style={{ left: pos(t) }}>{t}시</span>)}
+          {ticks.map((t) => <span key={t} className="absolute -translate-x-1/2 text-[11px] font-semibold text-slate-400" style={{ left: pos(t) }}>{t}시</span>)}
         </div>
         <div className="space-y-2">
           {rows.map((r) => (
@@ -528,7 +531,7 @@ export function DayTimeline({ rows, from = 8, to = 24, now }: {
                   const inner = (
                     <>
                       <span className="block truncate text-[11px] font-bold">{b.title}</span>
-                      {b.sub && <span className="block truncate text-[10px] opacity-75">{b.sub}</span>}
+                      {b.sub && <span className="block truncate text-[11px] opacity-75">{b.sub}</span>}
                     </>
                   );
                   const cls = cn("absolute inset-y-1 overflow-hidden rounded-lg border-l-[3px] px-2 py-0.5 leading-tight", t.soft, t.text);
@@ -564,7 +567,7 @@ export function ShortcutGrid({ items, cols = "sm:grid-cols-2 xl:grid-cols-3" }: 
               <span className="block truncate text-sm font-bold text-navy">{a.title}</span>
               <span className="block truncate text-xs text-slate-500">{a.desc}</span>
             </span>
-            {a.badge ? <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-extrabold text-white">{a.badge}</span>
+            {a.badge ? <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[11px] font-extrabold text-white">{a.badge}</span>
               : <ArrowUpRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-brand-700" />}
           </Link>
         );

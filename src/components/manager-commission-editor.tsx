@@ -1,4 +1,5 @@
 "use client";
+import { appAlert } from "@/components/ui/app-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ export function ManagerCommissionEditor({ managerId, type, value }: { managerId:
     setBusy(true);
     const res = await fetch(`/api/admin/managers/${managerId}/commission`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ commissionType: t, commissionValue: Number(v) }) });
     const json = await res.json(); setBusy(false);
-    if (!json.ok) { alert(json.error); return; }
+    if (!json.ok) { void appAlert(json.error); return; }
     router.refresh();
   }
   return (

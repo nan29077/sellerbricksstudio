@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Boxes, ClipboardList, Headset, House, LayoutTemplate, LogIn, Package, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Boxes, ClipboardList, Headset, House, LayoutTemplate, LogIn, MessageSquare, Package, ShoppingBag } from "lucide-react";
+import { PartnerApply } from "@/components/brand/partner-apply";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
-import { BRAND_BUYER_ROLES, BRAND_CATEGORIES, brandArtworkFor } from "@/lib/brands";
+import { BRAND_BUYER_ROLES, BRAND_CATEGORIES, brandArtworkFor, parseOptions } from "@/lib/brands";
+import { categoryFilterValues } from "@/lib/categories";
+import { getPolicy } from "@/lib/policy";
+import { BrandImportButton } from "@/components/shop/brand-import-button";
 import { BRAND_ARTWORK } from "@/lib/shop-artwork";
 import { formatKRW } from "@/lib/utils";
 import { pageOf, sp, type SP } from "@/lib/list";
@@ -24,31 +28,51 @@ export default async function BrandStorefront({ params, searchParams }: { params
       select: {
         id: true, ownerId: true, owner: { select: { isActive: true, role: true } }, status: true,
         name: true, tagline: true, description: true, logoUrl: true, bannerUrl: true, backgroundUrl: true,
-        paymentInstructions: true,
+        paymentInstructions: true, categories: true, csPhone: true, returnAddress: true, requireSellerApproval: true,
       },
     }),
     getSessionUser(),
   ]);
   if (!shop) notFound();
   const published = shop.status === "APPROVED" && shop.owner.isActive && shop.owner.role === "BRAND_ADMIN";
-  if (!published && user?.id !== shop.ownerId && user?.role !== "SUPER_ADMIN") notFound();
+  const isMine = user?.id === shop.ownerId || (user?.role === "BRAND_ADMIN" && !!(await prisma.brandMember.findFirst({ where: { shopId: shop.id, userId: user.id }, select: { id: true } })));
+  if (!published && !isMine && user?.role !== "SUPER_ADMIN") notFound();
 
   const buyer = !!user && BRAND_BUYER_ROLES.includes(user.role)
     && (user.role !== "FACILITY_ADMIN" || !(await getSettings()).facilityDisabled);
   const category = BRAND_CATEGORIES.find((value) => value === sp(searchParams, "category"));
   const { page, size, skip, take } = pageOf(searchParams, 12);
-  const where = { shopId: shop.id, isActive: true, ...(category && { category }) };
-  const [products, total] = await Promise.all([
+  const where = { shopId: shop.id, isActive: true, ...(category && { category: { in: categoryFilterValues(category) } }) };
+  const [products, total, policy, facilities] = await Promise.all([
     prisma.brandProduct.findMany({ where, skip, take, orderBy: { createdAt: "desc" } }),
     prisma.brandProduct.count({ where }),
+    getPolicy(),
+    buyer && user?.role === "FACILITY_ADMIN"
+      ? prisma.facility.findMany({ where: { ownerId: user.id, status: { not: "SUSPENDED" } }, select: { id: true, name: true }, orderBy: { createdAt: "asc" } })
+      : Promise.resolve([] as { id: string; name: string }[]),
   ]);
+  // 계정당 샘플 신청 한도 안내용
+  const usedSamples = buyer && user ? await prisma.brandRequest.groupBy({
+    by: ["productId"], where: { buyerId: user.id, kind: "SAMPLE", productId: { in: products.map((p) => p.id) }, status: { notIn: ["REJECTED", "CANCELLED", "REFUNDED"] } },
+    _count: true,
+  }) : [];
+  const used = new Map(usedSamples.map((u) => [u.productId, u._count]));
+  const imported = buyer && user ? new Set((user.role === "SELLER"
+    ? await prisma.sellerBrandProduct.findMany({ where: { sellerId: user.id, brandProductId: { in: products.map((p) => p.id) } }, select: { brandProductId: true } })
+    : await prisma.facilityProduct.findMany({ where: { facility: { ownerId: user.id }, brandProductId: { in: products.map((p) => p.id) } }, select: { brandProductId: true } })
+  ).map((x) => x.brandProductId!)) : new Set<string>();
+  // 판매처 관계: 차단되면 신청·가져오기 불가, 승인제 브랜드는 승인 후 가져오기
+  const partner = buyer && user ? await prisma.brandPartner.findUnique({ where: { shopId_userId: { shopId: shop.id, userId: user.id } }, select: { status: true } }) : null;
+  const blocked = partner?.status === "BLOCKED";
+  const canImport = !blocked && (!shop.requireSellerApproval || partner?.status === "APPROVED");
   const path = `/brands/${shop.id}`;
   const login = `/login?callbackUrl=${encodeURIComponent(path)}`;
-  const management = user?.role === "SUPER_ADMIN" ? `/admin/brands/${shop.id}` : user?.id === shop.ownerId ? "/brand/dashboard" : null;
+  const management = user?.role === "SUPER_ADMIN" ? `/admin/brands/${shop.id}` : isMine ? "/brand/shop" : null;
   const links = [
     { href: "#shop-home", label: "샵 홈", icon: House },
     { href: "#shop-products", label: "상품", icon: Boxes },
     ...(buyer ? [{ href: "/brand-requests", label: "내 신청", icon: ClipboardList }] : []),
+    ...(buyer && !blocked ? [{ href: `/brand-messages?shop=${shop.id}`, label: "브랜드 문의", icon: MessageSquare }] : []),
     ...(management ? [{ href: management, label: "샵 관리", icon: LayoutTemplate }] : []),
     ...(!user ? [{ href: login, label: "로그인", icon: LogIn }] : []),
     { href: "/brands", label: "브랜드샵", icon: ShoppingBag },
@@ -82,7 +106,11 @@ export default async function BrandStorefront({ params, searchParams }: { params
           </div>
           {shop.description && <p className="mt-4 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-600">{shop.description}</p>}
           {!user && <Link href={login} className={`${buttonVariants({ size: "sm" })} mt-4`}>로그인하고 신청하기</Link>}
-          {user && !buyer && published && <p className="mt-3 text-xs text-slate-600">공급 신청과 샘플 주문은 셀러와 창고(스튜디오) 관리자 계정으로 이용할 수 있습니다.</p>}
+          {shop.categories.length > 0 && <div className="mt-3 flex flex-wrap gap-1">{shop.categories.map((c) => <span key={c} className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold">{c}</span>)}</div>}
+          {(shop.csPhone || shop.returnAddress) && <p className="mt-2 text-xs text-slate-600">{shop.csPhone && <>문의 {shop.csPhone}</>}{shop.csPhone && shop.returnAddress && " · "}{shop.returnAddress && <>반품지 {shop.returnAddress}</>}</p>}
+          {buyer && published && blocked && <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">이 브랜드와의 거래가 중지된 계정입니다. 샘플 신청과 상품 가져오기를 할 수 없습니다.</p>}
+          {buyer && published && !blocked && !canImport && <PartnerApply shopId={shop.id} status={partner?.status === "PENDING" ? "PENDING" : "NONE"} />}
+          {user && !buyer && published && <p className="mt-3 text-xs text-slate-600">샘플 신청과 판매 상품 가져오기는 셀러와 창고(스튜디오) 관리자 계정으로 이용할 수 있습니다.</p>}
         </section>
 
         <section id="shop-products" className="mt-7 scroll-mt-4 space-y-4">
@@ -106,12 +134,24 @@ export default async function BrandStorefront({ params, searchParams }: { params
               <div className="flex flex-1 flex-col gap-2 p-3 sm:p-4">
                 <h3 className="break-words font-extrabold text-navy">{product.name}</h3>
                 {product.description && <p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-600">{product.description}</p>}
+                {product.subCategory && <p className="text-[11px] font-semibold text-slate-500">{product.category} › {product.subCategory}</p>}
+                {parseOptions(product.options).map((g) => <p key={g.name} className="text-[11px] text-slate-600">{g.name}: {g.values.join(", ")}</p>)}
                 <p className="mt-auto text-sm font-black">공급 {formatKRW(product.supplyPrice)}<span className="ml-1 text-xs font-medium text-slate-600">· {product.stock}개</span></p>
-                {product.samplePrice !== null && <p className="text-xs font-semibold text-slate-600"><Package className="mr-1 inline h-3.5 w-3.5" />샘플 {product.samplePrice === 0 ? "무료" : formatKRW(product.samplePrice)} · {product.sampleStock}개</p>}
-                {buyer && published && <div className="mt-1 flex flex-wrap gap-1.5">
-                  <BrandOrderButton productId={product.id} name={product.name} kind="SUPPLY" unitPrice={product.supplyPrice} stock={product.stock} />
-                  {product.samplePrice !== null && (product.samplePrice === 0 || shop.paymentInstructions) &&
-                    <BrandOrderButton productId={product.id} name={product.name} kind="SAMPLE" unitPrice={product.samplePrice} stock={product.sampleStock} />}
+                {product.consumerPrice > 0 && <p className="text-xs text-slate-600">권장 소비자가 {formatKRW(product.consumerPrice)} · 차액 {formatKRW(product.consumerPrice - product.supplyPrice)}</p>}
+                <p className="text-[11px] text-slate-600">{[product.allowDropship && "직배송", product.allowWarehouse && "창고 입고"].filter(Boolean).join(" · ")} · 출고 {product.leadDays}일</p>
+                {product.samplePrice !== null && <p className="text-xs font-semibold text-slate-600"><Package className="mr-1 inline h-3.5 w-3.5" />샘플 {product.samplePrice === 0 ? "무료" : formatKRW(product.samplePrice)} · {product.sampleStock}개{product.sampleLimitPerBuyer > 0 && ` · 계정당 ${product.sampleLimitPerBuyer}회`}</p>}
+                {product.minSalePrice != null && <p className="text-[11px] font-semibold text-rose-700">최저 판매가 {formatKRW(product.minSalePrice)}</p>}
+                {buyer && published && !blocked && <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                  {imported.has(product.id) ? <span className="rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-bold text-emerald-700">판매 목록에 있음</span> : null}
+                  {user && canImport && <BrandImportButton target={user.role === "SELLER" ? "SELLER" : "FACILITY"} facilities={facilities}
+                    product={{ id: product.id, name: product.name, supplyPrice: product.supplyPrice, consumerPrice: product.consumerPrice, stock: product.stock, allowDropship: product.allowDropship, allowWarehouse: product.allowWarehouse }} />}
+                  {product.samplePrice !== null && (() => {
+                    const left = product.sampleLimitPerBuyer > 0 ? product.sampleLimitPerBuyer - (used.get(product.id) ?? 0) : Infinity;
+                    return left > 0
+                      ? <BrandOrderButton productId={product.id} name={product.name} kind="SAMPLE" unitPrice={product.samplePrice} stock={product.sampleStock} maxQuantity={policy.sampleMaxPerOrder}
+                          limitNote={Number.isFinite(left) ? `이 상품 샘플은 ${left}회 더 신청할 수 있습니다.` : undefined} />
+                      : <span className="text-[11px] font-semibold text-slate-500">샘플 신청 한도 사용</span>;
+                  })()}
                 </div>}
               </div>
             </article>)}

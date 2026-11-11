@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
+import { runBookingMaintenance } from "@/lib/booking-automation";
 import { PageHeader } from "@/components/layout/dashboard-widgets";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ const BP_STATUS: Record<string, { label: string; cls: string }> = {
 
 export default async function SellerBookings({ searchParams }: { searchParams: SP }) {
   const user = await requireRole(["SELLER"]);
+  if (!user.id.startsWith("demo-")) await runBookingMaintenance({ sellerId: user.id });
   const view = sp(searchParams, "view") === "calendar" ? "calendar" : "list";
   const status = sp(searchParams, "status");
   const q = sp(searchParams, "q");

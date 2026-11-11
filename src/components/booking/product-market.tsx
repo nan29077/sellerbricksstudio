@@ -67,7 +67,7 @@ export function ProductMarket({ items }: { items: MarketItem[] }) {
                 <p className="text-base font-extrabold text-brand-700">{formatKRW(i.salePrice)}{off > 0 && <span className="ml-1 text-[11px] font-normal text-slate-400 line-through">{formatKRW(i.consumerPrice)}</span>}</p>
                 <p className="text-[11px] font-semibold text-purple-700">개당 수익 {formatKRW(commissionOf(i))}{i.commissionType === "PERCENT" && ` (${i.commissionValue}%)`}</p>
                 <Link href={`/facilities/${i.facility.id}`} className="mt-auto flex items-center gap-1 truncate pt-1 text-[11px] text-slate-500 hover:underline">
-                  <Badge tone={i.facility.type === "STUDIO" ? "purple" : "blue"} className="shrink-0 px-1.5 py-0 text-[10px]">{i.facility.type === "STUDIO" ? "스튜디오" : "창고"}</Badge>
+                  <Badge tone={i.facility.type === "STUDIO" ? "purple" : "blue"} className="shrink-0 px-1.5 py-0 text-[11px]">{i.facility.type === "STUDIO" ? "스튜디오" : "창고"}</Badge>
                   <span className="truncate">{i.facility.name} · {i.facility.region}</span>
                 </Link>
                 <div className="mt-1.5">

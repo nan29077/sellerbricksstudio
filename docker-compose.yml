@@ -1,3 +1,5 @@
+# 폴더 이름이 한글이면 docker compose 가 프로젝트 이름을 만들지 못해("project name must not be empty") 직접 지정한다
+name: sellerbricks
 services:
   db:
     image: postgres:16-alpine
@@ -8,7 +10,7 @@ services:
       POSTGRES_PASSWORD: sellerbricks
       POSTGRES_DB: sellerbricks
     ports:
-      - "5432:5432"
+      - "5434:5432"
     volumes:
       - sellerbricks_pg:/var/lib/postgresql/data
 volumes:

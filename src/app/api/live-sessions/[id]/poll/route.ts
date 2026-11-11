@@ -10,7 +10,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       products: {
         where: { isActive: true },
         orderBy: { displayNumber: "asc" },
-        select: { id: true, displayNumber: true, nameSnapshot: true, priceSnapshot: true, stockSnapshot: true, imageSnapshot: true, source: true, sortOrder: true },
+        select: { id: true, displayNumber: true, nameSnapshot: true, priceSnapshot: true, stockSnapshot: true, imageSnapshot: true, optionSnapshot: true, source: true, sortOrder: true, fulfillment: true, brandProductId: true, facilityProductId: true },
       },
     },
   });

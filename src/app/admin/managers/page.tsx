@@ -73,7 +73,7 @@ export default async function AdminManagers() {
                     </div>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                       {[["이번 달 완료", `${mo.n}건 · ${formatKRW(mo.rev)}`], ["이번 달 수수료", formatKRW(monthCommission)], ["누적 완료", `${tot.n}건 · ${formatKRW(tot.rev)}`], ["누적 수수료", formatKRW(totalCommission)]].map(([l, v]) => (
-                        <div key={l} className="rounded-lg bg-muted/40 p-2 text-center"><p className="text-[10px] text-muted-foreground">{l}</p><p className="text-xs font-bold text-navy">{v}</p></div>
+                        <div key={l} className="rounded-lg bg-muted/40 p-2 text-center"><p className="text-[11px] text-muted-foreground">{l}</p><p className="text-xs font-bold text-navy">{v}</p></div>
                       ))}
                     </div>
                   </div>

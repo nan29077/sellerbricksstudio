@@ -1,4 +1,5 @@
 "use client";
+import { appAlert, appConfirm, appPrompt } from "@/components/ui/app-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, type ButtonProps } from "@/components/ui/button";
@@ -10,10 +11,10 @@ export function ActionButton({
   const [loading, setLoading] = useState(false);
 
   async function run() {
-    if (confirmText && !window.confirm(confirmText)) return;
+    if (confirmText && !(await appConfirm(confirmText))) return;
     let finalBody = body ?? {};
     if (prompt) {
-      const v = window.prompt(prompt);
+      const v = (await appPrompt(prompt));
       if (v === null) return;
       finalBody = { ...finalBody, rejectReason: v };
     }
@@ -21,7 +22,7 @@ export function ActionButton({
     const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(finalBody) });
     const json = await res.json().catch(() => ({}));
     setLoading(false);
-    if (!json.ok) { alert(json.error ?? "처리에 실패했습니다."); return; }
+    if (!json.ok) { void appAlert(json.error ?? "처리에 실패했습니다."); return; }
     router.refresh();
   }
   return <Button onClick={run} disabled={loading} {...props}>{loading ? "처리중..." : children}</Button>;

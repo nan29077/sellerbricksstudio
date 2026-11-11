@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const { managerDisabled, facilityDisabled, liveEnabled } = await getSettings();
-    return ok({ managerDisabled, facilityDisabled, liveEnabled, brandDemoEnabled: demoLoginEnabled() });
+    return ok({ managerDisabled, facilityDisabled, liveEnabled, brandDemoEnabled: demoLoginEnabled(), demoEnabled: demoLoginEnabled() });
   } catch (e) {
     return handleError(e);
   }

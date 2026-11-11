@@ -1,4 +1,5 @@
 "use client";
+import { appAlert, appConfirm } from "@/components/ui/app-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Plus, Trash2 } from "lucide-react";
@@ -39,7 +40,7 @@ export function ResourceForm({
       for (const f of fields) if (f.type === "number" && body[f.name] !== "") body[f.name] = Number(body[f.name]);
       await api(id ? `${url}/${id}` : url, method ?? (id ? "PATCH" : "POST"), body);
       setOpen(false);
-      if (successMessage) alert(successMessage);
+      if (successMessage) void appAlert(successMessage);
       onDone?.();
       router.refresh();
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
@@ -95,9 +96,9 @@ export function DeleteButton({ url, confirmText = "삭제할까요? 되돌릴 �
   return (
     <Button type="button" size="sm" variant="ghost" className="text-red-600 hover:bg-red-50 hover:text-red-700" disabled={busy}
       onClick={async () => {
-        if (!confirm(confirmText)) return;
+        if (!(await appConfirm(confirmText))) return;
         setBusy(true);
-        try { await api(url, "DELETE"); router.refresh(); } catch (e) { alert((e as Error).message); } finally { setBusy(false); }
+        try { await api(url, "DELETE"); router.refresh(); } catch (e) { void appAlert((e as Error).message); } finally { setBusy(false); }
       }}>
       <Trash2 className="h-3.5 w-3.5" />{label}
     </Button>
@@ -111,9 +112,9 @@ export function PatchButton({ url, body, children, confirmText, ...props }: { ur
   return (
     <Button type="button" size="sm" disabled={busy} {...props}
       onClick={async () => {
-        if (confirmText && !confirm(confirmText)) return;
+        if (confirmText && !(await appConfirm(confirmText))) return;
         setBusy(true);
-        try { await api(url, "PATCH", body); router.refresh(); } catch (e) { alert((e as Error).message); } finally { setBusy(false); }
+        try { await api(url, "PATCH", body); router.refresh(); } catch (e) { void appAlert((e as Error).message); } finally { setBusy(false); }
       }}>{busy ? "처리중..." : children}</Button>
   );
 }

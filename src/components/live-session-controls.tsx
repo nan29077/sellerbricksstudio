@@ -1,4 +1,5 @@
 "use client";
+import { appAlert, appConfirm } from "@/components/ui/app-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,7 @@ export function LiveSessionControls({ sessionId, status }: { sessionId: string; 
       method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: s }),
     });
     const json = await res.json(); setBusy(false);
-    if (!json.ok) { alert(json.error); return; }
+    if (!json.ok) { void appAlert(json.error); return; }
     router.refresh();
   }
   return (
@@ -35,14 +36,14 @@ function Alimtalk({ sessionId, channels }: { sessionId: string; channels: { id: 
   const [result, setResult] = useState<string>("");
 
   async function send() {
-    if (!channelId) { alert("카카오 채널이 없습니다. 알림톡 메뉴에서 가입자를 등록하세요."); return; }
-    if (!confirm("선택한 채널 가입자에게 방송 링크를 발송할까요?")) return;
+    if (!channelId) { void appAlert("카카오 채널이 없습니다. 알림톡 메뉴에서 가입자를 등록하세요."); return; }
+    if (!(await appConfirm("선택한 채널 가입자에게 방송 링크를 발송할까요?"))) return;
     setBusy(true); setResult("");
     const res = await fetch(`/api/live-sessions/${sessionId}/alimtalk`, {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ channelId, templateCode: "LIVE_OPEN" }),
     });
     const json = await res.json(); setBusy(false);
-    if (!json.ok) { alert(json.error); return; }
+    if (!json.ok) { void appAlert(json.error); return; }
     setResult(`${json.data.sent}건 발송 완료 (Mock)`);
     router.refresh();
   }

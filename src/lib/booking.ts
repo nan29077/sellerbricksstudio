@@ -36,7 +36,7 @@ export async function loadDay(facility: FacilityWithPolicy, day: Date, opts: { e
   const db = opts.db ?? prisma;
   const next = addDays(day, 1);
   const policy = policyOf(facility);
-  const [blackout, bookings] = await Promise.all([
+  const [blackout, bookings, blocks] = await Promise.all([
     db.facilityBlackoutDate.findFirst({ where: { facilityId: facility.id, date: { gte: day, lt: next } } }),
     db.booking.findMany({
       where: {
@@ -46,12 +46,21 @@ export async function loadDay(facility: FacilityWithPolicy, day: Date, opts: { e
       },
       select: { id: true, startAt: true, endAt: true, status: true }, orderBy: { startAt: "asc" },
     }),
+    db.facilityTimeBlock.findMany({
+      where: { facilityId: facility.id, startAt: { lt: next }, endAt: { gt: day } },
+      select: { id: true, startAt: true, endAt: true, reason: true },
+    }),
   ]);
   const weekday = kstParts(day).weekday;
   const windows = openWindows(policy, facility.slots, weekday, !!blackout);
-  const busy: BusyBlock[] = bookings.map((b) => ({
-    id: b.id, status: b.status, start: Math.max(0, minutesFrom(day, b.startAt)), end: Math.min(24 * 60, minutesFrom(day, b.endAt)),
-  }));
+  const busy: BusyBlock[] = [
+    ...bookings.map((b) => ({
+      id: b.id, status: b.status, start: Math.max(0, minutesFrom(day, b.startAt)), end: Math.min(24 * 60, minutesFrom(day, b.endAt)),
+    })),
+    ...blocks.map((b) => ({
+      id: b.id, status: "BLOCKED", reason: b.reason, start: Math.max(0, minutesFrom(day, b.startAt)), end: Math.min(24 * 60, minutesFrom(day, b.endAt)),
+    })),
+  ];
   const closedReason = blackout ? (blackout.reason ?? "휴무일") : windows.length === 0 ? `${WEEKDAYS[weekday]}요일 휴무` : null;
   return { policy, windows, busy, weekday, closedReason };
 }
@@ -92,13 +101,18 @@ export async function getRangeSummary(facility: FacilityWithPolicy, from: Date, 
   const n = Math.min(62, Math.max(1, days));
   const end = addDays(from, n);
   const policy = policyOf(facility);
-  const [blackouts, bookings] = await Promise.all([
+  const [blackouts, bookings, blocks] = await Promise.all([
     prisma.facilityBlackoutDate.findMany({ where: { facilityId: facility.id, date: { gte: from, lt: end } } }),
     prisma.booking.findMany({
       where: { facilityId: facility.id, status: { in: ["PENDING", "APPROVED"] }, startAt: { lt: end }, endAt: { gt: from } },
       select: { startAt: true, endAt: true, status: true },
     }),
+    prisma.facilityTimeBlock.findMany({
+      where: { facilityId: facility.id, startAt: { lt: end }, endAt: { gt: from } },
+      select: { startAt: true, endAt: true },
+    }),
   ]);
+  const occupied = [...bookings, ...blocks.map((b) => ({ ...b, status: "BLOCKED" }))];
   const off = new Map(blackouts.map((b) => [dateKey(b.date), b.reason ?? "휴무일"]));
   const out: DaySummary[] = [];
   for (let i = 0; i < n; i++) {
@@ -107,7 +121,7 @@ export async function getRangeSummary(facility: FacilityWithPolicy, from: Date, 
     const weekday = kstParts(day).weekday;
     const windows = openWindows(policy, facility.slots, weekday, off.has(key));
     const next = addDays(day, 1);
-    const busy: BusyBlock[] = bookings.filter((b) => b.startAt < next && b.endAt > day)
+    const busy: BusyBlock[] = occupied.filter((b) => b.startAt < next && b.endAt > day)
       .map((b) => ({ status: b.status, start: Math.max(0, minutesFrom(day, b.startAt)), end: Math.min(1440, minutesFrom(day, b.endAt)) }));
     const ahead = daysAheadOf(day);
     out.push(summarizeDay({
@@ -191,7 +205,8 @@ export async function refreshFacilityRating(facilityId: string) {
 
 export const BOOKING_TRANSITIONS: Record<string, string[]> = {
   PENDING: ["APPROVED", "REJECTED", "CANCELLED"],
-  APPROVED: ["COMPLETED", "CANCELLED"],
+  APPROVED: ["COMPLETED", "CANCELLED", "NO_SHOW"],
+  NO_SHOW: ["COMPLETED"], // 잘못 처리한 노쇼를 이용 완료로 바로잡기
 };
 
 export type { Interval };

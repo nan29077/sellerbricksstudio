@@ -1,4 +1,5 @@
 "use client";
+import { appAlert } from "@/components/ui/app-dialog";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,12 @@ import { formatKRW } from "@/lib/utils";
 import { Blocks, Search, ShoppingCart, Plus, Minus, X, Radio } from "lucide-react";
 
 type Item = { id: string; displayNumber: number; name: string; price: number; stock: number; image: string | null; option: string | null };
+type Group = { name: string; values: string[] };
+const groupsOf = (option: string | null): Group[] => {
+  if (!option) return [];
+  try { const g = JSON.parse(option); return Array.isArray(g) ? g.filter((x) => x && typeof x.name === "string" && Array.isArray(x.values) && x.values.length) : []; } catch { return []; }
+};
+const KEY_SEP = "::";
 
 export function BuyerLive({
   slug, sessionId, title, sellerName, facilityName, status, playbackUrl, initial,
@@ -22,7 +29,7 @@ export function BuyerLive({
   const poll = useCallback(async () => {
     const r = await fetch(`/api/live-sessions/${sessionId}/poll`).then((r) => r.json()).catch(() => null);
     if (r?.ok && r.data.numberVersion !== version) {
-      setItems(r.data.products.map((p: any) => ({ id: p.id, displayNumber: p.displayNumber, name: p.nameSnapshot, price: p.priceSnapshot, stock: p.stockSnapshot, image: p.imageSnapshot, option: null })));
+      setItems(r.data.products.map((p: any) => ({ id: p.id, displayNumber: p.displayNumber, name: p.nameSnapshot, price: p.priceSnapshot, stock: p.stockSnapshot, image: p.imageSnapshot, option: p.optionSnapshot ?? null })));
       setVersion(r.data.numberVersion);
     }
   }, [sessionId, version]);
@@ -34,14 +41,37 @@ export function BuyerLive({
     return items.filter((i) => String(i.displayNumber) === query || i.name.toLowerCase().includes(q));
   }, [items, query]);
 
-  const add = (id: string) => setCart((c) => ({ ...c, [id]: (c[id] ?? 0) + 1 }));
-  const dec = (id: string) => setCart((c) => { const n = (c[id] ?? 0) - 1; const next = { ...c }; if (n <= 0) delete next[id]; else next[id] = n; return next; });
-  const cartItems = Object.entries(cart).map(([id, qty]) => ({ item: items.find((i) => i.id === id)!, qty })).filter((x) => x.item);
+  // 장바구니 키 = 상품ID::옵션 (옵션이 다르면 다른 줄)
+  const [picked, setPicked] = useState<Record<string, Record<string, string>>>({});
+  const optionLabelOf = (it: Item) => {
+    const groups = groupsOf(it.option);
+    if (!groups.length) return "";
+    const sel = picked[it.id] ?? {};
+    if (groups.some((g) => !sel[g.name])) return null; // 옵션 미선택
+    return groups.map((g) => `${g.name}:${sel[g.name]}`).join(" / ");
+  };
+  const qtyOf = (id: string) => Object.entries(cart).filter(([k]) => k.split(KEY_SEP)[0] === id).reduce((s, [, q]) => s + q, 0);
+  const addKey = (key: string) => setCart((c) => {
+    const id = key.split(KEY_SEP)[0]; const it = items.find((i) => i.id === id);
+    if (!it || qtyOf(id) >= it.stock) return c;
+    return { ...c, [key]: (c[key] ?? 0) + 1 };
+  });
+  const decKey = (key: string) => setCart((c) => { const n = (c[key] ?? 0) - 1; const next = { ...c }; if (n <= 0) delete next[key]; else next[key] = n; return next; });
+  const add = (id: string) => {
+    const it = items.find((i) => i.id === id); if (!it) return;
+    const label = optionLabelOf(it);
+    if (label === null) { void appAlert("옵션을 선택해 주세요."); return; }
+    addKey(`${id}${KEY_SEP}${label}`);
+  };
+  const cartItems = Object.entries(cart).map(([key, qty]) => {
+    const [id, label = ""] = key.split(KEY_SEP);
+    return { key, label, item: items.find((i) => i.id === id)!, qty };
+  }).filter((x) => x.item);
   const cartCount = cartItems.reduce((s, x) => s + x.qty, 0);
   const cartTotal = cartItems.reduce((s, x) => s + x.item.price * x.qty, 0);
 
   function goCheckout() {
-    const payload = cartItems.map((x) => ({ liveSessionProductId: x.item.id, quantity: x.qty }));
+    const payload = cartItems.map((x) => ({ liveSessionProductId: x.item.id, quantity: x.qty, ...(x.label && { optionLabel: x.label }) }));
     sessionStorage.setItem(`cart-${slug}`, JSON.stringify(payload));
     router.push(`/checkout/${slug}`);
   }
@@ -79,8 +109,9 @@ export function BuyerLive({
         <div className="mt-4 space-y-2">
           {filtered.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">상품이 없습니다.</p>}
           {filtered.map((it) => {
-            const qty = cart[it.id] ?? 0;
+            const qty = qtyOf(it.id);
             const sold = it.stock <= 0;
+            const groups = groupsOf(it.option);
             return (
               <div key={it.id} className="flex items-center gap-3 rounded-xl border border-border bg-white p-3">
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-2xl font-extrabold text-white">{it.displayNumber}</div>
@@ -88,17 +119,21 @@ export function BuyerLive({
                   <img src={it.image} alt="" className="h-14 w-14 rounded-lg object-cover bg-muted shrink-0 hidden xs:block sm:block" />}
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-navy truncate">{it.name}</p>
-                  <p className="text-sm text-muted-foreground">{formatKRW(it.price)}{sold && <span className="ml-2 text-red-500">품절</span>}</p>
+                  <p className="text-sm text-muted-foreground">{formatKRW(it.price)}{sold && <span className="ml-2 text-red-500">품절</span>}{qty > 0 && <span className="ml-2 text-brand-600">· {qty}개 담음</span>}</p>
+                  {groups.length > 0 && !sold && (
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {groups.map((g) => (
+                        <select key={g.name} aria-label={g.name} value={picked[it.id]?.[g.name] ?? ""}
+                          onChange={(e) => setPicked((p) => ({ ...p, [it.id]: { ...(p[it.id] ?? {}), [g.name]: e.target.value } }))}
+                          className="h-8 rounded-md border bg-white px-2 text-xs">
+                          <option value="">{g.name} 선택</option>
+                          {g.values.map((v) => <option key={v} value={v}>{v}</option>)}
+                        </select>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                {qty > 0 ? (
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => dec(it.id)} className="tap flex h-9 w-9 items-center justify-center rounded-lg border"><Minus className="h-4 w-4" /></button>
-                    <span className="w-6 text-center font-semibold">{qty}</span>
-                    <button onClick={() => add(it.id)} disabled={qty >= it.stock} className="tap flex h-9 w-9 items-center justify-center rounded-lg bg-brand-500 text-white disabled:opacity-40"><Plus className="h-4 w-4" /></button>
-                  </div>
-                ) : (
-                  <Button size="sm" disabled={sold} onClick={() => add(it.id)}>담기</Button>
-                )}
+                <Button size="sm" disabled={sold || qty >= it.stock} onClick={() => add(it.id)}>{qty > 0 ? <><Plus className="h-4 w-4" />추가</> : "담기"}</Button>
               </div>
             );
           })}
@@ -119,10 +154,13 @@ export function BuyerLive({
           {cartOpen && (
             <div className="container max-w-3xl mt-3 max-h-60 overflow-y-auto border-t pt-3 space-y-2">
               {cartItems.map((x) => (
-                <div key={x.item.id} className="flex items-center gap-2 text-sm">
+                <div key={x.key} className="flex items-center gap-2 text-sm">
                   <span className="flex h-7 w-7 items-center justify-center rounded bg-brand-500 text-xs font-bold text-white">{x.item.displayNumber}</span>
-                  <span className="flex-1 truncate">{x.item.name}</span>
-                  <span>{x.qty}개</span><span className="w-20 text-right font-semibold">{formatKRW(x.item.price * x.qty)}</span>
+                  <span className="flex-1 truncate">{x.item.name}{x.label && <span className="ml-1 text-xs text-muted-foreground">({x.label})</span>}</span>
+                  <button onClick={() => decKey(x.key)} aria-label="빼기" className="tap flex h-7 w-7 items-center justify-center rounded border"><Minus className="h-3 w-3" /></button>
+                  <span>{x.qty}개</span>
+                  <button onClick={() => addKey(x.key)} aria-label="더하기" className="tap flex h-7 w-7 items-center justify-center rounded border"><Plus className="h-3 w-3" /></button>
+                  <span className="w-20 text-right font-semibold">{formatKRW(x.item.price * x.qty)}</span>
                 </div>
               ))}
             </div>

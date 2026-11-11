@@ -1,4 +1,5 @@
 "use client";
+import { appAlert } from "@/components/ui/app-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Heart } from "lucide-react";
@@ -14,7 +15,7 @@ export function FavoriteButton({ facilityId, initial, className, withLabel = fal
     const j = await r.json().catch(() => ({}));
     setBusy(false);
     if (r.status === 401) { router.push("/login"); return; }
-    if (!j.ok) { alert(j.error ?? "처리에 실패했습니다."); return; }
+    if (!j.ok) { void appAlert(j.error ?? "처리에 실패했습니다."); return; }
     setOn(j.data.favorited);
     router.refresh();
   }

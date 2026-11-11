@@ -1,4 +1,5 @@
 "use client";
+import { appAlert, appConfirm } from "@/components/ui/app-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, X, CheckCircle2, Ban, NotebookPen, Phone, Mail, Users, Package, Repeat, CalendarClock } from "lucide-react";
@@ -18,6 +19,7 @@ export type ManageBooking = {
   requestNote: string | null; facilityMemo: string | null; rejectReason: string | null; cancelReason: string | null;
   started: boolean; createdAt: string; sellerHistory?: number;
   code?: string | null; recurring?: boolean; rescheduleCount?: number; products?: ManageBookingProduct[];
+  checkedIn?: boolean; canCheckIn?: boolean; canNoShow?: boolean; noShowCount?: number; cancelCount?: number;
 };
 
 type Act = { kind: "REJECTED" | "CANCELLED" | "memo"; ids: string[] } | null;
@@ -45,15 +47,15 @@ export function ManageBookingList({ rows, showFacility = true }: { rows: ManageB
       if (ids.length === 1) await api(`/api/bookings/${ids[0]}`, "PATCH", { status, reason });
       else {
         const r = await api<{ success: number; failed: { id: string; error: string }[] }>("/api/bookings/bulk", "POST", { ids, status, reason });
-        alert(`${r.success}건 처리 완료${r.failed.length ? `\n실패 ${r.failed.length}건: ${r.failed[0].error}` : ""}`);
+        void appAlert(`${r.success}건 처리 완료${r.failed.length ? `\n실패 ${r.failed.length}건: ${r.failed[0].error}` : ""}`);
       }
       setSel(new Set()); setAct(null); setText(""); router.refresh();
-    } catch (e) { alert((e as Error).message); } finally { setBusy(false); }
+    } catch (e) { void appAlert((e as Error).message); } finally { setBusy(false); }
   }
   async function saveMemo(id: string) {
     setBusy(true);
     try { await api(`/api/bookings/${id}`, "PATCH", { facilityMemo: text }); setAct(null); router.refresh(); }
-    catch (e) { alert((e as Error).message); } finally { setBusy(false); }
+    catch (e) { void appAlert((e as Error).message); } finally { setBusy(false); }
   }
   function openProducts(b: ManageBooking) {
     setProdFor(b);
@@ -65,7 +67,7 @@ export function ManageBookingList({ rows, showFacility = true }: { rows: ManageB
     try {
       await api(`/api/bookings/${prodFor.id}`, "PATCH", { products: Object.entries(prodState).map(([id, v]) => ({ id, status: v.status, note: v.note })) });
       setProdFor(null); router.refresh();
-    } catch (e) { alert((e as Error).message); } finally { setBusy(false); }
+    } catch (e) { void appAlert((e as Error).message); } finally { setBusy(false); }
   }
   const toggle = (id: string) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
@@ -81,7 +83,7 @@ export function ManageBookingList({ rows, showFacility = true }: { rows: ManageB
           </label>
           <span className="text-xs text-muted-foreground">{sel.size}건 선택</span>
           <div className="ml-auto flex gap-2">
-            <Button size="sm" variant="success" disabled={!sel.size || busy} onClick={() => confirm(`${sel.size}건을 승인할까요?`) && run([...sel], "APPROVED")}><Check className="h-4 w-4" />일괄 승인</Button>
+            <Button size="sm" variant="success" disabled={!sel.size || busy} onClick={async () => (await appConfirm(`${sel.size}건을 승인할까요?`)) && run([...sel], "APPROVED")}><Check className="h-4 w-4" />일괄 승인</Button>
             <Button size="sm" variant="outline" disabled={!sel.size || busy} onClick={() => setAct({ kind: "REJECTED", ids: [...sel] })}><X className="h-4 w-4" />일괄 거절</Button>
           </div>
         </div>
@@ -105,7 +107,10 @@ export function ManageBookingList({ rows, showFacility = true }: { rows: ManageB
                     <span className="ml-auto text-[11px] text-muted-foreground">신청 {b.createdAt}</span>
                   </div>
                   <p className="text-base font-bold text-navy">{b.sellerName}{b.sellerCompany && <span className="ml-1 text-xs font-medium text-slate-500">· {b.sellerCompany}</span>}
-                    {b.sellerHistory ? <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">이용 {b.sellerHistory}회</span> : <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700">첫 이용</span>}
+                    {b.sellerHistory ? <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">이용 {b.sellerHistory}회</span> : <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-700">첫 이용</span>}
+                    {!!b.noShowCount && <span className="ml-1 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-700">노쇼 {b.noShowCount}회</span>}
+                    {!!b.cancelCount && b.cancelCount >= 3 && <span className="ml-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">취소 {b.cancelCount}회</span>}
+                    {b.checkedIn && <span className="ml-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800">체크인 완료</span>}
                   </p>
                   <p className="text-sm text-slate-700">{b.when} <span className="text-muted-foreground">· {b.hours}시간</span></p>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
@@ -129,11 +134,14 @@ export function ManageBookingList({ rows, showFacility = true }: { rows: ManageB
                   {b.cancelReason && b.status === "CANCELLED" && <p className="text-xs text-slate-500">취소 사유: {b.cancelReason}</p>}
                   <div className="flex flex-wrap gap-2 pt-1">
                     {b.status === "PENDING" && <>
-                      <Button size="sm" variant="success" disabled={busy} onClick={() => confirm("이 예약을 승인할까요? 판매 예정 상품은 '준비 가능'으로 확정됩니다.") && run([b.id], "APPROVED")}><Check className="h-4 w-4" />승인</Button>
+                      <Button size="sm" variant="success" disabled={busy} onClick={async () => (await appConfirm("이 예약을 승인할까요? 판매 예정 상품은 '준비 가능'으로 확정됩니다.")) && run([b.id], "APPROVED")}><Check className="h-4 w-4" />승인</Button>
                       <Button size="sm" variant="outline" disabled={busy} onClick={() => setAct({ kind: "REJECTED", ids: [b.id] })}><X className="h-4 w-4" />거절</Button>
                     </>}
                     {prods.length > 0 && ["PENDING", "APPROVED"].includes(b.status) && <Button size="sm" variant="outline" onClick={() => openProducts(b)}><Package className="h-4 w-4" />상품 준비 확인</Button>}
-                    {b.status === "APPROVED" && b.started && <Button size="sm" disabled={busy} onClick={() => confirm("이용 완료로 처리할까요?") && run([b.id], "COMPLETED")}><CheckCircle2 className="h-4 w-4" />이용 완료</Button>}
+                    {b.canCheckIn && <Button size="sm" variant="success" disabled={busy} onClick={async () => { setBusy(true); try { await api(`/api/bookings/${b.id}`, "PATCH", { action: "checkin" }); router.refresh(); } catch (e) { void appAlert((e as Error).message); } finally { setBusy(false); } }}><CheckCircle2 className="h-4 w-4" />체크인</Button>}
+                    {b.status === "APPROVED" && b.started && <Button size="sm" disabled={busy} onClick={async () => (await appConfirm("이용 완료로 처리할까요?")) && run([b.id], "COMPLETED")}><CheckCircle2 className="h-4 w-4" />이용 완료</Button>}
+                    {b.canNoShow && <Button size="sm" variant="outline" className="text-red-600" disabled={busy} onClick={async () => (await appConfirm("체크인 없이 나타나지 않았나요? 노쇼로 처리하면 셀러의 노쇼 기록에 남습니다.")) && run([b.id], "NO_SHOW")}><Ban className="h-4 w-4" />노쇼</Button>}
+                    {b.status === "NO_SHOW" && <Button size="sm" variant="ghost" disabled={busy} onClick={async () => (await appConfirm("노쇼 처리를 취소하고 이용 완료로 바꿀까요?")) && run([b.id], "COMPLETED")}>노쇼 취소 (이용 완료)</Button>}
                     {b.status === "APPROVED" && !b.started && <Button size="sm" variant="outline" className="text-red-600" disabled={busy} onClick={() => setAct({ kind: "CANCELLED", ids: [b.id] })}><Ban className="h-4 w-4" />예약 취소</Button>}
                     <Button size="sm" variant="ghost" onClick={() => { setText(b.facilityMemo ?? ""); setAct({ kind: "memo", ids: [b.id] }); }}><NotebookPen className="h-4 w-4" />메모</Button>
                   </div>

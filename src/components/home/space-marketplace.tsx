@@ -84,18 +84,18 @@ export function SpaceMarketplace({ spaces, registeredAvailable }: { spaces: Spac
             <Link key={`${space.demo}-${space.id}`} href={space.demo ? `/showcase/${space.id}` : `/facilities/${space.id}`} className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-[#E6E3DA] bg-white shadow-sm transition hover:border-brand-400 hover:shadow-md">
               <div className="relative aspect-[4/3] overflow-hidden bg-brand-100">
                 <Image src={space.image} alt="" fill unoptimized className="object-cover transition duration-500 group-hover:scale-105 motion-reduce:transition-none" />
-                <span className={cn("absolute left-2 top-2 rounded-full px-2 py-1 text-[10px] font-extrabold shadow-sm", space.demo ? "bg-white/95 text-navy" : "bg-navy text-white")}>{space.demo ? "예시 공간" : "등록 공간"}</span>
+                <span className={cn("absolute left-2 top-2 rounded-full px-2 py-1 text-[11px] font-extrabold shadow-sm", space.demo ? "bg-white/95 text-navy" : "bg-navy text-white")}>{space.demo ? "예시 공간" : "등록 공간"}</span>
               </div>
               <div className="flex flex-1 flex-col p-3">
-                <p className="flex items-center gap-1 text-[10px] font-bold text-brand-700"><MapPin className="h-3 w-3 shrink-0" />{space.location} · {SPACE_TYPE_LABELS[space.type]}</p>
+                <p className="flex items-center gap-1 text-[11px] font-bold text-brand-700"><MapPin className="h-3 w-3 shrink-0" />{space.location} · {SPACE_TYPE_LABELS[space.type]}</p>
                 <h3 className="mt-1.5 break-keep text-sm font-extrabold leading-snug tracking-tight text-navy sm:text-base">{space.name}</h3>
                 <div className="my-2 flex flex-wrap gap-1">
-                  {space.tags.map((tag) => <span key={tag} className="rounded bg-[#F3F1EB] px-1.5 py-0.5 text-[9px] font-medium text-slate-700">{tag}</span>)}
+                  {space.tags.map((tag) => <span key={tag} className="rounded bg-[#F3F1EB] px-1.5 py-0.5 text-[11px] font-medium text-slate-700">{tag}</span>)}
                 </div>
                 <div className="mt-auto flex items-center justify-between gap-1 border-t border-[#F0ECE4] pt-2.5">
                   <p className="text-xs font-extrabold text-navy">
                     {space.price ? formatKRW(space.price) : "요금 문의"}
-                    {!!space.price && <span className="ml-1 text-[9px] font-medium text-slate-500">{space.demo ? "예시" : "부터"}</span>}
+                    {!!space.price && <span className="ml-1 text-[11px] font-medium text-slate-500">{space.demo ? "예시" : "부터"}</span>}
                   </p>
                   <ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0 text-brand-700" />
                 </div>

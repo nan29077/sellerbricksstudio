@@ -25,7 +25,7 @@ export type FacilityPolicySource = {
 
 export type SlotRule = { weekday: number; startTime: string; endTime: string; isActive?: boolean };
 
-export type BusyBlock = Interval & { status: "APPROVED" | "PENDING" | string; id?: string };
+export type BusyBlock = Interval & { status: "APPROVED" | "PENDING" | "BLOCKED" | string; id?: string; reason?: string | null };
 
 export type StartOption = {
   time: string;                                    // "10:00"
@@ -92,7 +92,8 @@ const overlaps = (a: Interval, b: Interval) => a.start < b.end && a.end > b.star
 
 // 새 예약 [s,e]가 기존 예약과 준비시간(buffer)을 포함해 겹치는지
 export function findClash(s: number, e: number, busy: BusyBlock[], buffer: number): BusyBlock | undefined {
-  return busy.find((b) => overlaps({ start: s, end: e }, { start: b.start - buffer, end: b.end + buffer }));
+  // 창고(스튜디오)가 막아 둔 시간(BLOCKED)에는 준비시간을 더하지 않는다.
+  return busy.find((b) => overlaps({ start: s, end: e }, b.status === "BLOCKED" ? b : { start: b.start - buffer, end: b.end + buffer }));
 }
 
 // 예약 시작 시간 선택지 (단위마다). duration(분)짜리 예약을 그 시각에 시작할 수 있는지 상태를 붙인다.
@@ -113,7 +114,7 @@ export function startOptions(params: {
     else if (s < earliest) status = "past";
     else {
       const clash = findClash(s, e, busy, policy.buffer);
-      if (clash) status = clash.status === "PENDING" ? "pending" : "booked";
+      if (clash) status = clash.status === "BLOCKED" ? "closed" : clash.status === "PENDING" ? "pending" : "booked";
     }
     out.push({ time: toHm(s), status });
   }
@@ -170,6 +171,7 @@ export function validateRequest(params: {
   const clash = findClash(startMin, endMin, busy, policy.buffer);
   if (clash) {
     const t = `${toHm(clash.start)}~${toHm(clash.end)}`;
+    if (clash.status === "BLOCKED") return `${t}은(는) 창고(스튜디오) 사정으로 예약을 받지 않는 시간입니다${clash.reason ? ` (${clash.reason})` : ""}. 다른 시간을 선택하세요.`;
     return policy.buffer > 0
       ? `기존 예약(${t})과 겹치거나 준비시간 ${policy.buffer}분이 부족합니다. 다른 시간을 선택하세요.`
       : `해당 시간대(${t})에 이미 예약이 있습니다. 다른 시간을 선택하세요.`;

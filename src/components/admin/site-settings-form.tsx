@@ -65,11 +65,11 @@ export function SiteSettingsForm({ initial }: { initial: SiteSettings }) {
         <CardContent className="space-y-4">
           <div>
             <Label>사이트 이름</Label>
-            <Input value={form.siteName} onChange={(e) => set("siteName", e.target.value)} placeholder="셀러 브릭스" />
+            <Input aria-label="사이트 이름" value={form.siteName} onChange={(e) => set("siteName", e.target.value)} placeholder="셀러 브릭스" />
           </div>
           <div>
             <Label>사이트 설명</Label>
-            <Textarea value={form.siteDescription} onChange={(e) => set("siteDescription", e.target.value)}
+            <Textarea aria-label="사이트 설명" value={form.siteDescription} onChange={(e) => set("siteDescription", e.target.value)}
               placeholder="라이브 커머스 셀러를 위한 셀러 매니지먼트 플랫폼" />
           </div>
         </CardContent>
@@ -92,16 +92,16 @@ export function SiteSettingsForm({ initial }: { initial: SiteSettings }) {
           </label>
           <div>
             <Label>배너 문구</Label>
-            <Input value={form.bannerText} onChange={(e) => set("bannerText", e.target.value)} />
+            <Input aria-label="배너 문구" value={form.bannerText} onChange={(e) => set("bannerText", e.target.value)} />
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <Label>버튼 라벨</Label>
-              <Input value={form.bannerLinkLabel} onChange={(e) => set("bannerLinkLabel", e.target.value)} />
+              <Input aria-label="버튼 라벨" value={form.bannerLinkLabel} onChange={(e) => set("bannerLinkLabel", e.target.value)} />
             </div>
             <div>
               <Label>버튼 링크</Label>
-              <Input value={form.bannerLinkUrl} onChange={(e) => set("bannerLinkUrl", e.target.value)} placeholder="/register" />
+              <Input aria-label="버튼 링크" value={form.bannerLinkUrl} onChange={(e) => set("bannerLinkUrl", e.target.value)} placeholder="/register" />
             </div>
           </div>
           {form.bannerEnabled && (

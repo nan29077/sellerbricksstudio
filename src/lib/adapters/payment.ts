@@ -61,3 +61,13 @@ export function getPaymentAdapter(): PaymentAdapter {
     default: return new MockPaymentAdapter();
   }
 }
+
+// 배포 환경에서 실제 PG 없이 Mock 결제가 돌면 누구나 "결제 완료" 주문을 만들 수 있다.
+// 실제 PG 를 연동하기 전까지는 배포 환경에서 결제를 막는다. (시연이 필요하면 ALLOW_MOCK_PAYMENT=true)
+export function paymentBlockedReason(): string | null {
+  const provider = process.env.PAYMENT_PROVIDER ?? "mock";
+  if (provider === "mock" && process.env.NODE_ENV === "production" && process.env.ALLOW_MOCK_PAYMENT !== "true") {
+    return "결제 시스템 연동 준비 중입니다. 잠시 후 다시 이용해 주세요.";
+  }
+  return null;
+}

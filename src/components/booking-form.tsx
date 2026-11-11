@@ -199,7 +199,7 @@ export function BookingForm({
           <div className="space-y-4">
             <div>
               <Label>창고(스튜디오) 선택</Label>
-              <Select value={facilityId} onChange={(e) => setFacilityId(e.target.value)}>
+              <Select aria-label="창고(스튜디오) 선택" value={facilityId} onChange={(e) => setFacilityId(e.target.value)}>
                 {facilities.map((f) => (
                   <option key={f.id} value={f.id}>
                     {f.name} ({f.type === "WAREHOUSE" ? "창고" : "스튜디오"}, {f.region})
@@ -224,7 +224,7 @@ export function BookingForm({
 
             <div>
               <Label>방송 날짜</Label>
-              <Input
+              <Input aria-label="방송 날짜"
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
@@ -235,11 +235,11 @@ export function BookingForm({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>시작 시간</Label>
-                <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} />
+                <Input aria-label="시작 시간" type="time" value={start} onChange={(e) => setStart(e.target.value)} />
               </div>
               <div>
                 <Label>종료 시간</Label>
-                <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
+                <Input aria-label="종료 시간" type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
@@ -272,7 +272,7 @@ export function BookingForm({
                         );
                       })()}
                     </div>
-                    <div className="mt-1 flex justify-between text-[10px] text-muted-foreground"><span>{avail.openTime}</span><span>{avail.closeTime}</span></div>
+                    <div className="mt-1 flex justify-between text-[11px] text-muted-foreground"><span>{avail.openTime}</span><span>{avail.closeTime}</span></div>
                     <p className="mt-1 text-[11px] text-muted-foreground">
                       {avail.booked.length === 0 ? "아직 예약이 없어 원하는 시간에 신청할 수 있어요." : `예약된 시간: ${avail.booked.map((b) => `${b.start}~${b.end}${b.status === "PENDING" ? "(대기)" : ""}`).join(", ")}`}
                     </p>
@@ -284,7 +284,7 @@ export function BookingForm({
             )}
             <div>
               <Label>방송 목적</Label>
-              <Input
+              <Input aria-label="방송 목적"
                 value={purpose}
                 onChange={(e) => setPurpose(e.target.value)}
                 placeholder="예: 신상 패션 라이브 / 건강식품 특가전"
@@ -293,12 +293,12 @@ export function BookingForm({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-[140px_1fr]">
               <div>
                 <Label>방문 인원</Label>
-                <Input type="number" min={1} max={currentFacility?.capacity ?? 500} value={headcount} onChange={(e) => setHeadcount(e.target.value)} placeholder="명" />
+                <Input aria-label="방문 인원" type="number" min={1} max={currentFacility?.capacity ?? 500} value={headcount} onChange={(e) => setHeadcount(e.target.value)} placeholder="명" />
                 {currentFacility?.capacity ? <p className="mt-1 text-[11px] text-muted-foreground">최대 {currentFacility.capacity}명</p> : null}
               </div>
               <div>
                 <Label>요청사항</Label>
-                <Textarea value={requestNote} onChange={(e) => setRequestNote(e.target.value)} rows={2} maxLength={1000} placeholder="예: 그린스크린 세팅, 조명 사전 점검, 주차 2대" />
+                <Textarea aria-label="요청사항" value={requestNote} onChange={(e) => setRequestNote(e.target.value)} rows={2} maxLength={1000} placeholder="예: 그린스크린 세팅, 조명 사전 점검, 주차 2대" />
               </div>
             </div>
           </div>
@@ -393,7 +393,7 @@ export function BookingForm({
                               </div>
                             )}
                             {discountPct > 0 && (
-                              <div className="absolute bottom-1.5 left-1.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                              <div className="absolute bottom-1.5 left-1.5 bg-red-500 text-white text-[11px] font-bold px-1.5 py-0.5 rounded-full">
                                 -{discountPct}%
                               </div>
                             )}
@@ -401,15 +401,15 @@ export function BookingForm({
 
                           {/* Info */}
                           <div className="p-2.5">
-                            <p className="text-[10px] text-muted-foreground mb-0.5">{fp.product.category}</p>
+                            <p className="text-[11px] text-muted-foreground mb-0.5">{fp.product.category}</p>
                             <p className="text-xs font-semibold text-navy line-clamp-2 mb-1.5">{fp.product.name}</p>
                             <div className="flex items-center gap-1 mb-0.5">
                               <Tag className="h-3 w-3 text-brand-500 shrink-0" />
                               <span className="text-sm font-bold text-brand-700">{formatKRW(fp.salePrice)}</span>
                             </div>
                             <div className="flex items-center justify-between">
-                              <span className="text-[10px] text-muted-foreground">재고 {fp.stock}개</span>
-                              <span className="text-[10px] text-purple-600 bg-purple-50 rounded px-1 py-0.5">
+                              <span className="text-[11px] text-muted-foreground">재고 {fp.stock}개</span>
+                              <span className="text-[11px] text-purple-600 bg-purple-50 rounded px-1 py-0.5">
                                 커미션 {fp.commissionValue}%
                               </span>
                             </div>

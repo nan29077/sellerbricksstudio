@@ -27,7 +27,7 @@ export function SiteFooter() {
           {footerLinks.map((group) => <div key={group.title}><p className="text-xs font-extrabold tracking-[0.18em] text-brand-300">{group.title}</p><ul className="mt-5 space-y-3">{group.links.map((item) => <li key={item.href}><Link href={item.href} className="group inline-flex items-center gap-1 text-sm text-white/60 transition hover:text-white">{item.label}<ArrowUpRight className="h-3.5 w-3.5 opacity-0 transition group-hover:opacity-100" /></Link></li>)}</ul></div>)}
         </div>
       </div>
-      <div className="border-t border-white/10"><div className="container flex flex-col gap-2 py-5 text-xs text-white/35 sm:flex-row sm:items-center sm:justify-between"><p>© {new Date().getFullYear()} Sellerbricks Studio. All rights reserved.</p><p>Made for the moments that move your business forward.</p></div></div>
+      <div className="border-t border-white/10"><div className="container flex flex-col gap-2 py-5 text-xs text-white/35 sm:flex-row sm:items-center sm:justify-between"><p className="flex flex-wrap items-center gap-x-4 gap-y-1">© {new Date().getFullYear()} Sellerbricks Studio. All rights reserved.<Link href="/terms" className="font-semibold text-white/60 hover:text-white">이용약관</Link><Link href="/privacy" className="font-bold text-white/80 hover:text-white">개인정보처리방침</Link></p><p>Made for the moments that move your business forward.</p></div></div>
     </footer>
   );
 }

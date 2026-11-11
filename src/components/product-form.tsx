@@ -47,24 +47,24 @@ export function ProductForm({ facilities, returnHref = "/facility/products" }: {
     <div className="grid max-w-5xl gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
       <Card><CardContent className="pt-6">
         <form onSubmit={onSubmit} className="space-y-4">
-          {facilities.length > 1 && <div><Label>창고(스튜디오)</Label><Select value={f.facilityId} onChange={set("facilityId")}>{facilities.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</Select></div>}
-          <div><Label>상품명</Label><Input value={f.name} onChange={set("name")} maxLength={120} required placeholder="예: 제주 노지 감귤 5kg (로얄과)" /></div>
+          {facilities.length > 1 && <div><Label>창고(스튜디오)</Label><Select aria-label="창고(스튜디오)" value={f.facilityId} onChange={set("facilityId")}>{facilities.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</Select></div>}
+          <div><Label>상품명</Label><Input aria-label="상품명" value={f.name} onChange={set("name")} maxLength={120} required placeholder="예: 제주 노지 감귤 5kg (로얄과)" /></div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>카테고리</Label><Select value={f.category} onChange={set("category")}>{PRODUCT_CATEGORIES.map((c) => <option key={c}>{c}</option>)}</Select></div>
-            <div><Label>SKU (선택)</Label><Input value={f.sku} onChange={set("sku")} /></div>
+            <div><Label>카테고리</Label><Select aria-label="카테고리" value={f.category} onChange={set("category")}>{PRODUCT_CATEGORIES.map((c) => <option key={c}>{c}</option>)}</Select></div>
+            <div><Label>SKU (선택)</Label><Input aria-label="SKU (선택)" value={f.sku} onChange={set("sku")} /></div>
           </div>
-          <div><Label>대표 이미지 URL</Label><Input value={f.thumbnailUrl} onChange={set("thumbnailUrl")} placeholder="https://..." /></div>
-          <div><Label>상품 설명</Label><Textarea value={f.description} onChange={set("description")} rows={4} placeholder="셀러가 상품을 고를 때 보는 설명입니다. 특징·구성·방송 포인트를 적어주세요." /></div>
+          <div><Label>대표 이미지 URL</Label><Input aria-label="대표 이미지 URL" value={f.thumbnailUrl} onChange={set("thumbnailUrl")} placeholder="https://..." /></div>
+          <div><Label>상품 설명</Label><Textarea aria-label="상품 설명" value={f.description} onChange={set("description")} rows={4} placeholder="셀러가 상품을 고를 때 보는 설명입니다. 특징·구성·방송 포인트를 적어주세요." /></div>
           <div className="grid grid-cols-3 gap-3">
-            <div><Label>판매가(원)</Label><Input value={f.salePrice} onChange={set("salePrice")} inputMode="numeric" required /></div>
-            <div><Label>소비자가(원)</Label><Input value={f.consumerPrice} onChange={set("consumerPrice")} inputMode="numeric" placeholder="미입력 시 판매가" /></div>
-            <div><Label>재고</Label><Input value={f.stock} onChange={set("stock")} inputMode="numeric" required /></div>
+            <div><Label>판매가(원)</Label><Input aria-label="판매가(원)" value={f.salePrice} onChange={set("salePrice")} inputMode="numeric" required /></div>
+            <div><Label>소비자가(원)</Label><Input aria-label="소비자가(원)" value={f.consumerPrice} onChange={set("consumerPrice")} inputMode="numeric" placeholder="미입력 시 판매가" /></div>
+            <div><Label>재고</Label><Input aria-label="재고" value={f.stock} onChange={set("stock")} inputMode="numeric" required /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>셀러 수수료 방식</Label><Select value={f.commissionType} onChange={set("commissionType")}><option value="PERCENT">정률 (%)</option><option value="FIXED">정액 (원)</option></Select></div>
-            <div><Label>수수료 값</Label><Input value={f.commissionValue} onChange={set("commissionValue")} inputMode="numeric" /></div>
+            <div><Label>셀러 수수료 방식</Label><Select aria-label="셀러 수수료 방식" value={f.commissionType} onChange={set("commissionType")}><option value="PERCENT">정률 (%)</option><option value="FIXED">정액 (원)</option></Select></div>
+            <div><Label>수수료 값</Label><Input aria-label="수수료 값" value={f.commissionValue} onChange={set("commissionValue")} inputMode="numeric" /></div>
           </div>
-          <div><Label>배송 정보</Label><Input value={f.shippingInfo} onChange={set("shippingInfo")} placeholder="예: 3,000원 (5만원 이상 무료)" /></div>
+          <div><Label>배송 정보</Label><Input aria-label="배송 정보" value={f.shippingInfo} onChange={set("shippingInfo")} placeholder="예: 3,000원 (5만원 이상 무료)" /></div>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <label className="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" checked={again} onChange={(e) => setAgain(e.target.checked)} className="h-4 w-4 accent-brand-500" />등록 후 계속 다른 상품 등록</label>
           <Button className="w-full" size="lg" disabled={loading}>{loading ? "등록 중..." : "상품 등록"}</Button>

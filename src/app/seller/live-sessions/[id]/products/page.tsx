@@ -19,7 +19,7 @@ export default async function ProductsPage({ params }: { params: { id: string } 
     <div>
       <PageHeader title="판매 상품 선택" description={data.session.title}
         action={<Link href={`/seller/live-sessions/${params.id}`}><Button variant="outline">세션으로</Button></Link>} />
-      <LiveProductManager sessionId={params.id} initial={data.items} catalog={data.catalog} />
+      <LiveProductManager sessionId={params.id} initial={data.items} catalog={data.catalog} brandCatalog={data.brandCatalog} />
     </div>
   );
 }

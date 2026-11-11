@@ -67,15 +67,15 @@ export function MonthCalendar({
                   "flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
                   k === today ? "bg-brand-500 text-navy" : i % 7 === 0 ? "text-red-500" : i % 7 === 6 ? "text-blue-600" : "text-navy",
                 )}>{d}</span>
-                {list.length > 0 && <span className="rounded-full bg-navy px-1.5 text-[10px] font-bold text-white sm:hidden">{list.length}</span>}
+                {list.length > 0 && <span className="rounded-full bg-navy px-1.5 text-[11px] font-bold text-white sm:hidden">{list.length}</span>}
               </div>
-              {closed && <p className="mt-0.5 truncate text-[10px] font-semibold text-red-500" title={closed}>휴무{closed !== "휴무" ? ` · ${closed}` : ""}</p>}
+              {closed && <p className="mt-0.5 truncate text-[11px] font-semibold text-red-500" title={closed}>휴무{closed !== "휴무" ? ` · ${closed}` : ""}</p>}
               <div className="mt-0.5 hidden space-y-0.5 sm:block">
                 {list.slice(0, maxPerDay).map((e) => {
-                  const body = <span className={cn("block truncate rounded border px-1 py-0.5 text-[10px] font-semibold", TONE[e.tone ?? "blue"])} title={`${hhmm(e.start)}~${hhmm(e.end)} ${e.label}`}>{hhmm(e.start)} {e.label}</span>;
+                  const body = <span className={cn("block truncate rounded border px-1 py-0.5 text-[11px] font-semibold", TONE[e.tone ?? "blue"])} title={`${hhmm(e.start)}~${hhmm(e.end)} ${e.label}`}>{hhmm(e.start)} {e.label}</span>;
                   return e.href ? <Link key={e.id} href={e.href}>{body}</Link> : <div key={e.id}>{body}</div>;
                 })}
-                {list.length > maxPerDay && <p className="text-[10px] font-semibold text-slate-500">+{list.length - maxPerDay}건</p>}
+                {list.length > maxPerDay && <p className="text-[11px] font-semibold text-slate-500">+{list.length - maxPerDay}건</p>}
               </div>
             </div>
           );

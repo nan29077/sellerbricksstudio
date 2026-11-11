@@ -24,7 +24,9 @@ export async function POST(req: NextRequest) {
     if (!valid) return fail("현재 비밀번호가 올바르지 않습니다.", 400);
 
     const passwordHash = await bcrypt.hash(String(newPassword), 10);
-    await prisma.user.update({ where: { id: u.id }, data: { passwordHash } });
+    // 다른 기기에 남아 있는 로그인도 끊는다 (이 기기는 화면에서 다시 로그인 안내)
+    await prisma.user.update({ where: { id: u.id }, data: { passwordHash, sessionVersion: { increment: 1 } } });
+    await prisma.authToken.deleteMany({ where: { userId: u.id, type: "PASSWORD_RESET" } }).catch(() => {});
 
     return ok({ changed: true });
   } catch (e) {

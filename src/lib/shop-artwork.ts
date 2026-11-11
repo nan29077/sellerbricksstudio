@@ -23,6 +23,7 @@ export const FACILITY_ARTWORK = withImageUrls(facilityArtwork);
 
 export function isShopImageUrl(value: string) {
   if (/^\/images\/[\w./-]+$/.test(value) && !value.split("/").includes("..")) return true;
+  if (/^\/uploads\/[\w./-]+\.(jpg|png|webp|gif)$/.test(value) && !value.split("/").includes("..")) return true; // 개발 환경 업로드
   if (!value.startsWith("https://")) return false;
   try {
     const url = new URL(value);

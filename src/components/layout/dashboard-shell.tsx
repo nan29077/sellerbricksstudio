@@ -11,6 +11,7 @@ import {
   Settings, ScrollText, Sliders, Image as ImageIcon,
   ChevronRight, Home, Globe, TrendingUp, Megaphone,
   Share2, BarChart3, Ticket, LayoutTemplate, Star, Wallet, Coins, Package, ShoppingBag, ClipboardList,
+  FileText, Percent, Banknote, PackagePlus, Undo2, UserCog,
 } from "lucide-react";
 import { NotificationBell } from "./notification-bell";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,8 @@ const ROLE_NAV: Record<string, NavSection[]> = {
       { href: "/admin/users",      label: "회원 관리", icon: Users },
       { href: "/admin/facilities", label: "창고(스튜디오) 관리", icon: Building2 },
       { href: "/admin/brands",     label: "브랜드샵 관리", icon: ShoppingBag },
+      { href: "/admin/brands/requests", label: "샘플 · 입고 신청", icon: ClipboardList },
+      { href: "/admin/purchase-orders", label: "발주 관리", icon: FileText },
       { href: "/admin/managers",   label: "매니저 관리", icon: Users },
       { href: "/admin/reviews",    label: "리뷰 관리", icon: Star },
     ]},
@@ -35,7 +38,9 @@ const ROLE_NAV: Record<string, NavSection[]> = {
       { href: "/admin/farm-reservations", label: "창고(스튜디오) 예약", icon: Building2 },
     ]},
     { title: "정산 · 마케팅", items: [
-      { href: "/admin/settlements", label: "정산 관리",    icon: TrendingUp },
+      { href: "/admin/payouts",     label: "판매 · 브랜드 정산", icon: Banknote },
+      { href: "/admin/settlements", label: "이용료 정산",  icon: TrendingUp },
+      { href: "/admin/policy",      label: "수수료 · 운영 정책", icon: Percent },
       { href: "/admin/marketing",   label: "마케팅 지원",  icon: Megaphone },
     ]},
     { title: "시스템 설정", items: [
@@ -58,7 +63,9 @@ const ROLE_NAV: Record<string, NavSection[]> = {
     ]},
     { title: "브랜드", items: [
       { href: "/brands", label: "브랜드샵 둘러보기", icon: ShoppingBag },
-      { href: "/brand-requests", label: "내 브랜드 신청", icon: ClipboardList },
+      { href: "/seller/brand-products", label: "내 브랜드 판매 상품", icon: PackagePlus },
+      { href: "/brand-requests", label: "샘플 신청 내역", icon: ClipboardList },
+      { href: "/brand-messages", label: "브랜드 문의", icon: MessageSquare },
     ]},
     { title: "창고·스튜디오", items: [
       { href: "/seller/products",           label: "판매 상품 둘러보기", icon: Package, requiresFacility: true },
@@ -89,7 +96,9 @@ const ROLE_NAV: Record<string, NavSection[]> = {
     ]},
     { title: "브랜드", items: [
       { href: "/brands", label: "브랜드샵 둘러보기", icon: ShoppingBag },
-      { href: "/brand-requests", label: "내 브랜드 신청", icon: ClipboardList },
+      { href: "/facility/brand-products", label: "브랜드 판매 상품 · 입고", icon: PackagePlus },
+      { href: "/brand-requests", label: "샘플 · 입고 신청 내역", icon: ClipboardList },
+      { href: "/brand-messages", label: "브랜드 문의", icon: MessageSquare },
     ]},
     { title: "예약 관리", items: [
       { href: "/facility/bookings",   label: "예약 현황", icon: CalendarDays },
@@ -103,12 +112,28 @@ const ROLE_NAV: Record<string, NavSection[]> = {
     ]},
   ],
   BRAND_ADMIN: [
-    { title: "브랜드샵", items: [
-      { href: "/brand/dashboard", label: "샵 · 상품 관리", icon: LayoutTemplate },
-      { href: "/brand/requests", label: "공급 · 샘플 신청", icon: ClipboardList },
+    { title: "운영 현황", items: [
+      { href: "/brand/dashboard", label: "대시보드", icon: LayoutDashboard },
+    ]},
+    { title: "내 브랜드샵", items: [
+      { href: "/brand/shop", label: "샵 꾸미기 · 정보", icon: LayoutTemplate },
+      { href: "/brand/products", label: "상품 · 재고 관리", icon: Package },
+    ]},
+    { title: "주문 · 판매", items: [
+      { href: "/brand/orders", label: "발주서", icon: FileText },
+      { href: "/brand/claims", label: "취소 · 반품 · 교환", icon: Undo2 },
+      { href: "/brand/requests", label: "샘플 · 입고 신청", icon: ClipboardList },
+      { href: "/brand/channels", label: "판매처 관리", icon: Users },
+      { href: "/brand/messages", label: "판매처 문의함", icon: MessageSquare },
+    ]},
+    { title: "정산 · 분석", items: [
+      { href: "/brand/settlements", label: "정산 내역", icon: Banknote },
+      { href: "/brand/reports", label: "매출 리포트", icon: BarChart3 },
+    ]},
+    { title: "둘러보기", items: [
       { href: "/brands", label: "브랜드샵 둘러보기", icon: ShoppingBag },
     ]},
-    { title: "계정", items: [{ href: "/brand/settings", label: "설정", icon: Settings }] },
+    { title: "계정", items: [{ href: "/brand/team", label: "팀원 관리", icon: UserCog }, { href: "/brand/settings", label: "설정", icon: Settings }] },
   ],
 };
 
@@ -213,7 +238,7 @@ export function DashboardShell({
           />
           <div className="min-w-0">
             <p className="text-sm font-bold text-white truncate">{userName}</p>
-            <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-full", ROLE_BADGE_COLOR[role] ?? "bg-gray-100 text-gray-600")}>
+            <span className={cn("text-[11px] font-semibold px-1.5 py-0.5 rounded-full", ROLE_BADGE_COLOR[role] ?? "bg-gray-100 text-gray-600")}>
               {roleLabel}
             </span>
           </div>
@@ -223,7 +248,7 @@ export function DashboardShell({
       <nav aria-label="업무 메뉴" className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4 [scrollbar-width:thin]">
         {sections.map((section) => (
           <div key={section.title} className="space-y-0.5">
-            <p className="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">
+            <p className="px-3 pb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-white/35">
               {section.title}
             </p>
             {section.items.map((n) => {
@@ -318,7 +343,7 @@ export function DashboardShell({
       <div className="min-w-0">
         <header className="sticky top-0 z-30 hidden h-[68px] items-center justify-between gap-4 border-b border-[#E8E4DB] bg-white/95 px-7 backdrop-blur lg:flex 2xl:px-9">
           <div className="min-w-0">
-            <p className="text-[10px] font-extrabold tracking-[0.18em] text-brand-800">SELLERBRICKS WORKSPACE</p>
+            <p className="text-[11px] font-extrabold tracking-[0.18em] text-brand-800">SELLERBRICKS WORKSPACE</p>
             <p className="mt-1 truncate text-sm font-semibold text-slate-600">{roleLabel} <span className="mx-2 text-slate-400">/</span> <span className="text-navy">{currentPage}</span></p>
           </div>
           <div className="flex shrink-0 items-center gap-3"><NotificationBell /><Link href="/" className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-xs font-bold text-slate-600 transition hover:bg-brand-50 hover:text-brand-800"><Home className="h-4 w-4" />사이트 보기</Link></div>
@@ -341,7 +366,7 @@ export function DashboardShell({
               href={n.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex min-h-[56px] min-w-0 flex-col items-center justify-center gap-1 px-1 py-1.5 text-center text-[10px] font-medium leading-tight transition-colors",
+                "flex min-h-[56px] min-w-0 flex-col items-center justify-center gap-1 px-1 py-1.5 text-center text-[11px] font-medium leading-tight transition-colors",
                 active ? "text-brand-600" : "text-muted-foreground",
               )}
             >

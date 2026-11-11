@@ -66,7 +66,7 @@ export function StudioTopBar({ account }: { account: Account }) {
           { href: "/support", label: "도움말", icon: CircleHelp, active: pathname.startsWith("/support") },
           { href: account ? settingsHref[account.role] : "/login", label: "마이페이지", icon: UserCircle },
         ].map(({ href, label, icon: Icon, active }) => (
-          <Link key={label} href={href} aria-current={active ? "page" : undefined} className={cn("flex min-h-[62px] min-w-0 flex-col items-center justify-center gap-1 px-0.5 text-center text-[10px] font-bold leading-tight text-slate-600 hover:text-navy", active && "text-navy")}>
+          <Link key={label} href={href} aria-current={active ? "page" : undefined} className={cn("flex min-h-[62px] min-w-0 flex-col items-center justify-center gap-1 px-0.5 text-center text-[11px] font-bold leading-tight text-slate-600 hover:text-navy", active && "text-navy")}>
             <span className={cn("grid h-8 w-8 place-items-center rounded-xl border border-transparent", active && "border-brand-300 bg-brand-100")}><Icon className="h-[17px] w-[17px]" /></span>{label}
           </Link>
         ))}
@@ -81,7 +81,7 @@ export function StudioNavigation({ account }: { account: Account }) {
     <>
       <div className="row-start-2 max-h-[calc(100svh-102px)] w-full overflow-y-auto rounded-[24px] border border-white/90 bg-[#F8F9FA]/95 p-2 text-navy shadow-[0_12px_35px_#1A1A2E30] backdrop-blur-md [scrollbar-width:thin] [@media(max-height:740px)]:row-start-1">
         <MenuItems account={account} desktop />
-        <p aria-hidden="true" className="pb-1 pt-2 text-center text-[9px] font-black tracking-[0.13em] text-slate-500">SELLERBRICKS</p>
+        <p aria-hidden="true" className="pb-1 pt-2 text-center text-[11px] font-black tracking-[0.13em] text-slate-500">SELLERBRICKS</p>
       </div>
       <Link href="/support" aria-current={pathname === "/support" ? "page" : undefined} className="row-start-3 mb-1 flex min-h-11 items-center justify-center gap-1.5 self-end rounded-full border border-white/20 bg-navy px-3 text-[11px] font-bold text-white shadow-lg transition hover:bg-navy-700 [@media(max-height:740px)]:row-start-2">
         <Headset className="h-4 w-4 text-brand-300" />문의하기
@@ -104,7 +104,7 @@ function MenuItems({ account, desktop, onNavigate }: { account: Account; desktop
   ];
   const itemStyle = cn(
     "flex min-h-11 w-full items-center rounded-xl border border-transparent text-slate-600 transition hover:bg-brand-50 hover:text-navy",
-    desktop ? "flex-col justify-center gap-1 px-1 py-1.5 text-[10px] font-bold" : "gap-3 px-3 py-2 text-sm font-semibold",
+    desktop ? "flex-col justify-center gap-1 px-1 py-1.5 text-[11px] font-bold" : "gap-3 px-3 py-2 text-sm font-semibold",
   );
 
   return (
@@ -124,7 +124,7 @@ function MenuItems({ account, desktop, onNavigate }: { account: Account; desktop
                 <span className={cn("block font-extrabold text-navy", desktop ? "line-clamp-2 break-all leading-tight" : "truncate")}>{account.name}</span>
                 {/* 이름에 이미 역할명이 들어 있으면(예: "셀러", "테스트셀러") 역할을 한 번만 보여 준다 */}
                 {!account.name.replace(/\s/g, "").includes(ROLE_LABELS[account.role].replace(/\s/g, "")) && (
-                  <span className="mt-0.5 block truncate text-[9px] text-slate-500">{ROLE_LABELS[account.role]}</span>
+                  <span className="mt-0.5 block truncate text-[11px] text-slate-500">{ROLE_LABELS[account.role]}</span>
                 )}
               </span>
             </Link>

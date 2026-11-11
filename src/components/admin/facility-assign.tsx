@@ -1,4 +1,5 @@
 "use client";
+import { appAlert } from "@/components/ui/app-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Building2 } from "lucide-react";
@@ -18,7 +19,7 @@ export function FacilityAssign({ managerId, managerName, all, assigned }: {
   async function save() {
     setBusy(true);
     try { await api(`/api/admin/managers/${managerId}/facilities`, "PUT", { facilityIds: [...sel] }); setOpen(false); router.refresh(); }
-    catch (e) { alert((e as Error).message); } finally { setBusy(false); }
+    catch (e) { void appAlert((e as Error).message); } finally { setBusy(false); }
   }
   return (
     <>
@@ -31,7 +32,7 @@ export function FacilityAssign({ managerId, managerName, all, assigned }: {
             <label key={f.id} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted/50">
               <input type="checkbox" className="h-4 w-4 accent-brand-500" checked={sel.has(f.id)} onChange={() => setSel((s) => { const n = new Set(s); n.has(f.id) ? n.delete(f.id) : n.add(f.id); return n; })} />
               <span className="flex-1 text-sm text-navy">{f.name} <span className="text-xs text-muted-foreground">· {f.region}</span></span>
-              {f.taken && <span className="text-[10px] text-slate-400">현재 {f.taken}</span>}
+              {f.taken && <span className="text-[11px] text-slate-400">현재 {f.taken}</span>}
             </label>
           ))}
         </div>

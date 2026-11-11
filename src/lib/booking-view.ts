@@ -7,14 +7,16 @@ type Row = {
   id: string; status: string; startAt: Date; endAt: Date; headcount: number | null; purpose: string | null;
   expectedProducts: string | null; requestNote: string | null; facilityMemo: string | null; rejectReason: string | null;
   cancelReason: string | null; createdAt: Date; sellerId: string;
-  code?: string | null; groupId?: string | null; rescheduleCount?: number;
+  code?: string | null; groupId?: string | null; rescheduleCount?: number; checkedInAt?: Date | null;
   facility: { name: string };
   seller: { email: string; profile: { name: string; phone: string | null; companyName: string | null } | null };
   products?: { id: string; nameSnapshot: string; quantity: number; priceSnapshot: number; status: string; facilityNote: string | null }[];
 };
 
 // 서버 → 클라이언트 전달용 직렬화
-export function toManageBooking(b: Row, history?: Map<string, number>): ManageBooking {
+export function toManageBooking(b: Row, history?: Map<string, number>, extra?: {
+  reliability?: Map<string, { completed: number; noShow: number; cancelled: number }>; noShowGraceMinutes?: number;
+}): ManageBooking {
   const st = BOOKING_STATUS[b.status] ?? { label: b.status, tone: "gray" as const };
   return {
     id: b.id, status: b.status, statusLabel: st.label, tone: st.tone,
@@ -25,6 +27,11 @@ export function toManageBooking(b: Row, history?: Map<string, number>): ManageBo
     facilityMemo: b.facilityMemo, rejectReason: b.rejectReason, cancelReason: b.cancelReason,
     started: b.startAt <= new Date(), createdAt: formatDateTime(b.createdAt), sellerHistory: history?.get(b.sellerId) ?? 0,
     code: b.code ?? null, recurring: !!b.groupId, rescheduleCount: b.rescheduleCount ?? 0,
+    checkedIn: !!b.checkedInAt,
+    canCheckIn: b.status === "APPROVED" && !b.checkedInAt && Date.now() >= b.startAt.getTime() - 2 * 3600000 && Date.now() <= b.endAt.getTime(),
+    canNoShow: b.status === "APPROVED" && !b.checkedInAt && Date.now() >= b.startAt.getTime() + (extra?.noShowGraceMinutes ?? 30) * 60000,
+    noShowCount: extra?.reliability?.get(b.sellerId)?.noShow ?? 0,
+    cancelCount: extra?.reliability?.get(b.sellerId)?.cancelled ?? 0,
     products: (b.products ?? []).map((p) => ({ id: p.id, name: p.nameSnapshot, quantity: p.quantity, price: p.priceSnapshot, status: p.status, note: p.facilityNote })),
   };
 }

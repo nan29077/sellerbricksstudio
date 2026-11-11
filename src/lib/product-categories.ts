@@ -1,4 +1,3 @@
-// 창고(스튜디오) 상품 카테고리 — 상품 등록·수정과 셀러 검색에서 공통으로 사용
-export const PRODUCT_CATEGORIES = [
-  "식품", "농수산물", "건강식품", "패션", "패션잡화", "뷰티", "리빙", "주방용품", "디지털", "유아동", "반려동물", "스포츠", "레저", "기타",
-] as const;
+// 창고(스튜디오) 상품 카테고리 — 공통 카테고리(src/lib/categories.ts)를 그대로 사용
+import { CATEGORIES } from "./categories";
+export const PRODUCT_CATEGORIES = CATEGORIES;

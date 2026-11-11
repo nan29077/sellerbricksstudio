@@ -22,12 +22,12 @@ enum Role {
 
 enum FacilityType {
   WAREHOUSE // 창고
-  STUDIO    // 스튜디오
+  STUDIO // 스튜디오
 }
 
 enum FacilityStatus {
-  PENDING   // 승인 대기
-  APPROVED  // 승인됨
+  PENDING // 승인 대기
+  APPROVED // 승인됨
   SUSPENDED // 정지
 }
 
@@ -37,6 +37,7 @@ enum BookingStatus {
   REJECTED
   CANCELLED
   COMPLETED
+  NO_SHOW // 노쇼 (승인된 예약에 나타나지 않음)
 }
 
 enum CommissionType {
@@ -45,9 +46,9 @@ enum CommissionType {
 }
 
 enum ProductSource {
-  CATALOG       // 창고(스튜디오)에 정식 등록된 상품
-  AD_HOC        // 방송 중 임시 추가
-  TEMP_PRODUCT  // 임시 상품(정식 전환 전)
+  CATALOG // 창고(스튜디오)에 정식 등록된 상품
+  AD_HOC // 방송 중 임시 추가
+  TEMP_PRODUCT // 임시 상품(정식 전환 전)
 }
 
 enum LiveStatus {
@@ -87,8 +88,8 @@ enum PaymentStatus {
 }
 
 enum PaymentMethod {
-  CARD          // 신용카드
-  EASY_PAY      // 간편결제
+  CARD // 신용카드
+  EASY_PAY // 간편결제
   BANK_TRANSFER // 간편 계좌이체
 }
 
@@ -106,41 +107,67 @@ enum NotificationStatus {
 
 // ===================== Core: Users =====================
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  role         Role     @default(SELLER)
-  isActive     Boolean  @default(true)
+  id                String    @id @default(cuid())
+  email             String    @unique
+  passwordHash      String
+  role              Role      @default(SELLER)
+  isActive          Boolean   @default(true)
   profileImageIndex Int? // 1-30 동물 프로필 번호 (null이면 계정 기준 기본값)
-  lastLoginAt  DateTime? // 마지막 로그인 시각
-  adminMemo    String?  @db.Text // 최고관리자 전용 내부 메모
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  lastLoginAt       DateTime? // 마지막 로그인 시각
+  adminMemo         String?   @db.Text // 최고관리자 전용 내부 메모
+  emailVerifiedAt   DateTime? // 이메일 인증 완료 시각
+  sessionVersion    Int       @default(0) // 비밀번호·역할 변경 시 올려서 기존 로그인 세션을 끊는다
+  termsAgreedAt     DateTime? // 이용약관 동의 시각
+  privacyAgreedAt   DateTime? // 개인정보 수집·이용 동의 시각
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  profile            Profile?
-  ownedFacilities    Facility[]          @relation("FacilityOwner")
-  managedFacilities  ManagerFacility[]
-  bookings           Booking[]           @relation("SellerBookings")
-  bookingWaitlist    BookingWaitlist[]
-  liveSessions       LiveSession[]       @relation("SellerLiveSessions")
-  orders             Order[]             @relation("SellerOrders")
-  kakaoChannels      KakaoChannel[]
-  settlements        Settlement[]        @relation("SellerSettlements")
-  managerCommission  ManagerCommissionRule[]
-  auditLogs          AuditLog[]
-  inquiries          FacilityInquiry[]   @relation("SellerInquiries")
-  supportInquiries   SupportInquiry[]
-  reviews            FacilityReview[]    @relation("SellerReviews")
-  favorites          FacilityFavorite[]
-  notifications      UserNotification[]
+  authTokens            AuthToken[]
+  brandMembership       BrandMember?
+  brandPartners         BrandPartner[]
+  brandThreads          BrandThread[]           @relation("PartnerThreads")
+  brandMessages         BrandMessage[]
+  profile               Profile?
+  ownedFacilities       Facility[]              @relation("FacilityOwner")
+  managedFacilities     ManagerFacility[]
+  bookings              Booking[]               @relation("SellerBookings")
+  bookingWaitlist       BookingWaitlist[]
+  liveSessions          LiveSession[]           @relation("SellerLiveSessions")
+  orders                Order[]                 @relation("SellerOrders")
+  kakaoChannels         KakaoChannel[]
+  settlements           Settlement[]            @relation("SellerSettlements")
+  managerCommission     ManagerCommissionRule[]
+  auditLogs             AuditLog[]
+  inquiries             FacilityInquiry[]       @relation("SellerInquiries")
+  supportInquiries      SupportInquiry[]
+  reviews               FacilityReview[]        @relation("SellerReviews")
+  favorites             FacilityFavorite[]
+  notifications         UserNotification[]
   marketingApplications MarketingApplication[]
-  promotions         SellerPromotion[]
-  coupons            SellerCoupon[]
-  marketingAssets    MarketingAsset[]
-  snsAccounts        SnsAccount[]
-  snsPosts           SnsPost[]
-  brandShop          BrandShop?
-  brandRequests      BrandRequest[]
+  promotions            SellerPromotion[]
+  coupons               SellerCoupon[]
+  marketingAssets       MarketingAsset[]
+  snsAccounts           SnsAccount[]
+  snsPosts              SnsPost[]
+  brandShop             BrandShop?
+  brandRequests         BrandRequest[]
+  sellerBrandProducts   SellerBrandProduct[]
+  purchaseOrders        PurchaseOrder[]         @relation("SellerPurchaseOrders")
+}
+
+// 브랜드 상품 배송 방식
+enum FulfillmentMode {
+  DROPSHIP // 브랜드 직배송: 판매되면 발주서가 브랜드로 가고, 브랜드가 구매자에게 직접 배송
+  WAREHOUSE // 창고 입고: 브랜드가 창고에 미리 입고(위탁), 창고가 출고. 판매되면 정산용 발주서 생성
+}
+
+enum PurchaseOrderStatus {
+  NEW // 신규 발주 (브랜드 확인 전)
+  CONFIRMED // 발주 확인
+  SHIPPED // 출고·배송 중
+  DELIVERED // 배송 완료
+  CANCELLED // 취소
+  RETURNED // 반품·환불
 }
 
 enum BrandShopStatus {
@@ -166,68 +193,113 @@ enum BrandRequestStatus {
 }
 
 model BrandShop {
-  id           String          @id @default(cuid())
-  ownerId      String          @unique
-  owner        User            @relation(fields: [ownerId], references: [id])
-  name         String
-  tagline      String          @default("")
-  description  String          @default("") @db.Text
-  logoUrl      String          @default("")
-  bannerUrl    String          @default("")
-  backgroundUrl String         @default("")
-  paymentInstructions String   @default("") @db.Text
-  status       BrandShopStatus @default(PENDING)
-  moderationNote String       @default("")
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  products     BrandProduct[]
+  id                    String                      @id @default(cuid())
+  ownerId               String                      @unique
+  owner                 User                        @relation(fields: [ownerId], references: [id])
+  name                  String
+  tagline               String                      @default("")
+  description           String                      @default("") @db.Text
+  logoUrl               String                      @default("")
+  bannerUrl             String                      @default("")
+  backgroundUrl         String                      @default("")
+  paymentInstructions   String                      @default("") @db.Text
+  status                BrandShopStatus             @default(PENDING)
+  moderationNote        String                      @default("")
+  categories            String[]                    @default([]) // 취급 카테고리(대분류)
+  businessNumber        String                      @default("") // 사업자등록번호
+  ceoName               String                      @default("")
+  csPhone               String                      @default("") // 고객센터·담당 연락처
+  returnAddress         String                      @default("") // 반품·교환 주소
+  bankName              String                      @default("") // 정산 은행
+  bankAccount           String                      @default("")
+  accountHolder         String                      @default("")
+  feeRate               Float? // 브랜드별 수수료율(%) — 비우면 플랫폼 기본값
+  requireSellerApproval Boolean                     @default(false) // 판매처(셀러·창고)가 상품을 가져가기 전에 브랜드 승인 필요
+  lowStockThreshold     Int                         @default(10) // 재고 부족 알림 기준
+  bankChangedAt         DateTime? // 정산 계좌 마지막 변경 시각
+  createdAt             DateTime                    @default(now())
+  updatedAt             DateTime                    @updatedAt
+  products              BrandProduct[]
+  purchaseOrders        PurchaseOrder[]
+  settlements           BrandSettlement[]
+  members               BrandMember[]
+  partners              BrandPartner[]
+  threads               BrandThread[]
+  adjustments           BrandSettlementAdjustment[]
 
   @@index([status, createdAt])
 }
 
 model BrandProduct {
-  id          String        @id @default(cuid())
-  shopId      String
-  shop        BrandShop     @relation(fields: [shopId], references: [id])
-  name        String
-  category    String
-  description String        @default("") @db.Text
-  imageUrl    String        @default("")
-  supplyPrice Int
-  stock       Int
-  samplePrice Int?
-  sampleStock Int           @default(0)
-  isActive    Boolean       @default(true)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  requests    BrandRequest[]
+  id                  String               @id @default(cuid())
+  shopId              String
+  shop                BrandShop            @relation(fields: [shopId], references: [id])
+  name                String
+  category            String
+  description         String               @default("") @db.Text
+  imageUrl            String               @default("")
+  supplyPrice         Int
+  stock               Int
+  samplePrice         Int?
+  sampleStock         Int                  @default(0)
+  isActive            Boolean              @default(true)
+  subCategory         String               @default("")
+  sku                 String               @default("")
+  consumerPrice       Int                  @default(0) // 권장 소비자가
+  images              String[]             @default([]) // 추가 이미지
+  options             String               @default("") // 옵션: "색상:블랙,화이트|사이즈:S,M,L"
+  allowDropship       Boolean              @default(true) // 브랜드 직배송 허용
+  allowWarehouse      Boolean              @default(true) // 창고 입고(위탁) 허용
+  shippingFee         Int                  @default(0) // 직배송 시 건당 배송비(브랜드 부담분 정산 차감 아님, 안내용)
+  leadDays            Int                  @default(2) // 발주 후 출고 소요일
+  sampleLimitPerBuyer Int                  @default(1) // 계정당 샘플 신청 한도(0 = 무제한)
+  minSalePrice        Int? // 최저 판매가(비우면 공급가)
+  lowStockNotifiedAt  DateTime? // 재고 부족 알림을 보낸 시각(재입고되면 비움)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  requests            BrandRequest[]
+  facilityProducts    FacilityProduct[]
+  sellerListings      SellerBrandProduct[]
+  liveProducts        LiveSessionProduct[]
+  poItems             PurchaseOrderItem[]
 
   @@index([shopId, isActive])
 }
 
 model BrandRequest {
-  id          String             @id @default(cuid())
-  productId   String
-  product     BrandProduct       @relation(fields: [productId], references: [id])
-  buyerId     String
-  buyer       User               @relation(fields: [buyerId], references: [id])
-  requestKey  String
-  kind        BrandRequestKind
-  status      BrandRequestStatus
-  productName String
-  quantity    Int
-  unitPrice   Int
-  recipient   String
-  phone       String
-  address     String
-  message     String             @default("")
-  paymentInstructions String     @default("") @db.Text
-  trackingNumber String          @default("")
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+  id                  String             @id @default(cuid())
+  productId           String
+  product             BrandProduct       @relation(fields: [productId], references: [id])
+  buyerId             String
+  buyer               User               @relation(fields: [buyerId], references: [id])
+  requestKey          String
+  kind                BrandRequestKind
+  status              BrandRequestStatus
+  productName         String
+  quantity            Int
+  unitPrice           Int
+  recipient           String
+  phone               String
+  address             String
+  message             String             @default("")
+  paymentInstructions String             @default("") @db.Text
+  trackingNumber      String             @default("")
+  carrier             String             @default("")
+  rejectReason        String             @default("")
+  facilityProductId   String? // 창고 입고 요청 대상 판매 상품
+  paymentStatus       String             @default("NONE") // NONE | PAID | REFUNDED (유료 샘플은 플랫폼 결제)
+  paidAmount          Int                @default(0)
+  pgTransactionId     String?
+  paidAt              DateTime?
+  receivedAt          DateTime? // 창고 입고 완료 시각
+  brandSettlementId   String?
+  brandSettlement     BrandSettlement?   @relation(fields: [brandSettlementId], references: [id])
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
 
-  @@index([buyerId, createdAt])
   @@unique([buyerId, requestKey])
+  @@index([brandSettlementId])
+  @@index([buyerId, createdAt])
   @@index([productId, status])
 }
 
@@ -242,16 +314,16 @@ enum SupportCategory {
 }
 
 model SupportInquiry {
-  id          String          @id @default(uuid())
-  userId      String
-  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category    SupportCategory
-  subject     String          @db.VarChar(100)
-  message     String          @db.Text
-  reference   String?         @db.VarChar(100)
-  reply       String?         @db.Text
-  answeredAt  DateTime?
-  createdAt   DateTime        @default(now())
+  id         String          @id @default(uuid())
+  userId     String
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   SupportCategory
+  subject    String          @db.VarChar(100)
+  message    String          @db.Text
+  reference  String?         @db.VarChar(100)
+  reply      String?         @db.Text
+  answeredAt DateTime?
+  createdAt  DateTime        @default(now())
 
   @@index([userId, createdAt])
   @@index([answeredAt, createdAt])
@@ -259,69 +331,73 @@ model SupportInquiry {
 }
 
 model Profile {
-  id          String  @id @default(cuid())
-  userId      String  @unique
-  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name        String
-  phone       String?
-  companyName String?
-  avatarUrl   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  phone          String?
+  companyName    String?
+  businessNumber String?
+  categories     String[] @default([]) // 관심·취급 카테고리
+  avatarUrl      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 // ===================== Facilities =====================
 model Facility {
-  id          String         @id @default(cuid())
-  ownerId     String
-  owner       User           @relation("FacilityOwner", fields: [ownerId], references: [id])
-  name        String
-  type        FacilityType
-  status      FacilityStatus @default(PENDING)
-  region      String         // 지역 (예: 서울, 부산)
-  address     String
-  description String?
-  equipment   String?        // 보유 장비 (콤마 구분 또는 자유 텍스트)
-  specialty   String?        // 전문 카테고리 (콤마 구분: 의류,코스메틱,식품 등)
-  liveSpaceInfo String?      // 라이브 공간 안내 (조명/카메라/인터넷 등)
-  openTime    String?        // "09:00"
-  closeTime   String?        // "22:00"
-  basePrice   Int            @default(0) // (사용 안 함) 창고(스튜디오) 이용료는 무료 — 과거 데이터 호환용
-  rating      Float          @default(0)
-  thumbnailUrl String?
-  contactPhone String?       // 현장 연락처
-  capacity    Int?           // 최대 수용 인원
-  minHours    Int            @default(1) // 최소 예약 시간(시간)
-  cancelPolicy String?       @db.Text // 취소·환불 규정
-  bankName    String?        // 정산 은행
-  bankAccount String?        // 정산 계좌번호
-  accountHolder String?      // 예금주
+  id                  String         @id @default(cuid())
+  ownerId             String
+  owner               User           @relation("FacilityOwner", fields: [ownerId], references: [id])
+  name                String
+  type                FacilityType
+  status              FacilityStatus @default(PENDING)
+  region              String // 지역 (예: 서울, 부산)
+  address             String
+  description         String?
+  equipment           String? // 보유 장비 (콤마 구분 또는 자유 텍스트)
+  specialty           String? // 전문 카테고리 (콤마 구분: 의류,코스메틱,식품 등)
+  liveSpaceInfo       String? // 라이브 공간 안내 (조명/카메라/인터넷 등)
+  openTime            String? // "09:00"
+  closeTime           String? // "22:00"
+  basePrice           Int            @default(0) // (사용 안 함) 창고(스튜디오) 이용료는 무료 — 과거 데이터 호환용
+  rating              Float          @default(0)
+  thumbnailUrl        String?
+  contactPhone        String? // 현장 연락처
+  capacity            Int? // 최대 수용 인원
+  minHours            Int            @default(1) // 최소 예약 시간(시간)
+  cancelPolicy        String?        @db.Text // 취소·환불 규정
+  bankName            String? // 정산 은행
+  bankAccount         String? // 정산 계좌번호
+  accountHolder       String? // 예금주
   // ---- 예약 정책 (창고(스튜디오)별) ----
-  bookingUnitMinutes  Int     @default(60)  // 예약 시작 단위(분): 30 | 60
-  bufferMinutes       Int     @default(0)   // 예약 사이 준비·정리 시간(분)
-  minLeadHours        Int     @default(0)   // 최소 몇 시간 전까지 예약 가능
-  maxAdvanceDays      Int     @default(60)  // 최대 며칠 앞까지 예약 가능
-  maxHours            Int     @default(12)  // 1회 최대 이용 시간
-  autoApprove         Boolean @default(false) // 즉시 확정(승인 절차 생략)
-  cancelDeadlineHours Int     @default(24)  // 셀러 직접 취소·변경 마감(이용 시작 n시간 전)
-  bookingNotice       String? @db.Text      // 예약 안내사항(셀러에게 표시)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  bookingUnitMinutes  Int            @default(60) // 예약 시작 단위(분): 30 | 60
+  bufferMinutes       Int            @default(0) // 예약 사이 준비·정리 시간(분)
+  minLeadHours        Int            @default(0) // 최소 몇 시간 전까지 예약 가능
+  maxAdvanceDays      Int            @default(60) // 최대 며칠 앞까지 예약 가능
+  maxHours            Int            @default(12) // 1회 최대 이용 시간
+  autoApprove         Boolean        @default(false) // 즉시 확정(승인 절차 생략)
+  cancelDeadlineHours Int            @default(24) // 셀러 직접 취소·변경 마감(이용 시작 n시간 전)
+  bookingNotice       String?        @db.Text // 예약 안내사항(셀러에게 표시)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
 
-  waitlist      BookingWaitlist[]
-  reviews       FacilityReview[]
-  favorites     FacilityFavorite[]
+  waitlist            BookingWaitlist[]
+  reviews             FacilityReview[]
+  favorites           FacilityFavorite[]
   facilitySettlements FacilitySettlement[]
-  images        FacilityImage[]
-  slots         FacilityAvailableSlot[]
-  blackoutDates FacilityBlackoutDate[]
-  managers      ManagerFacility[]
-  products      FacilityProduct[]
-  bookings      Booking[]
-  liveSessions  LiveSession[]
-  orders        Order[]
-  settlements   Settlement[]
-  inquiries     FacilityInquiry[]
+  images              FacilityImage[]
+  slots               FacilityAvailableSlot[]
+  blackoutDates       FacilityBlackoutDate[]
+  managers            ManagerFacility[]
+  products            FacilityProduct[]
+  bookings            Booking[]
+  liveSessions        LiveSession[]
+  orders              Order[]
+  settlements         Settlement[]
+  inquiries           FacilityInquiry[]
+  timeBlocks          FacilityTimeBlock[]
+  purchaseOrders      PurchaseOrder[]
 
   @@index([region])
   @@index([type])
@@ -330,17 +406,17 @@ model Facility {
 
 // ===================== 창고(스튜디오) 문의 =====================
 model FacilityInquiry {
-  id          String   @id @default(cuid())
-  facilityId  String
-  facility    Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
-  sellerId    String
-  seller      User     @relation("SellerInquiries", fields: [sellerId], references: [id])
-  message     String   @db.Text
-  reply       String?  @db.Text
-  repliedAt   DateTime?
-  isRead      Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String    @id @default(cuid())
+  facilityId String
+  facility   Facility  @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  sellerId   String
+  seller     User      @relation("SellerInquiries", fields: [sellerId], references: [id])
+  message    String    @db.Text
+  reply      String?   @db.Text
+  repliedAt  DateTime?
+  isRead     Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   @@index([facilityId])
   @@index([sellerId])
@@ -359,9 +435,9 @@ model FacilityAvailableSlot {
   id         String   @id @default(cuid())
   facilityId String
   facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
-  weekday    Int      // 0=일 ~ 6=토
-  startTime  String   // "10:00"
-  endTime    String   // "12:00"
+  weekday    Int // 0=일 ~ 6=토
+  startTime  String // "10:00"
+  endTime    String // "12:00"
   isActive   Boolean  @default(true)
 
   @@index([facilityId])
@@ -376,6 +452,19 @@ model FacilityBlackoutDate {
   reason     String?
 
   @@unique([facilityId, date])
+}
+
+// 시간대 예약 차단 (하루 중 일부 시간만 막기: 내부 촬영, 점검 등)
+model FacilityTimeBlock {
+  id         String   @id @default(cuid())
+  facilityId String
+  facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  startAt    DateTime
+  endAt      DateTime
+  reason     String?
+  createdAt  DateTime @default(now())
+
+  @@index([facilityId, startAt])
 }
 
 // 중간관리자 - 창고(스튜디오) 매핑 (영업한 창고(스튜디오))
@@ -417,67 +506,74 @@ model ProductImage {
 }
 
 model ProductOption {
-  id          String  @id @default(cuid())
-  productId   String
-  product     Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  name        String  // 예: 색상
-  value       String  // 예: 블랙
-  extraPrice  Int     @default(0)
-  stock       Int     @default(0)
+  id         String  @id @default(cuid())
+  productId  String
+  product    Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name       String // 예: 색상
+  value      String // 예: 블랙
+  extraPrice Int     @default(0)
+  stock      Int     @default(0)
 }
 
 // facility_products: 창고(스튜디오)에서 판매 가능한 상품 + 가격/재고/수수료
 model FacilityProduct {
-  id              String        @id @default(cuid())
+  id              String           @id @default(cuid())
   facilityId      String
-  facility        Facility      @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  facility        Facility         @relation(fields: [facilityId], references: [id], onDelete: Cascade)
   productId       String
-  product         Product       @relation(fields: [productId], references: [id])
-  salePrice       Int           // 판매가(원)
-  consumerPrice   Int           // 소비자가(원)
-  stock           Int           @default(0)
+  product         Product          @relation(fields: [productId], references: [id])
+  salePrice       Int // 판매가(원)
+  consumerPrice   Int // 소비자가(원)
+  stock           Int              @default(0)
   shippingInfo    String?
-  commissionType  CommissionType @default(PERCENT)
-  commissionValue Float          @default(0)  // PERCENT: %, FIXED: 원
-  isSellable      Boolean        @default(true)
-  source          ProductSource  @default(CATALOG)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  commissionType  CommissionType   @default(PERCENT)
+  commissionValue Float            @default(0) // PERCENT: %, FIXED: 원
+  isSellable      Boolean          @default(true)
+  source          ProductSource    @default(CATALOG)
+  brandProductId  String? // 브랜드에서 가져온 상품이면 연결
+  brandProduct    BrandProduct?    @relation(fields: [brandProductId], references: [id])
+  fulfillment     FulfillmentMode? // 브랜드 상품의 배송 방식
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   liveSessionProducts LiveSessionProduct[]
   bookingProducts     BookingProduct[]
 
   @@index([facilityId])
+  @@index([brandProductId])
 }
 
 // ===================== Bookings =====================
 model Booking {
-  id             String        @id @default(cuid())
-  facilityId     String
-  facility       Facility      @relation(fields: [facilityId], references: [id])
-  sellerId       String
-  seller         User          @relation("SellerBookings", fields: [sellerId], references: [id])
-  status         BookingStatus @default(PENDING)
-  startAt        DateTime
-  endAt          DateTime
-  purpose        String?       // 방송 목적
-  expectedProducts String?     // 예상 판매 상품
-  rejectReason   String?
-  totalPrice     Int           @default(0) // (사용 안 함) 이용료 무료 — 항상 0
-  code           String?       @unique     // 예약번호 (예: SB-261110-7K3Q)
-  groupId        String?                   // 반복 예약 묶음 id
-  rescheduleCount Int          @default(0) // 일정 변경 횟수
-  headcount      Int?          // 방문 인원
-  requestNote    String?       @db.Text // 셀러 요청사항
-  facilityMemo   String?       @db.Text // 창고(스튜디오) 내부 메모 (셀러에게 비공개)
-  cancelReason   String?
-  approvedAt     DateTime?
-  cancelledAt    DateTime?
-  completedAt    DateTime?
+  id                   String              @id @default(cuid())
+  facilityId           String
+  facility             Facility            @relation(fields: [facilityId], references: [id])
+  sellerId             String
+  seller               User                @relation("SellerBookings", fields: [sellerId], references: [id])
+  status               BookingStatus       @default(PENDING)
+  startAt              DateTime
+  endAt                DateTime
+  purpose              String? // 방송 목적
+  expectedProducts     String? // 예상 판매 상품
+  rejectReason         String?
+  totalPrice           Int                 @default(0) // (사용 안 함) 이용료 무료 — 항상 0
+  code                 String?             @unique // 예약번호 (예: SB-261110-7K3Q)
+  groupId              String? // 반복 예약 묶음 id
+  rescheduleCount      Int                 @default(0) // 일정 변경 횟수
+  headcount            Int? // 방문 인원
+  requestNote          String?             @db.Text // 셀러 요청사항
+  facilityMemo         String?             @db.Text // 창고(스튜디오) 내부 메모 (셀러에게 비공개)
+  cancelReason         String?
+  approvedAt           DateTime?
+  cancelledAt          DateTime?
+  completedAt          DateTime?
+  checkedInAt          DateTime? // 현장 체크인
+  noShowAt             DateTime? // 노쇼 처리 시각
+  reminderSentAt       DateTime? // 이용 전 알림 발송 시각
   facilitySettlementId String?
   facilitySettlement   FacilitySettlement? @relation(fields: [facilitySettlementId], references: [id])
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
 
   liveSession LiveSession?
   review      FacilityReview?
@@ -492,27 +588,28 @@ model Booking {
 
 // ===================== Live Sessions =====================
 model LiveSession {
-  id            String     @id @default(cuid())
-  slug          String     @unique // 구매자용 링크 식별자
-  bookingId     String?    @unique
-  booking       Booking?   @relation(fields: [bookingId], references: [id])
-  sellerId      String
-  seller        User       @relation("SellerLiveSessions", fields: [sellerId], references: [id])
-  facilityId    String
-  facility      Facility   @relation(fields: [facilityId], references: [id])
-  title         String
-  description   String?
-  status        LiveStatus @default(DRAFT)
-  scheduledStart DateTime?
-  scheduledEnd   DateTime?
-  selfStreamUrl String?    // 자체 송출 URL
-  buyerLinkUrl  String?    // 구매자용 방송 링크
-  catenoidStreamId String?
+  id                  String             @id @default(cuid())
+  slug                String             @unique // 구매자용 링크 식별자
+  bookingId           String?            @unique
+  booking             Booking?           @relation(fields: [bookingId], references: [id])
+  sellerId            String
+  seller              User               @relation("SellerLiveSessions", fields: [sellerId], references: [id])
+  facilityId          String
+  facility            Facility           @relation(fields: [facilityId], references: [id])
+  title               String
+  description         String?
+  status              LiveStatus         @default(DRAFT)
+  scheduledStart      DateTime?
+  scheduledEnd        DateTime?
+  selfStreamUrl       String? // 자체 송출 URL
+  buyerLinkUrl        String? // 구매자용 방송 링크
+  catenoidStreamId    String?
   catenoidPlaybackUrl String?
-  alimtalkStatus NotificationStatus @default(PENDING)
-  numberVersion Int        @default(0) // 상품번호 변경 폴링용 버전
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  alimtalkStatus      NotificationStatus @default(PENDING)
+  numberVersion       Int                @default(0) // 상품번호 변경 폴링용 버전
+  endedAt             DateTime? // 방송 종료 시각 (종료 후 주문 허용 시간 계산)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
 
   products       LiveSessionProduct[]
   numberHistory  LiveProductNumberHistory[]
@@ -527,23 +624,27 @@ model LiveSession {
 
 // 방송에서 판매하는 상품 + 상품번호
 model LiveSessionProduct {
-  id                String          @id @default(cuid())
-  liveSessionId     String
-  liveSession       LiveSession     @relation(fields: [liveSessionId], references: [id], onDelete: Cascade)
-  facilityProductId String?
-  facilityProduct   FacilityProduct? @relation(fields: [facilityProductId], references: [id])
-  displayNumber     Int             // 구매자에게 보이는 상품번호
-  sortOrder         Int             @default(0)
+  id                  String           @id @default(cuid())
+  liveSessionId       String
+  liveSession         LiveSession      @relation(fields: [liveSessionId], references: [id], onDelete: Cascade)
+  facilityProductId   String?
+  facilityProduct     FacilityProduct? @relation(fields: [facilityProductId], references: [id])
+  displayNumber       Int // 구매자에게 보이는 상품번호
+  sortOrder           Int              @default(0)
   // 임시상품(스냅샷) 필드 - facilityProduct 없이도 동작
-  nameSnapshot      String
-  priceSnapshot     Int
-  stockSnapshot     Int             @default(0)
-  imageSnapshot     String?
-  optionSnapshot    String?         // JSON 문자열
-  source            ProductSource   @default(CATALOG)
-  isActive          Boolean         @default(true)
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  nameSnapshot        String
+  priceSnapshot       Int
+  stockSnapshot       Int              @default(0)
+  imageSnapshot       String?
+  optionSnapshot      String? // JSON 문자열
+  source              ProductSource    @default(CATALOG)
+  isActive            Boolean          @default(true)
+  brandProductId      String? // 브랜드 상품이면 연결 (발주서 생성 기준)
+  brandProduct        BrandProduct?    @relation(fields: [brandProductId], references: [id])
+  fulfillment         FulfillmentMode?
+  supplyPriceSnapshot Int? // 방송에 올릴 때의 브랜드 공급가
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
 
   orderItems OrderItem[]
 
@@ -553,71 +654,80 @@ model LiveSessionProduct {
 
 // 상품번호 변경 이력
 model LiveProductNumberHistory {
-  id            String      @id @default(cuid())
-  liveSessionId String
-  liveSession   LiveSession @relation(fields: [liveSessionId], references: [id], onDelete: Cascade)
+  id                   String      @id @default(cuid())
+  liveSessionId        String
+  liveSession          LiveSession @relation(fields: [liveSessionId], references: [id], onDelete: Cascade)
   liveSessionProductId String
-  oldNumber     Int?
-  newNumber     Int
-  changedBy     String      // userId
-  changedAt     DateTime    @default(now())
+  oldNumber            Int?
+  newNumber            Int
+  changedBy            String // userId
+  changedAt            DateTime    @default(now())
 
   @@index([liveSessionId])
 }
 
 // ===================== Orders & Payments =====================
 model Order {
-  id            String      @id @default(cuid())
-  orderNo       String      @unique
-  liveSessionId String
-  liveSession   LiveSession @relation(fields: [liveSessionId], references: [id])
-  sellerId      String
-  seller        User        @relation("SellerOrders", fields: [sellerId], references: [id])
-  facilityId    String
-  facility      Facility    @relation(fields: [facilityId], references: [id])
-  buyerName     String
-  buyerPhone    String
-  buyerAddress  String?
-  status        OrderStatus @default(ORDER_CREATED)
-  totalAmount   Int
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id              String      @id @default(cuid())
+  orderNo         String      @unique
+  liveSessionId   String
+  liveSession     LiveSession @relation(fields: [liveSessionId], references: [id])
+  sellerId        String
+  seller          User        @relation("SellerOrders", fields: [sellerId], references: [id])
+  facilityId      String
+  facility        Facility    @relation(fields: [facilityId], references: [id])
+  buyerName       String
+  buyerPhone      String
+  buyerAddress    String?
+  status          OrderStatus @default(ORDER_CREATED)
+  totalAmount     Int
+  refundedAmount  Int         @default(0) // 부분 취소·환불된 금액 합계
+  deliveredAt     DateTime? // 배송 완료 시각 (구매 확정 유예·정산 기간 기준)
+  privacyAgreedAt DateTime? // 구매자 개인정보 수집·제3자 제공 동의 시각
+  settlementId    String? // 판매 정산서에 포함되면 연결 (중복 정산 방지)
+  settlement      Settlement? @relation(fields: [settlementId], references: [id])
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
-  items    OrderItem[]
-  payment  Payment?
+  items          OrderItem[]
+  payment        Payment?
+  purchaseOrders PurchaseOrder[]
 
   @@index([liveSessionId])
   @@index([sellerId])
   @@index([facilityId])
+  @@index([settlementId])
 }
 
 model OrderItem {
-  id                   String             @id @default(cuid())
+  id                   String              @id @default(cuid())
   orderId              String
-  order                Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order                Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
   liveSessionProductId String
-  liveSessionProduct   LiveSessionProduct @relation(fields: [liveSessionProductId], references: [id])
+  liveSessionProduct   LiveSessionProduct  @relation(fields: [liveSessionProductId], references: [id])
   displayNumber        Int
   productName          String
   unitPrice            Int
   quantity             Int
   optionLabel          String?
   lineTotal            Int
+  cancelledAt          DateTime? // 부분 취소된 줄
+  poItems              PurchaseOrderItem[]
 }
 
 model Payment {
-  id            String        @id @default(cuid())
-  orderId       String        @unique
-  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  provider      String        @default("mock")
-  method        PaymentMethod
-  status        PaymentStatus @default(READY)
-  amount        Int
+  id              String        @id @default(cuid())
+  orderId         String        @unique
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider        String        @default("mock")
+  method          PaymentMethod
+  status          PaymentStatus @default(READY)
+  amount          Int
   pgTransactionId String?
-  approvedAt    DateTime?
-  failReason    String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  approvedAt      DateTime?
+  failReason      String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   events PaymentEvent[]
 }
@@ -626,8 +736,9 @@ model PaymentEvent {
   id        String   @id @default(cuid())
   paymentId String
   payment   Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-  type      String   // CREATED|CONFIRMED|FAILED|CANCELLED|REFUNDED|WEBHOOK
-  payload   String?  // JSON
+  type      String // CREATED|CONFIRMED|FAILED|CANCELLED|REFUNDED|WEBHOOK
+  payload   String? // JSON
+  eventKey  String?  @unique // 웹훅 중복 처리 방지용 (같은 통지는 한 번만 반영)
   createdAt DateTime @default(now())
 
   @@index([paymentId])
@@ -636,41 +747,50 @@ model PaymentEvent {
 // ===================== Commission & Settlement =====================
 // 기본 수수료 정책(창고(스튜디오)/플랫폼 단위 기본값)
 model CommissionRule {
-  id             String         @id @default(cuid())
-  scope          String         // PLATFORM | FACILITY
-  facilityId     String?
-  commissionType CommissionType @default(PERCENT)
-  commissionValue Float         @default(0)
-  createdAt      DateTime       @default(now())
+  id              String         @id @default(cuid())
+  scope           String // PLATFORM | FACILITY
+  facilityId      String?
+  commissionType  CommissionType @default(PERCENT)
+  commissionValue Float          @default(0)
+  createdAt       DateTime       @default(now())
 }
 
 // 중간관리자 수수료 (SUPER_ADMIN 만 설정)
 model ManagerCommissionRule {
-  id             String         @id @default(cuid())
-  managerId      String
-  manager        User           @relation(fields: [managerId], references: [id], onDelete: Cascade)
-  commissionType CommissionType @default(PERCENT)
-  commissionValue Float         @default(0)
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id              String         @id @default(cuid())
+  managerId       String
+  manager         User           @relation(fields: [managerId], references: [id], onDelete: Cascade)
+  commissionType  CommissionType @default(PERCENT)
+  commissionValue Float          @default(0)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   @@unique([managerId])
 }
 
 model Settlement {
-  id            String           @id @default(cuid())
-  sellerId      String
-  seller        User             @relation("SellerSettlements", fields: [sellerId], references: [id])
-  facilityId    String
-  facility      Facility         @relation(fields: [facilityId], references: [id])
-  periodStart   DateTime
-  periodEnd     DateTime
-  grossAmount   Int              // 총 매출
-  commissionAmount Int           // 셀러 수수료(셀러 수익)
-  facilityAmount Int             // 창고(스튜디오) 정산금
-  status        SettlementStatus @default(PENDING)
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  id               String            @id @default(cuid())
+  sellerId         String
+  seller           User              @relation("SellerSettlements", fields: [sellerId], references: [id])
+  facilityId       String
+  facility         Facility          @relation(fields: [facilityId], references: [id])
+  periodStart      DateTime
+  periodEnd        DateTime
+  grossAmount      Int // 총 매출
+  commissionAmount Int // 셀러 수수료(셀러 수익)
+  facilityAmount   Int // 창고(스튜디오) 정산금
+  platformFee      Int               @default(0) // 플랫폼 판매 수수료
+  brandAmount      Int               @default(0) // 브랜드 공급대금(브랜드 정산으로 따로 지급)
+  orderCount       Int               @default(0)
+  adjustmentCount  Int               @default(0) // 정산 후 취소·환불로 차감한 건수
+  status           SettlementStatus  @default(PENDING)
+  confirmedAt      DateTime?
+  paidAt           DateTime?
+  memo             String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  orders           Order[]
+  adjustments      SalesAdjustment[]
 
   @@index([sellerId])
   @@index([facilityId])
@@ -678,13 +798,13 @@ model Settlement {
 
 // ===================== Kakao Alimtalk =====================
 model KakaoChannel {
-  id            String   @id @default(cuid())
-  sellerId      String
-  seller        User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-  channelName   String
-  plusFriendId  String?
-  senderKey     String?
-  createdAt     DateTime @default(now())
+  id           String   @id @default(cuid())
+  sellerId     String
+  seller       User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  channelName  String
+  plusFriendId String?
+  senderKey    String?
+  createdAt    DateTime @default(now())
 
   subscribers KakaoSubscriber[]
 
@@ -706,7 +826,7 @@ model NotificationTemplate {
   id        String   @id @default(cuid())
   code      String   @unique
   name      String
-  content   String   // {방송링크} 등 변수 포함
+  content   String // {방송링크} 등 변수 포함
   createdAt DateTime @default(now())
 }
 
@@ -743,7 +863,7 @@ model CatenoidStreamLog {
   id            String      @id @default(cuid())
   liveSessionId String
   liveSession   LiveSession @relation(fields: [liveSessionId], references: [id], onDelete: Cascade)
-  action        String      // CREATE|INFO|END|PLAYBACK|EXTERNAL
+  action        String // CREATE|INFO|END|PLAYBACK|EXTERNAL
   payload       String?
   createdAt     DateTime    @default(now())
 
@@ -758,7 +878,7 @@ model AuditLog {
   action    String
   entity    String
   entityId  String?
-  meta      String?  // JSON
+  meta      String? // JSON
   createdAt DateTime @default(now())
 
   @@index([entity, entityId])
@@ -775,20 +895,20 @@ model Setting {
 // ===================== 리뷰 · 즐겨찾기 =====================
 // 이용 완료된 예약 1건당 리뷰 1개. 창고(스튜디오) 평점(rating)은 공개 리뷰 평균으로 갱신한다.
 model FacilityReview {
-  id         String   @id @default(cuid())
-  bookingId  String   @unique
-  booking    Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  id         String    @id @default(cuid())
+  bookingId  String    @unique
+  booking    Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   facilityId String
-  facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  facility   Facility  @relation(fields: [facilityId], references: [id], onDelete: Cascade)
   sellerId   String
-  seller     User     @relation("SellerReviews", fields: [sellerId], references: [id])
-  rating     Int      // 1~5
-  content    String   @db.Text
-  reply      String?  @db.Text
+  seller     User      @relation("SellerReviews", fields: [sellerId], references: [id])
+  rating     Int // 1~5
+  content    String    @db.Text
+  reply      String?   @db.Text
   repliedAt  DateTime?
-  isHidden   Boolean  @default(false) // 최고관리자 숨김 처리
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  isHidden   Boolean   @default(false) // 최고관리자 숨김 처리
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   @@index([facilityId])
   @@index([sellerId])
@@ -814,10 +934,10 @@ model FacilitySettlement {
   periodStart  DateTime
   periodEnd    DateTime
   bookingCount Int              @default(0)
-  grossAmount  Int              // 이용료 합계
+  grossAmount  Int // 이용료 합계
   feeRate      Float            @default(0) // 플랫폼 수수료율(%)
-  platformFee  Int              // 플랫폼 수수료
-  payoutAmount Int              // 지급액
+  platformFee  Int // 플랫폼 수수료
+  payoutAmount Int // 지급액
   status       SettlementStatus @default(PENDING)
   confirmedAt  DateTime?
   paidAt       DateTime?
@@ -836,7 +956,7 @@ model UserNotification {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      String   // BOOKING|INQUIRY|REVIEW|SETTLEMENT|MARKETING|SYSTEM
+  type      String // BOOKING|INQUIRY|REVIEW|SETTLEMENT|MARKETING|SYSTEM
   title     String
   body      String?
   link      String?
@@ -849,18 +969,18 @@ model UserNotification {
 // ===================== 셀러 마케팅 =====================
 // 마케팅 지원 신청 (최고관리자가 검토)
 model MarketingApplication {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   sellerId  String
-  seller    User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-  type      String   // SNS_AD|CONTENT|INFLUENCER|ETC
+  seller    User      @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  type      String // SNS_AD|CONTENT|INFLUENCER|ETC
   title     String
-  content   String   @db.Text
+  content   String    @db.Text
   budget    Int?
   desiredAt DateTime?
-  status    String   @default("PENDING") // PENDING|IN_REVIEW|APPROVED|REJECTED|DONE
-  adminNote String?  @db.Text
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status    String    @default("PENDING") // PENDING|IN_REVIEW|APPROVED|REJECTED|DONE
+  adminNote String?   @db.Text
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@index([sellerId])
   @@index([status])
@@ -868,61 +988,61 @@ model MarketingApplication {
 
 // 이벤트 · 프로모션
 model SellerPromotion {
-  id            String   @id @default(cuid())
+  id            String         @id @default(cuid())
   sellerId      String
-  seller        User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  seller        User           @relation(fields: [sellerId], references: [id], onDelete: Cascade)
   title         String
-  description   String?  @db.Text
-  channel       String?  // 진행 채널 (유튜브, 인스타그램 등)
+  description   String?        @db.Text
+  channel       String? // 진행 채널 (유튜브, 인스타그램 등)
   discountType  CommissionType @default(PERCENT)
-  discountValue Float    @default(0)
+  discountValue Float          @default(0)
   startAt       DateTime
   endAt         DateTime
-  targetAmount  Int?     // 목표 매출
-  resultAmount  Int?     // 실제 매출(직접 입력)
-  isPublished   Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  targetAmount  Int? // 목표 매출
+  resultAmount  Int? // 실제 매출(직접 입력)
+  isPublished   Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@index([sellerId])
 }
 
 // 쿠폰
 model SellerCoupon {
-  id            String   @id @default(cuid())
+  id            String         @id @default(cuid())
   sellerId      String
-  seller        User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  seller        User           @relation(fields: [sellerId], references: [id], onDelete: Cascade)
   name          String
-  code          String   @unique
+  code          String         @unique
   discountType  CommissionType @default(PERCENT)
   discountValue Float
-  minAmount     Int      @default(0)
+  minAmount     Int            @default(0)
   maxDiscount   Int?
-  totalQty      Int?     // null = 무제한
-  usedQty       Int      @default(0)
+  totalQty      Int? // null = 무제한
+  usedQty       Int            @default(0)
   startAt       DateTime
   endAt         DateTime
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@index([sellerId])
 }
 
 // 광고 소재 보관함
 model MarketingAsset {
-  id        String   @id @default(cuid())
-  sellerId  String
-  seller    User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-  title     String
-  type      String   // IMAGE|VIDEO|COPY|LINK
-  url       String?
-  content   String?  @db.Text
-  channel   String?
-  tags      String?  // 콤마 구분
-  isFavorite Boolean @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  sellerId   String
+  seller     User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  title      String
+  type       String // IMAGE|VIDEO|COPY|LINK
+  url        String?
+  content    String?  @db.Text
+  channel    String?
+  tags       String? // 콤마 구분
+  isFavorite Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([sellerId])
 }
@@ -932,7 +1052,7 @@ model SnsAccount {
   id        String   @id @default(cuid())
   sellerId  String
   seller    User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-  platform  String   // YOUTUBE|INSTAGRAM|TIKTOK|FACEBOOK|NAVER|ETC
+  platform  String // YOUTUBE|INSTAGRAM|TIKTOK|FACEBOOK|NAVER|ETC
   handle    String
   url       String?
   followers Int      @default(0)
@@ -1001,4 +1121,256 @@ model BookingWaitlist {
 
   @@index([facilityId, startAt])
   @@index([sellerId, status])
+}
+
+// ===================== 브랜드 판매 연결 · 발주 · 정산 =====================
+// 셀러가 브랜드샵에서 "판매 상품으로 가져오기"한 상품 (브랜드 직배송). 라이브 방송 상품으로 바로 올릴 수 있다.
+model SellerBrandProduct {
+  id             String       @id @default(cuid())
+  sellerId       String
+  seller         User         @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  brandProductId String
+  brandProduct   BrandProduct @relation(fields: [brandProductId], references: [id])
+  salePrice      Int // 셀러 판매가
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([sellerId, brandProductId])
+  @@index([brandProductId])
+}
+
+// 발주서: 구매자 결제가 끝나면 브랜드별 · 배송방식별로 자동 생성된다.
+model PurchaseOrder {
+  id                     String              @id @default(cuid())
+  poNo                   String              @unique // 예: PO-261111-7K3QX
+  brandShopId            String
+  brandShop              BrandShop           @relation(fields: [brandShopId], references: [id])
+  orderId                String
+  order                  Order               @relation(fields: [orderId], references: [id])
+  facilityId             String
+  facility               Facility            @relation(fields: [facilityId], references: [id])
+  sellerId               String
+  seller                 User                @relation("SellerPurchaseOrders", fields: [sellerId], references: [id])
+  fulfillment            FulfillmentMode
+  status                 PurchaseOrderStatus @default(NEW)
+  recipient              String // 직배송: 구매자 / 창고 입고: 창고
+  phone                  String
+  address                String              @default("")
+  saleAmount             Int // 판매 금액 합계
+  supplyAmount           Int // 공급가 합계 (브랜드 정산 기준)
+  carrier                String              @default("")
+  trackingNumber         String              @default("")
+  brandMemo              String              @default("")
+  adminMemo              String              @default("")
+  cancelReason           String              @default("")
+  cancelRequestedAt      DateTime? // 브랜드가 출고 불가(취소 요청)를 보낸 시각
+  cancelRequestReason    String              @default("")
+  returnReceivedAt       DateTime? // 반품 상품을 브랜드가 받은 시각
+  exchangeCarrier        String              @default("")
+  exchangeTrackingNumber String              @default("")
+  exchangeShippedAt      DateTime? // 교환 상품 재발송 시각
+  confirmedAt            DateTime?
+  shippedAt              DateTime?
+  deliveredAt            DateTime?
+  cancelledAt            DateTime?
+  brandSettlementId      String?
+  brandSettlement        BrandSettlement?    @relation(fields: [brandSettlementId], references: [id])
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+
+  items       PurchaseOrderItem[]
+  adjustments BrandSettlementAdjustment[]
+
+  @@unique([orderId, brandShopId, fulfillment])
+  @@index([brandShopId, status, createdAt])
+  @@index([status, createdAt])
+  @@index([brandSettlementId])
+}
+
+model PurchaseOrderItem {
+  id              String        @id @default(cuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  brandProductId  String
+  brandProduct    BrandProduct  @relation(fields: [brandProductId], references: [id])
+  orderItemId     String
+  orderItem       OrderItem     @relation(fields: [orderItemId], references: [id])
+  productName     String
+  optionLabel     String?
+  quantity        Int
+  supplyPrice     Int
+  salePrice       Int
+
+  @@index([purchaseOrderId])
+  @@index([brandProductId])
+}
+
+// 브랜드 정산서 (최고관리자가 기간별로 생성 → 확정 → 지급)
+model BrandSettlement {
+  id             String           @id @default(cuid())
+  brandShopId    String
+  brandShop      BrandShop        @relation(fields: [brandShopId], references: [id])
+  periodStart    DateTime
+  periodEnd      DateTime
+  poCount        Int              @default(0)
+  sampleCount    Int              @default(0)
+  supplyAmount   Int              @default(0) // 발주 공급가 합계
+  sampleAmount   Int              @default(0) // 유료 샘플 결제 합계
+  grossAmount    Int              @default(0) // 정산 대상 합계
+  feeRate        Float            @default(0)
+  platformFee    Int              @default(0)
+  adjustment     Int              @default(0) // 최고관리자 수동 조정(+/-)
+  autoAdjustment Int              @default(0) // 정산 후 반품·취소로 자동 차감한 금액(음수)
+  payoutAmount   Int              @default(0)
+  status         SettlementStatus @default(PENDING)
+  confirmedAt    DateTime?
+  paidAt         DateTime?
+  memo           String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  purchaseOrders PurchaseOrder[]
+  sampleRequests BrandRequest[]
+  adjustments    BrandSettlementAdjustment[]
+
+  @@index([brandShopId])
+  @@index([status])
+}
+
+// 플랫폼 운영 정책 (최고관리자가 수정) — 한 행(id="default")만 사용
+model PlatformPolicy {
+  id                   String   @id @default("default")
+  salesFeeRate         Float    @default(5) // 판매 금액 대비 플랫폼 수수료(%) — 창고(스튜디오)/셀러 몫에서 차감
+  brandFeeRate         Float    @default(5) // 브랜드 공급대금 대비 수수료(%)
+  sampleFeeRate        Float    @default(0) // 유료 샘플 결제 대비 수수료(%)
+  sellerShareRate      Float    @default(70) // 셀러가 가져온 브랜드 직배송 상품: (판매가-공급가-플랫폼수수료) 중 셀러 몫(%) — 나머지는 방송 장소 창고(스튜디오)
+  pendingExpireHours   Int      @default(48) // 승인 대기 예약 자동 만료(시간, 0 = 끄기)
+  noShowGraceMinutes   Int      @default(30) // 시작 후 n분 지나면 노쇼 처리 가능
+  autoCompleteBookings Boolean  @default(true) // 종료 시간이 지난 승인 예약 자동 이용 완료
+  reminderHoursBefore  Int      @default(24) // 이용 n시간 전 알림
+  poConfirmHours       Int      @default(24) // 브랜드 발주 확인 권장 시간(지연 표시 기준)
+  sampleMaxPerOrder    Int      @default(20) // 샘플 주문당 최대 수량
+  orderAfterEndHours   Int      @default(0) // 방송 종료 후 주문을 받는 시간(0 = 종료 즉시 마감)
+  settleAfterDays      Int      @default(0) // 배송 완료 후 n일이 지나야 정산 대상(구매 확정 유예, 보통 7)
+  piiRetentionDays     Int      @default(90) // 배송 완료 n일 후 브랜드 화면에서 구매자 연락처·주소 가림
+  updatedBy            String?
+  updatedAt            DateTime @updatedAt
+}
+
+// ===================== 인증 · 보안 =====================
+// 비밀번호 재설정 · 이메일 인증 토큰 (원문은 메일로만 보내고 DB에는 해시만 저장)
+model AuthToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String // PASSWORD_RESET | EMAIL_VERIFY
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, type])
+}
+
+// 요청 횟수 제한 (로그인 실패 · 주문 · 주문 조회 · 비밀번호 재설정). 서버가 여러 대여도 공유된다.
+model RateLimit {
+  key     String   @id
+  count   Int      @default(0)
+  resetAt DateTime
+}
+
+// ===================== 브랜드 협업 =====================
+// 브랜드 팀원 계정 (대표 계정이 만든 직원 계정 — 정산 계좌·팀 관리는 대표만)
+model BrandMember {
+  id        String    @id @default(cuid())
+  shopId    String
+  shop      BrandShop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  userId    String    @unique
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdBy String?
+  createdAt DateTime  @default(now())
+
+  @@index([shopId])
+}
+
+// 판매처 관리: 브랜드가 셀러·창고(스튜디오) 관리자를 승인하거나 차단한다.
+model BrandPartner {
+  id        String    @id @default(cuid())
+  shopId    String
+  shop      BrandShop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    String    @default("PENDING") // PENDING | APPROVED | BLOCKED
+  note      String    @default("")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([shopId, userId])
+  @@index([userId])
+}
+
+// 브랜드 ↔ 판매처 1:1 문의
+model BrandThread {
+  id            String         @id @default(cuid())
+  shopId        String
+  shop          BrandShop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  partnerId     String
+  partner       User           @relation("PartnerThreads", fields: [partnerId], references: [id], onDelete: Cascade)
+  lastMessageAt DateTime       @default(now())
+  brandUnread   Int            @default(0)
+  partnerUnread Int            @default(0)
+  createdAt     DateTime       @default(now())
+  messages      BrandMessage[]
+
+  @@unique([shopId, partnerId])
+  @@index([partnerId])
+}
+
+model BrandMessage {
+  id        String      @id @default(cuid())
+  threadId  String
+  thread    BrandThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  senderId  String
+  sender    User        @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  body      String      @db.Text
+  createdAt DateTime    @default(now())
+
+  @@index([threadId, createdAt])
+}
+
+// ===================== 정산 후 조정 =====================
+// 이미 정산된 발주가 반품·취소되면 다음 브랜드 정산에서 자동 차감한다.
+model BrandSettlementAdjustment {
+  id              String           @id @default(cuid())
+  brandShopId     String
+  brandShop       BrandShop        @relation(fields: [brandShopId], references: [id])
+  purchaseOrderId String?
+  purchaseOrder   PurchaseOrder?   @relation(fields: [purchaseOrderId], references: [id])
+  amount          Int // 음수 = 차감
+  reason          String           @default("")
+  settlementId    String?
+  settlement      BrandSettlement? @relation(fields: [settlementId], references: [id])
+  createdAt       DateTime         @default(now())
+
+  @@index([brandShopId, settlementId])
+}
+
+// 이미 판매 정산된 주문이 환불·부분 취소되면 다음 판매 정산에서 자동 차감한다. (금액은 음수)
+model SalesAdjustment {
+  id             String      @id @default(cuid())
+  sellerId       String
+  facilityId     String
+  orderId        String
+  grossAmount    Int
+  sellerAmount   Int
+  facilityAmount Int
+  platformFee    Int
+  brandAmount    Int
+  reason         String      @default("")
+  settlementId   String?
+  settlement     Settlement? @relation(fields: [settlementId], references: [id])
+  createdAt      DateTime    @default(now())
+
+  @@index([sellerId, facilityId, settlementId])
 }

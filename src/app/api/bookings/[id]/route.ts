@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { ok, fail, handleError } from "@/lib/http";
 import { audit } from "@/lib/audit";
 import { parseKST } from "@/lib/utils";
-import { changeBookingStatus, rescheduleBooking, updateBookingProducts } from "@/lib/booking-actions";
+import { changeBookingStatus, checkInBooking, rescheduleBooking, updateBookingProducts } from "@/lib/booking-actions";
 
 // PATCH /api/bookings/[id]
 // - { status, reason? }               상태 변경: 창고(스튜디오) 관리자(승인/거절/완료/취소), 셀러(취소, 마감 전), 최고관리자(전체)
@@ -22,6 +22,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       if (isNaN(startAt.getTime()) || isNaN(endAt.getTime()) || endAt <= startAt) return fail("예약 시간이 올바르지 않습니다.");
       try { return ok(await rescheduleBooking(user, params.id, startAt, endAt)); }
       catch (e) { const m = e instanceof Error ? e.message : "변경 실패"; if (m === "FORBIDDEN") throw e; return fail(m, 409); }
+    }
+
+    if (body.action === "checkin") {
+      try { return ok(await checkInBooking(user, params.id)); }
+      catch (e) { const m = e instanceof Error ? e.message : "체크인 실패"; if (m === "FORBIDDEN") throw e; return fail(m, 409); }
     }
 
     if (Array.isArray(body.products) && !body.status) {

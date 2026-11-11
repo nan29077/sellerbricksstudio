@@ -86,7 +86,7 @@ export function FacilityProfileEdit({
       <CardContent className="pt-5">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-brand-700">Specialty & Space</p>
+            <p className="text-[11px] font-black uppercase tracking-widest text-brand-700">Specialty & Space</p>
             <h3 className="mt-0.5 text-base font-extrabold text-navy">전문 분야 · 공간 설정</h3>
           </div>
           <div className="flex items-center gap-2">
@@ -140,7 +140,7 @@ export function FacilityProfileEdit({
             })}
           </div>
           {editing && (
-            <p className="mt-2 text-[10px] text-muted-foreground">
+            <p className="mt-2 text-[11px] text-muted-foreground">
               해당 분야를 클릭하여 추가/제거할 수 있습니다 (최대 5개 권장)
             </p>
           )}

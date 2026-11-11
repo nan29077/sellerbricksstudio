@@ -86,7 +86,7 @@ export function FacilityStorefront({
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-black text-navy sm:text-base">{pageConfig.pageTitle}</p>
-              <p className="text-[10px] font-semibold text-muted-foreground">셀러브릭스 파트너 창고(스튜디오)</p>
+              <p className="text-[11px] font-semibold text-muted-foreground">셀러브릭스 파트너 창고(스튜디오)</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -112,7 +112,7 @@ export function FacilityStorefront({
         {specialties.length > 0 && (
           <div className="absolute bottom-4 right-4 flex flex-wrap justify-end gap-1.5">
             {specialties.slice(0, 3).map((s: string) => (
-              <span key={s} className="rounded-full border border-white/30 bg-black/40 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur-sm">
+              <span key={s} className="rounded-full border border-white/30 bg-black/40 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-sm">
                 {s} 전문
               </span>
             ))}
@@ -147,7 +147,7 @@ export function FacilityStorefront({
             ].map((stat) => (
               <div key={stat.label} className="text-center">
                 <p className="text-lg font-black text-navy sm:text-2xl">{stat.value}</p>
-                <p className="mt-1 text-[10px] font-medium text-slate-400 sm:text-xs">{stat.label}</p>
+                <p className="mt-1 text-[11px] font-medium text-slate-400 sm:text-xs">{stat.label}</p>
               </div>
             ))}
           </div>
@@ -232,13 +232,13 @@ export function FacilityStorefront({
                 <div className="mt-6">
                   <div className="mb-3 flex items-center justify-between">
                     <p className="text-sm font-black text-navy">빠른 시간 선택</p>
-                    <p className="text-[10px] font-bold text-slate-400">날짜는 신청서에서 선택</p>
+                    <p className="text-[11px] font-bold text-slate-400">날짜는 신청서에서 선택</p>
                   </div>
                   <div className="grid gap-2">
                     {f.slots.slice(0, 3).map((slot: any) => (
                       <Link key={slot.id} href={bookingHrefForSlot(slot)} className="group flex items-center justify-between rounded-xl border border-[#E8E4DA] bg-[#FCFBF7] px-3 py-3 transition hover:border-brand-400 hover:bg-brand-50">
                         <div>
-                          <p className="text-[10px] font-black text-brand-700">{WEEK[slot.weekday]}요일</p>
+                          <p className="text-[11px] font-black text-brand-700">{WEEK[slot.weekday]}요일</p>
                           <p className="mt-0.5 text-xs font-black text-navy">{slot.startTime}–{slot.endTime}</p>
                         </div>
                         <ArrowRight className="h-4 w-4 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-brand-600" />
@@ -269,7 +269,7 @@ export function FacilityStorefront({
                 <CalendarDays className="h-4 w-4" />{bookingLabel}<ArrowRight className="h-4 w-4" />
               </Link>
               {!isSeller && (
-                <p className="mt-3 text-center text-[10px] font-medium text-white/45">
+                <p className="mt-3 text-center text-[11px] font-medium text-white/45">
                   예약 신청은 셀러 계정으로 진행할 수 있습니다.
                 </p>
               )}
@@ -283,7 +283,7 @@ export function FacilityStorefront({
           <section id="store-specialty" className="scroll-mt-36 rounded-[24px] border border-[#EEEAE0] bg-white p-5 shadow-sm sm:p-7">
             <div className="mb-5 flex items-end justify-between gap-3">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-brand-700">Specialty</p>
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-brand-700">Specialty</p>
                 <h2 className="mt-1 text-xl font-black text-navy">주요 취급 카테고리</h2>
               </div>
               <Tag className="h-6 w-6 text-brand-500" />
@@ -301,7 +301,7 @@ export function FacilityStorefront({
                         </div>
                         <div>
                           <p className={`text-sm font-extrabold ${meta.color}`}>{s}</p>
-                          <p className="text-[10px] text-slate-400">전문 취급</p>
+                          <p className="text-[11px] text-slate-400">전문 취급</p>
                         </div>
                       </div>
                     );
@@ -329,7 +329,7 @@ export function FacilityStorefront({
             <section id="store-schedule" className="scroll-mt-36 rounded-[24px] border border-[#EEEAE0] bg-white p-5 shadow-sm sm:p-7">
               <div className="mb-5 flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-brand-700">Booking schedule</p>
+                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-brand-700">Booking schedule</p>
                   <h2 className="mt-1 text-xl font-black text-navy">예약 가능한 일정</h2>
                 </div>
                 <Clock3 className="h-6 w-6 text-brand-500" />
@@ -361,7 +361,7 @@ export function FacilityStorefront({
           {/* 창고(스튜디오) 정보 */}
           <section id="store-info" className="scroll-mt-36 rounded-[24px] border border-[#EEEAE0] bg-white p-5 shadow-sm sm:p-7">
             <div className="mb-5">
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-brand-700">Facility guide</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-brand-700">Facility guide</p>
               <h2 className="mt-1 text-xl font-black text-navy">창고(스튜디오) 정보</h2>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -373,7 +373,7 @@ export function FacilityStorefront({
               ].map((item) => (
                 <div key={item.label} className="rounded-2xl bg-[#F8F9FB] p-4">
                   <item.icon className="h-5 w-5 text-brand-600" />
-                  <p className="mt-3 text-[10px] font-bold text-slate-400">{item.label}</p>
+                  <p className="mt-3 text-[11px] font-bold text-slate-400">{item.label}</p>
                   <p className="mt-1 text-sm font-black leading-snug text-navy">{item.value}</p>
                 </div>
               ))}
@@ -411,7 +411,7 @@ export function FacilityStorefront({
           <section id="store-reviews" className="scroll-mt-36 rounded-[24px] border border-[#EEEAE0] bg-white p-5 shadow-sm sm:p-7">
             <div className="mb-5 flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-brand-700">Reviews</p>
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-brand-700">Reviews</p>
                 <h2 className="mt-1 text-xl font-black text-navy">이용 셀러 리뷰 <span className="text-brand-700">{reviews.length}</span></h2>
                 <p className="mt-1 text-xs text-slate-400">실제로 이용을 마친 셀러만 남길 수 있는 리뷰입니다</p>
               </div>
@@ -441,7 +441,7 @@ export function FacilityStorefront({
           <section id="store-inquiry" className="scroll-mt-36 rounded-[24px] border border-[#EEEAE0] bg-white p-5 shadow-sm sm:p-7">
             <div className="mb-5 flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-brand-700">Inquiry</p>
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-brand-700">Inquiry</p>
                 <h2 className="mt-1 text-xl font-black text-navy">창고(스튜디오)에 문의하기</h2>
                 <p className="mt-1 text-xs text-slate-400">예약 가능 여부, 창고(스튜디오) 상태, 특별 요청 등을 문의해보세요</p>
               </div>

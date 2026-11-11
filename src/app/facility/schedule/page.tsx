@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty";
 import { Kpi, ProgressRow } from "@/components/list/charts";
 import { MonthCalendar } from "@/components/calendar/month-calendar";
-import { SlotEditor, BlackoutEditor } from "@/components/facility/schedule-editor";
+import { SlotEditor, BlackoutEditor, TimeBlockEditor } from "@/components/facility/schedule-editor";
 import { BOOKING_STATUS } from "@/lib/status";
 import { formatDateTime } from "@/lib/utils";
 import { addDays, addMonths, dateKey, hhmm, hoursBetween, kstParts, kstStartOfDay, parseMonth, WEEKDAYS } from "@/lib/kst";
@@ -32,11 +32,12 @@ export default async function FacilitySchedule({ searchParams }: { searchParams:
   const today = kstStartOfDay(new Date());
   const week = Array.from({ length: 7 }, (_, i) => addDays(today, i));
 
-  const [monthBookings, weekBookings, blackouts, history] = await Promise.all([
+  const [monthBookings, weekBookings, blackouts, history, timeBlocks] = await Promise.all([
     prisma.booking.findMany({ where: { facilityId: f.id, status: { in: ["PENDING", "APPROVED", "COMPLETED"] }, startAt: { gte: month, lt: addMonths(month, 1) } }, include: { seller: { select: { email: true, profile: { select: { name: true } } } } } }),
     prisma.booking.findMany({ where: { facilityId: f.id, status: { in: ["PENDING", "APPROVED"] }, startAt: { gte: today, lt: addDays(today, 7) } }, orderBy: { startAt: "asc" }, include: { seller: { select: { email: true, profile: { select: { name: true } } } } } }),
     prisma.facilityBlackoutDate.findMany({ where: { facilityId: f.id, date: { gte: addMonths(month, -1) } }, orderBy: { date: "asc" } }),
     prisma.booking.findMany({ where: { facilityId: f.id, status: { in: ["APPROVED", "COMPLETED"] }, startAt: { gte: addDays(today, -90), lt: today } }, select: { startAt: true, endAt: true } }),
+    prisma.facilityTimeBlock.findMany({ where: { facilityId: f.id, endAt: { gte: today } }, orderBy: { startAt: "asc" }, take: 100 }),
   ]);
 
   // 하루 운영 가능 시간(분): 요일 슬롯이 있으면 슬롯 합, 없으면 운영시간
@@ -91,11 +92,11 @@ export default async function FacilitySchedule({ searchParams }: { searchParams:
                 <div key={s.d.toISOString()} className="flex flex-col items-center gap-1">
                   <span className={cn("text-[11px] font-semibold", p.weekday === 0 ? "text-red-500" : p.weekday === 6 ? "text-blue-600" : "text-slate-600")}>{p.month}/{p.day}({WEEKDAYS[p.weekday]})</span>
                   <div className="relative h-24 w-full overflow-hidden rounded-lg bg-slate-100">
-                    {s.open === 0 ? <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-slate-400">휴무</span>
+                    {s.open === 0 ? <span className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-slate-400">휴무</span>
                       : <div className={cn("absolute bottom-0 w-full", s.pct >= 80 ? "bg-red-400" : s.pct >= 50 ? "bg-amber-400" : "bg-emerald-400")} style={{ height: `${s.pct}%` }} />}
                   </div>
                   <span className="text-xs font-bold text-navy">{s.open ? `${s.pct}%` : "-"}</span>
-                  {s.pending > 0 && <Badge tone="yellow" className="px-1.5 text-[10px]">대기 {s.pending}</Badge>}
+                  {s.pending > 0 && <Badge tone="yellow" className="px-1.5 text-[11px]">대기 {s.pending}</Badge>}
                 </div>
               );
             })}
@@ -134,6 +135,14 @@ export default async function FacilitySchedule({ searchParams }: { searchParams:
           <p className="text-xs text-muted-foreground">기본 운영 시간 {f.openTime ?? "09:00"}~{f.closeTime ?? "22:00"} · 최소 {f.minHours}시간 예약</p>
         </CardHeader>
         <CardContent><SlotEditor facilityId={f.id} slots={f.slots} openTime={f.openTime ?? "09:00"} closeTime={f.closeTime ?? "22:00"} /></CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base"><CalendarOff className="h-4 w-4 text-slate-500" />시간대 예약 막기</CardTitle>
+          <p className="text-xs text-muted-foreground">하루 전체가 아니라 일부 시간만 막습니다. 막은 시간은 셀러 예약 화면에 표시되지 않습니다.</p>
+        </CardHeader>
+        <CardContent><TimeBlockEditor facilityId={f.id} items={timeBlocks.map((b) => ({ id: b.id, label: `${dateKey(b.startAt)} ${hhmm(b.startAt)}~${hhmm(b.endAt)}`, reason: b.reason }))} /></CardContent>
       </Card>
 
       <Card>

@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/ui/empty";
 import { Kpi, BarChart } from "@/components/list/charts";
 import { CsvButton } from "@/components/list/csv-button";
 import { getPlatformFeeRate, splitFee } from "@/lib/booking";
+import { computeSettlement } from "@/lib/settlement";
 import { formatDate, formatDateTime, formatKRW } from "@/lib/utils";
 import { addMonths, hoursBetween, kstParts, kstStartOfMonth } from "@/lib/kst";
 import { growth } from "@/lib/list";
@@ -27,6 +28,10 @@ export default async function FacilitySettlements() {
   const monthStart = kstStartOfMonth(new Date());
   const yearStart = addMonths(monthStart, -11);
 
+  const [salesSummary, salesSettlements] = await Promise.all([
+    computeSettlement({ facilityIds: ids }).catch(() => null),
+    prisma.settlement.findMany({ where: { facilityId: { in: ids } }, orderBy: { periodEnd: "desc" }, take: 30, include: { facility: { select: { name: true } }, seller: { select: { email: true, profile: { select: { name: true } } } } } }),
+  ]);
   const [settlements, unsettled, yearRows] = await Promise.all([
     prisma.facilitySettlement.findMany({ where: { facilityId: { in: ids } }, orderBy: { periodEnd: "desc" }, include: { facility: { select: { name: true } } } }),
     prisma.booking.findMany({ where: { facilityId: { in: ids }, status: "COMPLETED", facilitySettlementId: null }, orderBy: { startAt: "desc" }, include: { facility: { select: { name: true } }, seller: { select: { email: true, profile: { select: { name: true } } } } } }),
@@ -62,6 +67,23 @@ export default async function FacilitySettlements() {
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
         <p>플랫폼 수수료율 <b className="text-navy">{rateText || "10%"}</b> · 예약을 <b>이용 완료</b>로 처리해야 정산 대상이 됩니다. 운영팀이 기간별 정산서를 만들면 &lsquo;정산 대기 → 지급 예정 → 지급 완료&rsquo; 순서로 진행됩니다.</p>
       </div>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">라이브 판매 정산</CardTitle>
+          <p className="text-xs text-muted-foreground">구매자 결제는 플랫폼이 받고, 배송 완료된 주문을 기준으로 판매 수수료 · 브랜드 공급대금 · 셀러 수수료를 뺀 금액을 창고(스튜디오)에 지급합니다.</p></CardHeader>
+        <CardContent className="space-y-3">
+          {salesSummary && <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+            <p className="rounded-xl bg-slate-50 p-3">판매 매출<br /><b>{formatKRW(salesSummary.gross)}</b></p>
+            <p className="rounded-xl bg-slate-50 p-3">플랫폼 수수료<br /><b>{formatKRW(salesSummary.platformFee)}</b></p>
+            <p className="rounded-xl bg-slate-50 p-3">브랜드 공급대금<br /><b>{formatKRW(salesSummary.brandAmount)}</b></p>
+            <p className="rounded-xl bg-brand-50 p-3">창고(스튜디오) 몫 (예상)<br /><b>{formatKRW(salesSummary.facilityAmount)}</b></p>
+          </div>}
+          {salesSettlements.length === 0 ? <p className="py-3 text-center text-sm text-muted-foreground">아직 판매 정산서가 없습니다.</p> : (
+            <Table headers={["정산 기간", "창고(스튜디오)", "셀러", "주문", "매출", "창고 지급액", "상태"]}
+              rows={salesSettlements.map((s) => [`${formatDate(s.periodStart)} ~ ${formatDate(s.periodEnd)}`, s.facility.name, s.seller.profile?.name ?? s.seller.email, `${s.orderCount}건`, formatKRW(s.grossAmount), <b key="p">{formatKRW(s.facilityAmount)}</b>, <Badge key="s" tone={SETTLEMENT_STATUS[s.status]?.tone}>{SETTLEMENT_STATUS[s.status]?.label}</Badge>])} />
+          )}
+        </CardContent>
+      </Card>
 
       <Card><CardHeader><CardTitle className="text-base">월별 이용 완료 매출 (12개월)</CardTitle></CardHeader><CardContent><BarChart data={monthly} format={(n) => formatKRW(n)} /></CardContent></Card>
 

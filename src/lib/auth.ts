@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { Role } from "@prisma/client";
 import { prisma } from "./prisma";
+import { clearLimit, hit, isLimited, MINUTE } from "./rate-limit";
 
 // 코드에 고정된 데모 계정은 개발 환경에서만 허용한다.
 // 배포 환경에서 데모 로그인이 필요하면 DEMO_LOGIN=true 를 명시적으로 설정한다.
@@ -11,22 +12,12 @@ export function demoLoginEnabled(): boolean {
   return process.env.NODE_ENV !== "production" || process.env.DEMO_LOGIN === "true";
 }
 
-// 로그인 무차별 대입 방지: 같은 이메일로 10분 안에 5번 실패하면 10분간 차단 (서버 인스턴스 메모리 기준)
-const LOGIN_WINDOW_MS = 10 * 60 * 1000;
+// 로그인 무차별 대입 방지: 같은 이메일로 10분 안에 5번 실패하면 10분간 차단 (DB 기준 — 서버가 여러 대여도 공유)
+const LOGIN_WINDOW_MS = 10 * MINUTE;
 const LOGIN_MAX_FAILS = 5;
-const loginFails = new Map<string, { count: number; first: number }>();
-
-function isLoginLocked(key: string): boolean {
-  const entry = loginFails.get(key);
-  if (!entry) return false;
-  if (Date.now() - entry.first > LOGIN_WINDOW_MS) { loginFails.delete(key); return false; }
-  return entry.count >= LOGIN_MAX_FAILS;
-}
-function recordLoginFail(key: string) {
-  const entry = loginFails.get(key);
-  if (!entry || Date.now() - entry.first > LOGIN_WINDOW_MS) loginFails.set(key, { count: 1, first: Date.now() });
-  else entry.count += 1;
-}
+const failKey = (email: string) => `login:fail:${email}`;
+const isLoginLocked = (email: string) => isLimited(failKey(email), LOGIN_MAX_FAILS);
+const recordLoginFail = (email: string) => hit(failKey(email), LOGIN_WINDOW_MS).catch(() => 0);
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
@@ -38,7 +29,7 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
         const email = credentials.email.trim().toLowerCase();
-        if (isLoginLocked(email)) throw new Error("로그인 시도가 너무 많습니다. 10분 후 다시 시도해 주세요.");
+        if (await isLoginLocked(email)) throw new Error("로그인 시도가 너무 많습니다. 10분 후 다시 시도해 주세요.");
 
         const DEMO_USERS: Record<string, { id: string; name: string; role: Role; pw: string }> = {
           "admin@sellerbricks.kr":    { id: "demo-admin",    name: "최고관리자",            role: "SUPER_ADMIN" as Role, pw: "password1234" },
@@ -70,20 +61,20 @@ export const authOptions: NextAuthOptions = {
                 },
               });
               if (account.isActive && account.role === "BRAND_ADMIN" && await bcrypt.compare(credentials.password, account.passwordHash)) {
-                return { id: account.id, email, role: account.role, name: demoUser.name };
+                return { id: account.id, email, role: account.role, name: demoUser.name, sv: account.sessionVersion };
               }
               return null;
             }
             if (demoUser) return demoUser;
-            recordLoginFail(email);
+            await recordLoginFail(email);
             return null;
           }
-          if (!user.isActive) { recordLoginFail(email); return null; }
+          if (!user.isActive) { await recordLoginFail(email); return null; }
           const ok = await bcrypt.compare(credentials.password, user.passwordHash);
-          if (!ok) { recordLoginFail(email); return null; }
-          loginFails.delete(email);
+          if (!ok) { await recordLoginFail(email); return null; }
+          await clearLimit(failKey(email));
           prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }).catch(() => {});
-          return { id: user.id, email: user.email, role: user.role, name: user.profile?.name ?? user.email };
+          return { id: user.id, email: user.email, role: user.role, name: user.profile?.name ?? user.email, sv: user.sessionVersion };
         } catch {
           return demoUser;
         }
@@ -92,13 +83,14 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user }) {
-      if (user) { token.role = (user as any).role; token.uid = (user as any).id; }
+      if (user) { token.role = (user as any).role; token.uid = (user as any).id; token.sv = (user as any).sv ?? 0; }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         (session.user as any).id = token.uid as string;
         (session.user as any).role = token.role as Role;
+        (session.user as any).sv = (token.sv as number | undefined) ?? 0;
       }
       return session;
     },
@@ -112,11 +104,14 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   const session = await getServerSession(authOptions);
   if (!session?.user) return null;
   const u = session.user as any;
-  // 최고관리자가 정지한 계정은 이미 로그인된 세션이라도 즉시 막는다.
+  // 정지된 계정 · 비밀번호나 역할이 바뀐 계정은 이미 로그인된 세션이라도 즉시 막는다.
+  // 역할은 로그인할 때 저장된 값이 아니라 지금 DB 값을 쓴다.
   if (u.id && !String(u.id).startsWith("demo-")) {
     try {
-      const row = await prisma.user.findUnique({ where: { id: u.id }, select: { isActive: true } });
-      if (row && !row.isActive) return null;
+      const row = await prisma.user.findUnique({ where: { id: u.id }, select: { isActive: true, role: true, sessionVersion: true } });
+      if (!row || !row.isActive) return null;
+      if ((u.sv ?? 0) !== row.sessionVersion) return null;
+      return { id: u.id, email: u.email, name: u.name, role: row.role };
     } catch {
       // DB에 연결할 수 없을 때는 세션 정보만으로 진행한다.
     }

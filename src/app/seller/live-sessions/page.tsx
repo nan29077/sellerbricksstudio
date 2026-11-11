@@ -83,7 +83,7 @@ export default async function SellerLiveSessions({ searchParams }: { searchParam
                       <div className="flex items-center gap-2 flex-wrap mb-1">
                         <Badge tone={st.tone}>{st.label}</Badge>
                         {ls.status === "LIVE" && (
-                          <span className="text-[10px] font-bold text-red-600 animate-pulse">LIVE</span>
+                          <span className="text-[11px] font-bold text-red-600 animate-pulse">LIVE</span>
                         )}
                       </div>
                       <p className="font-bold text-navy truncate">{ls.title}</p>

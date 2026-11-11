@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { reportDbError, type DbIssue } from "@/lib/db-error";
 import { requireRole } from "@/lib/auth";
 import { managerFacilityIds } from "@/lib/rbac";
 import { calcManagerCommission } from "@/lib/manager-commission";
@@ -43,7 +44,7 @@ async function load(userId: string) {
   const [facilities, bookings, orders, ratings, upcoming, recent, stalePending] = await Promise.all([
     prisma.facility.findMany({ where: { id: { in: facIds } }, select: { id: true, name: true, region: true, type: true, status: true, rating: true, openTime: true, closeTime: true } }),
     prisma.booking.findMany({ where: { ...inFac, OR: [{ startAt: { gte: sixStart } }, { createdAt: { gte: sixStart } }] }, select: { facilityId: true, sellerId: true, status: true, startAt: true, endAt: true, createdAt: true } }),
-    prisma.order.findMany({ where: { ...inFac, status: { in: [...SOLD_ORDER_STATUSES] }, createdAt: { gte: sixStart } }, select: { facilityId: true, createdAt: true, totalAmount: true } }),
+    prisma.order.findMany({ where: { ...inFac, status: { in: [...SOLD_ORDER_STATUSES] }, createdAt: { gte: sixStart } }, select: { facilityId: true, createdAt: true, totalAmount: true, refundedAmount: true } }),
     prisma.facilityReview.groupBy({ by: ["facilityId"], where: { ...inFac, isHidden: false }, _avg: { rating: true }, _count: true }),
     prisma.booking.findMany({ where: { ...inFac, status: { in: ["APPROVED", "PENDING"] }, startAt: { gte: now } }, orderBy: { startAt: "asc" }, take: 5, select: bookingSelect }),
     prisma.booking.findMany({ where: inFac, orderBy: { createdAt: "desc" }, take: 6, select: bookingSelect }),
@@ -59,7 +60,7 @@ async function load(userId: string) {
       ...f, hours, util: utilization(hours, openHoursPerDay(f), daysInMonth),
       monthCount: bookings.filter((b) => b.facilityId === f.id && b.createdAt >= monthStart).length,
       pending: bookings.filter((b) => b.facilityId === f.id && b.status === "PENDING").length,
-      gmv: orders.filter((o) => o.facilityId === f.id && o.createdAt >= monthStart).reduce((s, o) => s + o.totalAmount, 0),
+      gmv: orders.filter((o) => o.facilityId === f.id && o.createdAt >= monthStart).reduce((s, o) => s + (o.totalAmount - o.refundedAmount), 0),
       avgRating: r?._avg.rating ?? null, reviews: r?._count ?? 0,
     };
   }).sort((a, b) => b.monthCount - a.monthCount || b.gmv - a.gmv);
@@ -67,8 +68,8 @@ async function load(userId: string) {
   const mReq = bookings.filter((b) => b.createdAt >= monthStart);
   const pReq = bookings.filter((b) => b.createdAt >= lastMonthStart && b.createdAt < lastMonthSameDay);
   const mOrders = orders.filter((o) => o.createdAt >= monthStart);
-  const gmv = mOrders.reduce((s, o) => s + o.totalAmount, 0);
-  const gmvPrev = orders.filter((o) => o.createdAt >= lastMonthStart && o.createdAt < lastMonthSameDay).reduce((s, o) => s + o.totalAmount, 0);
+  const gmv = mOrders.reduce((s, o) => s + (o.totalAmount - o.refundedAmount), 0);
+  const gmvPrev = orders.filter((o) => o.createdAt >= lastMonthStart && o.createdAt < lastMonthSameDay).reduce((s, o) => s + (o.totalAmount - o.refundedAmount), 0);
   const completedThisMonth = bookings.filter((b) => b.status === "COMPLETED" && b.startAt >= monthStart && b.startAt < nextMonth).length;
   const approvedThisMonth = bookings.filter((b) => b.status === "APPROVED" && b.startAt >= monthStart && b.startAt < nextMonth).length;
   const totalHours = perFac.reduce((s, f) => s + f.hours, 0);
@@ -83,9 +84,9 @@ async function load(userId: string) {
     completedThisMonth, approvedThisMonth,
     commission: calcManagerCommission(rule, 0, completedThisMonth),
     commissionForecast: calcManagerCommission(rule, 0, completedThisMonth + approvedThisMonth),
-    spark: dailySeries(orders.filter((o) => o.createdAt >= addDays(today, -29)), 30, (o) => o.createdAt, (o) => o.totalAmount).map((x) => x.value),
+    spark: dailySeries(orders.filter((o) => o.createdAt >= addDays(today, -29)), 30, (o) => o.createdAt, (o) => (o.totalAmount - o.refundedAmount)).map((x) => x.value),
     trend: zipSeries(
-      monthlySeries(orders, 6, (o) => o.createdAt, (o) => o.totalAmount),
+      monthlySeries(orders, 6, (o) => o.createdAt, (o) => (o.totalAmount - o.refundedAmount)),
       monthlySeries(bookings.filter((b) => b.status !== "CANCELLED" && b.status !== "REJECTED"), 6, (b) => b.startAt),
     ),
     upcoming, recent,
@@ -95,10 +96,11 @@ async function load(userId: string) {
 export default async function ManagerDashboard() {
   const user = await requireRole(["MANAGER"]);
   let d: Awaited<ReturnType<typeof load>> | null = null;
-  try { d = await load(user.id); } catch { /* DB 미연결 */ }
+  let issue: DbIssue = "unknown";
+  try { d = await load(user.id); } catch (e) { issue = reportDbError("manager-dashboard", e); }
   const hello = `${greeting()}, ${user.name ?? "매니저"}님`;
 
-  if (!d) return <div className="space-y-6"><DashHero eyebrow={`MANAGER · ${todayLabel()}`} title={hello} /><DataNotice /></div>;
+  if (!d) return <div className="space-y-6"><DashHero eyebrow={`MANAGER · ${todayLabel()}`} title={hello} /><DataNotice issue={issue} /></div>;
 
   const ruleText = d.rule ? (d.rule.commissionType === "PERCENT" ? `이용료의 ${d.rule.commissionValue}%` : `이용 완료 1건당 ${formatKRW(d.rule.commissionValue)}`) : "커미션 규칙 미설정";
 
@@ -194,7 +196,7 @@ export default async function ManagerDashboard() {
                 const p = kstParts(b.startAt);
                 return (
                   <li key={b.id} className="flex items-center gap-3 rounded-2xl border border-[#EEEAE2] p-3">
-                    <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[#F6F2E9] text-center text-navy"><span><span className="block text-[10px] font-bold text-slate-500">{WEEKDAYS[p.weekday]}</span><span className="block text-lg font-extrabold leading-none">{p.day}</span></span></span>
+                    <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[#F6F2E9] text-center text-navy"><span><span className="block text-[11px] font-bold text-slate-500">{WEEKDAYS[p.weekday]}</span><span className="block text-lg font-extrabold leading-none">{p.day}</span></span></span>
                     <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-navy">{nameOf(b.seller)}</span><span className="block truncate text-xs text-slate-500">{b.facility.name} · {hhmm(b.startAt)}–{hhmm(b.endAt)}</span></span>
                     <span className="flex shrink-0 flex-col items-end gap-1"><Pill tone={STATUS[b.status].tone}>{STATUS[b.status].label}</Pill><span className="text-[11px] font-bold text-slate-500">{dday(b.startAt)}</span></span>
                   </li>

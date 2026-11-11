@@ -4,11 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BrandShopStatus } from "@prisma/client";
 import { Button } from "@/components/ui/button";
-import { Label, Select, Textarea } from "@/components/ui/input";
+import { Input, Label, Select, Textarea } from "@/components/ui/input";
 import { BRAND_SHOP_STATUS } from "@/lib/brands";
 import { submitBrandCommand } from "./brand-command";
 
-export function BrandModeration({ id, status, note }: { id: string; status: BrandShopStatus; note: string }) {
+export function BrandModeration({ id, status, note, feeRate, defaultFeeRate }: { id: string; status: BrandShopStatus; note: string; feeRate?: number | null; defaultFeeRate?: number }) {
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -18,7 +18,8 @@ export function BrandModeration({ id, status, note }: { id: string; status: Bran
     const fields = Object.fromEntries(new FormData(event.currentTarget));
     setBusy(true);
     try {
-      await submitBrandCommand({ ...fields, action: "moderate", shopId: id });
+      const { feeRate: fee, ...rest } = fields;
+      await submitBrandCommand({ ...rest, action: "moderate", shopId: id, feeRate: fee === "" || fee === undefined ? null : Number(fee) });
       setMessage("운영 상태를 저장했습니다.");
       router.refresh();
     } catch (error) {
@@ -35,6 +36,9 @@ export function BrandModeration({ id, status, note }: { id: string; status: Bran
         <Select name="status" defaultValue={status}>
           {Object.entries(BRAND_SHOP_STATUS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </Select>
+      </Label>
+      <Label className="block">브랜드 수수료율 (%) — 비우면 플랫폼 기본값{defaultFeeRate !== undefined && ` ${defaultFeeRate}%`}
+        <Input type="number" name="feeRate" min={0} max={100} step="any" defaultValue={feeRate ?? ""} />
       </Label>
       <Label className="block">브랜드사에 표시할 사유<Textarea name="moderationNote" defaultValue={note} maxLength={500} rows={2} /></Label>
       {message && <p role="status" className="text-sm">{message}</p>}

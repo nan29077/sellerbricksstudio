@@ -253,8 +253,8 @@ export function BookingWizard({
                     </div>
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex flex-wrap items-center gap-1">
-                        <Badge tone={f.type === "STUDIO" ? "purple" : "blue"} className="px-2 py-0 text-[10px]">{f.type === "STUDIO" ? "스튜디오" : "창고"}</Badge>
-                        {f.autoApprove && <Badge tone="green" className="px-2 py-0 text-[10px]"><Zap className="mr-0.5 h-3 w-3" />즉시 확정</Badge>}
+                        <Badge tone={f.type === "STUDIO" ? "purple" : "blue"} className="px-2 py-0 text-[11px]">{f.type === "STUDIO" ? "스튜디오" : "창고"}</Badge>
+                        {f.autoApprove && <Badge tone="green" className="px-2 py-0 text-[11px]"><Zap className="mr-0.5 h-3 w-3" />즉시 확정</Badge>}
                         {f.favorite && <Heart className="h-3.5 w-3.5 fill-red-500 text-red-500" />}
                       </div>
                       <p className="truncate font-bold text-navy">{f.name}</p>
@@ -304,7 +304,7 @@ export function BookingWizard({
                           <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-muted">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             {p.product.thumbnailUrl ? <img src={p.product.thumbnailUrl} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Package className="h-7 w-7 text-slate-300" /></div>}
-                            {off > 0 && <span className="absolute bottom-1 left-1 rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">-{off}%</span>}
+                            {off > 0 && <span className="absolute bottom-1 left-1 rounded-full bg-red-500 px-1.5 text-[11px] font-bold text-white">-{off}%</span>}
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="text-[11px] text-slate-500">{p.product.category}{p.bookedCount > 0 && ` · ${p.bookedCount}회 예약됨`}</p>
@@ -377,17 +377,17 @@ export function BookingWizard({
           <Card><CardContent className="space-y-4 p-4 sm:p-5">
             <div>
               <Label>방송 제목·목적</Label>
-              <Input value={purpose} onChange={(e) => setPurpose(e.target.value)} maxLength={200} placeholder="예: 겨울 신상 니트 라이브 / 제철 감귤 특가전" />
+              <Input aria-label="방송 제목·목적" value={purpose} onChange={(e) => setPurpose(e.target.value)} maxLength={200} placeholder="예: 겨울 신상 니트 라이브 / 제철 감귤 특가전" />
             </div>
             <div className="grid gap-3 sm:grid-cols-[140px_1fr]">
               <div>
                 <Label>방문 인원</Label>
-                <Input type="number" min={1} max={facility.capacity ?? 500} value={headcount} onChange={(e) => setHeadcount(e.target.value)} placeholder="명" />
+                <Input aria-label="방문 인원" type="number" min={1} max={facility.capacity ?? 500} value={headcount} onChange={(e) => setHeadcount(e.target.value)} placeholder="명" />
                 {facility.capacity ? <p className="mt-1 text-[11px] text-muted-foreground">최대 {facility.capacity}명</p> : null}
               </div>
               <div>
                 <Label>요청사항</Label>
-                <Textarea value={requestNote} onChange={(e) => setRequestNote(e.target.value)} rows={3} maxLength={1000} placeholder="예: 그린스크린 세팅, 상품 진열대 2개, 주차 2대, 상품 사전 검수 요청" />
+                <Textarea aria-label="요청사항" value={requestNote} onChange={(e) => setRequestNote(e.target.value)} rows={3} maxLength={1000} placeholder="예: 그린스크린 세팅, 상품 진열대 2개, 주차 2대, 상품 사전 검수 요청" />
               </div>
             </div>
             {facility.cancelPolicy && (

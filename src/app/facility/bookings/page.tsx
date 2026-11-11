@@ -14,6 +14,8 @@ import { Kpi } from "@/components/list/charts";
 import { MonthCalendar } from "@/components/calendar/month-calendar";
 import { ManageBookingList } from "@/components/booking/manage-booking-list";
 import { toManageBooking } from "@/lib/booking-view";
+import { runBookingMaintenance, sellerReliability } from "@/lib/booking-automation";
+import { getPolicy } from "@/lib/policy";
 import { BOOKING_STATUS } from "@/lib/status";
 import { formatDateTime, formatKRW } from "@/lib/utils";
 import { addDays, addMonths, hoursBetween, kstStartOfDay, kstStartOfMonth, parseMonth } from "@/lib/kst";
@@ -26,6 +28,7 @@ const BASE = "/facility/bookings";
 export default async function FacilityBookings({ searchParams }: { searchParams: SP }) {
   const user = await requireRole(["FACILITY_ADMIN"]);
   const facIds = await ownedFacilityIds(user.id);
+  await runBookingMaintenance({ facilityIds: facIds });
   const facilities = await prisma.facility.findMany({ where: { id: { in: facIds } }, select: { id: true, name: true } });
   const view = sp(searchParams, "view") === "calendar" ? "calendar" : "list";
   const status = sp(searchParams, "status");
@@ -70,6 +73,7 @@ export default async function FacilityBookings({ searchParams }: { searchParams:
   const sellerIds = Array.from(new Set(rows.map((r) => r.sellerId)));
   const hist = sellerIds.length ? await prisma.booking.groupBy({ by: ["sellerId"], where: { ...scope, sellerId: { in: sellerIds }, status: "COMPLETED" }, _count: true }) : [];
   const history = new Map(hist.map((h) => [h.sellerId, h._count]));
+  const [reliability, policy] = await Promise.all([sellerReliability(Array.from(new Set(rows.map((r) => r.sellerId)))), getPolicy()]);
 
   const counts = Object.fromEntries(grouped.map((g) => [g.status, g._count]));
   const all = grouped.reduce((s, g) => s + g._count, 0);
@@ -111,7 +115,7 @@ export default async function FacilityBookings({ searchParams }: { searchParams:
           action={<Link href="/facility/schedule"><Button variant="outline">운영 시간대 설정</Button></Link>} />
       ) : (
         <>
-          <ManageBookingList rows={rows.map((r) => toManageBooking(r, history))} showFacility={facilities.length > 1} />
+          <ManageBookingList rows={rows.map((r) => toManageBooking(r, history, { reliability, noShowGraceMinutes: policy.noShowGraceMinutes }))} showFacility={facilities.length > 1} />
           <Pagination base={BASE} params={searchParams} page={page} size={size} total={total} />
         </>
       )}

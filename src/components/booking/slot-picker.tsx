@@ -125,7 +125,7 @@ export function SlotPicker({
                 className={cn("flex min-h-[52px] flex-col items-center justify-center rounded-xl border text-sm font-bold transition", LEVEL[d.level].cls,
                   active && "!border-navy !bg-navy !text-white shadow-md", disabled && !active && "cursor-not-allowed")}>
                 <span>{Number(d.date.slice(8))}</span>
-                <span className={cn("text-[9px] font-semibold", active ? "text-white/80" : "")}>{d.date === today ? "오늘" : LEVEL[d.level].label}</span>
+                <span className={cn("text-[11px] font-semibold", active ? "text-white/80" : "")}>{d.date === today ? "오늘" : LEVEL[d.level].label}</span>
               </button>
             );
           })}
@@ -185,7 +185,7 @@ export function SlotPicker({
                       o.status === "past" && "border-slate-100 bg-slate-50 text-slate-300",
                       active && "!border-navy !bg-navy !text-white !no-underline")}>
                     {o.time}
-                    {busy && <span className="block text-[9px] font-semibold no-underline">{o.status === "pending" ? "승인 대기중" : "예약됨"}</span>}
+                    {busy && <span className="block text-[11px] font-semibold no-underline">{o.status === "pending" ? "승인 대기중" : "예약됨"}</span>}
                   </button>
                 );
               })}
@@ -222,10 +222,10 @@ function Timeline({ detail, start, hours }: { detail: DayDetail; start: string; 
     <div>
       <div className="relative h-8 overflow-hidden rounded-lg bg-slate-100">
         {detail.windows.map((w, i) => <div key={i} className="absolute inset-y-0 bg-emerald-100" style={pos(toMin(w.start), w.end === "24:00" ? 1440 : toMin(w.end))} />)}
-        {detail.booked.map((b, i) => <div key={i} className={cn("absolute inset-y-0", b.status === "APPROVED" ? "bg-red-300" : "bg-amber-200")} style={pos(toMin(b.start), b.end === "24:00" ? 1440 : toMin(b.end))} title={`${b.start}~${b.end}`} />)}
+        {detail.booked.map((b, i) => <div key={i} className={cn("absolute inset-y-0", b.status === "BLOCKED" ? "bg-slate-300" : b.status === "APPROVED" ? "bg-red-300" : "bg-amber-200")} style={pos(toMin(b.start), b.end === "24:00" ? 1440 : toMin(b.end))} title={`${b.start}~${b.end}`} />)}
         {start && <div className="absolute inset-y-1 rounded border-2 border-navy bg-navy/10" style={pos(toMin(start), toMin(start) + hours * 60)} />}
       </div>
-      <div className="relative mt-1 h-3 text-[10px] text-muted-foreground">
+      <div className="relative mt-1 h-3 text-[11px] text-muted-foreground">
         {marks.map((m) => <span key={m} className="absolute -translate-x-1/2" style={{ left: `${((m - o) / span) * 100}%` }}>{toHm(m).slice(0, 2)}시</span>)}
       </div>
     </div>

@@ -1,4 +1,5 @@
 "use client";
+import { appAlert } from "@/components/ui/app-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { UserPlus, X } from "lucide-react";
@@ -41,7 +42,7 @@ export function RegisterManagerButton() {
       }
       const linked = json.data?.facility ? `\n담당 창고(스튜디오): ${json.data.facility}` : "";
       const note = json.data?.note ? `\n${json.data.note}` : "";
-      alert(`중간 관리자가 등록되었습니다.${linked}${note}\n임시 비밀번호를 본인에게 안전하게 전달하세요.`);
+      void appAlert(`중간 관리자가 등록되었습니다.${linked}${note}\n임시 비밀번호를 본인에게 안전하게 전달하세요.`);
       handleClose();
       router.refresh();
     } catch {
@@ -67,7 +68,7 @@ export function RegisterManagerButton() {
                 <UserPlus className="h-5 w-5 text-brand-500" />
                 중간 관리자 등록
               </h2>
-              <button type="button" onClick={handleClose} className="rounded-lg p-1.5 hover:bg-muted transition-colors">
+              <button aria-label="닫기" type="button" onClick={handleClose} className="rounded-lg p-1.5 hover:bg-muted transition-colors">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -86,7 +87,7 @@ export function RegisterManagerButton() {
               </div>
               <div>
                 <Label>담당 창고(스튜디오) (선택)</Label>
-                <Input value={facility} onChange={(e) => setFacility(e.target.value)} placeholder="강남 프리미엄 스튜디오" />
+                <Input aria-label="담당 창고(스튜디오) (선택)" value={facility} onChange={(e) => setFacility(e.target.value)} placeholder="강남 프리미엄 스튜디오" />
               </div>
               {error && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
               <div className="flex gap-2 pt-2">

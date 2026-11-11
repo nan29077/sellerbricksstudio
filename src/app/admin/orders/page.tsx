@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { PoChips, PO_CHIP_INCLUDE } from "@/components/brand/po-chips";
 import { requireRole } from "@/lib/auth";
 import { PageHeader } from "@/components/layout/dashboard-widgets";
 import { Table, Td } from "@/components/ui/table";
@@ -7,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ORDER_STATUS } from "@/lib/status";
 import { formatKRW, formatDateTime } from "@/lib/utils";
 import { OrderStatusActions } from "@/components/order-status-actions";
+import { ORDER_ACTION_INCLUDE, orderActionProps } from "@/lib/order-action-props";
 import { Package, ShoppingCart, TrendingUp, Truck, CheckCircle2 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -24,10 +26,12 @@ export default async function AdminOrders() {
       include: {
         facility: { select: { name: true } },
         seller: { include: { profile: { select: { name: true } } } },
+        purchaseOrders: PO_CHIP_INCLUDE,
+        ...ORDER_ACTION_INCLUDE,
       },
       take: 200,
     });
-    totalAmount = orders.reduce((sum, o) => sum + o.totalAmount, 0);
+    totalAmount = orders.reduce((sum, o) => sum + (o.totalAmount - o.refundedAmount), 0);
     counts = {
       total: orders.length,
       paid: orders.filter((o) => o.status === "PAID").length,
@@ -72,9 +76,9 @@ export default async function AdminOrders() {
               <Td>{o.seller?.profile?.name ?? "-"}</Td>
               <Td>{o.buyerName}</Td>
               <Td className="font-semibold text-navy">{formatKRW(o.totalAmount)}</Td>
-              <Td><Badge tone={s.tone}>{s.label}</Badge></Td>
+              <Td><Badge tone={s.tone}>{s.label}</Badge><PoChips pos={o.purchaseOrders} /></Td>
               <Td className="text-xs text-muted-foreground">{formatDateTime(o.createdAt)}</Td>
-              <Td><OrderStatusActions orderId={o.id} status={o.status} /></Td>
+              <Td><OrderStatusActions {...orderActionProps(o)} /></Td>
             </tr>
           );
         })}

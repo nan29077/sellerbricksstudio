@@ -47,7 +47,7 @@ NEXT_PUBLIC_APP_URL="http://localhost:3007"
 ### 3. DB 띄우기 (Docker)
 
 ```bash
-npm run db:up        # docker compose up -d (Postgres 16)
+npm run db:start     # Docker Desktop + Postgres 16 자동 시작 (db-start.bat). npm run dev 도 시작 전에 자동으로 DB 를 켭니다
 ```
 
 ### 4. 스키마 적용 + 시드 데이터
@@ -118,7 +118,7 @@ npm run dev
 | 최고관리자 (SUPER_ADMIN) | `admin@sellerbricks.kr` | `/admin/dashboard` |
 | 중간관리자 (MANAGER) | `manager@sellerbricks.kr` | `/manager/dashboard` |
 | 창고(스튜디오) 관리자 (FACILITY_ADMIN) | `facility@sellerbricks.kr` | `/facility/dashboard` |
-| 브랜드사 (BRAND_ADMIN) | `brand@sellerbricks.kr` | `/brand/dashboard` |
+| 브랜드사 (BRAND_ADMIN) | `brand@sellerbricks.kr` | `/brand/dashboard` (시드에 승인된 브랜드샵 · 상품 3개 포함) |
 | 셀러 (SELLER) | `seller@sellerbricks.kr` | `/seller/dashboard` |
 | 구매자 (BUYER) | 로그인 불필요 | 방송 링크로 접속 |
 
@@ -148,6 +148,30 @@ npm run dev
 | `facility-logistics.webp` | 작업자들이 선반 앞에서 재고를 점검하는 물류 센터 |
 | `facility-daylight.webp` | 제작진이 자연광 아래 상품 촬영을 준비하는 스튜디오 |
 | `facility-illustration.webp` | 상품을 포장하고 촬영하는 창고 스튜디오의 3D 일러스트 |
+
+
+## 브랜드 판매 연결 · 발주서 · 플랫폼 정산 · 예약 고도화 (2026-11)
+
+> 기존 개발 DB에 반영: `npm run db:push` (새 테이블·컬럼과 예약 상태 `NO_SHOW` 추가, Prisma Client 재생성) 후 개발 서버를 다시 켜세요. 기존 데이터는 그대로 유지됩니다.
+
+### 전체 흐름
+1. **브랜드사 가입**: 브랜드(회사)명 · 사업자번호 · 취급 카테고리(17개 대분류, `src/lib/categories.ts`)를 고르면 브랜드샵이 **승인 대기**로 함께 만들어집니다. 셀러 · 창고(스튜디오)도 가입 때 관심 카테고리를 고를 수 있습니다.
+2. **브랜드 상품**: 공급가 · 권장 소비자가 · 세부 카테고리 · 옵션(`색상:블랙,화이트|사이즈:S,M`) · 추가 이미지 · 출고 소요일 · 판매 방식(브랜드 직배송 / 창고 입고 허용) · 샘플 단가(비우면 미제공, 0원 무료) · 계정당 샘플 한도.
+3. **샘플**: 무료 샘플은 바로 신청, 유료 샘플은 **플랫폼에서 결제**(결제 어댑터)되고 브랜드가 반려하거나 발송 전에 취소하면 자동 환불됩니다. 브랜드 화면에서 신청자 정보(라이브 횟수 · SNS 팔로워)와 **판매 전환**(판매 목록에 담았는지 · 판매 수량)을 볼 수 있습니다.
+4. **판매 상품으로 가져오기** (브랜드샵 상품 카드)
+   - 셀러: 브랜드 직배송 상품으로 가져와 **라이브 판매 상품 선택 → 브랜드 상품** 탭에서 방송에 올립니다. (`/seller/brand-products`)
+   - 창고(스튜디오): **직배송** 또는 **창고 입고(위탁)** 중 선택. 위탁은 브랜드에 입고를 요청 → 브랜드 승인·발송 → 창고가 **입고 확인**하면 창고 판매 재고가 늘어납니다. (`/facility/brand-products`)
+5. **발주서 자동 생성**: 구매자 결제가 끝나면 브랜드 × 배송방식별로 발주서가 만들어져 브랜드사로 갑니다(`/brand/orders`, 엑셀 CSV 다운로드). 직배송은 구매자 배송지로 브랜드가 출고(운송장 입력)하고, 주문 전체가 직배송이면 주문 상태도 함께 바뀝니다. 위탁 상품은 창고가 주문을 발송·완료하면 발주서가 따라갑니다. 주문 취소 · 환불 시 발주 취소 · 재고 복구도 자동입니다.
+6. **플랫폼 정산** (`/admin/payouts`): 배송 완료 주문을 셀러 × 창고(스튜디오)별 **판매 정산서**로, 배송 완료 발주 + 발송된 유료 샘플을 브랜드별 **브랜드 정산서**로 묶어 확정 → 지급합니다. 판매 금액 = 플랫폼 판매 수수료 + 브랜드 공급대금 + 셀러 몫 + 창고 몫 (`src/lib/settlement.ts`).
+7. **최고관리자 정책** (`/admin/policy`): 판매 수수료 · 브랜드 수수료(브랜드별 예외는 브랜드샵 관리) · 샘플 수수료 · 셀러 몫 · 예약 대기 자동 만료 · 노쇼 기준 · 이용 전 알림 · 발주 확인 권장 시간 · 샘플 주문당 최대 수량. 발주 관리(`/admin/purchase-orders`)에서 모든 발주의 상태 · 운송장 · 메모를 바꿀 수 있습니다.
+
+### 예약 고도화
+- **시간대 막기**: 일정 관리에서 하루 중 일부 시간만 막을 수 있습니다(매주 반복 가능). 셀러 화면에는 표시되지 않고 예약도 거절됩니다.
+- **자동 처리**: 승인 대기 자동 만료(기본 48시간 · 시작 시간 경과), 종료된 승인 예약 자동 이용 완료, 이용 전 알림. 화면을 열 때 가볍게 실행되고, 외부 스케줄러는 `Authorization: Bearer $CRON_SECRET` 으로 `/api/cron/bookings` 를 호출하면 됩니다(최고관리자 예약 현황의 "자동 처리 실행" 버튼도 있음).
+- **체크인 · 노쇼**: 창고(스튜디오)가 시작 2시간 전부터 체크인, 시작 n분 후 미체크인 예약은 노쇼 처리(잘못 처리하면 이용 완료로 되돌리기). 예약 목록에 셀러의 노쇼 · 취소 이력이 표시됩니다.
+
+### 점검
+`scripts/simulate-brand-flow.mjs` 는 가입 → 상품 → 샘플 → 가져오기 → 입고 → 예약 → 방송 → 결제 → 발주 → 배송 → 정산 → 예약 자동화 → 역할별 화면까지 135개 항목을 실제 API로 확인합니다. (테스트 데이터를 만들므로 개발 DB에서만 실행)
 
 ---
 
@@ -336,3 +360,10 @@ npx tsx prisma/backfill-free-booking.ts     # 기존 요금·이용료 0원 처�
 | POST | `/api/bookings` | `products`, `repeatWeeks`, `skipConflicts`, `dryRun` 추가 |
 | PATCH | `/api/bookings/[id]` | `{action:"reschedule"}` 일정 변경, `{products:[...]}` 상품 준비 표시 |
 | POST/DELETE | `/api/bookings/waitlist` | 대기 신청 / 취소 |
+
+## 개발 서버 · DB 동기화 (Windows)
+
+- `dev.bat` — 이 프로젝트의 남아 있는 개발 서버를 먼저 정리한 뒤 3007 포트로 시작합니다. `npm run dev` 는 시작 전에 `scripts/ensure-db.mjs` 를 실행해 `schema.prisma` 가 바뀌었으면 Prisma Client 재생성과 `prisma db push` 를 자동으로 합니다.
+- `stop-dev.bat` — 창을 닫았는데도 http://localhost:3007 이 계속 열려 있을 때 실행합니다. 3007 포트를 쓰는 프로세스와 이 폴더에서 실행된 node 프로세스(백그라운드 AI 도구가 띄운 서버 포함)를 종료하고, 무엇을 종료했는지 보여 줍니다.
+- `db-sync.bat` — 여러 화면에서 "데이터를 불러오지 못했습니다" / "일시적인 오류가 발생했습니다"가 뜨면 실행합니다. 서버 종료 → Prisma Client 재생성 + DB 구조 반영 → 서버 재시작 순서로 진행합니다.
+- 원인: Windows 에서는 실행 중인 서버가 Prisma 엔진 파일을 잠가 `prisma generate` 가 실패합니다. 그러면 코드와 DB 구조가 어긋나 여러 화면이 동시에 오류를 냅니다.

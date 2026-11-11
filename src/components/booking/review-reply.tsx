@@ -1,4 +1,5 @@
 "use client";
+import { appAlert, appConfirm } from "@/components/ui/app-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { MessageSquareReply } from "lucide-react";
@@ -19,7 +20,7 @@ export function ReviewReply({ id, initial }: { id: string; initial: string | nul
   async function save(v: string) {
     setBusy(true);
     try { await api(`/api/reviews/${id}`, "PATCH", { reply: v }); setOpen(false); router.refresh(); }
-    catch (e) { alert((e as Error).message); } finally { setBusy(false); }
+    catch (e) { void appAlert((e as Error).message); } finally { setBusy(false); }
   }
   if (!open) return (
     <Button size="sm" variant={initial ? "ghost" : "outline"} onClick={() => setOpen(true)}><MessageSquareReply className="h-4 w-4" />{initial ? "답글 수정" : "답글 달기"}</Button>
@@ -30,7 +31,7 @@ export function ReviewReply({ id, initial }: { id: string; initial: string | nul
       <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={1000} placeholder="셀러에게 보여지는 공개 답글입니다." />
       <div className="flex gap-2">
         <Button size="sm" disabled={busy || !text.trim()} onClick={() => save(text)}>{busy ? "저장중..." : "답글 저장"}</Button>
-        {initial && <Button size="sm" variant="ghost" className="text-red-600" disabled={busy} onClick={() => confirm("답글을 삭제할까요?") && save("")}>답글 삭제</Button>}
+        {initial && <Button size="sm" variant="ghost" className="text-red-600" disabled={busy} onClick={async () => (await appConfirm("답글을 삭제할까요?")) && save("")}>답글 삭제</Button>}
         <Button size="sm" variant="outline" onClick={() => setOpen(false)}>취소</Button>
       </div>
     </div>

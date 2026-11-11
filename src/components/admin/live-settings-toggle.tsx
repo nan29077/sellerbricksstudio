@@ -1,4 +1,5 @@
 "use client";
+import { appAlert } from "@/components/ui/app-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,7 +24,7 @@ export function LiveSettingsToggle({ initial }: { initial: boolean }) {
     setBusy(false);
     if (!json.ok) {
       setOn(!next); // 롤백
-      alert(json.error ?? "저장에 실패했습니다.");
+      void appAlert(json.error ?? "저장에 실패했습니다.");
       return;
     }
     setSaved(true);

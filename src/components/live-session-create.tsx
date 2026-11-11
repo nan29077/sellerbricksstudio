@@ -34,11 +34,11 @@ export function LiveSessionCreate({ bookings, defaultBookingId }: { bookings: B[
   return (
     <div className="space-y-3">
       <div><Label>예약 선택</Label>
-        <Select value={bookingId} onChange={(e) => setBookingId(e.target.value)}>
+        <Select aria-label="예약 선택" value={bookingId} onChange={(e) => setBookingId(e.target.value)}>
           {bookings.map((b) => <option key={b.id} value={b.id}>{b.facilityName} · {formatDateTime(b.startAt)}</option>)}
         </Select>
       </div>
-      <div><Label>방송 제목</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="예: 주말 특가 라이브" /></div>
+      <div><Label>방송 제목</Label><Input aria-label="방송 제목" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="예: 주말 특가 라이브" /></div>
       <div>
         <Label>송출 채널 (자체 송출은 자동 포함)</Label>
         <div className="flex flex-wrap gap-2">

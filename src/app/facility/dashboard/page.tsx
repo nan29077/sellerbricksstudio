@@ -1,11 +1,15 @@
 import { prisma } from "@/lib/prisma";
+import { reportDbError, type DbIssue } from "@/lib/db-error";
 import { requireRole } from "@/lib/auth";
+import { runBookingMaintenance } from "@/lib/booking-automation";
+import { ownedFacilityIds as ownedIdsForMaintenance } from "@/lib/rbac";
 import { ownedFacilityIds } from "@/lib/rbac";
 import { addDays, addMonths, hhmm, kstParts, kstStartOfDay, kstStartOfMonth, WEEKDAYS } from "@/lib/kst";
 import {
   SOLD_ORDER_STATUSES, compactKRW, dailySeries, deltaPct, greeting, hoursText, openHoursPerDay, overlapHours, ratio,
   relativeTime, todayLabel, utilization, weekdayHourHeatmap, zipSeries,
 } from "@/lib/dashboard";
+import { ProductMixPanel } from "@/components/dashboard/product-mix";
 import {
   DashHero, DataNotice, DayTimeline, Empty, Feed, HeroButton, HeroPanel, Heatmap, KpiTile, Meter, Panel, Pill, RankList,
   ShortcutGrid, TodoList, TrendChart,
@@ -44,7 +48,7 @@ async function load(userId: string) {
     }),
     prisma.booking.count({ where: { ...inFac, status: "PENDING" } }),
     prisma.booking.count({ where: { ...inFac, status: "PENDING", createdAt: { lt: addDays(now, -0.5) } } }),
-    prisma.order.findMany({ where: { ...inFac, status: { in: [...SOLD_ORDER_STATUSES] }, createdAt: { gte: addDays(today, -29) < lastMonthStart ? addDays(today, -29) : lastMonthStart } }, select: { createdAt: true, totalAmount: true } }),
+    prisma.order.findMany({ where: { ...inFac, status: { in: [...SOLD_ORDER_STATUSES] }, createdAt: { gte: addDays(today, -29) < lastMonthStart ? addDays(today, -29) : lastMonthStart } }, select: { createdAt: true, totalAmount: true, refundedAmount: true } }),
     prisma.orderItem.groupBy({ by: ["productName"], where: { order: { ...inFac, status: { in: [...SOLD_ORDER_STATUSES] }, createdAt: { gte: monthStart } } }, _sum: { quantity: true, lineTotal: true }, orderBy: { _sum: { lineTotal: "desc" } }, take: 5 }),
     prisma.facilityReview.aggregate({ where: { ...inFac, isHidden: false }, _avg: { rating: true }, _count: true }),
     prisma.facilityReview.findMany({ where: { ...inFac, isHidden: false }, orderBy: { createdAt: "desc" }, take: 4, select: { id: true, rating: true, content: true, reply: true, createdAt: true, facility: { select: { name: true } }, seller: { select: { email: true, profile: { select: { name: true } } } } } }),
@@ -77,7 +81,7 @@ async function load(userId: string) {
 
   const mOrders = orders.filter((o) => o.createdAt >= monthStart);
   const pOrders = orders.filter((o) => o.createdAt >= lastMonthStart && o.createdAt < lastMonthSameDay);
-  const gmv = mOrders.reduce((s, o) => s + o.totalAmount, 0);
+  const gmv = mOrders.reduce((s, o) => s + (o.totalAmount - o.refundedAmount), 0);
 
   // 90일 셀러 랭킹 · 재이용률
   const past90 = used.filter((b) => b.startAt >= d90 && b.startAt < now);
@@ -100,9 +104,9 @@ async function load(userId: string) {
     perFac, totalHours, util: totalCap ? Math.min(100, Math.round((totalHours / totalCap) * 100)) : 0,
     monthReq: mReq.length, reqDelta: deltaPct(mReq.length, pReq.length), avgApproval,
     pendingAll, stalePending, liveNow,
-    gmv, gmvDelta: deltaPct(gmv, pOrders.reduce((s, o) => s + o.totalAmount, 0)), orderCount: mOrders.length,
+    gmv, gmvDelta: deltaPct(gmv, pOrders.reduce((s, o) => s + (o.totalAmount - o.refundedAmount), 0)), orderCount: mOrders.length,
     trend: zipSeries(
-      dailySeries(orders.filter((o) => o.createdAt >= addDays(today, -29)), 30, (o) => o.createdAt, (o) => o.totalAmount),
+      dailySeries(orders.filter((o) => o.createdAt >= addDays(today, -29)), 30, (o) => o.createdAt, (o) => (o.totalAmount - o.refundedAmount)),
       dailySeries(used.filter((b) => b.startAt >= addDays(today, -29) && b.startAt < addDays(today, 1)), 30, (b) => b.startAt),
     ),
     heat: weekdayHourHeatmap(used.filter((b) => b.startAt >= d90).map((b) => b.startAt)),
@@ -127,11 +131,13 @@ async function load(userId: string) {
 
 export default async function FacilityDashboard() {
   const user = await requireRole(["FACILITY_ADMIN"]);
+  if (!user.id.startsWith("demo-")) await runBookingMaintenance({ facilityIds: await ownedIdsForMaintenance(user.id).catch(() => []) });
   let d: Awaited<ReturnType<typeof load>> | null = null;
-  try { d = await load(user.id); } catch { /* DB 미연결 */ }
+  let issue: DbIssue = "unknown";
+  try { d = await load(user.id); } catch (e) { issue = reportDbError("facility-dashboard", e); }
   const hello = `${greeting()}, ${user.name ?? "운영자"}님`;
 
-  if (!d) return <div className="space-y-6"><DashHero eyebrow={`SPACE OPERATIONS · ${todayLabel()}`} title={hello} /><DataNotice /></div>;
+  if (!d) return <div className="space-y-6"><DashHero eyebrow={`SPACE OPERATIONS · ${todayLabel()}`} title={hello} /><DataNotice issue={issue} /></div>;
   if (d.empty) {
     return (
       <div className="space-y-6">
@@ -211,10 +217,10 @@ export default async function FacilityDashboard() {
             {d.ahead.map((x, i) => (
               <div key={x.key} title={`${x.day}일 예약 ${x.n}건${x.pending ? ` (대기 ${x.pending})` : ""}`}
                 className={`rounded-xl border p-1.5 text-center ${i === 0 ? "border-brand-300 bg-brand-50" : "border-[#EEEAE2]"}`}>
-                <p className={`text-[10px] font-bold ${x.weekend ? "text-rose-500" : "text-slate-400"}`}>{x.wd}</p>
+                <p className={`text-[11px] font-bold ${x.weekend ? "text-rose-500" : "text-slate-400"}`}>{x.wd}</p>
                 <p className="text-sm font-extrabold text-navy">{x.day}</p>
                 <div className="mx-auto mt-1 flex h-8 w-3 items-end overflow-hidden rounded-full bg-[#F1EEE8]"><div className="w-full rounded-full bg-navy" style={{ height: `${(x.n / aheadMax) * 100}%` }} /></div>
-                <p className="mt-1 text-[10px] font-bold text-slate-600">{x.n}{x.pending ? <span className="text-amber-600">·{x.pending}</span> : ""}</p>
+                <p className="mt-1 text-[11px] font-bold text-slate-600">{x.n}{x.pending ? <span className="text-amber-600">·{x.pending}</span> : ""}</p>
               </div>
             ))}
           </div>
@@ -250,6 +256,8 @@ export default async function FacilityDashboard() {
             items={d.topProducts.map((p) => ({ key: p.productName, name: p.productName, sub: `${(p._sum.quantity ?? 0).toLocaleString("ko-KR")}개 판매`, value: p._sum.lineTotal ?? 0, valueLabel: compactKRW(p._sum.lineTotal ?? 0) }))} />
         </Panel>
       </div>
+
+      <ProductMixPanel scope={{ facilityIds: d.perFac.map((f) => f.id) }} />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <Panel eyebrow="REVIEWS" title="최근 리뷰" action={{ href: "/facility/reviews", label: "리뷰 관리" }}>

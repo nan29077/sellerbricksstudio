@@ -1,3 +1,4 @@
+import { appAlert } from "@/components/ui/app-dialog";
 /* ────────────────────────────────────────────────────────────
    PDF 생성 — 허니비 테마 (html2canvas + jsPDF CDN 동적 로드)
    ※ 이 파일은 .ts (not .tsx) 로 분리 — TSX 파서 충돌 방지
@@ -362,7 +363,7 @@ export async function generateSellerBricksPdf(
 
   } catch (err) {
     console.error("PDF 생성 실패:", err);
-    alert("PDF 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+    void appAlert("PDF 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
   } finally {
     setLoading(false);
   }

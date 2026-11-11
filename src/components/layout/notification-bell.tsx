@@ -55,7 +55,7 @@ export function NotificationBell({ dark = false }: { dark?: boolean }) {
         aria-label={`알림 ${unread}건`}
       >
         <Bell className="h-5 w-5" />
-        {unread > 0 && <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">{unread > 99 ? "99+" : unread}</span>}
+        {unread > 0 && <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">{unread > 99 ? "99+" : unread}</span>}
       </button>
       {open && (
         <div className={cn("absolute z-[70] mt-2 w-[min(360px,calc(100vw-24px))] overflow-hidden rounded-2xl border border-[#E9E5DC] bg-white shadow-2xl", dark ? "left-0" : "right-0")}>
@@ -78,7 +78,7 @@ export function NotificationBell({ dark = false }: { dark?: boolean }) {
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-navy">{n.title}</p>
                     {n.body && <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{n.body}</p>}
-                    <p className="mt-1 text-[10px] text-slate-400">{ago(n.createdAt)}</p>
+                    <p className="mt-1 text-[11px] text-slate-400">{ago(n.createdAt)}</p>
                   </div>
                 </div>
               </button>

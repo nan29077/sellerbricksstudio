@@ -26,6 +26,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       if (!["SELLER", "FACILITY_ADMIN", "BRAND_ADMIN", "MANAGER"].includes(body.role)) return fail("변경할 수 없는 역할입니다.");
       data.role = body.role;
     }
+    if (data.role !== undefined || data.isActive === false) data.sessionVersion = { increment: 1 }; // 기존 로그인 끊기
     if (typeof body.adminMemo === "string") data.adminMemo = body.adminMemo.slice(0, 2000) || null;
     const profilePatch: Record<string, string | null> = {};
     for (const k of ["name", "phone", "companyName"] as const) if (typeof body[k] === "string") profilePatch[k] = body[k].trim().slice(0, 60) || null;
@@ -41,8 +42,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       },
     });
     const action = typeof body.isActive === "boolean" ? (body.isActive ? "USER_ACTIVATE" : "USER_DEACTIVATE") : body.role ? "USER_ROLE_CHANGE" : "USER_UPDATE";
-    await audit({ actorId: admin.id, action, entity: "User", entityId: params.id, meta: { ...data, ...profilePatch, adminMemo: undefined } });
-    if (body.role) await notify({ userId: params.id, type: "SYSTEM", title: "계정 역할이 변경되었습니다", body: "다시 로그인하면 새 메뉴가 적용됩니다." });
-    return ok({ id: params.id, ...data });
+    await audit({ actorId: admin.id, action, entity: "User", entityId: params.id, meta: { ...data, sessionVersion: undefined, ...profilePatch, adminMemo: undefined } });
+    if (body.role) await notify({ userId: params.id, type: "SYSTEM", title: "계정 역할이 변경되었습니다", body: "보안을 위해 로그아웃되었습니다. 다시 로그인하면 새 메뉴가 적용됩니다." });
+    return ok({ id: params.id, isActive: data.isActive, role: data.role });
   } catch (e) { return handleError(e); }
 }

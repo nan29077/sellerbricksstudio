@@ -1,12 +1,21 @@
 import { z } from "zod";
+import { isCategory } from "./categories";
 
 export const signupSchema = z.object({
   email: z.string().email("올바른 이메일을 입력하세요."),
   password: z.string().min(8, "비밀번호는 8자 이상이어야 합니다.").max(100),
   name: z.string().trim().min(1, "이름을 입력하세요.").max(40),
-  phone: z.string().optional(),
-  companyName: z.string().optional(),
+  phone: z.string().trim().max(30).optional(),
+  companyName: z.string().trim().max(60).optional(),
+  businessNumber: z.string().trim().max(20).regex(/^[0-9-]*$/, "사업자등록번호는 숫자와 - 만 입력하세요.").optional(),
+  categories: z.array(z.string().refine(isCategory, "알 수 없는 카테고리입니다.")).max(17).optional(),
   role: z.enum(["SELLER", "FACILITY_ADMIN", "MANAGER", "BRAND_ADMIN"]),
+  agreeTerms: z.literal(true, { errorMap: () => ({ message: "이용약관에 동의해 주세요." }) }),
+  agreePrivacy: z.literal(true, { errorMap: () => ({ message: "개인정보 수집·이용에 동의해 주세요." }) }),
+}).superRefine((v, ctx) => {
+  if (v.role !== "BRAND_ADMIN") return;
+  if (!v.companyName || v.companyName.length < 2) ctx.addIssue({ code: "custom", path: ["companyName"], message: "브랜드(회사)명을 2자 이상 입력하세요." });
+  if (!v.categories?.length) ctx.addIssue({ code: "custom", path: ["categories"], message: "취급 카테고리를 1개 이상 선택하세요." });
 });
 export type SignupInput = z.infer<typeof signupSchema>;
 
@@ -58,6 +67,7 @@ export const liveSessionSchema = z.object({
 
 export const addLiveProductSchema = z.object({
   facilityProductId: z.string().optional(),
+  sellerBrandProductId: z.string().max(64).optional(), // 셀러가 브랜드샵에서 가져온 직배송 상품
   displayNumber: z.coerce.number().int().min(1).optional(),
   // 임시상품 직접 입력
   name: z.string().optional(),
@@ -82,6 +92,7 @@ export const checkoutSchema = z.object({
     quantity: z.coerce.number().int().min(1).max(99, "한 상품은 최대 99개까지 주문할 수 있습니다."),
     optionLabel: z.string().optional(),
   })).min(1, "상품을 1개 이상 담아주세요."),
+  agreePrivacy: z.literal(true, { errorMap: () => ({ message: "개인정보 수집·이용 및 판매자 제공에 동의해 주세요." }) }),
 });
 
 export const sendAlimtalkSchema = z.object({

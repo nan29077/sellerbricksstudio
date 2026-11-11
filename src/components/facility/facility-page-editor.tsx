@@ -217,15 +217,15 @@ export function FacilityPageEditor({
               </div>
               <div className="pl-[68px]">
                 <p className="truncate text-base font-black text-navy">{form.pageTitle || facility.name}</p>
-                <p className="mt-0.5 truncate text-[9px] font-semibold text-slate-400">{facility.type === "WAREHOUSE" ? "물류 창고" : "라이브 스튜디오"} · {facility.region}</p>
+                <p className="mt-0.5 truncate text-[11px] font-semibold text-slate-400">{facility.type === "WAREHOUSE" ? "물류 창고" : "라이브 스튜디오"} · {facility.region}</p>
               </div>
               <div className="mt-4 grid grid-cols-3 divide-x rounded-xl bg-[#F8F9FB] py-3 text-center">
                 {[['4.9', '창고(스튜디오) 평점'], ['0', '연동 상품'], ['0', '예약 일정']].map(([value, label]) => (
                   <div key={label}><p className="text-sm font-black text-navy">{value}</p><p className="mt-0.5 text-[8px] text-slate-400">{label}</p></div>
                 ))}
               </div>
-              <p className="mt-3 line-clamp-2 text-[10px] font-bold leading-relaxed text-slate-500">{form.tagline}</p>
-              <p className="mt-1 line-clamp-2 text-[9px] leading-relaxed text-slate-400">{form.intro}</p>
+              <p className="mt-3 line-clamp-2 text-[11px] font-bold leading-relaxed text-slate-500">{form.tagline}</p>
+              <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-slate-400">{form.intro}</p>
               <div className="mt-4 rounded-xl border border-[#D99000] py-2.5 text-center text-[11px] font-black text-navy shadow-sm" style={{ backgroundColor: accent }}>
                 <span className="mr-1 rounded-full bg-red-500 px-1.5 py-0.5 text-[7px] text-white">● 예약</span>{form.ctaLabel}
               </div>

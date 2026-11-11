@@ -18,13 +18,40 @@ export async function BrandRequestList({ scope, manager, params, base }: {
   const status = Object.keys(BRAND_REQUEST_STATUS).find((value) => value === filter) as keyof typeof BRAND_REQUEST_STATUS | undefined;
   const requestId = sp(params, "request");
   const where: Prisma.BrandRequestWhereInput = { ...scope, ...(status && { status }), ...(requestId && { id: requestId }) };
+  const kindFilter = sp(params, "kind");
+  if (kindFilter === "SAMPLE" || kindFilter === "SUPPLY") where.kind = kindFilter;
   const [requests, total] = await Promise.all([
     prisma.brandRequest.findMany({
       where, skip, take, orderBy: { createdAt: "desc" },
-      include: { product: { select: { shop: { select: { id: true, name: true } } } } },
+      include: {
+        product: { select: { shop: { select: { id: true, name: true } } } },
+        buyer: { select: { id: true, role: true, email: true, profile: { select: { name: true, companyName: true, categories: true } } } },
+      },
     }),
     prisma.brandRequest.count({ where }),
   ]);
+  // 브랜드사 화면: 신청자 정보 + 샘플 후 실제 판매로 이어졌는지(전환) 표시
+  const buyerIds = Array.from(new Set(requests.map((r) => r.buyerId)));
+  const productIds = Array.from(new Set(requests.map((r) => r.productId)));
+  const [liveCounts, snsCounts, sellerListings, facilityListings, soldItems] = manager && buyerIds.length ? await Promise.all([
+    prisma.liveSession.groupBy({ by: ["sellerId"], where: { sellerId: { in: buyerIds } }, _count: true }),
+    prisma.snsAccount.groupBy({ by: ["sellerId"], where: { sellerId: { in: buyerIds } }, _count: true, _sum: { followers: true } }).catch(() => []),
+    prisma.sellerBrandProduct.findMany({ where: { sellerId: { in: buyerIds }, brandProductId: { in: productIds } }, select: { sellerId: true, brandProductId: true } }),
+    prisma.facilityProduct.findMany({ where: { brandProductId: { in: productIds }, facility: { ownerId: { in: buyerIds } } }, select: { brandProductId: true, facility: { select: { ownerId: true } } } }),
+    prisma.purchaseOrderItem.findMany({
+      where: { brandProductId: { in: productIds }, purchaseOrder: { status: { notIn: ["CANCELLED", "RETURNED"] }, OR: [{ sellerId: { in: buyerIds } }, { facility: { ownerId: { in: buyerIds } } }] } },
+      select: { brandProductId: true, quantity: true, purchaseOrder: { select: { sellerId: true, facility: { select: { ownerId: true } } } } },
+    }),
+  ]) : [[], [], [], [], []];
+  const liveMap = new Map(liveCounts.map((x) => [x.sellerId, x._count]));
+  const snsMap = new Map((snsCounts as { sellerId: string; _count: number; _sum: { followers: number | null } }[]).map((x) => [x.sellerId, x]));
+  const listed = new Set([...sellerListings.map((x) => `${x.sellerId}:${x.brandProductId}`), ...facilityListings.map((x) => `${x.facility.ownerId}:${x.brandProductId}`)]);
+  const sold = new Map<string, number>();
+  for (const it of soldItems) {
+    for (const owner of Array.from(new Set([it.purchaseOrder.sellerId, it.purchaseOrder.facility.ownerId]))) {
+      const key = `${owner}:${it.brandProductId}`; sold.set(key, (sold.get(key) ?? 0) + it.quantity);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -32,6 +59,9 @@ export async function BrandRequestList({ scope, manager, params, base }: {
         <Select aria-label="진행 상태" name="status" defaultValue={status ?? ""} className="w-auto">
           <option value="">전체 상태</option>
           {Object.entries(BRAND_REQUEST_STATUS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </Select>
+        <Select aria-label="신청 종류" name="kind" defaultValue={kindFilter ?? ""} className="w-auto">
+          <option value="">전체 종류</option><option value="SAMPLE">샘플 주문</option><option value="SUPPLY">창고 입고 요청</option>
         </Select>
         {manager && <Input aria-label="신청 번호" name="request" placeholder="신청 번호" maxLength={64} defaultValue={requestId} className="max-w-52" />}
         <Button variant="outline">조회</Button>
@@ -47,11 +77,30 @@ export async function BrandRequestList({ scope, manager, params, base }: {
             </div>
             <Badge tone={request.status === "AWAITING_PAYMENT" ? "yellow" : request.status === "COMPLETED" ? "green" : "gray"}>{BRAND_REQUEST_STATUS[request.status]}</Badge>
           </div>
-          <p className="mt-2 text-sm font-bold">{request.quantity.toLocaleString("ko-KR")}개 · {request.kind === "SAMPLE" && request.unitPrice === 0 ? "무료" : formatKRW(request.quantity * request.unitPrice)}</p>
+          <p className="mt-2 text-sm font-bold">{request.quantity.toLocaleString("ko-KR")}개 · {request.kind === "SAMPLE" && request.unitPrice === 0 ? "무료" : formatKRW(request.quantity * request.unitPrice)}
+            {request.paymentStatus === "PAID" && <Badge tone="green" className="ml-2">결제 완료</Badge>}
+            {request.paymentStatus === "REFUNDED" && <Badge tone="gray" className="ml-2">환불 완료</Badge>}
+            {request.kind === "SUPPLY" && <span className="ml-2 text-xs font-medium text-slate-600">위탁 입고 · 판매분만 정산</span>}
+          </p>
+          {manager && (() => {
+            const key = `${request.buyerId}:${request.productId}`;
+            const soldQty = sold.get(key) ?? 0;
+            return (
+              <div className="mt-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-700">
+                <p><b>신청자</b> {request.buyer.profile?.companyName || request.buyer.profile?.name || request.buyer.email} · {request.buyer.role === "SELLER" ? "셀러" : "창고(스튜디오)"}
+                  {request.buyer.role === "SELLER" && <> · 라이브 {liveMap.get(request.buyerId) ?? 0}회 · SNS {snsMap.get(request.buyerId)?._count ?? 0}개(팔로워 {(snsMap.get(request.buyerId)?._sum.followers ?? 0).toLocaleString()})</>}</p>
+                {!!request.buyer.profile?.categories?.length && <p className="mt-0.5">관심 카테고리: {request.buyer.profile.categories.join(", ")}</p>}
+                <p className="mt-0.5"><b>판매 전환</b> {listed.has(key) ? "판매 목록에 담음" : "아직 판매 목록에 없음"} · 판매 {soldQty.toLocaleString()}개</p>
+              </div>
+            );
+          })()}
           <p className="mt-1 break-all text-xs text-slate-500">{new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeZone: "Asia/Seoul" }).format(request.createdAt)} · {request.id}</p>
           <p className="mt-3 break-words text-sm text-slate-600">{request.recipient} · {request.phone}<br />{request.address}</p>
           {request.message && <p className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-600">{request.message}</p>}
-          {request.trackingNumber && <p className="mt-3 text-sm font-semibold">배송 조회 · {request.trackingNumber}</p>}
+          {request.trackingNumber && <p className="mt-3 text-sm font-semibold">배송 조회 · {request.carrier && `${request.carrier} `}{request.trackingNumber}</p>}
+          {request.rejectReason && <p className="mt-2 text-sm text-red-700">사유: {request.rejectReason}</p>}
+          {request.receivedAt && <p className="mt-2 text-sm text-emerald-700">창고 입고 완료 · 창고 판매 재고에 {request.quantity.toLocaleString()}개 반영</p>}
+          {request.paymentInstructions && request.status !== "AWAITING_PAYMENT" && !manager && <p className="mt-2 whitespace-pre-wrap text-xs text-slate-600">브랜드 안내: {request.paymentInstructions}</p>}
           {request.status === "AWAITING_PAYMENT" && (
             <div className="mt-3 rounded-xl bg-brand-50 p-3 text-sm">
               <p className="font-bold">계좌이체 안내</p>
@@ -59,7 +108,7 @@ export async function BrandRequestList({ scope, manager, params, base }: {
               {!manager && <p className="mt-2 text-xs text-slate-600">이미 입금했다면 주문을 취소하기 전에 브랜드사에 문의해 주세요.</p>}
             </div>
           )}
-          <BrandRequestControls request={{ id: request.id, status: request.status, kind: request.kind, unitPrice: request.unitPrice }} manager={manager} />
+          <BrandRequestControls request={{ id: request.id, status: request.status, kind: request.kind, unitPrice: request.unitPrice, paymentStatus: request.paymentStatus }} manager={manager} />
         </article>
       ))}
       <Pagination base={base} params={params} page={page} size={size} total={total} />

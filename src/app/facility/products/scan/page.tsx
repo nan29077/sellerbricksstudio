@@ -253,7 +253,7 @@ export default function ProductScanPage() {
             <Card className="border-red-200 bg-red-50">
               <CardContent className="p-4 flex items-center justify-between">
                 <p className="text-sm text-red-700 font-medium">바코드 <span className="font-bold">{barcodeInput}</span>에 해당하는 제품을 찾을 수 없습니다.</p>
-                <button onClick={clearResult} className="text-muted-foreground hover:text-navy">
+                <button aria-label="닫기" onClick={clearResult} className="text-muted-foreground hover:text-navy">
                   <X className="h-4 w-4" />
                 </button>
               </CardContent>
@@ -279,7 +279,7 @@ export default function ProductScanPage() {
                         </div>
                       </div>
                     </div>
-                    <button onClick={clearResult} className="text-muted-foreground hover:text-navy p-1">
+                    <button aria-label="닫기" onClick={clearResult} className="text-muted-foreground hover:text-navy p-1">
                       <X className="h-4 w-4" />
                     </button>
                   </div>
@@ -337,7 +337,7 @@ export default function ProductScanPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <Badge tone={h.type === "IN" ? "green" : "yellow"} className="text-[10px]">
+                            <Badge tone={h.type === "IN" ? "green" : "yellow"} className="text-[11px]">
                               {h.type === "IN" ? "입고" : "출고"}
                             </Badge>
                             <span className="text-sm font-semibold text-navy">{h.qty}개</span>

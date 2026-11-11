@@ -12,9 +12,9 @@ export function BarChart({ data, format = (n) => n.toLocaleString(), height = 14
         const last = highlightLast && i === data.length - 1;
         return (
           <div key={d.label + i} className="group flex min-w-0 flex-1 flex-col items-center justify-end gap-1">
-            <span className="hidden text-[10px] font-bold text-navy group-hover:block sm:block sm:opacity-0 sm:group-hover:opacity-100">{format(d.value)}</span>
+            <span className="hidden text-[11px] font-bold text-navy group-hover:block sm:block sm:opacity-0 sm:group-hover:opacity-100">{format(d.value)}</span>
             <div className={cn("w-full max-w-[38px] rounded-t-md transition-all", last ? "bg-brand-500" : "bg-navy/80 group-hover:bg-navy")} style={{ height: h }} title={`${d.label}: ${format(d.value)}`} />
-            <span className="w-full truncate text-center text-[10px] text-slate-500">{d.label}</span>
+            <span className="w-full truncate text-center text-[11px] text-slate-500">{d.label}</span>
           </div>
         );
       })}

@@ -99,7 +99,7 @@ export default async function SellerSettlements({ searchParams }: { searchParams
         <>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Kpi label="판매 매출" value={formatKRW(sales?.gross ?? 0)} sub={`주문 ${sales?.orderCount ?? 0}건`} icon={TrendingUp} tone="navy" />
-            <Kpi label="셀러 수익(예상)" value={formatKRW(sales?.sellerProfit ?? 0)} icon={Wallet} tone="brand" />
+            <Kpi label="셀러 수익(예상)" value={formatKRW(sales?.sellerProfit ?? 0)} sub={sales && "platformFee" in sales ? `플랫폼 수수료 ${formatKRW(sales.platformFee)} · 브랜드 대금 ${formatKRW(sales.brandAmount)} 제외` : undefined} icon={Wallet} tone="brand" />
             <Kpi label="정산 대기" value={formatKRW(settlements.filter((s) => s.status !== "PAID").reduce((a, s) => a + s.commissionAmount, 0))} icon={CalendarCheck} tone="blue" />
             <Kpi label="지급 완료" value={formatKRW(settlements.filter((s) => s.status === "PAID").reduce((a, s) => a + s.commissionAmount, 0))} icon={Banknote} tone="green" />
           </div>

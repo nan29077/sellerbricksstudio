@@ -4,6 +4,8 @@ import { requireUser } from "@/lib/auth";
 import { addLiveProductSchema } from "@/lib/validations";
 import { ok, fail, handleError } from "@/lib/http";
 import { audit } from "@/lib/audit";
+import { brandSnapshotForFacilityProduct } from "@/lib/brand-links";
+import { optionSnapshotOf } from "@/lib/brands";
 
 // 세션 접근 권한: 셀러 본인 또는 창고(스튜디오) 소유 창고(스튜디오) 관리자
 async function assertAccess(userId: string, role: string, sessionId: string) {
@@ -36,15 +38,35 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       if (dup) return fail("이미 사용 중인 상품번호입니다.", 409);
     }
 
-    let snapshot: { name: string; price: number; stock: number; image?: string | null; source: "CATALOG" | "AD_HOC"; facilityProductId?: string };
-    if (data.facilityProductId) {
+    type BrandFields = { brandProductId?: string; fulfillment?: "DROPSHIP" | "WAREHOUSE"; supplyPriceSnapshot?: number; optionSnapshot?: string | null };
+    let snapshot: { name: string; price: number; stock: number; image?: string | null; source: "CATALOG" | "AD_HOC"; facilityProductId?: string; brand?: BrandFields };
+    if (data.sellerBrandProductId) {
+      // 셀러가 브랜드샵에서 가져온 직배송 상품
+      const listing = await prisma.sellerBrandProduct.findUnique({
+        where: { id: data.sellerBrandProductId },
+        include: { brandProduct: { include: { shop: { select: { status: true, owner: { select: { isActive: true } } } } } } },
+      });
+      if (!listing || listing.sellerId !== session.sellerId) return fail("이 방송 셀러가 가져온 브랜드 상품만 추가할 수 있습니다.", 403);
+      const bp = listing.brandProduct;
+      if (!listing.isActive || !bp.isActive || !bp.allowDropship || bp.shop.status !== "APPROVED" || !bp.shop.owner.isActive) {
+        return fail("지금은 판매할 수 없는 브랜드 상품입니다.");
+      }
+      if (bp.stock < 1) return fail("브랜드 재고가 없습니다.");
+      // 같은 셀러 직배송 상품만 중복으로 본다 (창고(스튜디오) 위탁 · 직배송 상품은 별도 판매 상품)
+      const exists = await prisma.liveSessionProduct.findFirst({ where: { liveSessionId: params.id, brandProductId: bp.id, facilityProductId: null, isActive: true } });
+      if (exists) return fail("이미 추가된 상품입니다.", 409);
+      snapshot = {
+        name: bp.name, price: listing.salePrice, stock: bp.stock, image: bp.imageUrl || null, source: "CATALOG",
+        brand: { brandProductId: bp.id, fulfillment: "DROPSHIP", supplyPriceSnapshot: bp.supplyPrice, optionSnapshot: optionSnapshotOf(bp.options) },
+      };
+    } else if (data.facilityProductId) {
       const fp = await prisma.facilityProduct.findUnique({ where: { id: data.facilityProductId }, include: { product: true } });
       if (!fp) return fail("상품을 찾을 수 없습니다.", 404);
       if (fp.facilityId !== session.facilityId) return fail("이 방송 장소의 상품만 추가할 수 있습니다.", 403);
       if (!fp.isSellable) return fail("판매 중단된 상품입니다.");
       const exists = await prisma.liveSessionProduct.findFirst({ where: { liveSessionId: params.id, facilityProductId: fp.id } });
       if (exists) return fail("이미 추가된 상품입니다.", 409);
-      snapshot = { name: fp.product.name, price: fp.salePrice, stock: fp.stock, image: fp.product.thumbnailUrl, source: "CATALOG", facilityProductId: fp.id };
+      snapshot = { name: fp.product.name, price: fp.salePrice, stock: fp.stock, image: fp.product.thumbnailUrl, source: "CATALOG", facilityProductId: fp.id, brand: await brandSnapshotForFacilityProduct(prisma, fp.id) };
     } else {
       // 방송 중 임시상품 추가
       if (!data.name || data.price == null) return fail("임시상품은 상품명과 가격이 필요합니다.");
@@ -59,6 +81,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           facilityProductId: snapshot.facilityProductId,
           nameSnapshot: snapshot.name, priceSnapshot: snapshot.price, stockSnapshot: snapshot.stock,
           imageSnapshot: snapshot.image, source: snapshot.source,
+          ...(snapshot.brand ?? {}),
         },
       });
       await tx.liveProductNumberHistory.create({

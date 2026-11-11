@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Kpi } from "@/components/list/charts";
 import { formatDateTime } from "@/lib/utils";
 import { addDays } from "@/lib/kst";
-import { Database, CreditCard, MessageCircle, Radio, HardDrive, ShieldCheck, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Database, Mail, CreditCard, MessageCircle, Radio, HardDrive, ShieldCheck, CheckCircle2, AlertTriangle } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +18,8 @@ const GROUPS = [
   { key: "pay", name: "결제 PG", icon: CreditCard, required: ["PAYMENT_PROVIDER"], optional: ["TOSS_SECRET_KEY", "TOSS_CLIENT_KEY", "PORTONE_API_KEY", "PORTONE_API_SECRET", "PAYMENT_WEBHOOK_SECRET"], note: "미설정 시 Mock 결제로 동작합니다." },
   { key: "kakao", name: "카카오 알림톡", icon: MessageCircle, required: ["KAKAO_API_KEY", "KAKAO_SENDER_KEY"], optional: ["KAKAO_ALIMTALK_PROVIDER", "KAKAO_API_SECRET", "KAKAO_PLUS_FRIEND_ID"], note: "미설정 시 발송 로그만 저장합니다(Mock)." },
   { key: "stream", name: "카테노이드 송출", icon: Radio, required: ["CATENOID_API_BASE", "CATENOID_API_KEY"], optional: ["CATENOID_TENANT_ID"], note: "미설정 시 Mock 송출 URL을 만듭니다." },
-  { key: "s3", name: "파일 저장소 (S3 호환)", icon: HardDrive, required: ["S3_BUCKET", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"], optional: ["S3_ENDPOINT", "S3_REGION"], note: "미설정 시 업로드는 Mock URL을 반환합니다." },
+  { key: "s3", name: "파일 저장소 (S3 호환)", icon: HardDrive, required: ["S3_BUCKET", "S3_REGION", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"], optional: ["S3_ENDPOINT", "S3_PUBLIC_URL", "IMAGE_HOSTS"], note: "이미지 파일 업로드. 미설정 시 개발 환경은 public/uploads 에 저장하고, 배포 환경은 업로드를 막습니다(이미지 주소 직접 입력)." },
+  { key: "mail", name: "메일 발송 (Resend)", icon: Mail, required: ["RESEND_API_KEY", "MAIL_FROM"], optional: [], note: "비밀번호 재설정 · 이메일 인증 메일. 없으면 개발 환경에서는 서버 로그로만 보내고, 배포 환경에서는 발송되지 않습니다." },
 ];
 
 export default async function AdminIntegrations() {

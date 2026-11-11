@@ -1,4 +1,5 @@
 "use client";
+import { signOut } from "next-auth/react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -183,7 +184,8 @@ export function SettingsPanel(props: SettingsPanelProps) {
       if (!res.ok || json?.ok === false) {
         setPwMsg({ tone: "error", text: json?.error ?? "비밀번호 변경에 실패했습니다." });
       } else {
-        setPwMsg({ tone: "success", text: "비밀번호가 변경되었습니다." });
+        setPwMsg({ tone: "success", text: "비밀번호가 변경되었습니다. 보안을 위해 다시 로그인해 주세요." });
+        setTimeout(() => { void signOut({ callbackUrl: "/login" }); }, 1500);
         setPw({ current: "", next: "", confirm: "" });
       }
     } catch {
@@ -342,15 +344,15 @@ export function SettingsPanel(props: SettingsPanelProps) {
         <div className="max-w-2xl space-y-4 rounded-2xl border border-border bg-white p-4 sm:p-6">
           <div>
             <Label>현재 비밀번호</Label>
-            <Input type="password" value={pw.current} onChange={(e) => setPw({ ...pw, current: e.target.value })} placeholder="현재 비밀번호" autoComplete="current-password" />
+            <Input aria-label="현재 비밀번호" type="password" value={pw.current} onChange={(e) => setPw({ ...pw, current: e.target.value })} placeholder="현재 비밀번호" autoComplete="current-password" />
           </div>
           <div>
             <Label>새 비밀번호</Label>
-            <Input type="password" value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} placeholder="새 비밀번호 (8자 이상)" autoComplete="new-password" />
+            <Input aria-label="새 비밀번호" type="password" value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} placeholder="새 비밀번호 (8자 이상)" autoComplete="new-password" />
           </div>
           <div>
             <Label>새 비밀번호 확인</Label>
-            <Input type="password" value={pw.confirm} onChange={(e) => setPw({ ...pw, confirm: e.target.value })} placeholder="새 비밀번호 다시 입력" autoComplete="new-password" />
+            <Input aria-label="새 비밀번호 확인" type="password" value={pw.confirm} onChange={(e) => setPw({ ...pw, confirm: e.target.value })} placeholder="새 비밀번호 다시 입력" autoComplete="new-password" />
           </div>
           {pwMsg && <Banner tone={pwMsg.tone} text={pwMsg.text} />}
           <div className="flex justify-end">
@@ -408,6 +410,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
               </div>
             ))}
           </dl>
+          <EmailVerifyRow />
           <p className="mt-4 text-xs text-muted-foreground">계정 정보는 읽기 전용입니다. 변경이 필요하면 관리자에게 문의하세요.</p>
         </div>
       )}
@@ -438,6 +441,31 @@ export function SettingsPanel(props: SettingsPanelProps) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// 이메일 인증 상태 · 인증 메일 다시 보내기
+function EmailVerifyRow() {
+  const [state, setState] = useState<{ verified?: boolean; demo?: boolean } | null>(null);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string; devLink?: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { fetch("/api/me/verify-email").then((r) => r.json()).then((j) => j?.ok && setState(j.data)).catch(() => {}); }, []);
+  if (!state || state.demo) return null;
+  async function resend() {
+    setBusy(true); setMsg(null);
+    const j = await fetch("/api/me/verify-email", { method: "POST" }).then((r) => r.json()).catch(() => ({ ok: false }));
+    setBusy(false);
+    setMsg(j.ok ? { ok: true, text: "인증 메일을 보냈습니다. 메일함(스팸함 포함)을 확인해 주세요.", devLink: j.data?.devLink } : { ok: false, text: j.error ?? "메일을 보내지 못했습니다." });
+  }
+  return (
+    <div className="mt-4 flex flex-col gap-2 rounded-xl border border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-sm text-navy">
+        이메일 인증 <b className={state.verified ? "text-emerald-700" : "text-amber-700"}>{state.verified ? "완료" : "필요"}</b>
+        {!state.verified && <span className="ml-2 text-xs text-muted-foreground">비밀번호 찾기와 중요 알림을 받으려면 인증해 주세요.</span>}
+      </p>
+      {!state.verified && <Button size="sm" variant="outline" onClick={resend} disabled={busy}>{busy ? "보내는 중…" : "인증 메일 보내기"}</Button>}
+      {msg && <p role="status" className={`text-xs sm:basis-full ${msg.ok ? "text-emerald-700" : "text-red-600"}`}>{msg.text}{msg.devLink && <> · <a className="underline" href={msg.devLink}>개발용 링크</a></>}</p>}
     </div>
   );
 }

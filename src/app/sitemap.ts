@@ -11,6 +11,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE}/`, changeFrequency: "weekly", priority: 1 },
     { url: `${SITE}/intro`, changeFrequency: "monthly", priority: 0.8 },
     { url: `${SITE}/facilities`, changeFrequency: "daily", priority: 0.9 },
+    { url: `${SITE}/terms`, changeFrequency: "yearly", priority: 0.2 },
+    { url: `${SITE}/privacy`, changeFrequency: "yearly", priority: 0.2 },
   ];
   try {
     const facilities = await prisma.facility.findMany({

@@ -73,7 +73,7 @@ export default async function ManagerFacilities() {
               <p className="text-xs text-slate-500">{f.region} · 운영자 {f.owner.profile?.name ?? f.owner.email}{f.owner.profile?.phone ? ` (${f.owner.profile.phone})` : ""}</p>
               <div className="grid grid-cols-4 gap-2 text-center">
                 {[["요금/h", formatKRW(f.basePrice)], ["평점", `★${f.rating.toFixed(1)}`], ["이번 달", `${cnt}건`], ["이용료", formatKRW(rev)]].map(([a, b]) => (
-                  <div key={a} className="rounded-lg bg-muted/50 p-2"><p className="text-[10px] text-slate-500">{a}</p><p className="truncate text-xs font-bold text-navy">{b}</p></div>
+                  <div key={a} className="rounded-lg bg-muted/50 p-2"><p className="text-[11px] text-slate-500">{a}</p><p className="truncate text-xs font-bold text-navy">{b}</p></div>
                 ))}
               </div>
               {delta !== null && <p className={`text-xs font-semibold ${delta >= 0 ? "text-emerald-600" : "text-red-500"}`}>지난달 대비 {delta >= 0 ? "+" : ""}{delta}%</p>}

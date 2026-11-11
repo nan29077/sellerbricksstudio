@@ -15,16 +15,17 @@ const METHODS = [
   { v: "BANK_TRANSFER", label: "간편 계좌이체", icon: Landmark },
 ];
 
-export function CheckoutForm({ slug, title, products }: { slug: string; title: string; products: P[] }) {
+export function CheckoutForm({ slug, title, products, needsAddress = false }: { slug: string; title: string; products: P[]; needsAddress?: boolean }) {
   const router = useRouter();
-  const [cart, setCart] = useState<{ liveSessionProductId: string; quantity: number }[]>([]);
+  const [cart, setCart] = useState<{ liveSessionProductId: string; quantity: number; optionLabel?: string }[]>([]);
   const [form, setForm] = useState({ buyerName: "", buyerPhone: "", buyerAddress: "" });
   const [method, setMethod] = useState("CARD");
+  const [agree, setAgree] = useState(false);
   const [loading, setLoading] = useState(false); const [error, setError] = useState("");
 
   useEffect(() => {
     const raw = sessionStorage.getItem(`cart-${slug}`);
-    if (raw) setCart(JSON.parse(raw));
+    if (raw) { try { const v = JSON.parse(raw); if (Array.isArray(v)) setCart(v); } catch { /* 잘못된 장바구니는 무시 */ } }
   }, [slug]);
 
   const lines = cart.map((c) => ({ ...c, p: products.find((p) => p.id === c.liveSessionProductId)! })).filter((x) => x.p);
@@ -33,11 +34,13 @@ export function CheckoutForm({ slug, title, products }: { slug: string; title: s
 
   async function pay() {
     if (!form.buyerName || !form.buyerPhone) { setError("이름과 연락처를 입력하세요."); return; }
+    if (needsAddress && form.buyerAddress.trim().length < 5) { setError("배송지를 입력하세요."); return; }
     if (cart.length === 0) { setError("장바구니가 비어 있습니다."); return; }
+    if (!agree) { setError("개인정보 수집·이용 및 판매자 제공에 동의해 주세요."); return; }
     setLoading(true); setError("");
     const res = await fetch("/api/orders", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionSlug: slug, ...form, method, items: cart }),
+      body: JSON.stringify({ sessionSlug: slug, ...form, method, items: cart, agreePrivacy: agree }),
     });
     const json = await res.json(); setLoading(false);
     if (!json.ok) { setError(json.error ?? "결제에 실패했습니다."); return; }
@@ -53,9 +56,9 @@ export function CheckoutForm({ slug, title, products }: { slug: string; title: s
           <p className="font-semibold text-navy mb-3">{title} · 주문 상품</p>
           {lines.length === 0 ? <p className="text-sm text-muted-foreground">장바구니가 비어 있습니다. <Link href={`/live/${slug}`} className="text-brand-600">방송으로 돌아가기</Link></p> :
             lines.map((x) => (
-              <div key={x.liveSessionProductId} className="flex items-center gap-2 border-b py-2 last:border-0 text-sm">
+              <div key={`${x.liveSessionProductId}-${x.optionLabel ?? ""}`} className="flex items-center gap-2 border-b py-2 last:border-0 text-sm">
                 <span className="flex h-7 w-7 items-center justify-center rounded bg-brand-500 text-xs font-bold text-white">{x.p.displayNumber}</span>
-                <span className="flex-1 truncate">{x.p.name}</span><span>{x.quantity}개</span>
+                <span className="flex-1 truncate">{x.p.name}{x.optionLabel && <span className="ml-1 text-xs text-muted-foreground">({x.optionLabel})</span>}</span><span>{x.quantity}개</span>
                 <span className="w-20 text-right font-semibold">{formatKRW(x.p.price * x.quantity)}</span>
               </div>
             ))}
@@ -64,9 +67,9 @@ export function CheckoutForm({ slug, title, products }: { slug: string; title: s
 
         <Card><CardContent className="pt-5 space-y-3">
           <p className="font-semibold text-navy">주문자 정보</p>
-          <div><Label>이름</Label><Input value={form.buyerName} onChange={set("buyerName")} /></div>
-          <div><Label>연락처</Label><Input value={form.buyerPhone} onChange={set("buyerPhone")} placeholder="010-0000-0000" inputMode="tel" /></div>
-          <div><Label>배송지 (선택)</Label><Textarea value={form.buyerAddress} onChange={set("buyerAddress")} /></div>
+          <div><Label htmlFor="co-name">이름</Label><Input id="co-name" autoComplete="name" value={form.buyerName} onChange={set("buyerName")} /></div>
+          <div><Label htmlFor="co-phone">연락처</Label><Input id="co-phone" autoComplete="tel" value={form.buyerPhone} onChange={set("buyerPhone")} placeholder="010-0000-0000" inputMode="tel" /></div>
+          <div><Label htmlFor="co-addr">{needsAddress ? "배송지 (필수)" : "배송지 (선택)"}</Label><Textarea id="co-addr" autoComplete="street-address" value={form.buyerAddress} onChange={set("buyerAddress")} /></div>
         </CardContent></Card>
 
         <Card><CardContent className="pt-5">
@@ -78,7 +81,13 @@ export function CheckoutForm({ slug, title, products }: { slug: string; title: s
               </button>
             ))}
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">* 현재 Mock 결제로 동작합니다. 실제 PG 연동 시 어댑터만 교체됩니다.</p>
+        </CardContent></Card>
+
+        <Card><CardContent className="pt-5">
+          <label className="flex cursor-pointer items-start gap-3 text-sm text-slate-700">
+            <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-[#F5A623]" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
+            <span><b className="text-navy">(필수)</b> 주문 처리와 배송을 위해 이름·연락처·배송지를 수집하고, 방송 셀러·창고(스튜디오)·배송하는 브랜드사에 제공하는 데 동의합니다. 보관 기간은 거래 후 5년입니다. <Link href="/privacy" target="_blank" className="font-semibold text-brand-700 underline underline-offset-2">개인정보처리방침</Link></span>
+          </label>
         </CardContent></Card>
 
         {error && <p className="text-sm text-red-600">{error}</p>}

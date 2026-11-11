@@ -4,6 +4,11 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
+  // 운영 DB 보호: 시드는 알려진 비밀번호(password1234)의 관리자 계정을 만들기 때문에 배포 환경에서는 막는다.
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_SEED !== "true") {
+    console.error("배포 환경(NODE_ENV=production)에서는 시드를 실행할 수 없습니다. 꼭 필요하면 ALLOW_SEED=true 를 지정하세요.");
+    process.exit(1);
+  }
   const pw = await bcrypt.hash("password1234", 10);
 
   // ---------------- 계정 ----------------
@@ -84,9 +89,9 @@ async function main() {
   const products = [
     { name: "제주 감귤 3kg", category: "식품", sku: "FD-001", salePrice: 19900, consumerPrice: 25000, stock: 200, commissionType: CommissionType.PERCENT, commissionValue: 12 },
     { name: "프리미엄 한우 세트", category: "식품", sku: "FD-002", salePrice: 159000, consumerPrice: 200000, stock: 50, commissionType: CommissionType.PERCENT, commissionValue: 8 },
-    { name: "여성 니트 가디건", category: "패션", sku: "FS-001", salePrice: 39000, consumerPrice: 59000, stock: 120, commissionType: CommissionType.PERCENT, commissionValue: 20 },
-    { name: "홈트레이닝 밴드", category: "스포츠", sku: "SP-001", salePrice: 12900, consumerPrice: 19000, stock: 300, commissionType: CommissionType.FIXED, commissionValue: 3000 },
-    { name: "캠핑 테이블", category: "레저", sku: "LS-001", salePrice: 49000, consumerPrice: 79000, stock: 80, commissionType: CommissionType.PERCENT, commissionValue: 15 },
+    { name: "여성 니트 가디건", category: "의류", sku: "FS-001", salePrice: 39000, consumerPrice: 59000, stock: 120, commissionType: CommissionType.PERCENT, commissionValue: 20 },
+    { name: "홈트레이닝 밴드", category: "스포츠·레저", sku: "SP-001", salePrice: 12900, consumerPrice: 19000, stock: 300, commissionType: CommissionType.FIXED, commissionValue: 3000 },
+    { name: "캠핑 테이블", category: "스포츠·레저", sku: "LS-001", salePrice: 49000, consumerPrice: 79000, stock: 80, commissionType: CommissionType.PERCENT, commissionValue: 15 },
   ];
 
   // 식품→부산창고+성수창고, 패션→남양주, 그 외→성수
@@ -97,7 +102,7 @@ async function main() {
         description: `${p.name} 상품입니다.`,
         thumbnailUrl: `https://picsum.photos/seed/${encodeURIComponent(p.name)}/600/600`,
         images: { create: [{ url: `https://picsum.photos/seed/${encodeURIComponent(p.name)}d/800/800`, sortOrder: 0 }] },
-        options: p.category === "패션"
+        options: p.category === "의류"
           ? { create: [
               { name: "사이즈", value: "S", stock: 40 },
               { name: "사이즈", value: "M", stock: 50 },
@@ -109,7 +114,7 @@ async function main() {
 
     const targetFacilities =
       p.category === "식품" ? facilities.filter((f) => f.region === "부산" || f.region === "서울")
-      : p.category === "패션" ? facilities.filter((f) => f.region === "경기")
+      : p.category === "의류" ? facilities.filter((f) => f.region === "경기")
       : facilities.filter((f) => f.region === "서울");
 
     for (const fac of targetFacilities) {
@@ -122,6 +127,33 @@ async function main() {
         },
       });
     }
+  }
+
+  // ---------------- 브랜드사 · 브랜드샵 (발주 · 샘플 체험용) ----------------
+  const brandUser = await prisma.user.upsert({
+    where: { email: "brand@sellerbricks.kr" },
+    update: {},
+    create: {
+      email: "brand@sellerbricks.kr", passwordHash: pw, role: Role.BRAND_ADMIN, profileImageIndex: 7,
+      profile: { create: { name: "브랜드 담당자", companyName: "온유 브랜드", phone: "010-2222-3333", categories: ["코스메틱", "식품"] } },
+    },
+  });
+  const shop = await prisma.brandShop.upsert({
+    where: { ownerId: brandUser.id },
+    update: {},
+    create: {
+      ownerId: brandUser.id, name: "온유 브랜드", tagline: "피부와 식탁을 위한 정직한 브랜드", status: "APPROVED",
+      description: "라이브 판매에 어울리는 스킨케어와 건강 간식을 공급합니다.", categories: ["코스메틱", "식품"],
+      businessNumber: "123-45-67890", ceoName: "브랜드 담당자", csPhone: "1588-0000", returnAddress: "서울 마포구 월드컵북로 1",
+      bankName: "국민은행", bankAccount: "123456-01-000000", accountHolder: "온유브랜드",
+    },
+  });
+  if (!(await prisma.brandProduct.count({ where: { shopId: shop.id } }))) {
+    await prisma.brandProduct.createMany({ data: [
+      { shopId: shop.id, name: "온유 수분 진정 크림 50ml", category: "코스메틱", subCategory: "스킨케어", supplyPrice: 14000, consumerPrice: 32000, stock: 500, samplePrice: 0, sampleStock: 50, sampleLimitPerBuyer: 1, options: "용량:50ml,100ml", leadDays: 2 },
+      { shopId: shop.id, name: "온유 비건 선크림", category: "코스메틱", subCategory: "스킨케어", supplyPrice: 11000, consumerPrice: 25000, stock: 300, samplePrice: 3000, sampleStock: 30, sampleLimitPerBuyer: 2, leadDays: 1 },
+      { shopId: shop.id, name: "그래놀라 바 12입", category: "식품", subCategory: "과자·간식", supplyPrice: 9000, consumerPrice: 19800, stock: 800, samplePrice: null, sampleStock: 0, allowDropship: true, allowWarehouse: true, leadDays: 2 },
+    ] });
   }
 
   // ---------------- 알림톡 템플릿 ----------------
@@ -151,7 +183,7 @@ async function main() {
     await prisma.commissionRule.create({ data: { scope: "PLATFORM", commissionType: "PERCENT", commissionValue: 10 } });
   }
 
-  console.log("Seed 완료:", { admin: admin.email, manager: manager.email, facilityAdmin: facilityAdmin.email, seller: seller.email, facilities: facilities.length, channel: channel.channelName });
+  console.log("Seed 완료:", { brand: brandUser.email, admin: admin.email, manager: manager.email, facilityAdmin: facilityAdmin.email, seller: seller.email, facilities: facilities.length, channel: channel.channelName });
 }
 
 main()

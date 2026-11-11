@@ -8,9 +8,10 @@ import {
 import { bookingCode, policyOf, sellerCanModify } from "./booking-engine";
 import { addDays, dateKey, hhmm } from "./kst";
 import { formatDateTime } from "./utils";
+import { getPolicy } from "./policy";
 import type { SessionUser } from "./auth";
 
-const LABEL: Record<string, string> = { APPROVED: "승인", REJECTED: "거절", CANCELLED: "취소", COMPLETED: "이용 완료" };
+const LABEL: Record<string, string> = { APPROVED: "승인", REJECTED: "거절", CANCELLED: "취소", COMPLETED: "이용 완료", NO_SHOW: "노쇼 처리" };
 
 // ---------------------------------------------------------------------------
 // 예약 생성 (상품 선택 · 매주 반복 · 즉시 확정 · 동시성 잠금)
@@ -140,7 +141,7 @@ export async function changeBookingStatus(user: SessionUser, bookingId: string, 
 
   if (status === "CANCELLED") {
     if (!isSeller && !isOwner && !isAdmin) throw new Error("취소 권한이 없습니다.");
-  } else if (["APPROVED", "REJECTED", "COMPLETED"].includes(status)) {
+  } else if (["APPROVED", "REJECTED", "COMPLETED", "NO_SHOW"].includes(status)) {
     if (!isOwner && !isAdmin) throw new Error("승인/거절 권한이 없습니다.");
   } else throw new Error("허용되지 않은 상태입니다.");
 
@@ -157,6 +158,11 @@ export async function changeBookingStatus(user: SessionUser, bookingId: string, 
   if (status === "CANCELLED" && !isSeller && !text) throw new Error("취소 사유를 입력하세요. (셀러에게 표시됩니다)");
   if (status === "COMPLETED" && booking.startAt > new Date()) {
     throw new Error("이용 시작 전 예약은 완료 처리할 수 없습니다.");
+  }
+  if (status === "NO_SHOW") {
+    const { noShowGraceMinutes } = await getPolicy();
+    if (booking.checkedInAt) throw new Error("체크인한 예약은 노쇼로 처리할 수 없습니다.");
+    if (Date.now() < booking.startAt.getTime() + noShowGraceMinutes * 60000) throw new Error(`이용 시작 ${noShowGraceMinutes}분 후부터 노쇼로 처리할 수 있습니다.`);
   }
 
   const now = new Date();
@@ -180,6 +186,7 @@ export async function changeBookingStatus(user: SessionUser, bookingId: string, 
         approvedAt: status === "APPROVED" ? now : booking.approvedAt,
         cancelledAt: status === "CANCELLED" ? now : booking.cancelledAt,
         completedAt: status === "COMPLETED" ? now : booking.completedAt,
+        noShowAt: status === "NO_SHOW" ? now : status === "COMPLETED" ? null : booking.noShowAt,
       },
     });
   });
@@ -202,7 +209,7 @@ export async function changeBookingStatus(user: SessionUser, bookingId: string, 
       link: status === "COMPLETED" ? `/seller/bookings?status=COMPLETED` : `/seller/bookings`,
     });
   }
-  if (status === "CANCELLED" || status === "REJECTED") {
+  if (status === "CANCELLED" || status === "REJECTED" || status === "NO_SHOW") {
     // 아직 방송 전인 라이브 세션은 함께 취소
     await prisma.liveSession.updateMany({ where: { bookingId, status: { in: ["DRAFT", "READY"] } }, data: { status: "CANCELLED" } }).catch(() => undefined);
     await notifyWaitlist(booking.facilityId, booking.startAt, booking.endAt);
@@ -283,4 +290,25 @@ export async function updateBookingProducts(user: SessionUser, bookingId: string
     await notify({ userId: booking.sellerId, type: "BOOKING", title: "예약 상품 중 준비가 어려운 상품이 있습니다", body: `${booking.facility.name} · ${unavailable}개 상품`, link: "/seller/bookings" });
   }
   return prisma.bookingProduct.findMany({ where: { bookingId } });
+}
+
+// ---------------------------------------------------------------------------
+// 현장 체크인 (창고(스튜디오) 관리자 · 최고관리자). 예약번호로도 찾을 수 있다.
+// ---------------------------------------------------------------------------
+export async function checkInBooking(user: SessionUser, bookingIdOrCode: string) {
+  const booking = await prisma.booking.findFirst({
+    where: { OR: [{ id: bookingIdOrCode }, { code: bookingIdOrCode.trim().toUpperCase() }] },
+    include: { facility: { select: { ownerId: true, name: true } } },
+  });
+  if (!booking) throw new Error("예약을 찾을 수 없습니다. 예약번호를 확인하세요.");
+  if (booking.facility.ownerId !== user.id && user.role !== "SUPER_ADMIN") throw new Error("FORBIDDEN");
+  if (booking.status !== "APPROVED") throw new Error("승인된 예약만 체크인할 수 있습니다.");
+  if (booking.checkedInAt) return booking;
+  const now = Date.now();
+  if (now < booking.startAt.getTime() - 2 * 3600000) throw new Error("이용 시작 2시간 전부터 체크인할 수 있습니다.");
+  if (now > booking.endAt.getTime()) throw new Error("이용 시간이 끝난 예약입니다.");
+  const updated = await prisma.booking.update({ where: { id: booking.id }, data: { checkedInAt: new Date() } });
+  await audit({ actorId: user.id, action: "BOOKING_CHECKIN", entity: "Booking", entityId: booking.id });
+  await notify({ userId: booking.sellerId, type: "BOOKING", title: "체크인되었습니다", body: `${booking.facility.name} · ${formatDateTime(booking.startAt)}`, link: "/seller/bookings" });
+  return updated;
 }

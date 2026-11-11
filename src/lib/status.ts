@@ -4,6 +4,7 @@ export const BOOKING_STATUS: Record<string, { label: string; tone: "yellow" | "g
   REJECTED: { label: "거절됨", tone: "red" },
   CANCELLED: { label: "취소됨", tone: "gray" },
   COMPLETED: { label: "완료", tone: "blue" },
+  NO_SHOW: { label: "노쇼", tone: "red" },
 };
 
 export const LIVE_STATUS: Record<string, { label: string; tone: "gray" | "blue" | "red" | "green" | "yellow" }> = {

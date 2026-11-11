@@ -10,6 +10,9 @@ import { Pagination } from "@/components/list/pagination";
 import { CsvButton } from "@/components/list/csv-button";
 import { ManageBookingList } from "@/components/booking/manage-booking-list";
 import { toManageBooking } from "@/lib/booking-view";
+import { runBookingMaintenance, sellerReliability } from "@/lib/booking-automation";
+import { getPolicy } from "@/lib/policy";
+import { PatchButton } from "@/components/resource-form";
 import { BOOKING_STATUS } from "@/lib/status";
 import { formatDateTime, formatKRW } from "@/lib/utils";
 import { addDays, addMonths, hoursBetween, kstStartOfMonth } from "@/lib/kst";
@@ -21,6 +24,7 @@ const BASE = "/admin/bookings";
 
 export default async function AdminBookings({ searchParams }: { searchParams: SP }) {
   await requireRole(["SUPER_ADMIN"]);
+  await runBookingMaintenance({});
   const status = sp(searchParams, "status");
   const fid = sp(searchParams, "facility");
   const q = sp(searchParams, "q");
@@ -46,6 +50,7 @@ export default async function AdminBookings({ searchParams }: { searchParams: SP
     prisma.booking.count({ where: { status: "PENDING", createdAt: { lt: addDays(new Date(), -1) } } }),
     prisma.booking.groupBy({ by: ["status"], where: { createdAt: { gte: mStart } }, _count: true }),
   ]);
+  const [reliability, policy] = await Promise.all([sellerReliability(Array.from(new Set(rows.map((r) => r.sellerId)))), getPolicy()]);
   const c = Object.fromEntries(grouped.map((g) => [g.status, g._count]));
   const all = grouped.reduce((s, g) => s + g._count, 0);
   const cm = Object.fromEntries(cancelM.map((g) => [g.status, g._count]));
@@ -53,7 +58,9 @@ export default async function AdminBookings({ searchParams }: { searchParams: SP
 
   return (
     <div className="space-y-5">
-      <PageHeader title="예약 현황" description="전체 창고(스튜디오)의 예약을 조회하고, 필요하면 운영자를 대신해 처리합니다." />
+      <PageHeader title="예약 현황" description={`전체 창고(스튜디오)의 예약을 조회하고, 필요하면 운영자를 대신해 처리합니다. 승인 대기 ${policy.pendingExpireHours ? `${policy.pendingExpireHours}시간 자동 만료` : "자동 만료 꺼짐"} · 노쇼는 시작 ${policy.noShowGraceMinutes}분 후부터.`}
+        action={<div className="flex gap-2"><a href="/admin/policy" className="inline-flex h-9 items-center rounded-lg border px-3 text-sm font-semibold">예약 정책</a>
+          <PatchButton url="/api/cron/bookings" body={{}} variant="outline" size="sm" confirmText="자동 만료 · 이용 완료 · 이용 전 알림을 지금 실행할까요?">자동 처리 실행</PatchButton></div>} />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="이번 달 확정 예약" value={`${thisM._count}건`} delta={growth(thisM._count, lastM._count)} sub="지난달 대비 · 이용료 무료" icon={Wallet} tone="green" />
         <Kpi label="승인 대기" value={`${c.PENDING ?? 0}건`} sub={stale ? `24시간 넘게 대기 ${stale}건` : "지연 없음"} icon={AlertCircle} tone={stale ? "red" : "brand"} />
@@ -72,7 +79,7 @@ export default async function AdminBookings({ searchParams }: { searchParams: SP
       </div>
       {rows.length === 0 ? <EmptyState icon={<CalendarDays className="h-10 w-10" />} title="조건에 맞는 예약이 없습니다" /> : (
         <>
-          <ManageBookingList rows={rows.map((r) => toManageBooking(r))} />
+          <ManageBookingList rows={rows.map((r) => toManageBooking(r, undefined, { reliability, noShowGraceMinutes: policy.noShowGraceMinutes }))} />
           <Pagination base={BASE} params={searchParams} page={page} size={size} total={total} />
         </>
       )}

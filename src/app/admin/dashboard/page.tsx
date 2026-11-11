@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { AdminBrandOverview } from "@/components/brand/admin-brand-overview";
 import { prisma } from "@/lib/prisma";
+import { reportDbError, type DbIssue } from "@/lib/db-error";
 import { requireRole } from "@/lib/auth";
 import { addDays, addMonths, kstParts, kstStartOfDay, kstStartOfMonth } from "@/lib/kst";
 import { formatKRW } from "@/lib/utils";
@@ -39,7 +41,7 @@ async function load() {
   ] = await Promise.all([
     prisma.user.groupBy({ by: ["role"], _count: true }),
     prisma.facility.groupBy({ by: ["status"], _count: true }),
-    prisma.order.findMany({ where: { status: sold, createdAt: { gte: from } }, select: { createdAt: true, totalAmount: true, sellerId: true } }),
+    prisma.order.findMany({ where: { status: sold, createdAt: { gte: from } }, select: { createdAt: true, totalAmount: true, refundedAmount: true, sellerId: true } }),
     prisma.booking.findMany({ where: { createdAt: { gte: from } }, select: { createdAt: true, approvedAt: true, status: true, facilityId: true } }),
     prisma.user.findMany({ where: { createdAt: { gte: from } }, select: { createdAt: true } }),
     prisma.facilitySettlement.count({ where: { status: { in: ["PENDING", "CONFIRMED"] } } }),
@@ -60,7 +62,7 @@ async function load() {
       take: 5, orderBy: { createdAt: "desc" },
       select: { id: true, status: true, createdAt: true, facility: { select: { name: true } }, seller: { select: { email: true, profile: { select: { name: true } } } } },
     }),
-    prisma.order.findMany({ take: 5, orderBy: { createdAt: "desc" }, select: { id: true, orderNo: true, buyerName: true, totalAmount: true, status: true, createdAt: true } }),
+    prisma.order.findMany({ take: 5, orderBy: { createdAt: "desc" }, select: { id: true, orderNo: true, buyerName: true, totalAmount: true, refundedAmount: true, status: true, createdAt: true } }),
     prisma.user.findMany({ take: 6, orderBy: { createdAt: "desc" }, select: { id: true, email: true, role: true, createdAt: true, lastLoginAt: true, profile: { select: { name: true } } } }),
     prisma.facility.groupBy({ by: ["region"], where: { status: "APPROVED" }, _count: true }),
     prisma.payment.groupBy({ by: ["method"], where: { status: "PAID", createdAt: { gte: monthStart } }, _sum: { amount: true }, _count: true }),
@@ -69,7 +71,7 @@ async function load() {
 
   const inMonth = <T extends { createdAt: Date }>(rows: T[]) => rows.filter((r) => r.createdAt >= monthStart);
   const inLastSame = <T extends { createdAt: Date }>(rows: T[]) => rows.filter((r) => r.createdAt >= lastMonthStart && r.createdAt < lastMonthSameDay);
-  const sum = (rows: { totalAmount: number }[]) => rows.reduce((s, o) => s + o.totalAmount, 0);
+  const sum = (rows: { totalAmount: number; refundedAmount: number }[]) => rows.reduce((s, o) => s + (o.totalAmount - o.refundedAmount), 0);
 
   const mOrders = inMonth(orders), pOrders = inLastSame(orders);
   const mBookings = inMonth(bookings), pBookings = inLastSame(bookings);
@@ -78,7 +80,7 @@ async function load() {
 
   const ordersIn30 = orders.filter((o) => o.createdAt >= d30);
   const bookingsIn30 = bookings.filter((b) => b.createdAt >= d30);
-  const gmvDaily = dailySeries(ordersIn30, 30, (o) => o.createdAt, (o) => o.totalAmount);
+  const gmvDaily = dailySeries(ordersIn30, 30, (o) => o.createdAt, (o) => (o.totalAmount - o.refundedAmount));
   const ordersDaily = dailySeries(ordersIn30, 30, (o) => o.createdAt);
   const bookingDaily = dailySeries(bookingsIn30, 30, (b) => b.createdAt);
   const userDaily = dailySeries(users.filter((u) => u.createdAt >= d30), 30, (u) => u.createdAt);
@@ -94,7 +96,7 @@ async function load() {
   const facCount = new Map<string, number>();
   for (const b of mBookings) if (b.status !== "CANCELLED") facCount.set(b.facilityId, (facCount.get(b.facilityId) ?? 0) + 1);
   const sellerGmv = new Map<string, { gmv: number; n: number }>();
-  for (const o of mOrders) { const x = sellerGmv.get(o.sellerId) ?? { gmv: 0, n: 0 }; x.gmv += o.totalAmount; x.n += 1; sellerGmv.set(o.sellerId, x); }
+  for (const o of mOrders) { const x = sellerGmv.get(o.sellerId) ?? { gmv: 0, n: 0 }; x.gmv += (o.totalAmount - o.refundedAmount); x.n += 1; sellerGmv.set(o.sellerId, x); }
   const topFacIds = [...facCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
   const topSellerIds = [...sellerGmv.entries()].sort((a, b) => b[1].gmv - a[1].gmv).slice(0, 5);
   const [facNames, sellerNames] = await Promise.all([
@@ -133,20 +135,21 @@ const nameOf = (u: { email: string; profile: { name: string | null } | null } | 
 export default async function AdminDashboard() {
   const me = await requireRole(["SUPER_ADMIN"]);
   let d: Awaited<ReturnType<typeof load>> | null = null;
-  try { d = await load(); } catch { /* DB 미연결 */ }
+  let issue: DbIssue = "unknown";
+  try { d = await load(); } catch (e) { issue = reportDbError("admin-dashboard", e); }
 
   if (!d) {
     return (
       <div className="space-y-6 pb-6">
         <DashHero eyebrow={`OPERATIONS · ${todayLabel()}`} title={`${greeting()}, ${me.name ?? "관리자"}님`} description="운영 현황을 한눈에 보는 최고관리자 대시보드입니다." />
-        <DataNotice />
+        <DataNotice issue={issue} />
       </div>
     );
   }
 
   const urgentCount = d.facPending + d.todo.stalePending + d.todo.supportWaiting + d.todo.failedPayments;
   const roleTone = { SELLER: "brand", FACILITY_ADMIN: "sky", BRAND_ADMIN: "green", MANAGER: "violet", SUPER_ADMIN: "navy", BUYER: "slate" } as const;
-  const todayGmv = d.todayOrders.reduce((s, o) => s + o.totalAmount, 0);
+  const todayGmv = d.todayOrders.reduce((s, o) => s + (o.totalAmount - o.refundedAmount), 0);
 
   const feed = [
     ...d.latestBookings.map((b) => ({ key: "b" + b.id, at: b.createdAt, title: `${nameOf(b.seller)}님이 예약을 신청했어요`, sub: `${b.facility.name} · ${b.status === "PENDING" ? "승인 대기" : b.status === "APPROVED" ? "확정" : b.status === "COMPLETED" ? "이용 완료" : b.status === "REJECTED" ? "거절" : "취소"}`, icon: CalendarDays, tone: "violet" as const, href: `/admin/bookings?q=${encodeURIComponent(b.facility.name)}` })),
@@ -175,9 +178,9 @@ export default async function AdminDashboard() {
                 { k: "신규 가입", v: `${d.todayUsers}명`, s: `이번 달 ${d.newUsers}` },
               ].map((x) => (
                 <div key={x.k} className="rounded-xl bg-white/[0.06] px-1 py-2.5">
-                  <dt className="text-[10px] text-white/55">{x.k}</dt>
+                  <dt className="text-[11px] text-white/55">{x.k}</dt>
                   <dd className="mt-0.5 text-lg font-extrabold">{x.v}</dd>
-                  <dd className="text-[10px] text-brand-200">{x.s}</dd>
+                  <dd className="text-[11px] text-brand-200">{x.s}</dd>
                 </div>
               ))}
             </dl>
@@ -185,6 +188,7 @@ export default async function AdminDashboard() {
         }
       />
 
+      <AdminBrandOverview />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-6">
         <KpiTile emphasis label="이번 달 거래액" value={compactKRW(d.gmv)} delta={d.gmvDelta} sub="전월 동기 대비" icon={CircleDollarSign} tone="brand" spark={d.gmvDaily.map((x) => x.value)} href="/admin/orders" />
         <KpiTile label="결제 완료 주문" value={d.orders.toLocaleString("ko-KR")} unit="건" delta={d.ordersDelta} sub={`객단가 ${compactKRW(d.aov)}`} icon={ShoppingBag} tone="navy" spark={d.ordersDaily.map((x) => x.value)} href="/admin/orders" />
@@ -275,7 +279,7 @@ export default async function AdminDashboard() {
                 const p = kstParts(l.scheduledStart!);
                 return (
                   <li key={l.id} className="flex items-center gap-3 rounded-2xl border border-[#EEEAE2] p-3">
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-navy text-center text-[10px] font-bold leading-tight text-white">{p.month}/{p.day}<br />{String(p.hour).padStart(2, "0")}:{String(p.minute).padStart(2, "0")}</span>
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-navy text-center text-[11px] font-bold leading-tight text-white">{p.month}/{p.day}<br />{String(p.hour).padStart(2, "0")}:{String(p.minute).padStart(2, "0")}</span>
                     <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-navy">{l.title}</span><span className="block truncate text-xs text-slate-500">{nameOf(l.seller)} · {l.facility.name}</span></span>
                     <Pill tone="blue">{relativeTime(l.scheduledStart!)}</Pill>
                   </li>

@@ -58,7 +58,7 @@ export default async function SellerReservationOverview({ searchParams }: { sear
           <Link key={t.key} href={withParams(BASE, {}, { tab: t.key === "calendar" ? undefined : t.key })}
             className={cn("flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold", tab === t.key ? "border-navy bg-navy text-white" : "border-[#E5E0D6] bg-white text-slate-600")}>
             <t.icon className="h-4 w-4" />{t.label}
-            {t.key === "inquiries" && unreadReplies > 0 && <span className="rounded-full bg-red-500 px-1.5 text-[10px] text-white">{unreadReplies}</span>}
+            {t.key === "inquiries" && unreadReplies > 0 && <span className="rounded-full bg-red-500 px-1.5 text-[11px] text-white">{unreadReplies}</span>}
           </Link>
         ))}
       </div>

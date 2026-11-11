@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { brandSnapshotForFacilityProduct } from "@/lib/brand-links";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 import { liveSessionSchema } from "@/lib/validations";
@@ -70,6 +71,7 @@ export async function POST(req: NextRequest) {
                 liveSessionId: session.id, displayNumber: n, sortOrder: n - 1, facilityProductId: fp.id,
                 nameSnapshot: fp.product.name, priceSnapshot: fp.salePrice, stockSnapshot: fp.stock,
                 imageSnapshot: fp.product.thumbnailUrl, source: "CATALOG",
+                ...(await brandSnapshotForFacilityProduct(tx, fp.id)),
               },
             });
             await tx.liveProductNumberHistory.create({ data: { liveSessionId: session.id, liveSessionProductId: lsp.id, newNumber: n, changedBy: user.id } });

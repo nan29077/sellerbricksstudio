@@ -212,12 +212,12 @@ export default function FacilityInquiriesPage() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-sm font-bold text-navy">{sellerName}</span>
                             {!q.isRead && (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 bg-brand-500 text-white rounded-full">
+                              <span className="text-[11px] font-bold px-1.5 py-0.5 bg-brand-500 text-white rounded-full">
                                 NEW
                               </span>
                             )}
                             {q.reply && (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">
+                              <span className="text-[11px] font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">
                                 답변완료
                               </span>
                             )}
@@ -251,7 +251,7 @@ export default function FacilityInquiriesPage() {
                         <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4">
                           <p className="text-xs font-semibold text-emerald-700 mb-2">내 답변</p>
                           <p className="text-sm text-navy leading-relaxed">{q.reply}</p>
-                          <p className="text-[10px] text-muted-foreground mt-2">
+                          <p className="text-[11px] text-muted-foreground mt-2">
                             {q.repliedAt ? timeAgo(q.repliedAt) : ""}
                           </p>
                         </div>

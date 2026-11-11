@@ -1,4 +1,5 @@
 "use client";
+import { appAlert } from "@/components/ui/app-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -62,7 +63,7 @@ export function SellerBookingActions({ booking, review }: Props) {
       if (review) await api(`/api/reviews/${review.id}`, "PATCH", { rating, content });
       else await api(`/api/reviews`, "POST", { bookingId: booking.id, rating, content });
       setReviewOpen(false); router.refresh();
-    } catch (e) { alert((e as Error).message); } finally { setBusy(false); }
+    } catch (e) { void appAlert((e as Error).message); } finally { setBusy(false); }
   }
   function downloadIcs() {
     const ics = [
@@ -104,7 +105,7 @@ export function SellerBookingActions({ booking, review }: Props) {
         footer={<><Button variant="outline" size="sm" onClick={() => setCancelOpen(false)}>닫기</Button><Button variant="destructive" size="sm" disabled={busy} onClick={cancel}>{busy ? "처리중..." : "예약 취소하기"}</Button></>}>
         <p className="mb-3 text-sm text-slate-600">{booking.facilityName} 예약{booking.code ? `(${booking.code})` : ""}을 취소합니다.</p>
         <Label>취소 사유 (선택)</Label>
-        <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="예: 방송 일정 변경" maxLength={300} />
+        <Textarea aria-label="취소 사유 (선택)" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="예: 방송 일정 변경" maxLength={300} />
         {err && <p className="mt-2 text-sm text-red-600">{err}</p>}
       </Dialog>
 
@@ -129,7 +130,7 @@ export function SellerBookingActions({ booking, review }: Props) {
           ))}
         </div>
         <Label>리뷰 내용</Label>
-        <Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={5} maxLength={1000} placeholder="장비 상태, 방음, 직원 응대, 주차 등 다른 셀러에게 도움이 되는 내용을 남겨주세요. (5자 이상)" />
+        <Textarea aria-label="리뷰 내용" value={content} onChange={(e) => setContent(e.target.value)} rows={5} maxLength={1000} placeholder="장비 상태, 방음, 직원 응대, 주차 등 다른 셀러에게 도움이 되는 내용을 남겨주세요. (5자 이상)" />
         {review?.reply && <div className="mt-3 rounded-lg bg-muted/60 p-3 text-xs text-slate-600"><b className="text-navy">창고(스튜디오) 답글</b><br />{review.reply}</div>}
       </Dialog>
     </div>
