@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { fail, handleError, ok } from "@/lib/http";
 import { audit } from "@/lib/audit";
 import { brandContext } from "@/lib/brand-access";
+import { randomProfileIndex } from "@/lib/profile";
 
 const schema = z.discriminatedUnion("action", [
   z.object({
@@ -30,6 +31,7 @@ export async function POST(req: Request) {
       const member = await prisma.user.create({
         data: {
           email: data.email, role: "BRAND_ADMIN", passwordHash: await bcrypt.hash(data.password, 10),
+          profileImageIndex: randomProfileIndex(),
           profile: { create: { name: data.name, companyName: ctx.shop.name } },
           brandMembership: { create: { shopId: ctx.shop.id, createdBy: user.id } },
         },

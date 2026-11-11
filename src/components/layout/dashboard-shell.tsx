@@ -198,7 +198,7 @@ export function DashboardShell({
     }))
     .filter((s) => s.items.length > 0);
   const navItems = sections.flatMap((s) => s.items);
-  const tabs = navItems.slice(0, 5);
+  const settingsHref = navItems.find((item) => item.href.endsWith("/settings"))?.href;
   const isActive = (href: string) => {
     if (pathname === href) return true;
     if (!pathname.startsWith(href + "/")) return false;
@@ -303,24 +303,31 @@ export function DashboardShell({
       </aside>
 
       <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-2 border-b border-[#ECE8E0] bg-white/95 px-4 shadow-sm backdrop-blur lg:hidden">
-        <Link href="/" className="flex items-center">
-          <Image
-            src="/images/brand/logo-original-on-light.png?v=8"
-            alt="셀러브릭스 스튜디오"
-            width={146}
-            height={26}
-            className="h-[23px] w-auto object-contain sm:h-[26px]"
-            priority
-          />
-        </Link>
+        <div className="flex min-w-0 items-center gap-1">
+          <button type="button" className="tap shrink-0 rounded-lg p-2 hover:bg-muted" onClick={() => { menu.current?.showModal(); setOpen(true); }} aria-controls="dashboard-menu" aria-haspopup="dialog" aria-expanded={open} aria-label="메뉴 열기">
+            <Menu className="h-5 w-5" />
+          </button>
+          <Link href="/" className="flex min-w-0 items-center">
+            <Image
+              src="/images/brand/logo-original-on-light.png?v=8"
+              alt="셀러브릭스 스튜디오"
+              width={146}
+              height={26}
+              className="h-[23px] w-auto object-contain sm:h-[26px]"
+              priority
+            />
+          </Link>
+        </div>
         <div className="flex items-center gap-1">
           <NotificationBell />
           <span className={cn("hidden rounded-full px-2 py-0.5 text-xs font-semibold min-[420px]:inline-flex", ROLE_BADGE_COLOR[role] ?? "bg-gray-100 text-gray-600")}>
             {roleLabel}
           </span>
-          <button type="button" className="tap rounded-lg p-2 hover:bg-muted" onClick={() => { menu.current?.showModal(); setOpen(true); }} aria-controls="dashboard-menu" aria-haspopup="dialog" aria-expanded={open} aria-label="메뉴 열기">
-            <Menu className="h-5 w-5" />
-          </button>
+          {settingsHref && (
+            <Link href={settingsHref} aria-label="내 프로필" className="grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-brand-50">
+              <Image src={avatarSrc} alt="" width={32} height={32} unoptimized className="h-8 w-8 rounded-full border border-brand-200 bg-white object-cover" />
+            </Link>
+          )}
         </div>
       </header>
 
@@ -348,34 +355,11 @@ export function DashboardShell({
           </div>
           <div className="flex shrink-0 items-center gap-3"><NotificationBell /><Link href="/" className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-xs font-bold text-slate-600 transition hover:bg-brand-50 hover:text-brand-800"><Home className="h-4 w-4" />사이트 보기</Link></div>
         </header>
-        <main className="min-w-0 px-4 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] pt-5 sm:px-6 sm:pt-6 lg:px-7 lg:pb-10 2xl:px-9">
+        <main className="min-w-0 px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] pt-5 sm:px-6 sm:pt-6 lg:px-7 lg:pb-10 2xl:px-9">
           {children}
         </main>
       </div>
 
-      <nav
-        aria-label="모바일 업무 메뉴"
-        className="safe-area-inset-bottom fixed inset-x-0 bottom-0 z-40 grid border-t border-border bg-white shadow-lg lg:hidden"
-        style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}
-      >
-        {tabs.map((n) => {
-          const active = isActive(n.href);
-          return (
-            <Link
-              key={n.href}
-              href={n.href}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "flex min-h-[56px] min-w-0 flex-col items-center justify-center gap-1 px-1 py-1.5 text-center text-[11px] font-medium leading-tight transition-colors",
-                active ? "text-brand-600" : "text-muted-foreground",
-              )}
-            >
-              <n.icon className={cn("h-5 w-5", active && "text-brand-600")} />
-              <span className="line-clamp-2 break-keep">{n.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
     </div>
   );
 }

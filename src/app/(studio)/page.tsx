@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { ArrowRight, CalendarDays, ClipboardList, Headset, Radio, ShoppingBag, Wallet } from "lucide-react";
+import { ArrowRight, CalendarDays, ClipboardList, Headset, Radio, Wallet } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
+import { getHomeBrandProducts } from "@/lib/home-brand-products";
 import { registeredSpaceThumbnail, SHOWCASE_SPACES, type SpaceCard } from "@/lib/showcase";
+import { BrandProductShowcase } from "@/components/home/brand-product-showcase";
 import { HeroSlider } from "@/components/home/hero-slider";
 import { SpaceMarketplace } from "@/components/home/space-marketplace";
 
@@ -43,7 +45,7 @@ const steps = [
 ];
 
 export default async function HomePage() {
-  const [{ spaces, available }, settings] = await Promise.all([getRegisteredSpaces(), getSettings()]);
+  const [{ spaces, available }, settings, brandProducts] = await Promise.all([getRegisteredSpaces(), getSettings(), getHomeBrandProducts()]);
 
   return (
     <>
@@ -56,13 +58,7 @@ export default async function HomePage() {
         </div>
       )}
       <HeroSlider />
-      <div className="px-4 pt-6 sm:px-6">
-        <Link href="/brands" className="flex items-center gap-3 rounded-2xl border border-brand-200 bg-brand-50 p-4 text-navy hover:border-brand-400">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-200"><ShoppingBag className="h-5 w-5" /></span>
-          <span className="flex-1"><span className="block text-sm font-black">브랜드샵 둘러보기</span><span className="mt-0.5 block text-xs text-slate-600">판매용 브랜드 상품과 무료·유료 샘플을 찾아보세요.</span></span>
-          <ArrowRight className="h-5 w-5 shrink-0" />
-        </Link>
-      </div>
+      <BrandProductShowcase data={brandProducts} />
       <SpaceMarketplace spaces={[...spaces, ...SHOWCASE_SPACES]} registeredAvailable={available} />
       <section className="border-y border-[#E8E5DD] bg-white px-4 py-9 sm:px-6 sm:py-12">
         <p className="text-[11px] font-extrabold tracking-[0.2em] text-brand-700">YOUR LIVE WORKFLOW</p>

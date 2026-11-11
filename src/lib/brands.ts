@@ -1,9 +1,10 @@
-import type { BrandRequestKind, BrandRequestStatus, BrandShopStatus, FulfillmentMode, PurchaseOrderStatus, Role } from "@prisma/client";
+import type { BrandRequestKind, BrandRequestStatus, BrandShopStatus, FulfillmentMode, Prisma, PurchaseOrderStatus, Role } from "@prisma/client";
 import { BRAND_ARTWORK } from "./shop-artwork";
 import { CATEGORIES, normalizeCategory } from "./categories";
 
 // 브랜드 카테고리 = 공통 카테고리
 export const BRAND_CATEGORIES = CATEGORIES;
+export const PUBLIC_BRAND_SHOP = { status: "APPROVED", owner: { isActive: true, role: "BRAND_ADMIN" } } satisfies Prisma.BrandShopWhereInput;
 export const BRAND_SHOP_STATUS: Record<BrandShopStatus, string> = {
   PENDING: "승인 대기", APPROVED: "공개 중", SUSPENDED: "공개 중지",
 };

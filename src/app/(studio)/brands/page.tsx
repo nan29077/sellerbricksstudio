@@ -3,12 +3,13 @@ import { ArrowUpRight, ClipboardList, Gift, PackagePlus, Search, ShoppingBag, Sp
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
-import { BRAND_CATEGORIES, brandArtworkFor } from "@/lib/brands";
+import { BRAND_CATEGORIES, PUBLIC_BRAND_SHOP, brandArtworkFor } from "@/lib/brands";
 import { categoryFilterValues } from "@/lib/categories";
 import { BRAND_ARTWORK } from "@/lib/shop-artwork";
 import { reportDbError } from "@/lib/db-error";
 import { pageOf, sp, withParams, type SP } from "@/lib/list";
 import { cn, formatKRW } from "@/lib/utils";
+import { defaultProfileImage } from "@/lib/profile";
 import { Input, Select } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/list/pagination";
@@ -31,7 +32,7 @@ export default async function BrandDirectory({ searchParams }: { searchParams: S
   const { page, size, skip, take } = pageOf(searchParams, 12);
   const match = q ? { contains: q, mode: "insensitive" as const } : undefined;
   const cats = category ? { in: categoryFilterValues(category) } : undefined;
-  const visibleShop: Prisma.BrandShopWhereInput = { status: "APPROVED", owner: { isActive: true, role: "BRAND_ADMIN" } };
+  const visibleShop = PUBLIC_BRAND_SHOP;
   const where: Prisma.BrandShopWhereInput = {
     ...visibleShop,
     AND: [
@@ -153,7 +154,7 @@ export default async function BrandDirectory({ searchParams }: { searchParams: S
             className="group overflow-hidden rounded-2xl border bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md">
             <div className="relative">
               <ShopImage src={shop.bannerUrl} fallback={BRAND_ARTWORK[0].url} className="aspect-[16/9] w-full object-cover" />
-              <ShopImage src={shop.logoUrl} fallback="/images/brand/mark-original-on-light.png" className="absolute -bottom-6 left-4 h-12 w-12 rounded-full border-2 border-white bg-white object-cover shadow" />
+                <ShopImage src={shop.logoUrl} fallback={defaultProfileImage(`brand:${shop.id}`)} className="absolute -bottom-6 left-4 h-12 w-12 rounded-full border-2 border-white bg-white object-cover shadow" />
               {Date.now() - shop.createdAt.getTime() < 14 * 86400000 && <span className="absolute right-3 top-3 rounded-full bg-brand-500 px-2 py-0.5 text-[11px] font-extrabold text-navy">NEW</span>}
             </div>
             <div className="p-4 pt-8">

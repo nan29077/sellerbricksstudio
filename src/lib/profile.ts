@@ -37,7 +37,7 @@ export function isProfileImageIndex(value: unknown): value is number {
 
 export function getProfileImage(index?: number | null): string {
   const animal = PROFILE_ANIMALS[isProfileImageIndex(index) ? index - 1 : 0];
-  return `/images/profiles/animals/${animal.id}.webp`;
+  return `/images/profiles/animals-plush/${animal.id}.webp`;
 }
 
 export function randomProfileIndex(): number {
@@ -53,15 +53,27 @@ export function stableProfileIndex(key: string): number {
   return (hash % PROFILE_ANIMALS.length) + 1;
 }
 
+export function defaultProfileImage(key: string): string {
+  return getProfileImage(stableProfileIndex(key));
+}
+
 export function legacyProfileImageIndex(url: string): number | null {
   const match = url.match(/^\/images\/profiles\/(male|female)-(10|[1-9])\.png(?:[?#].*)?$/);
   return match ? Number(match[2]) + (match[1] === "female" ? 10 : 0) : null;
+}
+
+export function previousAnimalImageIndex(url: string): number | null {
+  const id = url.match(/^\/images\/profiles\/animals\/([a-z]+)\.webp(?:[?#].*)?$/)?.[1];
+  const index = PROFILE_ANIMALS.findIndex((animal) => animal.id === id);
+  return index < 0 ? null : index + 1;
 }
 
 export function resolveProfileAvatar(index: number | null | undefined, avatarUrl: string | null | undefined, key: string) {
   const url = avatarUrl?.trim();
   const legacyIndex = url ? legacyProfileImageIndex(url) : null;
   const imageIndex = isProfileImageIndex(index) ? index : legacyIndex ?? stableProfileIndex(key);
-  const photoUrl = url && legacyIndex === null && /^(?:\/(?!\/)|https?:\/\/|data:image\/jpeg;base64,)/i.test(url) ? url : null;
+  const previousAnimalIndex = url ? previousAnimalImageIndex(url) : null;
+  const photoUrl = previousAnimalIndex ? getProfileImage(previousAnimalIndex)
+    : url && legacyIndex === null && /^(?:\/(?!\/)|https?:\/\/|data:image\/jpeg;base64,)/i.test(url) ? url : null;
   return { imageIndex, photoUrl, src: photoUrl ?? getProfileImage(imageIndex) };
 }

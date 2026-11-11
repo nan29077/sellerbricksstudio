@@ -7,6 +7,7 @@ import { fail, handleError, ok } from "@/lib/http";
 import { isShopImageUrl } from "@/lib/shop-artwork";
 import {
   FACILITY_PAGE_THEMES,
+  defaultProfileFor,
   facilityPageSettingKey,
   parseFacilityPageConfig,
 } from "@/lib/facility-page";
@@ -19,9 +20,9 @@ const pageSchema = z.object({
     (value) => value.startsWith("/images/") || value.startsWith("https://") || value.startsWith("http://"),
     "배너는 이미지 경로 또는 http(s) URL이어야 합니다.",
   ),
-  profileImageUrl: z.string().trim().min(1).max(500).refine(
-    (value) => value.startsWith("/images/profiles/") || value.startsWith("https://") || value.startsWith("http://"),
-    "프로필 이미지는 기본 이미지 경로 또는 http(s) URL이어야 합니다.",
+  profileImageUrl: z.string().trim().max(500).refine(
+    (value) => !value || isShopImageUrl(value) || value.startsWith("http://"),
+    "프로필 이미지 주소를 확인해 주세요.",
   ),
   backgroundUrl: z.string().trim().max(500).refine(isShopImageUrl, "여백 이미지는 이미지 경로 또는 HTTPS 주소를 사용해 주세요.").optional(),
   theme: z.enum(Object.keys(FACILITY_PAGE_THEMES) as ["gold", "blue", "green", "coral"]),
@@ -57,7 +58,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (!facility) return fail("내 창고(스튜디오)만 편집할 수 있습니다.", 403);
     const input = pageSchema.parse(await req.json());
     const setting = input.backgroundUrl ? null : await prisma.setting.findUnique({ where: { key: facilityPageSettingKey(params.id) } });
-    const data = { ...input, backgroundUrl: input.backgroundUrl ?? parseFacilityPageConfig(facility, setting?.value).backgroundUrl };
+    const data = {
+      ...input,
+      profileImageUrl: input.profileImageUrl || defaultProfileFor(facility.id),
+      backgroundUrl: input.backgroundUrl ?? parseFacilityPageConfig(facility, setting?.value).backgroundUrl,
+    };
     await prisma.setting.upsert({
       where: { key: facilityPageSettingKey(params.id) },
       create: { key: facilityPageSettingKey(params.id), value: JSON.stringify(data) },

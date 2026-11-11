@@ -67,7 +67,11 @@ export function StudioTopBar({ account }: { account: Account }) {
           { href: account ? settingsHref[account.role] : "/login", label: "마이페이지", icon: UserCircle },
         ].map(({ href, label, icon: Icon, active }) => (
           <Link key={label} href={href} aria-current={active ? "page" : undefined} className={cn("flex min-h-[62px] min-w-0 flex-col items-center justify-center gap-1 px-0.5 text-center text-[11px] font-bold leading-tight text-slate-600 hover:text-navy", active && "text-navy")}>
-            <span className={cn("grid h-8 w-8 place-items-center rounded-xl border border-transparent", active && "border-brand-300 bg-brand-100")}><Icon className="h-[17px] w-[17px]" /></span>{label}
+            <span className={cn("grid h-8 w-8 place-items-center rounded-xl border border-transparent", active && "border-brand-300 bg-brand-100")}>
+              {account && Icon === UserCircle
+                ? <Image src={account.image} alt="" width={28} height={28} unoptimized className="h-7 w-7 rounded-full border border-brand-200 object-cover" />
+                : <Icon className="h-[17px] w-[17px]" />}
+            </span>{label}
           </Link>
         ))}
       </nav>

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { PROFILE_ANIMALS, getProfileImage, legacyProfileImageIndex, stableProfileIndex } from "@/lib/profile";
+import { PROFILE_ANIMALS, defaultProfileImage, getProfileImage, legacyProfileImageIndex, previousAnimalImageIndex } from "@/lib/profile";
 import { FACILITY_ARTWORK, isShopImageUrl } from "@/lib/shop-artwork";
 
 export const FACILITY_PROFILE_IMAGES = PROFILE_ANIMALS.map((animal, index) => ({
@@ -33,7 +33,7 @@ export type FacilityPageConfig = {
 export const facilityPageSettingKey = (facilityId: string) => `facility-page:${facilityId}`;
 
 export function defaultProfileFor(facilityId: string) {
-  return getProfileImage(stableProfileIndex(`facility:${facilityId}`));
+  return defaultProfileImage(`facility:${facilityId}`);
 }
 
 export function defaultFacilityPageConfig(facility: {
@@ -71,7 +71,7 @@ export function parseFacilityPageConfig(
   try {
     const parsed = JSON.parse(value) as Partial<FacilityPageConfig>;
     const profileUrl = parsed.profileImageUrl?.trim();
-    const legacyIndex = profileUrl ? legacyProfileImageIndex(profileUrl) : null;
+    const legacyIndex = profileUrl ? legacyProfileImageIndex(profileUrl) ?? previousAnimalImageIndex(profileUrl) : null;
     return {
       ...defaults,
       ...parsed,

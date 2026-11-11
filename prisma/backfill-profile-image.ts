@@ -4,13 +4,14 @@
 // - 이미 값이 있는 유저는 건너뜁니다.
 
 import { PrismaClient } from "@prisma/client";
+import { resolveProfileAvatar } from "../src/lib/profile";
 
 const prisma = new PrismaClient();
 
 async function main() {
   const users = await prisma.user.findMany({
     where: { profileImageIndex: null },
-    select: { id: true, email: true },
+    select: { id: true, email: true, profile: { select: { avatarUrl: true } } },
   });
 
   if (users.length === 0) {
@@ -20,10 +21,9 @@ async function main() {
 
   let count = 0;
   for (const u of users) {
-    const idx = Math.floor(Math.random() * 20) + 1;
-    await prisma.user.update({ where: { id: u.id }, data: { profileImageIndex: idx } });
-    count++;
-    console.log(`  ${u.email} -> ${idx}`);
+    const { imageIndex } = resolveProfileAvatar(null, u.profile?.avatarUrl, u.email);
+    const updated = await prisma.user.updateMany({ where: { id: u.id, profileImageIndex: null }, data: { profileImageIndex: imageIndex } });
+    count += updated.count;
   }
   console.log(`소급 배정 완료: ${count}명`);
 }

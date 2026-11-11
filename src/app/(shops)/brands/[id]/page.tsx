@@ -11,6 +11,7 @@ import { getPolicy } from "@/lib/policy";
 import { BrandImportButton } from "@/components/shop/brand-import-button";
 import { BRAND_ARTWORK } from "@/lib/shop-artwork";
 import { formatKRW } from "@/lib/utils";
+import { defaultProfileImage } from "@/lib/profile";
 import { pageOf, sp, type SP } from "@/lib/list";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Select } from "@/components/ui/input";
@@ -41,10 +42,14 @@ export default async function BrandStorefront({ params, searchParams }: { params
   const buyer = !!user && BRAND_BUYER_ROLES.includes(user.role)
     && (user.role !== "FACILITY_ADMIN" || !(await getSettings()).facilityDisabled);
   const category = BRAND_CATEGORIES.find((value) => value === sp(searchParams, "category"));
+  const selectedProduct = sp(searchParams, "product")?.slice(0, 64);
   const { page, size, skip, take } = pageOf(searchParams, 12);
-  const where = { shopId: shop.id, isActive: true, ...(category && { category: { in: categoryFilterValues(category) } }) };
+  const where = {
+    shopId: shop.id, isActive: true,
+    ...(selectedProduct ? { id: selectedProduct } : category ? { category: { in: categoryFilterValues(category) } } : {}),
+  };
   const [products, total, policy, facilities] = await Promise.all([
-    prisma.brandProduct.findMany({ where, skip, take, orderBy: { createdAt: "desc" } }),
+    prisma.brandProduct.findMany({ where, skip: selectedProduct ? 0 : skip, take: selectedProduct ? 1 : take, orderBy: { createdAt: "desc" } }),
     prisma.brandProduct.count({ where }),
     getPolicy(),
     buyer && user?.role === "FACILITY_ADMIN"
@@ -66,7 +71,8 @@ export default async function BrandStorefront({ params, searchParams }: { params
   const blocked = partner?.status === "BLOCKED";
   const canImport = !blocked && (!shop.requireSellerApproval || partner?.status === "APPROVED");
   const path = `/brands/${shop.id}`;
-  const login = `/login?callbackUrl=${encodeURIComponent(path)}`;
+  const login = `/login?callbackUrl=${encodeURIComponent(selectedProduct ? `${path}?product=${encodeURIComponent(selectedProduct)}#shop-products` : path)}`;
+  const shopAvatar = defaultProfileImage(`brand:${shop.id}`);
   const management = user?.role === "SUPER_ADMIN" ? `/admin/brands/${shop.id}` : isMine ? "/brand/shop" : null;
   const links = [
     { href: "#shop-home", label: "샵 홈", icon: House },
@@ -83,7 +89,7 @@ export default async function BrandStorefront({ params, searchParams }: { params
     <ShopShell background={shop.backgroundUrl} fallback={BRAND_ARTWORK[4].url} links={links}>
       <header id="shop-home" className="flex min-h-16 items-center justify-between gap-4 border-b bg-white px-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-2">
-          <ShopImage src={shop.logoUrl} fallback="/images/brand/mark-original-on-light.png" className="h-9 w-9 shrink-0 rounded-full border bg-white object-cover" />
+          <ShopImage src={shop.logoUrl} fallback={shopAvatar} className="h-9 w-9 shrink-0 rounded-full border bg-white object-cover" />
           <span className="truncate text-sm font-black text-navy">{shop.name}</span>
         </div>
         <Link href="/brands" className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-slate-600 hover:text-navy"><ArrowLeft className="h-4 w-4" /> 브랜드 목록</Link>
@@ -100,7 +106,7 @@ export default async function BrandStorefront({ params, searchParams }: { params
         </div>
         <section className="relative mx-3 -mt-7 rounded-[24px] border border-white bg-white p-4 shadow-[0_10px_30px_#1A1A2E15] sm:mx-6 sm:-mt-10 sm:p-6">
           <div className="flex items-center gap-3">
-            <ShopImage src={shop.logoUrl} fallback="/images/brand/mark-original-on-light.png" className="h-14 w-14 rounded-full border bg-white object-cover" />
+            <ShopImage src={shop.logoUrl} fallback={shopAvatar} className="h-14 w-14 rounded-full border bg-white object-cover" />
             <div><h2 className="font-black text-navy">{shop.name}</h2>
               <p className="mt-0.5 text-xs font-semibold text-slate-600">{published ? "셀러브릭스 파트너 브랜드" : "비공개 미리보기"}</p></div>
           </div>
@@ -116,15 +122,19 @@ export default async function BrandStorefront({ params, searchParams }: { params
         <section id="shop-products" className="mt-7 scroll-mt-4 space-y-4">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <h2 className="text-xl font-black text-navy">브랜드 상품</h2>
-            <form action={path} className="flex items-center gap-2">
-              <Select name="category" aria-label="상품 카테고리" defaultValue={category ?? ""} className="w-auto">
-                <option value="">전체 카테고리</option>
-                {BRAND_CATEGORIES.map((name) => <option key={name}>{name}</option>)}
-              </Select>
-              <Button size="sm" variant="outline">조회</Button>
-            </form>
+            {selectedProduct ? (
+              <Link href={`${path}#shop-products`} className={buttonVariants({ size: "sm", variant: "outline" })}>전체 상품 보기</Link>
+            ) : (
+              <form action={path} className="flex items-center gap-2">
+                <Select name="category" aria-label="상품 카테고리" defaultValue={category ?? ""} className="w-auto">
+                  <option value="">전체 카테고리</option>
+                  {BRAND_CATEGORIES.map((name) => <option key={name}>{name}</option>)}
+                </Select>
+                <Button size="sm" variant="outline">조회</Button>
+              </form>
+            )}
           </div>
-          {products.length === 0 && <p className="rounded-2xl border bg-white p-6 text-sm text-slate-600">공개된 상품이 없습니다.</p>}
+          {products.length === 0 && <p className="rounded-2xl border bg-white p-6 text-sm text-slate-600">{selectedProduct ? "선택한 상품을 현재 볼 수 없습니다." : "공개된 상품이 없습니다."}</p>}
           <div className="grid grid-cols-1 gap-3 min-[390px]:grid-cols-2">
             {products.map((product) => <article key={product.id} className="flex min-w-0 flex-col overflow-hidden rounded-2xl border bg-white">
               <div className="relative">
@@ -156,7 +166,7 @@ export default async function BrandStorefront({ params, searchParams }: { params
               </div>
             </article>)}
           </div>
-          <Pagination base={path} params={searchParams} page={page} size={size} total={total} />
+          {!selectedProduct && <Pagination base={path} params={searchParams} page={page} size={size} total={total} />}
         </section>
       </main>
     </ShopShell>

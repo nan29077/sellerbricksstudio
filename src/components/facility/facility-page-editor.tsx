@@ -4,8 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ImageUrlInput } from "@/components/ui/image-url-input";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
-import { FACILITY_PAGE_THEMES, FACILITY_PROFILE_IMAGES, type FacilityPageConfig } from "@/lib/facility-page";
+import { defaultProfileFor, FACILITY_PAGE_THEMES, FACILITY_PROFILE_IMAGES, type FacilityPageConfig } from "@/lib/facility-page";
 import { FACILITY_ARTWORK } from "@/lib/shop-artwork";
 import { ShopArtworkPicker } from "@/components/shop/shop-artwork-picker";
 import { ShopImage } from "@/components/shop/shop-image";
@@ -33,6 +34,7 @@ export function FacilityPageEditor({
   const router = useRouter();
   const [form, setForm] = useState(initialConfig);
   const [saving, setSaving] = useState(false);
+  const [profileUploading, setProfileUploading] = useState(false);
   const [message, setMessage] = useState("");
 
   const set = <K extends keyof FacilityPageConfig>(key: K, value: FacilityPageConfig[K]) => {
@@ -62,6 +64,8 @@ export function FacilityPageEditor({
   }
 
   const accent = FACILITY_PAGE_THEMES[form.theme].accent;
+  const defaultAvatar = defaultProfileFor(facility.id);
+  const profileAvatar = form.profileImageUrl.trim() || defaultAvatar;
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(460px,0.9fr)]">
@@ -99,27 +103,34 @@ export function FacilityPageEditor({
         <section className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
           <div className="flex items-center gap-4 border-b border-[#EEEAE0] bg-gradient-to-r from-[#FFF9E8] to-white p-5">
             <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full border-4 border-white bg-brand-50 shadow-md">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={form.profileImageUrl} alt="선택한 창고(스튜디오) 프로필" className="h-full w-full object-cover" />
-              <span className="absolute inset-x-0 bottom-0 bg-navy/75 py-1 text-center text-[8px] font-black text-white">PROFILE</span>
+              <ShopImage src={profileAvatar} fallback={defaultAvatar} alt="선택한 창고(스튜디오) 프로필" className="h-full w-full object-cover" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <UserRound className="h-5 w-5 text-brand-700" />
                 <h2 className="font-extrabold text-navy">창고(스튜디오) 프로필 이미지</h2>
               </div>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">동물 캐릭터 30종 중 하나를 자동으로 표시합니다. 원하는 캐릭터를 선택할 수도 있습니다.</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">기본 캐릭터 30종에서 고르거나 직접 등록한 이미지로 바꿀 수 있습니다.</p>
             </div>
           </div>
-          <div className="p-5">
+          <div className="space-y-4 p-5">
+            <div>
+              <Label htmlFor="facility-profile-image">직접 등록할 이미지</Label>
+              <ImageUrlInput id="facility-profile-image" name="profileImageUrl" value={form.profileImageUrl} folder="profile"
+                disabled={saving} onChange={(url) => set("profileImageUrl", url)} onUploadingChange={setProfileUploading} />
+              <button type="button" disabled={saving || profileUploading} onClick={() => set("profileImageUrl", defaultAvatar)}
+                className="mt-2 text-xs font-semibold text-brand-800 hover:underline disabled:opacity-50">자동 배정 캐릭터로 돌아가기</button>
+            </div>
             <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
               {FACILITY_PROFILE_IMAGES.map((profile) => {
-                const selected = form.profileImageUrl === profile.url;
+                const selected = profileAvatar === profile.url;
                 return (
                   <button
                     key={profile.url}
                     type="button"
+                    disabled={saving || profileUploading}
                     title={profile.label}
+                    aria-pressed={selected}
                     onClick={() => set("profileImageUrl", profile.url)}
                     className={cn(
                       "relative aspect-square overflow-hidden rounded-full border-2 bg-slate-50 p-0.5 transition hover:-translate-y-0.5 hover:border-brand-300",
@@ -179,7 +190,7 @@ export function FacilityPageEditor({
           </Button>
           <div className="flex items-center gap-3">
             {message && <p className={cn("text-xs font-semibold", message.includes("저장되었습니다") ? "text-emerald-600" : "text-red-600")}>{message}</p>}
-            <Button type="button" onClick={save} disabled={saving}>
+            <Button type="button" onClick={save} disabled={saving || profileUploading}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               저장하기
             </Button>
@@ -199,7 +210,7 @@ export function FacilityPageEditor({
             <div className="flex min-w-0 items-center gap-2">
               <div className="h-8 w-8 overflow-hidden rounded-full border-2 border-brand-100 bg-brand-50">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={form.profileImageUrl} alt="" className="h-full w-full object-cover" />
+                <img src={profileAvatar} alt="" className="h-full w-full object-cover" />
               </div>
               <p className="truncate text-xs font-black text-navy">{form.pageTitle || facility.name}</p>
             </div>
@@ -212,7 +223,7 @@ export function FacilityPageEditor({
             <div className="relative rounded-[22px] border border-white bg-white p-4 pt-10 shadow-xl">
               <div className="absolute -top-8 left-4 h-16 w-16 rounded-full border-4 border-white bg-brand-50 shadow">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={form.profileImageUrl} alt="" className="h-full w-full rounded-full object-cover" />
+                <img src={profileAvatar} alt="" className="h-full w-full rounded-full object-cover" />
                 <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-red-500 px-2 py-0.5 text-[7px] font-black text-white">● OPEN</span>
               </div>
               <div className="pl-[68px]">

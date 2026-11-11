@@ -4,30 +4,38 @@ import { Upload, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 // 이미지 주소 입력칸 + 파일 올리기 버튼. 올리면 받은 주소를 입력칸에 채운다. (폼에는 name 으로 그대로 전송)
-export function ImageUrlInput({ name, defaultValue = "", folder = "misc", placeholder = "https://… 또는 파일 올리기", id, maxLength = 500 }: {
+export function ImageUrlInput({ name, defaultValue = "", value: controlledValue, onChange, onUploadingChange, disabled, folder = "misc", placeholder = "https://… 또는 파일 올리기", id, maxLength = 500 }: {
   name: string; defaultValue?: string; folder?: string; placeholder?: string; id?: string; maxLength?: number;
+  value?: string; onChange?: (value: string) => void; onUploadingChange?: (busy: boolean) => void; disabled?: boolean;
 }) {
-  const [value, setValue] = useState(defaultValue);
+  const [localValue, setLocalValue] = useState(defaultValue);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const file = useRef<HTMLInputElement>(null);
 
+  function changeValue(value: string) {
+    if (controlledValue === undefined) setLocalValue(value);
+    onChange?.(value);
+  }
+
   async function upload(f: File) {
     setBusy(true); setError("");
+    onUploadingChange?.(true);
     const body = new FormData();
     body.append("file", f);
     body.append("folder", folder);
     const json = await fetch("/api/uploads", { method: "POST", body }).then((r) => r.json()).catch(() => ({ ok: false }));
-    setBusy(false);
-    if (json.ok) setValue(json.data.url);
+    if (json.ok) changeValue(json.data.url);
     else setError(json.error ?? "업로드에 실패했습니다.");
+    setBusy(false);
+    onUploadingChange?.(false);
   }
 
   return (
     <span className="block">
       <span className="flex gap-2">
-        <Input id={id} name={name} value={value} onChange={(e) => setValue(e.target.value)} placeholder={placeholder} maxLength={maxLength} className="min-w-0 flex-1" />
-        <button type="button" onClick={() => file.current?.click()} disabled={busy}
+        <Input id={id} name={name} value={controlledValue ?? localValue} onChange={(e) => changeValue(e.target.value)} disabled={disabled || (controlledValue !== undefined && busy)} placeholder={placeholder} maxLength={maxLength} className="min-w-0 flex-1" />
+        <button type="button" onClick={() => file.current?.click()} disabled={disabled || busy}
           className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-sm font-semibold text-navy hover:bg-slate-50 disabled:opacity-60">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Upload className="h-4 w-4" aria-hidden />}
           {busy ? "올리는 중" : "파일 올리기"}

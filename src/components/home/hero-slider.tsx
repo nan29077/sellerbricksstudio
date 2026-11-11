@@ -14,7 +14,7 @@ const slides = [
     highlight: "나머지는 우리가 합니다.",
     description: "공간을 찾는 순간부터 라이브 준비, 주문과 정산 확인까지. 셀러의 아이디어가 고객에게 닿는 모든 장면을 함께 설계합니다.",
     primary: { label: "셀러로 시작하기", href: "/signup/seller" },
-    secondary: { label: "서비스 살펴보기", href: "/intro" },
+    secondary: { label: "브랜드 상품 보기", href: "/#brand-products" },
     caption: "라이브 스튜디오 · 연출 이미지",
   },
   {
