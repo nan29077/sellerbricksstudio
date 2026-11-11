@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { ROLE_LABELS } from "@/lib/rbac";
 import { resolveProfileAvatar } from "@/lib/profile";
 import { SettingsPanel } from "./settings-panel";
+import { PayoutAccountForm } from "./payout-account-form";
 
 function fmtDate(d: Date): string {
   // 하이드레이션 불일치 방지를 위해 서버에서 문자열로 고정 포맷
@@ -59,7 +60,10 @@ export async function SettingsView({ role, showBookings = false }: { role: strin
     } catch { /* DB 미가동 등 — 빈 목록 */ }
   }
 
+  const payout = role === "SELLER" ? "판매 정산서가 '지급 완료'되면 이 계좌로 셀러 정산금(판매 수익 + 배송비)이 입금됩니다."
+    : role === "MANAGER" ? "영업 수수료가 이 계좌로 지급됩니다." : null;
   return (
+    <>
     <SettingsPanel
       role={role}
       roleLabel={ROLE_LABELS[role as keyof typeof ROLE_LABELS] ?? role}
@@ -74,5 +78,7 @@ export async function SettingsView({ role, showBookings = false }: { role: strin
       showBookings={showBookings}
       bookings={bookings}
     />
+    {payout && !isDemo && <div className="mt-5 max-w-2xl"><PayoutAccountForm description={payout} /></div>}
+    </>
   );
 }

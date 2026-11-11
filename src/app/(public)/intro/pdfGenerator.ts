@@ -335,7 +335,6 @@ export async function generateSellerBricksPdf(
       "position:fixed;top:-99999px;left:-99999px;z-index:-9999;pointer-events:none;";
     document.body.appendChild(wrapper);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { jsPDF } = (window as any).jspdf;
     const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
@@ -343,7 +342,6 @@ export async function generateSellerBricksPdf(
       wrapper.innerHTML = pages[i];
       const el = wrapper.firstElementChild as HTMLElement;
       await new Promise<void>(r => setTimeout(r, 500));
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const canvas = await (window as any).html2canvas(el, {
         scale: 2,
         useCORS: true,

@@ -38,7 +38,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       if (dup) return fail("이미 사용 중인 상품번호입니다.", 409);
     }
 
-    type BrandFields = { brandProductId?: string; fulfillment?: "DROPSHIP" | "WAREHOUSE"; supplyPriceSnapshot?: number; optionSnapshot?: string | null };
+    type BrandFields = { brandProductId?: string; fulfillment?: "DROPSHIP" | "WAREHOUSE"; supplyPriceSnapshot?: number; optionSnapshot?: string | null; facilitySupplySnapshot?: number | null; commissionTypeSnapshot?: "PERCENT" | "FIXED"; commissionValueSnapshot?: number };
     let snapshot: { name: string; price: number; stock: number; image?: string | null; source: "CATALOG" | "AD_HOC"; facilityProductId?: string; brand?: BrandFields };
     if (data.sellerBrandProductId) {
       // 셀러가 브랜드샵에서 가져온 직배송 상품

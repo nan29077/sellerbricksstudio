@@ -11,7 +11,8 @@ import { Kpi, BarChart, ProgressRow } from "@/components/list/charts";
 import { FilterBar } from "@/components/list/filter-bar";
 import { Pagination } from "@/components/list/pagination";
 import { CsvButton } from "@/components/list/csv-button";
-import { computeSettlement } from "@/lib/settlement";
+import { computeSettlement, revenueLines } from "@/lib/settlement";
+import { RevenueTable } from "@/components/settlement/revenue-table";
 import { BOOKING_STATUS } from "@/lib/status";
 import { formatDate, formatDateTime, formatKRW } from "@/lib/utils";
 import { addMonths, hoursBetween, kstParts, kstStartOfMonth } from "@/lib/kst";
@@ -27,7 +28,8 @@ const SETTLE_STATUS: Record<string, { label: string; tone: "yellow" | "blue" | "
 
 export default async function SellerSettlements({ searchParams }: { searchParams: SP }) {
   const user = await requireRole(["SELLER"]);
-  const tab = sp(searchParams, "tab") === "sales" ? "sales" : "usage";
+  // 창고(스튜디오) 이용료가 무료가 되어 판매 정산을 기본 탭으로 보여 준다.
+  const tab = sp(searchParams, "tab") === "usage" ? "usage" : "sales";
   const { page, size, skip, take } = pageOf(searchParams, 20);
   const monthStart = kstStartOfMonth(new Date());
   const yearStart = addMonths(monthStart, -11);
@@ -39,13 +41,15 @@ export default async function SellerSettlements({ searchParams }: { searchParams
     ...(sp(searchParams, "q") && { facility: { name: { contains: sp(searchParams, "q")!, mode: "insensitive" } } }),
   };
 
-  const [yearRows, rows, total, filteredSum, settlements, sales] = await Promise.all([
+  const [yearRows, rows, total, filteredSum, settlements, sales, revenue, account] = await Promise.all([
     prisma.booking.findMany({ where: { sellerId: user.id, status: { in: [...paidStatuses] }, startAt: { gte: yearStart } }, select: { startAt: true, endAt: true, totalPrice: true, facility: { select: { name: true } } } }),
     tab === "usage" ? prisma.booking.findMany({ where, orderBy: { startAt: "desc" }, skip, take, include: { facility: { select: { name: true, basePrice: true } } } }) : Promise.resolve([]),
     prisma.booking.count({ where }),
     prisma.booking.aggregate({ where, _sum: { totalPrice: true } }),
     tab === "sales" ? prisma.settlement.findMany({ where: { sellerId: user.id }, orderBy: { periodEnd: "desc" }, include: { facility: { select: { name: true } } } }) : Promise.resolve([]),
     tab === "sales" ? computeSettlement({ sellerId: user.id }).catch(() => ({ orderCount: 0, gross: 0, sellerProfit: 0, facilityAmount: 0 })) : Promise.resolve(null),
+    tab === "sales" ? revenueLines({ sellerId: user.id }).catch(() => []) : Promise.resolve([]),
+    prisma.profile.findUnique({ where: { userId: user.id }, select: { bankAccount: true } }).catch(() => null),
   ]);
 
   const months = Array.from({ length: 12 }, (_, i) => addMonths(yearStart, i));
@@ -61,8 +65,8 @@ export default async function SellerSettlements({ searchParams }: { searchParams
       <PageHeader title="정산 내역" description="창고(스튜디오) 이용료 지출과 판매 정산 현황을 확인합니다." />
 
       <div className="flex gap-1.5">
-        {[{ k: "usage", label: "창고(스튜디오) 이용료", icon: Receipt }, { k: "sales", label: "판매 정산", icon: Banknote }].map((t) => (
-          <Link key={t.k} href={withParams(BASE, {}, { tab: t.k === "usage" ? undefined : t.k })}
+        {[{ k: "sales", label: "판매 정산", icon: Banknote }, { k: "usage", label: "창고(스튜디오) 이용 내역", icon: Receipt }].map((t) => (
+          <Link key={t.k} href={withParams(BASE, {}, { tab: t.k === "sales" ? undefined : t.k })}
             className={cn("flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold", tab === t.k ? "border-navy bg-navy text-white" : "border-[#E5E0D6] bg-white text-slate-600")}>
             <t.icon className="h-4 w-4" />{t.label}
           </Link>
@@ -103,6 +107,12 @@ export default async function SellerSettlements({ searchParams }: { searchParams
             <Kpi label="정산 대기" value={formatKRW(settlements.filter((s) => s.status !== "PAID").reduce((a, s) => a + s.commissionAmount, 0))} icon={CalendarCheck} tone="blue" />
             <Kpi label="지급 완료" value={formatKRW(settlements.filter((s) => s.status === "PAID").reduce((a, s) => a + s.commissionAmount, 0))} icon={Banknote} tone="green" />
           </div>
+          {!account?.bankAccount && !user.id.startsWith("demo-") && (
+            <Link href="/seller/settings" className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+              <Banknote className="h-5 w-5" />정산 계좌가 등록되지 않았습니다. 설정에서 정산 계좌를 등록해야 판매 정산금을 받을 수 있습니다.
+            </Link>
+          )}
+          <RevenueTable rows={revenue} perspective="SELLER" />
           {settlements.length === 0 ? <EmptyState title="판매 정산 내역이 없습니다" description="라이브 판매 정산이 생성되면 여기에 표시됩니다." /> : (
             <Table headers={["정산 기간", "창고(스튜디오)", "총 매출", "셀러 수익", "창고 정산금", "상태"]}
               rows={settlements.map((s) => [`${formatDate(s.periodStart)} ~ ${formatDate(s.periodEnd)}`, s.facility.name, formatKRW(s.grossAmount), <b key="c">{formatKRW(s.commissionAmount)}</b>, formatKRW(s.facilityAmount), <Badge key="s" tone={SETTLE_STATUS[s.status]?.tone}>{SETTLE_STATUS[s.status]?.label}</Badge>])} />

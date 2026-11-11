@@ -2,13 +2,15 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkoutSchema } from "@/lib/validations";
 import { ok, fail, handleError } from "@/lib/http";
-import { orderNo } from "@/lib/utils";
+import { orderNo, shippingFeeFor } from "@/lib/utils";
 import { getPaymentAdapter, paymentBlockedReason } from "@/lib/adapters/payment";
 import { audit } from "@/lib/audit";
 import { getPolicy } from "@/lib/policy";
 import { clientIp, consume, MINUTE } from "@/lib/rate-limit";
 import { checkLowStock, createPurchaseOrdersInTx, notifyNewPurchaseOrders, reserveOrderStockInTx, StockError } from "@/lib/purchase-orders";
-import { failPendingOrder } from "@/lib/order-actions";
+import { cleanupStalePendingOrders, failPendingOrder } from "@/lib/order-actions";
+import { lineInputOf, splitLine } from "@/lib/settlement";
+import { Prisma } from "@prisma/client";
 
 // 방송 상태별 주문 가능 여부 (종료 후에는 정책의 '종료 후 주문 허용 시간' 안에서만)
 async function orderClosedReason(session: { status: string; endedAt: Date | null }) {
@@ -20,12 +22,15 @@ async function orderClosedReason(session: { status: string; endedAt: Date | null
   return "종료된 방송입니다. 주문이 마감되었습니다.";
 }
 
+class OrderNoClash extends Error { constructor() { super("주문번호 생성이 겹쳤습니다. 다시 시도해 주세요."); } }
+
 // 구매자는 비로그인. 방송 링크 기반 주문 생성 → 결제(PG) → 결제 확정 순서로, 결제는 DB 트랜잭션 밖에서 처리한다.
 // (PG 승인 후 DB 처리가 실패하면 PG 결제를 취소하고 재고를 되돌린다)
 export async function POST(req: NextRequest) {
   try {
     const blocked = paymentBlockedReason();
     if (blocked) return fail(blocked, 503);
+    await cleanupStalePendingOrders().catch(() => 0); // 1분에 한 번만 실제로 돈다
 
     // 같은 접속(통신사 공유 IP 고려해 넉넉하게)과 같은 연락처의 과도한 주문을 막는다.
     const ip = clientIp(req);
@@ -43,7 +48,10 @@ export async function POST(req: NextRequest) {
 
     // 상품 검증 + 금액 계산 (서버 기준)
     const lspIds = data.items.map((i) => i.liveSessionProductId);
-    const lsps = await prisma.liveSessionProduct.findMany({ where: { id: { in: lspIds }, liveSessionId: session.id, isActive: true } });
+    const lsps = await prisma.liveSessionProduct.findMany({
+      where: { id: { in: lspIds }, liveSessionId: session.id, isActive: true },
+      include: { facilityProduct: { select: { commissionType: true, commissionValue: true, brandProductId: true } } },
+    });
     const map = new Map(lsps.map((l) => [l.id, l]));
     if (lsps.length !== new Set(lspIds).size) return fail("판매 종료되었거나 존재하지 않는 상품이 있습니다.");
 
@@ -66,21 +74,27 @@ export async function POST(req: NextRequest) {
       const valid = parts.length === groups.length && groups.every((g, idx) => parts[idx]?.[0] === g.name && g.values.includes(parts[idx]?.[1] ?? ""));
       if (!valid) return fail(`${l.nameSnapshot}: 옵션을 선택해 주세요.`);
     }
-    // 브랜드 직배송 상품은 구매자에게 바로 배송되므로 배송지가 필요하다.
-    if (lsps.some((l) => l.fulfillment === "DROPSHIP") && (data.buyerAddress ?? "").trim().length < 5) {
-      return fail("배송지를 입력하세요.");
-    }
+    // 모든 상품은 택배로 배송되므로 배송지가 필요하다. (브랜드 직배송 · 창고 출고 모두)
+    if ((data.buyerAddress ?? "").trim().length < 5) return fail("배송지를 입력하세요.");
 
-    let total = 0;
+    // 금액과 수익 분배는 주문하는 지금 기준으로 확정해 줄마다 저장한다. (이후 수수료·공급가가 바뀌어도 그대로)
+    const policy = await getPolicy();
+    let subtotal = 0;
     const itemData = data.items.map((i) => {
       const l = map.get(i.liveSessionProductId)!;
       const lineTotal = l.priceSnapshot * i.quantity;
-      total += lineTotal;
-      return { liveSessionProductId: l.id, displayNumber: l.displayNumber, productName: l.nameSnapshot, unitPrice: l.priceSnapshot, quantity: i.quantity, optionLabel: i.optionLabel, lineTotal };
+      subtotal += lineTotal;
+      const split = splitLine(lineInputOf(l, { lineTotal, unitPrice: l.priceSnapshot, quantity: i.quantity }), policy);
+      return {
+        liveSessionProductId: l.id, displayNumber: l.displayNumber, productName: l.nameSnapshot, unitPrice: l.priceSnapshot, quantity: i.quantity, optionLabel: i.optionLabel, lineTotal,
+        platformFee: split.platformFee, brandAmount: split.brand, facilityAmount: split.facility, sellerAmount: split.seller,
+      };
     });
+    const shippingFee = shippingFeeFor(session, subtotal);
+    const total = subtotal + shippingFee;
 
     // 1) 주문 생성 + 재고 확보 (방송 재고 · 브랜드 실재고 · 창고 재고) — 하나라도 모자라면 전체 롤백
-    const pending = await prisma.$transaction(async (tx) => {
+    const reserve = () => prisma.$transaction(async (tx) => {
       for (const [id, qty] of Array.from(qtyByProduct)) {
         const dec = await tx.liveSessionProduct.updateMany({
           where: { id, isActive: true, stockSnapshot: { gte: qty } },
@@ -88,18 +102,30 @@ export async function POST(req: NextRequest) {
         });
         if (dec.count !== 1) throw new StockError(`${map.get(id)!.nameSnapshot}: 방금 재고가 소진되었습니다.`);
       }
-      const order = await tx.order.create({
-        data: {
-          orderNo: orderNo(), liveSessionId: session.id, sellerId: session.sellerId, facilityId: session.facilityId,
-          buyerName: data.buyerName, buyerPhone: data.buyerPhone, buyerAddress: data.buyerAddress,
-          status: "PAYMENT_PENDING", totalAmount: total, privacyAgreedAt: new Date(),
-          items: { create: itemData },
-        },
-      });
+      let order;
+      try {
+          order = await tx.order.create({
+            data: {
+              orderNo: orderNo(), liveSessionId: session.id, sellerId: session.sellerId, facilityId: session.facilityId,
+              buyerName: data.buyerName, buyerPhone: data.buyerPhone, buyerAddress: data.buyerAddress,
+              status: "PAYMENT_PENDING", totalAmount: total, shippingFee, privacyAgreedAt: new Date(),
+              items: { create: itemData },
+            },
+          });
+      } catch (e) {
+        // 주문번호가 겹치면 트랜잭션을 처음부터 다시 실행한다 (아래 재시도)
+        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002" && String(e.meta?.target ?? "").includes("orderNo")) throw new OrderNoClash();
+        throw e;
+      }
       const brandProducts = await reserveOrderStockInTx(tx, order.id);
       await tx.liveSession.update({ where: { id: session.id }, data: { numberVersion: { increment: 1 } } });
       return { order, brandProducts };
     }, { timeout: 20000 });
+    let pending: Awaited<ReturnType<typeof reserve>> | null = null;
+    for (let attempt = 0; attempt < 3 && !pending; attempt++) {
+      try { pending = await reserve(); } catch (e) { if (!(e instanceof OrderNoClash) || attempt === 2) throw e; }
+    }
+    if (!pending) throw new OrderNoClash();
     const order = pending.order;
 
     // 2) 결제 (트랜잭션 밖)
@@ -140,7 +166,7 @@ export async function POST(req: NextRequest) {
     await audit({ action: "ORDER_PAID", entity: "Order", entityId: order.id, meta: { total } });
     return ok({ orderId: order.id, orderNo: order.orderNo }, 201);
   } catch (e) {
-    if (e instanceof StockError) return fail(e.message, 409);
+    if (e instanceof StockError || e instanceof OrderNoClash) return fail(e.message, 409);
     return handleError(e);
   }
 }

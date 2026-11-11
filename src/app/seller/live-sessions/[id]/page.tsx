@@ -7,8 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LiveSessionControls } from "@/components/live-session-controls";
+import { LiveShippingForm } from "@/components/live-shipping-form";
 import { LIVE_STATUS } from "@/lib/status";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, shippingLabel } from "@/lib/utils";
 import { getDemoLiveSession } from "@/lib/live-demo";
 import { getSettings } from "@/lib/settings";
 import { Hash, Radio, ExternalLink, Tv, Info } from "lucide-react";
@@ -106,6 +107,16 @@ export default async function LiveSessionDetail({ params }: { params: { id: stri
               <div className="flex justify-between"><span className="text-muted-foreground">알림톡</span><Badge tone={session.alimtalkStatus === "SENT" ? "green" : "gray"}>{session.alimtalkStatus === "SENT" ? "발송됨" : "미발송"}</Badge></div>
             </CardContent>
           </Card>
+
+          {!isDemo && (
+            <Card>
+              <CardHeader><CardTitle>배송비 설정</CardTitle></CardHeader>
+              <CardContent>
+                <p className="mb-3 text-xs text-slate-500">현재: <b className="text-navy">{shippingLabel(session)}</b></p>
+                <LiveShippingForm sessionId={session.id} shippingFee={session.shippingFee} freeShippingOver={session.freeShippingOver} disabled={session.status === "CANCELLED"} />
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader><CardTitle>카카오 알림톡 발송</CardTitle></CardHeader>

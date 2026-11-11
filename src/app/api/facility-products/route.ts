@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
       select: { id: true },
     });
     if (!facility) return fail("상품을 등록할 수 있는 창고(스튜디오)를 찾지 못했습니다.", 403);
+    if (data.supplyPrice != null && data.supplyPrice > data.salePrice) return fail("셀러 공급가는 판매가보다 클 수 없습니다.");
 
     const product = await prisma.product.create({
       data: {
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
         thumbnailUrl: data.thumbnailUrl,
         facilityProducts: {
           create: {
-            facilityId, salePrice: data.salePrice, consumerPrice: data.consumerPrice, stock: data.stock,
+            facilityId, salePrice: data.salePrice, consumerPrice: data.consumerPrice, stock: data.stock, supplyPrice: data.supplyPrice ?? null,
             shippingInfo: data.shippingInfo, commissionType: data.commissionType,
             commissionValue: data.commissionValue, isSellable: data.isSellable, source: "CATALOG",
           },

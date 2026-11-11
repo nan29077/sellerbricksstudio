@@ -7,6 +7,7 @@ import { notify } from "@/lib/notify";
 import { getSettings } from "@/lib/settings";
 import { FULFILLMENT_LABEL } from "@/lib/brands";
 import { brandRecipients, partnerAccess } from "@/lib/brand-access";
+import { emailVerifyBlock } from "@/lib/account-guards";
 
 const id = z.string().min(1).max(64);
 const price = z.number().int().min(0).max(100_000_000);
@@ -20,6 +21,7 @@ const schema = z.discriminatedUnion("action", [
     salePrice: price, consumerPrice: price.optional(),
     commissionType: z.enum(["PERCENT", "FIXED"]).default("PERCENT"), commissionValue: z.number().min(0).max(100_000_000).default(10),
     stock: z.number().int().min(0).max(1_000_000).optional(), // 직배송 판매 한도(비우면 브랜드 재고)
+    sellerSupplyPrice: price.nullable().optional(), // 창고(스튜디오)가 셀러에게 보여 줄 공급가 (비우면 셀러 수수료 방식)
   }),
   z.object({ action: z.literal("seller-update"), listingId: id, salePrice: price, isActive: z.boolean() }),
   z.object({ action: z.literal("seller-remove"), listingId: id }),
@@ -35,6 +37,10 @@ export async function POST(req: Request) {
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "입력값을 확인해 주세요.");
     const cmd = parsed.data;
+    if (cmd.action === "import" || cmd.action === "apply") {
+      const blocked = await emailVerifyBlock(user);
+      if (blocked) return fail(blocked, 403);
+    }
 
     if (cmd.action === "apply") {
       if (user.role === "SUPER_ADMIN") return fail("판매처 신청은 셀러·창고(스튜디오) 계정으로 해 주세요.", 403);
@@ -107,6 +113,10 @@ export async function POST(req: Request) {
     if (!facility) return fail("상품을 등록할 수 있는 창고(스튜디오)를 찾지 못했습니다.", 403);
     const dup = await prisma.facilityProduct.findFirst({ where: { facilityId: facility.id, brandProductId: bp.id, fulfillment: cmd.fulfillment }, select: { id: true } });
     if (dup) return fail("이미 같은 방식으로 가져온 상품입니다. 상품 관리에서 수정하세요.", 409);
+    if (cmd.sellerSupplyPrice != null) {
+      if (cmd.sellerSupplyPrice < bp.supplyPrice) return fail(`셀러 공급가는 브랜드 공급가(${bp.supplyPrice.toLocaleString()}원)보다 낮을 수 없습니다.`);
+      if (cmd.sellerSupplyPrice > cmd.salePrice) return fail("셀러 공급가는 판매가보다 클 수 없습니다.");
+    }
     const dropship = cmd.fulfillment === "DROPSHIP";
     const stock = dropship ? Math.min(cmd.stock ?? bp.stock, bp.stock) : 0;
     const product = await prisma.product.create({
@@ -115,7 +125,7 @@ export async function POST(req: Request) {
         images: bp.images.length ? { create: bp.images.map((url, i) => ({ url, sortOrder: i })) } : undefined,
         facilityProducts: {
           create: {
-            facilityId: facility.id, salePrice: cmd.salePrice, consumerPrice: cmd.consumerPrice ?? (bp.consumerPrice || cmd.salePrice), stock,
+            facilityId: facility.id, salePrice: cmd.salePrice, supplyPrice: cmd.sellerSupplyPrice ?? null, consumerPrice: cmd.consumerPrice ?? (bp.consumerPrice || cmd.salePrice), stock,
             shippingInfo: dropship ? `브랜드 직배송 (${bp.shop.name}) · 발주 후 ${bp.leadDays}일 내 출고` : `창고 출고 (${facility.name})`,
             commissionType: cmd.commissionType, commissionValue: cmd.commissionValue,
             isSellable: dropship, source: "CATALOG", brandProductId: bp.id, fulfillment: cmd.fulfillment,

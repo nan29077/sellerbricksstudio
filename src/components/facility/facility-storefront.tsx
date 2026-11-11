@@ -44,7 +44,7 @@ export function FacilityStorefront({
   user: { role?: string; id?: string } | null;
   reviews?: PublicReview[];
   favorited?: boolean;
-  products: Array<{ id: string; stock: number; salePrice: number; product: { name: string; category: string; thumbnailUrl: string | null } }>;
+  products: Array<{ id: string; stock: number; salePrice: number; supplyPrice?: number | null; product: { name: string; category: string; thumbnailUrl: string | null } }>;
 }) {
   const accent = FACILITY_PAGE_THEMES[pageConfig.theme].accent;
   const isWarehouse = f.type === "WAREHOUSE";
@@ -199,12 +199,13 @@ export function FacilityStorefront({
           <h2 className="text-xl font-black text-navy">예약과 함께 고르는 판매 상품</h2>
           {products.length === 0 ? <p className="mt-3 text-sm text-slate-600">공개된 판매 상품이 없습니다.</p> : <>
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {products.map(({ id, stock, salePrice, product }) => <article key={id} className="overflow-hidden rounded-xl border">
+              {products.map(({ id, stock, salePrice, supplyPrice, product }) => <article key={id} className="overflow-hidden rounded-xl border">
                 <ShopImage src={product.thumbnailUrl} fallback={artwork} className="aspect-[4/3] w-full object-cover" />
                 <div className="space-y-1 p-2.5">
                   <p className="text-xs text-slate-600">{product.category}</p>
                   <h3 className="break-words text-sm font-bold">{product.name}</h3>
-                  <p className="text-xs font-semibold">{formatKRW(salePrice)} · {stock > 0 ? `재고 ${stock}개` : "품절"}</p>
+                  <p className="text-xs font-semibold">판매가 {formatKRW(salePrice)} · {stock > 0 ? `재고 ${stock}개` : "품절"}</p>
+                  {isSeller && supplyPrice != null && <p className="text-[11px] font-semibold text-purple-700">셀러 공급가 {formatKRW(supplyPrice)} · 마진 {formatKRW(Math.max(0, salePrice - supplyPrice))}</p>}
                   {bookable && isSeller && stock > 0 && <Link href={`${directBookingHref}&products=${encodeURIComponent(`${id}:1`)}`}
                     className="mt-1 inline-flex min-h-9 items-center text-xs font-bold text-brand-800 hover:underline">예약에 담기 <ArrowRight className="ml-1 h-3 w-3" /></Link>}
                 </div>

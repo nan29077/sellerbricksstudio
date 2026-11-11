@@ -7,22 +7,25 @@ import { ok, fail, handleError } from "@/lib/http";
 import { slugify, parseKST } from "@/lib/utils";
 import { getCatenoidAdapter } from "@/lib/adapters/catenoid";
 import { audit } from "@/lib/audit";
+import { emailVerifyBlock } from "@/lib/account-guards";
 
 export async function POST(req: NextRequest) {
   try {
     const user = await requireRole(["SELLER"]);
     const body = await req.json();
     const data = liveSessionSchema.parse(body);
+    const blocked = await emailVerifyBlock(user);
+    if (blocked) return fail(blocked, 403);
 
-    // 예약 기반 생성 검증
-    if (data.bookingId) {
-      const booking = await prisma.booking.findUnique({ where: { id: data.bookingId } });
-      if (!booking || booking.sellerId !== user.id) return fail("예약을 찾을 수 없습니다.", 404);
-      if (booking.status !== "APPROVED") return fail("승인된 예약만 라이브 세션을 만들 수 있습니다.");
-      if (booking.facilityId !== data.facilityId) return fail("예약한 창고(스튜디오)와 방송 장소가 다릅니다.");
-      const existing = await prisma.liveSession.findUnique({ where: { bookingId: data.bookingId } });
-      if (existing) return fail("이미 라이브 세션이 존재합니다.", 409);
-    }
+    // 방송은 승인된 창고(스튜디오) 예약으로만 만든다. (예약 시간 · 장소와 방송이 항상 연결되게)
+    if (!data.bookingId) return fail("승인된 예약을 선택해 주세요. 라이브 방송은 창고(스튜디오) 예약으로만 만들 수 있습니다.");
+    const booking = await prisma.booking.findUnique({ where: { id: data.bookingId } });
+    if (!booking || booking.sellerId !== user.id) return fail("예약을 찾을 수 없습니다.", 404);
+    if (booking.status !== "APPROVED") return fail("승인된 예약만 라이브 세션을 만들 수 있습니다.");
+    if (booking.facilityId !== data.facilityId) return fail("예약한 창고(스튜디오)와 방송 장소가 다릅니다.");
+    if (booking.endAt.getTime() < Date.now()) return fail("이용 시간이 끝난 예약입니다. 새 예약으로 방송을 만들어 주세요.");
+    const existing = await prisma.liveSession.findUnique({ where: { bookingId: data.bookingId } });
+    if (existing) return fail("이미 라이브 세션이 존재합니다.", 409);
 
     const facility = await prisma.facility.findUnique({ where: { id: data.facilityId }, select: { status: true } });
     if (!facility || facility.status !== "APPROVED") return fail("방송할 수 없는 창고(스튜디오)입니다.", 404);
@@ -38,8 +41,8 @@ export async function POST(req: NextRequest) {
       data: {
         slug, bookingId: data.bookingId, sellerId: user.id, facilityId: data.facilityId,
         title: data.title, description: data.description,
-        scheduledStart: data.scheduledStart ? parseKST(data.scheduledStart) : undefined,
-        scheduledEnd: data.scheduledEnd ? parseKST(data.scheduledEnd) : undefined,
+        scheduledStart: data.scheduledStart ? parseKST(data.scheduledStart) : booking.startAt,
+        scheduledEnd: data.scheduledEnd ? parseKST(data.scheduledEnd) : booking.endAt,
         status: "DRAFT",
         selfStreamUrl: stream.ingestUrl,
         catenoidStreamId: stream.streamId,
@@ -55,7 +58,7 @@ export async function POST(req: NextRequest) {
       },
     });
     // 예약할 때 고른 상품을 판매 상품으로 자동 등록 (상품번호 1번부터, 준비 불가 표시된 상품 제외)
-    if (data.bookingId) {
+    {
       const picked = await prisma.bookingProduct.findMany({
         where: { bookingId: data.bookingId, status: { not: "UNAVAILABLE" }, facilityProduct: { isSellable: true } },
         include: { facilityProduct: { include: { product: true } } }, orderBy: { createdAt: "asc" },

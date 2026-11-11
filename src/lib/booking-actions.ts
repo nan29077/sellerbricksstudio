@@ -70,6 +70,16 @@ export async function createBookings(user: SessionUser, input: CreateBookingInpu
   if (input.dryRun) return { created: [], results: await check(), autoApproved: policy.autoApprove };
 
   const status = policy.autoApprove ? "APPROVED" : "PENDING";
+  // 승인 대기 예약으로 시간대를 무한정 잡아 두지 못하게 셀러별 동시 대기 건수를 제한한다.
+  if (status === "PENDING") {
+    const { maxPendingBookings } = await getPolicy();
+    if (maxPendingBookings > 0) {
+      const waiting = await prisma.booking.count({ where: { sellerId: user.id, status: "PENDING", startAt: { gt: new Date() } } });
+      if (waiting + occurrences.length > maxPendingBookings) {
+        throw new Error(`승인 대기 중인 예약은 최대 ${maxPendingBookings}건까지 둘 수 있습니다. (현재 ${waiting}건) 승인되거나 취소된 뒤 다시 신청해 주세요.`);
+      }
+    }
+  }
   const groupId = weeks > 1 ? randomUUID() : null;
   const now = new Date();
 

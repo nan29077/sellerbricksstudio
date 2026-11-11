@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input, Label, Textarea, Select } from "@/components/ui/input";
 import { SlotPicker, endOf, type PickerPolicy, type SlotValue } from "./slot-picker";
-import { cn, formatKRW } from "@/lib/utils";
+import { cn, formatKRW, sellerUnitProfit } from "@/lib/utils";
 
 export type WizardFacility = {
   id: string; name: string; type: string; region: string; address: string; rating: number; thumbnailUrl: string | null;
@@ -20,7 +20,7 @@ export type WizardFacility = {
 };
 type FacilityProduct = {
   id: string; salePrice: number; consumerPrice: number; stock: number; shippingInfo: string | null;
-  commissionType: string; commissionValue: number; bookedCount: number;
+  commissionType: string; commissionValue: number; bookedCount: number; supplyPrice?: number | null;
   product: { id: string; name: string; category: string; description: string | null; thumbnailUrl: string | null };
 };
 type Occ = { date: string; start: string; end: string; ok: boolean; reason?: string | null };
@@ -33,7 +33,7 @@ const STEPS = [
   { key: "confirm", label: "확인", icon: ClipboardCheck },
 ] as const;
 
-const commissionOf = (p: FacilityProduct) => p.commissionType === "PERCENT" ? Math.round((p.salePrice * p.commissionValue) / 100) : Math.round(p.commissionValue);
+const commissionOf = (p: FacilityProduct) => sellerUnitProfit(p);
 
 export function BookingWizard({
   facilities, defaults,
@@ -310,7 +310,7 @@ export function BookingWizard({
                             <p className="text-[11px] text-slate-500">{p.product.category}{p.bookedCount > 0 && ` · ${p.bookedCount}회 예약됨`}</p>
                             <p className="line-clamp-2 text-sm font-bold text-navy">{p.product.name}</p>
                             <p className="mt-0.5 text-sm font-extrabold text-brand-700">{formatKRW(p.salePrice)}</p>
-                            <p className="text-[11px] text-slate-500">재고 {p.stock.toLocaleString()}개 · <span className="font-semibold text-purple-700">개당 수익 {formatKRW(commissionOf(p))}</span></p>
+                            <p className="text-[11px] text-slate-500">재고 {p.stock.toLocaleString()}개 · {p.supplyPrice != null && <>공급가 {formatKRW(p.supplyPrice)} · </>}<span className="font-semibold text-purple-700">개당 {p.supplyPrice != null ? "마진" : "수익"} {formatKRW(commissionOf(p))}</span></p>
                             <div className="mt-1.5 flex items-center gap-1.5">
                               {q === 0 ? (
                                 <Button type="button" size="sm" variant="outline" onClick={() => setQty(p.id, 1, p.stock)} disabled={p.stock === 0}>{p.stock === 0 ? "품절" : "담기"}</Button>

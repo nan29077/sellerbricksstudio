@@ -75,7 +75,7 @@ export default async function FacilityDetail({ params }: { params: { id: string 
       orderBy: [{ stock: "desc" }, { createdAt: "desc" }],
       take: 12,
       select: {
-        id: true, stock: true, salePrice: true,
+        id: true, stock: true, salePrice: true, supplyPrice: true,
         product: { select: { name: true, category: true, thumbnailUrl: true } },
       },
     }).catch(() => []) : Promise.resolve([]),

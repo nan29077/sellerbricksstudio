@@ -27,7 +27,7 @@ export default async function AdminPayouts({ searchParams }: { searchParams: SP 
   const [sales, brands, unsettledOrders, unsettledPos, unsettledSamples, salesSum, brandSum] = await Promise.all([
     tab === "sales" ? prisma.settlement.findMany({
       where: status ? { status: status as any } : {}, orderBy: [{ status: "asc" }, { periodEnd: "desc" }], take: 100,
-      include: { seller: { select: { email: true, profile: { select: { name: true } } } }, facility: { select: { name: true, bankName: true, bankAccount: true, accountHolder: true } } },
+      include: { seller: { select: { email: true, profile: { select: { name: true, bankName: true, bankAccount: true, accountHolder: true } } } }, facility: { select: { name: true, bankName: true, bankAccount: true, accountHolder: true } } },
     }) : Promise.resolve([]),
     tab === "brand" ? prisma.brandSettlement.findMany({
       where: status ? { status: status as any } : {}, orderBy: [{ status: "asc" }, { periodEnd: "desc" }], take: 100,
@@ -75,8 +75,8 @@ export default async function AdminPayouts({ searchParams }: { searchParams: SP 
         sales.length === 0 ? <EmptyState icon={<Banknote className="h-10 w-10" />} title="판매 정산서가 없습니다" description="'판매 정산서 생성'으로 기간 내 배송 완료 주문을 셀러 × 창고(스튜디오)별로 묶으세요." /> : (
           <div className="space-y-3">
             <div className="flex justify-end">
-              <CsvButton label="이체용 CSV" filename="판매정산" headers={["셀러", "창고(스튜디오)", "기간", "주문수", "매출", "플랫폼수수료", "브랜드대금", "셀러정산", "창고정산", "창고 계좌", "상태"]}
-                rows={sales.map((s) => [s.seller.profile?.name ?? s.seller.email, s.facility.name, `${formatDate(s.periodStart)}~${formatDate(s.periodEnd)}`, s.orderCount, s.grossAmount, s.platformFee, s.brandAmount, s.commissionAmount, s.facilityAmount, `${s.facility.bankName ?? ""} ${s.facility.bankAccount ?? ""} ${s.facility.accountHolder ?? ""}`, SETTLEMENT_STATUS[s.status]?.label])} />
+              <CsvButton label="이체용 CSV" filename="판매정산" headers={["셀러", "창고(스튜디오)", "기간", "주문수", "매출", "플랫폼수수료", "브랜드대금", "셀러정산", "창고정산", "셀러 계좌", "창고 계좌", "상태"]}
+                rows={sales.map((s) => [s.seller.profile?.name ?? s.seller.email, s.facility.name, `${formatDate(s.periodStart)}~${formatDate(s.periodEnd)}`, s.orderCount, s.grossAmount, s.platformFee, s.brandAmount, s.commissionAmount, s.facilityAmount, `${s.seller.profile?.bankName ?? ""} ${s.seller.profile?.bankAccount ?? ""} ${s.seller.profile?.accountHolder ?? ""}`, `${s.facility.bankName ?? ""} ${s.facility.bankAccount ?? ""} ${s.facility.accountHolder ?? ""}`, SETTLEMENT_STATUS[s.status]?.label])} />
             </div>
             {sales.map((s) => (
               <Card key={s.id}><CardContent className="flex flex-col gap-3 p-4 sm:p-5 lg:flex-row lg:items-center">
@@ -87,6 +87,8 @@ export default async function AdminPayouts({ searchParams }: { searchParams: SP 
                     <span className="text-xs text-slate-500">{formatDate(s.periodStart)} ~ {formatDate(s.periodEnd)} · 주문 {s.orderCount}건</span>
                   </div>
                   <p className="text-xs text-slate-500">매출 {formatKRW(s.grossAmount)} = 플랫폼 {formatKRW(s.platformFee)} + 브랜드 {formatKRW(s.brandAmount)} + 셀러 {formatKRW(s.commissionAmount)} + 창고 {formatKRW(s.facilityAmount)}</p>
+                  <p className="text-xs text-slate-500">셀러 계좌: {s.seller.profile?.bankAccount ? `${s.seller.profile.bankName} ${s.seller.profile.bankAccount} (${s.seller.profile.accountHolder})` : <span className="font-semibold text-red-500">미등록</span>}
+                    {" · "}창고 계좌: {s.facility.bankAccount ? `${s.facility.bankName} ${s.facility.bankAccount} (${s.facility.accountHolder})` : <span className="font-semibold text-red-500">미등록</span>}</p>
                   {s.memo && <p className="text-xs text-slate-600">메모: {s.memo}</p>}
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-2">

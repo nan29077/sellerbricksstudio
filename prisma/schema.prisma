@@ -340,6 +340,11 @@ model Profile {
   businessNumber String?
   categories     String[] @default([]) // 관심·취급 카테고리
   avatarUrl      String?
+  // 셀러 정산 계좌 (판매 정산 지급용)
+  bankName       String?
+  bankAccount    String?
+  accountHolder  String?
+  bankChangedAt  DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -522,8 +527,9 @@ model FacilityProduct {
   facility        Facility         @relation(fields: [facilityId], references: [id], onDelete: Cascade)
   productId       String
   product         Product          @relation(fields: [productId], references: [id])
-  salePrice       Int // 판매가(원)
+  salePrice       Int // 판매가(원) — 구매자 결제가
   consumerPrice   Int // 소비자가(원)
+  supplyPrice     Int? // 셀러 공급가(원): 판매되면 창고(스튜디오)가 받는 금액. 비우면 셀러 수수료 방식
   stock           Int              @default(0)
   shippingInfo    String?
   commissionType  CommissionType   @default(PERCENT)
@@ -608,6 +614,8 @@ model LiveSession {
   alimtalkStatus      NotificationStatus @default(PENDING)
   numberVersion       Int                @default(0) // 상품번호 변경 폴링용 버전
   endedAt             DateTime? // 방송 종료 시각 (종료 후 주문 허용 시간 계산)
+  shippingFee         Int                @default(0) // 셀러가 정한 배송비(원, 0 = 무료 · 상품가 포함)
+  freeShippingOver    Int? // 이 금액 이상 주문하면 배송비 무료
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
 
@@ -643,6 +651,9 @@ model LiveSessionProduct {
   brandProduct        BrandProduct?    @relation(fields: [brandProductId], references: [id])
   fulfillment         FulfillmentMode?
   supplyPriceSnapshot Int? // 방송에 올릴 때의 브랜드 공급가
+  facilitySupplySnapshot  Int? // 방송에 올릴 때의 창고(스튜디오) 셀러 공급가
+  commissionTypeSnapshot  CommissionType? // 방송에 올릴 때의 셀러 수수료 방식
+  commissionValueSnapshot Float?
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
 
@@ -680,7 +691,8 @@ model Order {
   buyerPhone      String
   buyerAddress    String?
   status          OrderStatus @default(ORDER_CREATED)
-  totalAmount     Int
+  totalAmount     Int // 결제 금액 = 상품 합계 + 배송비
+  shippingFee     Int         @default(0) // 주문 시 적용된 배송비 (셀러 몫)
   refundedAmount  Int         @default(0) // 부분 취소·환불된 금액 합계
   deliveredAt     DateTime? // 배송 완료 시각 (구매 확정 유예·정산 기간 기준)
   privacyAgreedAt DateTime? // 구매자 개인정보 수집·제3자 제공 동의 시각
@@ -712,6 +724,11 @@ model OrderItem {
   optionLabel          String?
   lineTotal            Int
   cancelledAt          DateTime? // 부분 취소된 줄
+  // 주문 시점에 확정한 수익 분배 (이후 수수료·공급가가 바뀌어도 그대로). 비어 있으면 예전 주문
+  platformFee          Int?
+  brandAmount          Int?
+  facilityAmount       Int?
+  sellerAmount         Int?
   poItems              PurchaseOrderItem[]
 }
 
@@ -1254,6 +1271,8 @@ model PlatformPolicy {
   orderAfterEndHours   Int      @default(0) // 방송 종료 후 주문을 받는 시간(0 = 종료 즉시 마감)
   settleAfterDays      Int      @default(0) // 배송 완료 후 n일이 지나야 정산 대상(구매 확정 유예, 보통 7)
   piiRetentionDays     Int      @default(90) // 배송 완료 n일 후 브랜드 화면에서 구매자 연락처·주소 가림
+  requireEmailVerify   Boolean  @default(false) // 이메일 인증한 계정만 예약·방송·브랜드 거래 가능
+  maxPendingBookings   Int      @default(10) // 셀러 한 명이 동시에 가질 수 있는 승인 대기 예약 수
   updatedBy            String?
   updatedAt            DateTime @updatedAt
 }

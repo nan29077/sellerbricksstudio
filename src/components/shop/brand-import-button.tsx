@@ -28,6 +28,7 @@ export function BrandImportButton({ product, target, facilities = [] }: {
   const [commissionType, setCommissionType] = useState("PERCENT");
   const [commissionValue, setCommissionValue] = useState("10");
   const [stock, setStock] = useState("");
+  const [sellerSupply, setSellerSupply] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState<{ kind: string; needsStock?: boolean } | null>(null);
@@ -38,6 +39,8 @@ export function BrandImportButton({ product, target, facilities = [] }: {
   }
   const price = Number(salePrice) || 0;
   const margin = price - product.supplyPrice;
+  const supplyToSeller = sellerSupply.trim() ? Number(sellerSupply) || 0 : null;
+  const supplyError = supplyToSeller != null && (supplyToSeller < product.supplyPrice || supplyToSeller > price);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -48,7 +51,7 @@ export function BrandImportButton({ product, target, facilities = [] }: {
         body: JSON.stringify({
           action: "import", brandProductId: product.id, target, fulfillment: mode, salePrice: price,
           ...(target === "FACILITY" && {
-            facilityId, commissionType, commissionValue: Number(commissionValue) || 0,
+            facilityId, commissionType, commissionValue: Number(commissionValue) || 0, sellerSupplyPrice: supplyToSeller,
             ...(mode === "DROPSHIP" && stock !== "" && { stock: Number(stock) }),
           }),
         }),
@@ -110,10 +113,24 @@ export function BrandImportButton({ product, target, facilities = [] }: {
             <p className="rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
               공급가 {formatKRW(product.supplyPrice)} · 판매 1개당 차액 <b className={margin < 0 ? "text-red-600" : "text-navy"}>{formatKRW(margin)}</b>
               <br />결제는 플랫폼이 받고, 플랫폼 수수료를 뺀 뒤 브랜드·창고(스튜디오)·셀러에게 정산합니다.
+              <br />샘플 구매는 상품 카드의 &lsquo;샘플 신청&rsquo;에서 따로 진행합니다. (판매 상품 가져오기와 별개)
             </p>
             {target === "FACILITY" && (
+              <div className="space-y-1 rounded-xl border border-brand-200 bg-brand-50/60 p-3">
+                <Label className="block">셀러 공급가 (원) — 셀러에게 보여 줄 공급가
+                  <Input type="number" min={product.supplyPrice} max={price || undefined} value={sellerSupply} onChange={(e) => setSellerSupply(e.target.value)} placeholder={`${product.supplyPrice.toLocaleString()} ~ ${price.toLocaleString()}`} />
+                </Label>
+                <p className="text-[11px] text-slate-600">
+                  {supplyToSeller != null
+                    ? <>판매 1개당 · 브랜드 {formatKRW(product.supplyPrice)} · 창고(스튜디오) {formatKRW(Math.max(0, supplyToSeller - product.supplyPrice))} · 셀러 {formatKRW(Math.max(0, price - supplyToSeller))} (판매 수수료 차감 전)</>
+                    : "비워 두면 아래 셀러 수수료 방식으로 정산합니다."}
+                </p>
+                {supplyError && <p className="text-[11px] font-semibold text-red-600">셀러 공급가는 브랜드 공급가 이상, 판매가 이하로 정하세요.</p>}
+              </div>
+            )}
+            {target === "FACILITY" && (
               <div className="grid grid-cols-2 gap-2">
-                <Label className="block">셀러 수수료 방식
+                <Label className={`block ${supplyToSeller != null ? "opacity-50" : ""}`}>셀러 수수료 방식
                   <Select value={commissionType} onChange={(e) => setCommissionType(e.target.value)}>
                     <option value="PERCENT">판매가의 %</option><option value="FIXED">1개당 금액</option>
                   </Select>
@@ -129,7 +146,7 @@ export function BrandImportButton({ product, target, facilities = [] }: {
               </div>
             )}
             {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-            <Button className="w-full" disabled={busy || margin < 0}>{busy ? "등록 중…" : "가져오기"}</Button>
+            <Button className="w-full" disabled={busy || margin < 0 || supplyError}>{busy ? "등록 중…" : "가져오기"}</Button>
           </form>
         )}
       </dialog>

@@ -11,7 +11,6 @@ export default async function CheckoutPage({ params }: { params: { sessionSlug: 
   });
   if (!session) notFound();
   const products = session.products.map((p) => ({ id: p.id, displayNumber: p.displayNumber, name: p.nameSnapshot, price: p.priceSnapshot, stock: p.stockSnapshot }));
-  // 브랜드 직배송 상품이 있으면 배송지가 꼭 필요하다.
-  const needsAddress = session.products.some((p) => p.fulfillment === "DROPSHIP");
-  return <CheckoutForm slug={session.slug} title={session.title} products={products} needsAddress={needsAddress} />;
+  // 모든 주문은 배송지가 필요하고, 배송비는 셀러가 방송마다 정한다.
+  return <CheckoutForm slug={session.slug} title={session.title} products={products} shipping={{ shippingFee: session.shippingFee, freeShippingOver: session.freeShippingOver }} />;
 }

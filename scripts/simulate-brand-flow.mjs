@@ -289,21 +289,58 @@ async function main() {
 
   console.log("\n[11-b] 회귀 점검 — 브랜드와 무관한 기존 판매 흐름");
   const plain = await db.facilityProduct.findFirst({ where: { facilityId: F.id, brandProductId: null, isSellable: true } });
+  // 예약 → 승인 → 방송 생성 (방송은 승인된 예약으로만 만들 수 있다). 반복 실행에 대비해 빈 시간을 찾아 예약한다.
+  let slotSeq = Math.floor(Math.random() * 180);
+  const bookedSession = async (title) => {
+    for (let tries = 0; tries < 15; tries++, slotSeq++) {
+      const d = new Date(Date.now() + 9 * 3600000); d.setUTCDate(d.getUTCDate() + 10 + (slotSeq % 30));
+      const dd = d.toISOString().slice(0, 10); const h = 9 + (Math.floor(slotSeq / 30) % 6) * 2;
+      const b = await seller.req("POST", "/api/bookings", { facilityId: F.id, startAt: `${dd}T${String(h).padStart(2, "0")}:00`, endAt: `${dd}T${String(h + 2).padStart(2, "0")}:00`, purpose: title });
+      const bk = b.data?.bookings?.[0]; if (!bk) continue;
+      if (bk.status !== "APPROVED") await fac.req("PATCH", `/api/bookings/${bk.id}`, { status: "APPROVED" });
+      const res = await seller.req("POST", "/api/live-sessions", { bookingId: bk.id, facilityId: F.id, title });
+      if (res.ok) { slotSeq++; return res; }
+    }
+    return { ok: false };
+  };
   const s2Title = `일반 상품 라이브 ${Date.now()}`; // 반복 실행 시 이전 세션과 섞이지 않게
   r = await seller.req("POST", "/api/live-sessions", { facilityId: F.id, title: s2Title });
+  ok(r.status === 400 && /예약/.test(r.error ?? ""), "예약 없이 라이브 세션 생성 거절", r);
+  r = await bookedSession(s2Title);
   const s2 = await db.liveSession.findFirst({ where: { title: s2Title } });
-  ok(!!s2, "예약 없이 라이브 세션 생성", r);
+  ok(!!s2, "승인된 예약으로 라이브 세션 생성", r);
   r = await seller.req("POST", `/api/live-sessions/${s2.id}/products`, { facilityProductId: plain.id });
   const lp = r.data;
   ok(r.status === 201 && !lp.brandProductId, "일반 창고 상품 추가 (브랜드 정보 없음)", r);
   r = await seller.req("POST", `/api/live-sessions/${s2.id}/products`, { name: "임시 상품", price: 5000, stock: 3 });
   const la = r.data; ok(r.status === 201, "임시 상품 추가", r);
-  r = await guest.req("POST", "/api/orders", { sessionSlug: s2.slug, buyerName: "일반구매자", buyerPhone: "010-1111-2222", method: "EASY_PAY", agreePrivacy: true, items: [{ liveSessionProductId: lp.id, quantity: 1 }, { liveSessionProductId: la.id, quantity: 1 }] });
-  ok(r.status === 201, "배송지 없이도 일반 상품 주문 결제", r);
+  r = await guest.req("POST", "/api/orders", { sessionSlug: s2.slug, buyerName: "일반구매자", buyerPhone: "010-1111-2222", method: "EASY_PAY", agreePrivacy: true, items: [{ liveSessionProductId: lp.id, quantity: 1 }] });
+  ok(r.status === 400 && /배송지/.test(r.error ?? ""), "배송지 없는 주문 거절 (창고 출고 상품 포함)", r);
+  const plainStock = (await db.facilityProduct.findUnique({ where: { id: plain.id } })).stock;
+  r = await guest.req("POST", "/api/orders", { sessionSlug: s2.slug, buyerName: "일반구매자", buyerPhone: "010-1111-2222", buyerAddress: "서울 강남구 테헤란로 1", method: "EASY_PAY", agreePrivacy: true, items: [{ liveSessionProductId: lp.id, quantity: 1 }, { liveSessionProductId: la.id, quantity: 1 }] });
+  ok(r.status === 201, "일반 상품 주문 결제", r);
+  ok((await db.facilityProduct.findUnique({ where: { id: plain.id } })).stock === plainStock - 1, "창고 자체 상품 판매 시 창고 재고 차감");
+  const plainItems = await db.orderItem.findMany({ where: { orderId: r.data?.orderId } });
+  ok(plainItems.length === 2 && plainItems.every((i) => i.sellerAmount != null && i.facilityAmount != null && i.platformFee != null), "주문 시점 수익 분배 저장", plainItems);
   ok((await db.purchaseOrder.count({ where: { orderId: r.data.orderId } })) === 0, "브랜드 상품이 없으면 발주서 없음");
   ok((await db.order.findUnique({ where: { id: r.data.orderId } })).status === "PAID", "주문 결제 완료 상태");
-  r = await seller.req("PATCH", `/api/orders/${r.data.orderId}`, { status: "CANCELLED", reason: "테스트" });
+  const plainOrder = r.data.orderId;
+  r = await seller.req("PATCH", `/api/orders/${plainOrder}`, { status: "CANCELLED", reason: "테스트" });
   ok(r.ok, "일반 주문 취소 정상", r);
+  ok((await db.facilityProduct.findUnique({ where: { id: plain.id } })).stock === plainStock, "취소 시 창고 재고 복구");
+  r = await seller.req("PATCH", `/api/orders/${plainOrder}`, { status: "CANCELLED", reason: "중복" });
+  ok(r.status === 409, "이미 취소된 주문 중복 취소 거절", r);
+
+  console.log("\n[11-c] 셀러 배송비 · 판매가 하한");
+  r = await seller.req("PATCH", `/api/live-sessions/${s2.id}`, { shippingFee: 3000, freeShippingOver: 50000 });
+  ok(r.ok && r.data.shippingFee === 3000, "셀러 배송비 설정 (3,000원 · 5만 원 이상 무료)", r);
+  r = await guest.req("POST", "/api/orders", { sessionSlug: s2.slug, buyerName: "배송비구매자", buyerPhone: "010-1111-3333", buyerAddress: "서울 강남구 테헤란로 2", method: "CARD", agreePrivacy: true, items: [{ liveSessionProductId: la.id, quantity: 1 }] });
+  const shipOrder = r.data?.orderId ? await db.order.findUnique({ where: { id: r.data.orderId } }) : null;
+  ok(shipOrder?.shippingFee === 3000 && shipOrder.totalAmount === 5000 + 3000, "배송비가 결제 금액에 포함", shipOrder);
+  if (shipOrder) await seller.req("PATCH", `/api/orders/${shipOrder.id}`, { status: "CANCELLED", reason: "테스트" });
+  await seller.req("PATCH", `/api/live-sessions/${s2.id}`, { shippingFee: 0, freeShippingOver: null });
+  r = await seller.req("PATCH", `/api/live-sessions/${s2.id}/products/${lp.id}`, { stockSnapshot: plainStock + 100 });
+  ok(r.status === 400, "방송 판매 수량은 창고 실재고를 넘을 수 없음", r);
 
   // =====================================================================
   // 2026-11-11 보완 점검: 보안 · 브랜드 연동 · 부분 취소 · 정산 후 조정
@@ -318,7 +355,7 @@ async function main() {
   ok(r.status === 400 && /동의/.test(r.error ?? ""), "개인정보 동의 없이 주문 거절", r);
   const home = await guest.req("GET", "/", undefined, true);
   ok(home.headers.get("x-frame-options") === "SAMEORIGIN" && home.headers.get("x-content-type-options") === "nosniff", "보안 헤더 적용", [home.headers.get("x-frame-options")]);
-  r = await seller.req("POST", "/api/live-sessions", { facilityId: F.id, title: "상태 규칙 검증 라이브" });
+  r = await bookedSession("상태 규칙 검증 라이브");
   const s3 = await db.liveSession.findFirst({ where: { title: "상태 규칙 검증 라이브" }, orderBy: { createdAt: "desc" } });
   const lp3 = (await seller.req("POST", `/api/live-sessions/${s3.id}/products`, { name: "상태 검증 상품", price: 1000, stock: 5 })).data;
   await seller.req("PATCH", `/api/live-sessions/${s3.id}/status`, { status: "LIVE" });

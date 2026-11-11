@@ -18,6 +18,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       id: fp.id,
       salePrice: fp.salePrice,
       consumerPrice: fp.consumerPrice,
+      supplyPrice: fp.supplyPrice,
       stock: fp.stock,
       shippingInfo: fp.shippingInfo,
       commissionType: fp.commissionType,

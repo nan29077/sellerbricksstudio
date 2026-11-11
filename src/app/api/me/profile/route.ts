@@ -27,6 +27,9 @@ export async function PATCH(req: NextRequest) {
     if ((name != null && typeof name !== "string") || (phone != null && typeof phone !== "string")) {
       return fail("이름과 연락처를 확인해 주세요.");
     }
+    if ((typeof name === "string" && (name.trim().length < 1 || name.length > 40)) || (typeof phone === "string" && phone.length > 30)) {
+      return fail("이름은 1~40자, 연락처는 30자 이하로 입력해 주세요.");
+    }
     if (profileImageIndex !== undefined && !isProfileImageIndex(profileImageIndex)) {
       return fail("제공된 동물 캐릭터를 선택해 주세요.");
     }

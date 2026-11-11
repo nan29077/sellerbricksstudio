@@ -8,6 +8,7 @@ import { getPaymentAdapter } from "@/lib/adapters/payment";
 import { ORDER_NEXT_STATUS } from "@/lib/status";
 import { notifyPurchaseOrderChanges } from "@/lib/purchase-orders";
 import { applyOrderStatusInTx, cancelOrderItems, OrderActionError } from "@/lib/order-actions";
+import { clearLimit, consume } from "@/lib/rate-limit";
 
 // PATCH /api/orders/[id]
 //  body: { status, reason? }  — 결제완료 → 준비중 → 배송중 → 배송완료, 그리고 취소(배송 전)·환불(배송 후)
@@ -26,6 +27,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     const allowed = user.role === "SUPER_ADMIN" || order.sellerId === user.id || order.facility.ownerId === user.id;
     if (!allowed) return fail("이 주문을 처리할 권한이 없습니다.", 403);
+
+    // 같은 주문을 동시에 처리하지 못하게 잠근다 (취소 버튼 연타 · 셀러와 창고가 동시에 처리 → 결제 취소 두 번 방지)
+    const lockKey = `order-action:${order.id}`;
+    if (!(await consume(lockKey, 1, 30_000))) return fail("이 주문을 다른 곳에서 처리하고 있습니다. 잠시 후 새로고침해 주세요.", 409);
+    try {
 
     if (body.action === "cancel-items") {
       const itemIds = Array.isArray(body.itemIds) ? body.itemIds.filter((v): v is string => typeof v === "string").slice(0, 200) : undefined;
@@ -54,7 +60,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       if (!result.success) return fail(result.failReason ?? "결제사 처리에 실패했습니다. 잠시 후 다시 시도하세요.", 502);
     }
 
-    const updated = await prisma.$transaction((tx) => applyOrderStatusInTx(tx, order.id, status, note, user.id));
+    const updated = await prisma.$transaction((tx) => applyOrderStatusInTx(tx, order.id, status, note, user.id, order.status));
     await notifyPurchaseOrderChanges(updated.poChanges);
 
     await audit({
@@ -62,6 +68,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       meta: { from: order.status, to: status, reason: note || undefined },
     });
     return ok({ id: updated.order.id, status: updated.order.status });
+    } finally {
+      await clearLimit(lockKey);
+    }
   } catch (e) {
     if (e instanceof OrderActionError) return fail(e.message, e.status);
     return handleError(e);

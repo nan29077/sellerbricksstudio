@@ -49,6 +49,7 @@ export default async function OrderComplete({ params }: { params: { orderId: str
               </div>
             ))}
           </div>
+          {order.shippingFee > 0 && <div className="flex justify-between text-sm"><span className="text-muted-foreground">배송비</span><span>{formatKRW(order.shippingFee)}</span></div>}
           <div className="flex justify-between border-t pt-3"><span className="font-semibold">총 결제금액</span><span className="text-lg font-bold text-brand-600">{formatKRW(order.totalAmount)}</span></div>
         </CardContent></Card>
         <div className="mt-5 flex gap-2">

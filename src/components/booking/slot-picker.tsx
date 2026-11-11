@@ -92,7 +92,9 @@ export function SlotPicker({
 
   const selected = detail?.options.find((o) => o.time === value.start);
   const selStatus = detailLoading ? null : selected?.status ?? null;
-  useEffect(() => { onStatusChange?.(selStatus); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [selStatus]);
+  // 선택 상태가 바뀔 때만 알린다 (onStatusChange 는 부모가 매번 새로 만들 수 있음)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { onStatusChange?.(selStatus); }, [selStatus]);
   const firstWd = days[0]?.weekday ?? 0;
   const canPrev = from > today;
 

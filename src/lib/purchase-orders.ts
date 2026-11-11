@@ -51,7 +51,13 @@ export async function capDropshipLiveStockInTx(tx: Tx, brandProductId: string, s
 //  - 브랜드샵이 공개 중지됐거나, 브랜드가 상품을 숨기거나 직배송을 끈 상품은 팔 수 없다.
 // ---------------------------------------------------------------------------
 export async function reserveOrderStockInTx(tx: Tx, orderId: string) {
-  const lines = (await brandLinesOf(tx, orderId)).filter((l) => l.brandProductId);
+  const all = await brandLinesOf(tx, orderId);
+  // 창고(스튜디오)가 직접 등록한 상품: 창고 실재고를 조건부로 차감 (여러 방송에 같은 재고가 올라가도 초과 판매되지 않게)
+  for (const l of all.filter((x) => !x.brandProductId && x.facilityProductId)) {
+    const dec = await tx.facilityProduct.updateMany({ where: { id: l.facilityProductId!, stock: { gte: l.item.quantity } }, data: { stock: { decrement: l.item.quantity } } });
+    if (dec.count !== 1) throw new StockError(`${l.item.productName}: 창고 재고가 부족합니다. 수량을 줄여 다시 주문해 주세요.`);
+  }
+  const lines = all.filter((l) => l.brandProductId);
   if (!lines.length) return [] as string[];
   const products = await tx.brandProduct.findMany({
     where: { id: { in: Array.from(new Set(lines.map((l) => l.brandProductId!))) } },
@@ -88,7 +94,10 @@ export async function releaseOrderStockInTx(tx: Tx, orderId: string, opts: { liv
       await tx.liveSessionProduct.update({ where: { id: l.lsp.id }, data: { stockSnapshot: { increment: l.item.quantity } } });
       sessions.add(l.lsp.liveSessionId);
     }
-    if (!l.brandProductId) continue;
+    if (!l.brandProductId) {
+      if (l.facilityProductId) await tx.facilityProduct.update({ where: { id: l.facilityProductId }, data: { stock: { increment: l.item.quantity } } });
+      continue;
+    }
     if (l.fulfillment === "DROPSHIP") await tx.brandProduct.update({ where: { id: l.brandProductId }, data: { stock: { increment: l.item.quantity } } });
     else if (l.facilityProductId) await tx.facilityProduct.update({ where: { id: l.facilityProductId }, data: { stock: { increment: l.item.quantity } } });
   }
@@ -190,6 +199,17 @@ export async function checkLowStock(productIds: string[]) {
       });
     }
   } catch { /* 알림 실패는 주문을 막지 않는다 */ }
+}
+
+// 출고 전 취소: 창고(스튜디오)가 직접 등록한 상품(발주서 없음)의 창고 재고를 되돌린다.
+// (브랜드 상품은 발주 취소 때 restorePoStockInTx 가 되돌린다)
+export async function restoreOwnFacilityStockInTx(tx: Tx, orderId: string, itemIds: string[]) {
+  if (!itemIds.length) return;
+  const lines = await brandLinesOf(tx, orderId, itemIds);
+  for (const l of lines) {
+    if (l.brandProductId || !l.facilityProductId) continue;
+    await tx.facilityProduct.update({ where: { id: l.facilityProductId }, data: { stock: { increment: l.item.quantity } } });
+  }
 }
 
 // 재고 되돌리기 (발주 취소)

@@ -5,6 +5,7 @@ import { bookingSchema } from "@/lib/validations";
 import { ok, fail, handleError } from "@/lib/http";
 import { parseKST } from "@/lib/utils";
 import { createBookings } from "@/lib/booking-actions";
+import { emailVerifyBlock } from "@/lib/account-guards";
 
 // POST /api/bookings — 셀러 예약 신청
 // body: { facilityId, startAt, endAt, purpose?, headcount?, requestNote?, products?: [{facilityProductId, quantity}],
@@ -14,6 +15,8 @@ import { createBookings } from "@/lib/booking-actions";
 export async function POST(req: NextRequest) {
   try {
     const user = await requireRole(["SELLER"]);
+    const blocked = await emailVerifyBlock(user);
+    if (blocked) return fail(blocked, 403);
     let data;
     try { data = bookingSchema.parse(await req.json()); }
     catch (e) { return fail(e instanceof ZodError ? e.issues[0]?.message ?? "입력값을 확인하세요." : "입력값을 확인하세요."); }

@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { ok, fail, handleError } from "@/lib/http";
 import { audit } from "@/lib/audit";
 import { z } from "zod";
+import { liveProductLimits } from "@/lib/brand-links";
 
 const editSchema = z.object({
   isActive: z.boolean().optional(),
@@ -23,7 +24,7 @@ async function assertAccess(userId: string, role: string, sessionId: string) {
 export async function PATCH(req: NextRequest, { params }: { params: { id: string; lspId: string } }) {
   try {
     const user = await requireUser();
-    await assertAccess(user.id, user.role, params.id);
+    const session = await assertAccess(user.id, user.role, params.id);
     const body = await req.json();
     const lsp = await prisma.liveSessionProduct.findUnique({ where: { id: params.lspId } });
     if (!lsp || lsp.liveSessionId !== params.id) return fail("상품을 찾을 수 없습니다.", 404);
@@ -51,11 +52,29 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     // 기타 수정(활성/재고/가격/이름) — 값 형식과 범위를 확인한다.
     const patch = editSchema.safeParse(body);
     if (!patch.success) return fail(patch.error.issues[0]?.message ?? "입력값이 올바르지 않습니다.");
+    const admin = user.role === "SUPER_ADMIN";
+    const changesPrice = patch.data.priceSnapshot !== undefined && patch.data.priceSnapshot !== lsp.priceSnapshot;
+    const changesStock = patch.data.stockSnapshot !== undefined && patch.data.stockSnapshot !== lsp.stockSnapshot;
+    if ((changesPrice || changesStock) && !admin && (session.status === "ENDED" || session.status === "CANCELLED")) {
+      return fail("종료되거나 취소된 방송의 가격·재고는 바꿀 수 없습니다.", 409);
+    }
+    if ((changesPrice || changesStock) && !admin) {
+      const limits = await liveProductLimits(prisma, lsp.id);
+      if (limits && changesPrice) {
+        const isFacilityOwner = session.facility.ownerId === user.id;
+        if (limits.sellerPriceLocked && !isFacilityOwner) return fail("수수료 방식 창고(스튜디오) 상품은 창고(스튜디오)가 정한 가격으로만 팔 수 있습니다. 창고(스튜디오)에 공급가 설정을 요청해 주세요.", 403);
+        if (patch.data.priceSnapshot! < limits.floor) return fail(`판매가는 ${limits.floor.toLocaleString()}원(공급가 · 브랜드 최저 판매가) 아래로 정할 수 없습니다.`);
+      }
+      if (limits && changesStock && limits.maxStock != null && patch.data.stockSnapshot! > limits.maxStock) {
+        return fail(`판매 수량은 실제 재고(${limits.maxStock.toLocaleString()}개)를 넘을 수 없습니다.`);
+      }
+    }
     const updated = await prisma.liveSessionProduct.update({
       where: { id: params.lspId },
       data: patch.data,
     });
     await prisma.liveSession.update({ where: { id: params.id }, data: { numberVersion: { increment: 1 } } });
+    if (changesPrice || changesStock) await audit({ actorId: user.id, action: "LIVE_PRODUCT_EDIT", entity: "LiveSessionProduct", entityId: lsp.id, meta: { price: changesPrice ? [lsp.priceSnapshot, patch.data.priceSnapshot] : undefined, stock: changesStock ? [lsp.stockSnapshot, patch.data.stockSnapshot] : undefined } });
     return ok(updated);
   } catch (e) { return handleError(e); }
 }

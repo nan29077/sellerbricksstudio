@@ -5,19 +5,19 @@ import { Package, Star, Zap, Plus, Minus, X, CalendarPlus, ShoppingBag, Truck, C
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import { cn, formatKRW } from "@/lib/utils";
+import { cn, formatKRW, sellerUnitProfit } from "@/lib/utils";
 
 export type MarketItem = {
   id: string; name: string; category: string; description: string | null; image: string | null;
   salePrice: number; consumerPrice: number; stock: number; shippingInfo: string | null;
-  commissionType: string; commissionValue: number; bookedCount: number;
+  commissionType: string; commissionValue: number; bookedCount: number; supplyPrice?: number | null;
   facility: { id: string; name: string; type: string; region: string; rating: number; autoApprove: boolean };
 };
 type Pick = { qty: number; name: string; facilityId: string; facilityName: string; price: number; commission: number };
 
 const KEY = "sb.productPicks";
-const commissionOf = (i: { commissionType: string; commissionValue: number; salePrice: number }) =>
-  i.commissionType === "PERCENT" ? Math.round((i.salePrice * i.commissionValue) / 100) : Math.round(i.commissionValue);
+// 공급가 방식: 판매가 − 공급가 (판매 수수료 차감 전) · 수수료 방식: 셀러 수수료
+const commissionOf = (i: { commissionType: string; commissionValue: number; salePrice: number; supplyPrice?: number | null }) => sellerUnitProfit(i);
 
 // 상품 카드 목록 + 담은 상품(창고별) 바구니. 담은 내용은 페이지를 넘겨도 유지된다(이 브라우저 탭 한정).
 export function ProductMarket({ items }: { items: MarketItem[] }) {
@@ -65,7 +65,9 @@ export function ProductMarket({ items }: { items: MarketItem[] }) {
                 <p className="text-[11px] text-slate-500">{i.category}{i.bookedCount > 0 && ` · ${i.bookedCount}회 예약`}</p>
                 <button type="button" onClick={() => setDetail(i)} className="line-clamp-2 text-left text-sm font-bold text-navy hover:underline">{i.name}</button>
                 <p className="text-base font-extrabold text-brand-700">{formatKRW(i.salePrice)}{off > 0 && <span className="ml-1 text-[11px] font-normal text-slate-400 line-through">{formatKRW(i.consumerPrice)}</span>}</p>
-                <p className="text-[11px] font-semibold text-purple-700">개당 수익 {formatKRW(commissionOf(i))}{i.commissionType === "PERCENT" && ` (${i.commissionValue}%)`}</p>
+                {i.supplyPrice != null
+                  ? <p className="text-[11px] font-semibold text-purple-700">공급가 {formatKRW(i.supplyPrice)} · 개당 마진 {formatKRW(commissionOf(i))}</p>
+                  : <p className="text-[11px] font-semibold text-purple-700">개당 수익 {formatKRW(commissionOf(i))}{i.commissionType === "PERCENT" && ` (${i.commissionValue}%)`}</p>}
                 <Link href={`/facilities/${i.facility.id}`} className="mt-auto flex items-center gap-1 truncate pt-1 text-[11px] text-slate-500 hover:underline">
                   <Badge tone={i.facility.type === "STUDIO" ? "purple" : "blue"} className="shrink-0 px-1.5 py-0 text-[11px]">{i.facility.type === "STUDIO" ? "스튜디오" : "창고"}</Badge>
                   <span className="truncate">{i.facility.name} · {i.facility.region}</span>
@@ -134,7 +136,8 @@ export function ProductMarket({ items }: { items: MarketItem[] }) {
               <Info label="판매가" value={formatKRW(detail.salePrice)} />
               <Info label="소비자가" value={formatKRW(detail.consumerPrice)} />
               <Info label="재고" value={`${detail.stock.toLocaleString()}개`} />
-              <Info label="개당 셀러 수익" value={formatKRW(commissionOf(detail))} />
+              {detail.supplyPrice != null && <Info label="셀러 공급가" value={formatKRW(detail.supplyPrice)} />}
+              <Info label={detail.supplyPrice != null ? "개당 마진 (수수료 차감 전)" : "개당 셀러 수익"} value={formatKRW(commissionOf(detail))} />
             </div>
             {detail.shippingInfo && <p className="flex items-center gap-1.5 text-xs text-slate-600"><Truck className="h-3.5 w-3.5" />{detail.shippingInfo}</p>}
             {detail.description && <p className="whitespace-pre-line text-slate-600">{detail.description}</p>}

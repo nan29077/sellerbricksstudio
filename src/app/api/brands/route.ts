@@ -14,6 +14,7 @@ import { getPaymentAdapter, paymentBlockedReason } from "@/lib/adapters/payment"
 import bcrypt from "bcryptjs";
 import { brandRecipients, brandShopWhere, partnerAccess } from "@/lib/brand-access";
 import { capDropshipLiveStockInTx, checkLowStock } from "@/lib/purchase-orders";
+import { emailVerifyBlock } from "@/lib/account-guards";
 
 const mask = (v: string) => (v.length <= 4 ? "****" : `${"*".repeat(Math.max(0, v.length - 4))}${v.slice(-4)}`);
 
@@ -238,6 +239,8 @@ export async function POST(req: Request) {
       && (user.role !== "FACILITY_ADMIN" || !(await getSettings()).facilityDisabled);
     if (command.action === "request") {
       if (!buyerEnabled) return fail("셀러 또는 창고(스튜디오) 관리자 계정이 필요합니다.", 403);
+      const verifyBlocked = await emailVerifyBlock(user);
+      if (verifyBlocked) return fail(verifyBlocked, 403);
       if (command.kind === "SUPPLY" && user.role !== "FACILITY_ADMIN") return fail("창고 입고 요청은 창고(스튜디오) 관리자만 할 수 있습니다.", 403);
       const target = await prisma.brandProduct.findUnique({ where: { id: command.productId }, select: { shopId: true, samplePrice: true, shop: { select: { requireSellerApproval: true } } } });
       if (target) {

@@ -16,8 +16,8 @@ const groupsOf = (option: string | null): Group[] => {
 const KEY_SEP = "::";
 
 export function BuyerLive({
-  slug, sessionId, title, sellerName, facilityName, status, playbackUrl, initial,
-}: { slug: string; sessionId: string; title: string; sellerName: string; facilityName: string; status: string; playbackUrl: string | null; initial: Item[] }) {
+  slug, sessionId, title, sellerName, facilityName, status, playbackUrl, initial, shippingText,
+}: { slug: string; sessionId: string; title: string; sellerName: string; facilityName: string; status: string; playbackUrl: string | null; initial: Item[]; shippingText?: string }) {
   const router = useRouter();
   const [items, setItems] = useState<Item[]>(initial);
   const [version, setVersion] = useState(0);
@@ -96,7 +96,7 @@ export function BuyerLive({
           <p className="text-sm">{live ? "라이브 방송 중" : "방송 대기 중"}</p>
           {playbackUrl && <p className="mt-1 text-xs text-white/40 px-4 text-center break-all">재생 URL: {playbackUrl}</p>}
         </div>
-        <p className="mt-2 text-sm text-muted-foreground">{sellerName} · {facilityName}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{sellerName} · {facilityName}{shippingText && <> · <span className="font-semibold text-brand-700">{shippingText}</span></>}</p>
 
         {/* 상품번호 검색 */}
         <div className="mt-4 flex items-center gap-2 rounded-xl border border-border bg-white px-3">

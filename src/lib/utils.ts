@@ -52,3 +52,23 @@ export function orderNo(): string {
   const ymd = todayKST().replace(/-/g, ""); // KST 기준 YYYYMMDD
   return `SB${ymd}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
 }
+
+// 셀러가 정한 배송비: 0원이면 무료(상품가 포함), 무료 기준 금액 이상 주문하면 무료
+export function shippingFeeFor(session: { shippingFee: number; freeShippingOver: number | null }, subtotal: number): number {
+  if (session.shippingFee <= 0) return 0;
+  if (session.freeShippingOver != null && session.freeShippingOver > 0 && subtotal >= session.freeShippingOver) return 0;
+  return session.shippingFee;
+}
+
+export function shippingLabel(session: { shippingFee: number; freeShippingOver: number | null }): string {
+  if (session.shippingFee <= 0) return "무료배송";
+  return `배송비 ${formatKRW(session.shippingFee)}${session.freeShippingOver ? ` (${formatKRW(session.freeShippingOver)} 이상 무료)` : ""}`;
+}
+
+// 셀러가 보는 개당 예상 수익.
+//  - 공급가 방식: 판매가 − 공급가 (판매 수수료 차감 전)
+//  - 수수료 방식: 상품에 정한 셀러 수수료
+export function sellerUnitProfit(p: { salePrice: number; supplyPrice?: number | null; commissionType: string; commissionValue: number }, salesFeeRate = 0): number {
+  if (p.supplyPrice != null) return Math.max(0, p.salePrice - p.supplyPrice - Math.round((p.salePrice * salesFeeRate) / 100));
+  return calcSellerCommission(p.salePrice, p.commissionType as "PERCENT" | "FIXED", p.commissionValue);
+}

@@ -13,7 +13,7 @@ import { ActionButton } from "@/components/action-button";
 import { ResourceForm, type Field } from "@/components/resource-form";
 import { FilterBar } from "@/components/list/filter-bar";
 import { Kpi } from "@/components/list/charts";
-import { formatKRW, calcSellerCommission } from "@/lib/utils";
+import { formatKRW, sellerUnitProfit } from "@/lib/utils";
 import { sp, type SP } from "@/lib/list";
 import { PRODUCT_CATEGORIES } from "@/lib/product-categories";
 import { Package, Plus, CalendarCheck, AlertTriangle, Radio, ScanLine } from "lucide-react";
@@ -24,6 +24,7 @@ const EDIT_FIELDS: Field[] = [
   { name: "sku", label: "SKU", half: true },
   { name: "salePrice", label: "판매가(원)", type: "number", min: 0, half: true, required: true },
   { name: "consumerPrice", label: "소비자가(원)", type: "number", min: 0, half: true },
+  { name: "supplyPrice", label: "셀러 공급가(원)", type: "number", min: 0, half: true, help: "판매되면 창고(스튜디오)가 받는 금액입니다. 셀러는 판매가 − 판매 수수료 − 공급가를 받고, 공급가 이상으로 판매가를 바꿀 수 있습니다. 비우면 아래 셀러 수수료 방식으로 계산합니다." },
   { name: "stock", label: "재고", type: "number", min: 0, half: true, required: true },
   { name: "shippingInfo", label: "배송 정보", half: true, placeholder: "3,000원 (5만원 이상 무료)" },
   { name: "commissionType", label: "셀러 수수료 방식", type: "select", options: [{ value: "PERCENT", label: "정률 (%)" }, { value: "FIXED", label: "정액 (원)" }], half: true },
@@ -100,7 +101,7 @@ export async function FacilityProductsManager({ searchParams, admin = false }: {
       ) : (
         <div className="space-y-3">
           {products.map((fp) => {
-            const unit = calcSellerCommission(fp.salePrice, fp.commissionType, fp.commissionValue);
+            const unit = sellerUnitProfit(fp);
             const r = req.get(fp.id);
             const short = !!r && r.qty > fp.stock;
             return (
@@ -120,7 +121,9 @@ export async function FacilityProductsManager({ searchParams, admin = false }: {
                       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                         <span>판매가 <b className="text-navy">{formatKRW(fp.salePrice)}</b></span>
                         <span className={fp.stock <= 10 ? "font-semibold text-amber-700" : ""}>재고 {fp.stock.toLocaleString()}개</span>
-                        <span>셀러 수익 {formatKRW(unit)}/개{fp.commissionType === "PERCENT" && ` (${fp.commissionValue}%)`}</span>
+                        {fp.supplyPrice != null
+                          ? <span>공급가 <b className="text-navy">{formatKRW(fp.supplyPrice)}</b> · 셀러 마진 {formatKRW(unit)}/개 <span className="text-[11px]">(판매 수수료 차감 전)</span></span>
+                          : <span>셀러 수익 {formatKRW(unit)}/개{fp.commissionType === "PERCENT" && ` (${fp.commissionValue}%)`}</span>}
                       </div>
                       <div className="mt-1.5 flex flex-wrap gap-1.5 text-[11px]">
                         <span className="rounded-full bg-blue-50 px-2 py-0.5 font-semibold text-blue-700">누적 예약 {fp._count.bookingProducts}회</span>
@@ -132,7 +135,7 @@ export async function FacilityProductsManager({ searchParams, admin = false }: {
                   <div className="flex shrink-0 gap-2 sm:flex-col">
                     <ResourceForm url="/api/facility-products" id={fp.id} fields={EDIT_FIELDS} title="상품 수정" triggerLabel="수정" triggerSize="sm" triggerVariant="outline"
                       initial={{
-                        name: fp.product.name, category: fp.product.category, sku: fp.product.sku ?? "", salePrice: fp.salePrice, consumerPrice: fp.consumerPrice,
+                        name: fp.product.name, category: fp.product.category, sku: fp.product.sku ?? "", salePrice: fp.salePrice, consumerPrice: fp.consumerPrice, supplyPrice: fp.supplyPrice ?? "",
                         stock: fp.stock, shippingInfo: fp.shippingInfo ?? "", commissionType: fp.commissionType, commissionValue: fp.commissionValue,
                         thumbnailUrl: fp.product.thumbnailUrl ?? "", description: fp.product.description ?? "",
                       }} />

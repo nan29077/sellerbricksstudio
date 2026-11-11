@@ -10,7 +10,8 @@ import { EmptyState } from "@/components/ui/empty";
 import { Kpi, BarChart } from "@/components/list/charts";
 import { CsvButton } from "@/components/list/csv-button";
 import { getPlatformFeeRate, splitFee } from "@/lib/booking";
-import { computeSettlement } from "@/lib/settlement";
+import { computeSettlement, revenueLines } from "@/lib/settlement";
+import { RevenueTable } from "@/components/settlement/revenue-table";
 import { formatDate, formatDateTime, formatKRW } from "@/lib/utils";
 import { addMonths, hoursBetween, kstParts, kstStartOfMonth } from "@/lib/kst";
 import { growth } from "@/lib/list";
@@ -28,9 +29,10 @@ export default async function FacilitySettlements() {
   const monthStart = kstStartOfMonth(new Date());
   const yearStart = addMonths(monthStart, -11);
 
-  const [salesSummary, salesSettlements] = await Promise.all([
+  const [salesSummary, salesSettlements, revenue] = await Promise.all([
     computeSettlement({ facilityIds: ids }).catch(() => null),
     prisma.settlement.findMany({ where: { facilityId: { in: ids } }, orderBy: { periodEnd: "desc" }, take: 30, include: { facility: { select: { name: true } }, seller: { select: { email: true, profile: { select: { name: true } } } } } }),
+    revenueLines({ facilityIds: ids }).catch(() => []),
   ]);
   const [settlements, unsettled, yearRows] = await Promise.all([
     prisma.facilitySettlement.findMany({ where: { facilityId: { in: ids } }, orderBy: { periodEnd: "desc" }, include: { facility: { select: { name: true } } } }),
@@ -84,6 +86,8 @@ export default async function FacilitySettlements() {
           )}
         </CardContent>
       </Card>
+
+      <RevenueTable rows={revenue} perspective="FACILITY" />
 
       <Card><CardHeader><CardTitle className="text-base">월별 이용 완료 매출 (12개월)</CardTitle></CardHeader><CardContent><BarChart data={monthly} format={(n) => formatKRW(n)} /></CardContent></Card>
 

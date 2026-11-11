@@ -19,7 +19,6 @@ export async function GET(req: Request) {
   try {
     if (!(await consume(`pptx:${clientIp(req)}`, 20, 10 * MINUTE))) return new Response("요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.", { status: 429 });
     if (cached && Date.now() - cached.at < 6 * 3600000) return pptxResponse(cached.buf);
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const PptxGenJS = require("pptxgenjs");
     const pptx = new PptxGenJS();
 

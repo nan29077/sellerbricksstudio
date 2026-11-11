@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { BuyerLive } from "@/components/buyer-live";
+import { shippingLabel } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,7 @@ export default async function LivePage({ params }: { params: { sessionSlug: stri
       playbackUrl={session.catenoidPlaybackUrl}
       initial={session.products.map((p) => ({ id: p.id, displayNumber: p.displayNumber, name: p.nameSnapshot, price: p.priceSnapshot, stock: p.stockSnapshot, image: p.imageSnapshot, option: p.optionSnapshot }))}
       sessionId={session.id}
+      shippingText={shippingLabel(session)}
     />
   );
 }

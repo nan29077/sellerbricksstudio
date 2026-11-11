@@ -18,6 +18,8 @@ const schema = z.object({
   orderAfterEndHours: z.coerce.number().int().min(0).max(24 * 30),
   settleAfterDays: z.coerce.number().int().min(0).max(60),
   piiRetentionDays: z.coerce.number().int().min(7).max(3650),
+  requireEmailVerify: z.preprocess((v) => v === "false" ? false : v === "true" ? true : v, z.boolean()),
+  maxPendingBookings: z.coerce.number().int().min(0).max(100),
 }).partial();
 
 export async function GET() {

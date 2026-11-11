@@ -101,7 +101,7 @@ export function SiteSettingsForm({ initial }: { initial: SiteSettings }) {
             </div>
             <div>
               <Label>버튼 링크</Label>
-              <Input aria-label="버튼 링크" value={form.bannerLinkUrl} onChange={(e) => set("bannerLinkUrl", e.target.value)} placeholder="/register" />
+              <Input aria-label="버튼 링크" value={form.bannerLinkUrl} onChange={(e) => set("bannerLinkUrl", e.target.value)} placeholder="/signup" />
             </div>
           </div>
           {form.bannerEnabled && (

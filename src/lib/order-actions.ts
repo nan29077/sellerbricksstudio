@@ -6,7 +6,7 @@ import { getPaymentAdapter } from "./adapters/payment";
 import { audit } from "./audit";
 import {
   closePurchaseOrderInTx, notifyPoPartners, notifyPurchaseOrderChanges, releaseOrderStockInTx,
-  syncPurchaseOrdersWithOrder, type PoChange,
+  restoreOwnFacilityStockInTx, syncPurchaseOrdersWithOrder, type PoChange,
 } from "./purchase-orders";
 
 type Tx = Prisma.TransactionClient;
@@ -15,12 +15,13 @@ export const PRE_SHIP: OrderStatus[] = ["PAID", "PREPARING"];
 export const POST_SHIP: OrderStatus[] = ["SHIPPED", "DELIVERED"];
 
 // 이미 판매 정산에 들어간 주문이 환불·취소되면, 그만큼을 다음 판매 정산에서 자동 차감할 조정 항목으로 남긴다.
-async function salesAdjustmentInTx(tx: Tx, orderId: string, itemIds: string[] | null, reason: string) {
+// includeShipping: 주문 전체가 닫힐 때만 배송비(셀러 몫)도 차감한다.
+async function salesAdjustmentInTx(tx: Tx, orderId: string, itemIds: string[] | null, reason: string, includeShipping: boolean) {
   const order = await tx.order.findUnique({ where: { id: orderId }, include: SETTLEMENT_ORDER_INCLUDE });
   if (!order?.settlementId) return;
   const items = order.items.filter((i) => (itemIds ? itemIds.includes(i.id) : !i.cancelledAt));
-  if (!items.length) return;
-  const r = splitOrder({ items: items.map((i) => ({ ...i, cancelledAt: null })) }, await getPolicy());
+  if (!items.length && !(includeShipping && order.shippingFee > 0)) return;
+  const r = splitOrder({ shippingFee: order.shippingFee, items: items.map((i) => ({ ...i, cancelledAt: null })) }, await getPolicy(), { includeShipping });
   await tx.salesAdjustment.create({
     data: {
       sellerId: order.sellerId, facilityId: order.facilityId, orderId: order.id, reason: `${order.orderNo} ${reason}`.slice(0, 300),
@@ -35,9 +36,13 @@ async function salesAdjustmentInTx(tx: Tx, orderId: string, itemIds: string[] | 
 //  - 환불(출고 후): 발주 반품 처리
 //  - 이미 정산된 주문·발주는 다음 정산에서 자동 차감
 // ---------------------------------------------------------------------------
-export async function applyOrderStatusInTx(tx: Tx, orderId: string, status: OrderStatus, note: string, actor: string) {
+// expectedFrom: 화면에서 처리할 때 본 상태. 그 사이 다른 처리(중복 클릭 · 결제사 통지)로 바뀌었으면 막는다.
+export async function applyOrderStatusInTx(tx: Tx, orderId: string, status: OrderStatus, note: string, actor: string, expectedFrom?: OrderStatus) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`order:${orderId}`}))`;
   const order = await tx.order.findUnique({ where: { id: orderId }, include: { payment: true, items: true } });
   if (!order) throw new Error("주문을 찾을 수 없습니다.");
+  if (expectedFrom && order.status !== expectedFrom) throw new OrderActionError("다른 곳에서 이미 처리된 주문입니다. 새로고침해 주세요.", 409);
+  if (order.status === status) throw new OrderActionError("이미 처리된 주문입니다.", 409);
   const closing = status === "CANCELLED" || status === "REFUNDED";
   if (closing && order.payment) {
     await tx.payment.update({ where: { id: order.payment.id }, data: { status, failReason: note } });
@@ -48,9 +53,10 @@ export async function applyOrderStatusInTx(tx: Tx, orderId: string, status: Orde
     for (const item of open) {
       await tx.liveSessionProduct.update({ where: { id: item.liveSessionProductId }, data: { stockSnapshot: { increment: item.quantity } } });
     }
+    await restoreOwnFacilityStockInTx(tx, order.id, open.map((i) => i.id));
     await tx.liveSession.update({ where: { id: order.liveSessionId }, data: { numberVersion: { increment: 1 } } });
   }
-  if (closing) await salesAdjustmentInTx(tx, order.id, null, status === "CANCELLED" ? "취소 (정산 후)" : "환불 (정산 후)");
+  if (closing) await salesAdjustmentInTx(tx, order.id, null, status === "CANCELLED" ? "취소 (정산 후)" : "환불 (정산 후)", true);
   const poChanges = await syncPurchaseOrdersWithOrder(tx, order.id, status, note || undefined);
   const row = await tx.order.update({
     where: { id: order.id },
@@ -118,9 +124,10 @@ export async function cancelOrderItems(params: { orderId: string; itemIds?: stri
       // 줄을 먼저 취소 표시하면 applyOrderStatusInTx 가 재고를 되돌리지 않으므로, 여기서 직접 되돌린다
       if (preShip) {
         for (const t of targets) await tx.liveSessionProduct.update({ where: { id: t.liveSessionProductId }, data: { stockSnapshot: { increment: t.quantity } } });
+        await restoreOwnFacilityStockInTx(tx, order.id, targets.map((t) => t.id));
         await tx.liveSession.update({ where: { id: order.liveSessionId }, data: { numberVersion: { increment: 1 } } });
       }
-      await salesAdjustmentInTx(tx, order.id, targets.map((t) => t.id), preShip ? "취소 (정산 후)" : "환불 (정산 후)");
+      await salesAdjustmentInTx(tx, order.id, targets.map((t) => t.id), preShip ? "취소 (정산 후)" : "환불 (정산 후)", true);
       if (order.payment) {
         await tx.payment.update({ where: { id: order.payment.id }, data: { status, failReason: reason } });
         await tx.paymentEvent.create({ data: { paymentId: order.payment.id, type: status, payload: JSON.stringify({ reason, by: params.actorId, amount: refundLeft }) } });
@@ -143,9 +150,10 @@ export async function cancelOrderItems(params: { orderId: string; itemIds?: stri
     await tx.orderItem.updateMany({ where: { id: { in: ids } }, data: { cancelledAt: new Date() } });
     if (preShip) {
       for (const t of targets) await tx.liveSessionProduct.update({ where: { id: t.liveSessionProductId }, data: { stockSnapshot: { increment: t.quantity } } });
+      await restoreOwnFacilityStockInTx(tx, order.id, ids);
       await tx.liveSession.update({ where: { id: order.liveSessionId }, data: { numberVersion: { increment: 1 } } });
     }
-    await salesAdjustmentInTx(tx, order.id, ids, preShip ? "부분 취소 (정산 후)" : "부분 환불 (정산 후)");
+    await salesAdjustmentInTx(tx, order.id, ids, preShip ? "부분 취소 (정산 후)" : "부분 환불 (정산 후)", false);
     const changes: PoChange[] = [];
     const poIds = new Set(ids.map((id) => poOf.get(id)?.id).filter(Boolean) as string[]);
     for (const poId of Array.from(poIds)) {
@@ -177,6 +185,33 @@ export async function failPendingOrder(orderId: string, paymentId: string | null
     }
     await tx.order.update({ where: { id: orderId }, data: { status: "CANCELLED" } });
   });
+}
+
+// 결제 대기에서 멈춘 주문 정리: 결제 확정 전에 서버가 멈추거나 구매자가 결제창을 닫으면 재고가 묶인 채 남는다.
+// 30분이 지난 결제 대기 주문은 (PG 승인 기록이 있으면 결제를 취소하고) 재고를 되돌린 뒤 닫는다.
+let lastCleanup = 0;
+export async function cleanupStalePendingOrders(opts: { force?: boolean; olderThanMinutes?: number } = {}) {
+  const now = Date.now();
+  if (!opts.force && now - lastCleanup < 60_000) return 0;
+  lastCleanup = now;
+  const before = new Date(now - (opts.olderThanMinutes ?? 30) * 60000);
+  const stale = await prisma.order.findMany({
+    where: { status: "PAYMENT_PENDING", createdAt: { lt: before } },
+    select: { id: true, payment: { select: { id: true, pgTransactionId: true, events: { where: { type: "CONFIRMED" }, select: { id: true }, take: 1 } } } },
+    take: 100,
+  }).catch(() => []);
+  let closed = 0;
+  for (const o of stale) {
+    try {
+      if (o.payment?.pgTransactionId && o.payment.events.length) {
+        await getPaymentAdapter().cancelPayment(o.payment.pgTransactionId, "결제 확정 지연으로 자동 취소").catch(() => null);
+      }
+      await failPendingOrder(o.id, o.payment?.id ?? null, "결제가 30분 안에 완료되지 않아 자동 취소되었습니다.");
+      closed += 1;
+    } catch (e) { console.error("stale order cleanup failed", o.id, e); }
+  }
+  if (closed) await audit({ action: "ORDER_STALE_CLEANUP", entity: "Order", meta: { closed } });
+  return closed;
 }
 
 export { notifyPoPartners };

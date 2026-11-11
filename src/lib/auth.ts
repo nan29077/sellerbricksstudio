@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { Role } from "@prisma/client";
 import { prisma } from "./prisma";
+import { randomProfileIndex } from "./profile";
 import { clearLimit, hit, isLimited, MINUTE } from "./rate-limit";
 
 // 코드에 고정된 데모 계정은 개발 환경에서만 허용한다.
@@ -57,6 +58,7 @@ export const authOptions: NextAuthOptions = {
                 update: {},
                 create: {
                   email, role: "BRAND_ADMIN", passwordHash: await bcrypt.hash(credentials.password, 10),
+                  profileImageIndex: randomProfileIndex(),
                   profile: { create: { name: demoUser.name, companyName: "온유 브랜드" } },
                 },
               });
@@ -113,7 +115,8 @@ export async function getSessionUser(): Promise<SessionUser | null> {
       if ((u.sv ?? 0) !== row.sessionVersion) return null;
       return { id: u.id, email: u.email, name: u.name, role: row.role };
     } catch {
-      // DB에 연결할 수 없을 때는 세션 정보만으로 진행한다.
+      // DB에 연결할 수 없을 때: 개발 환경은 세션 정보만으로 진행, 배포 환경은 정지·역할 변경을 확인할 수 없으므로 막는다.
+      if (process.env.NODE_ENV === "production") return null;
     }
   }
   return { id: u.id, email: u.email, name: u.name, role: u.role };

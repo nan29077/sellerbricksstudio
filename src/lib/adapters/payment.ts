@@ -55,17 +55,36 @@ export class MockPaymentAdapter implements PaymentAdapter {
 // export class TossPaymentAdapter implements PaymentAdapter { ... }
 
 export function getPaymentAdapter(): PaymentAdapter {
-  const provider = process.env.PAYMENT_PROVIDER ?? "mock";
+  const provider = (process.env.PAYMENT_PROVIDER || "mock").trim().toLowerCase();
   switch (provider) {
     // case "toss": return new TossPaymentAdapter();
-    default: return new MockPaymentAdapter();
+    case "mock": return new MockPaymentAdapter();
+    default: return new UnavailablePaymentAdapter(provider);
   }
+}
+
+// 설정은 됐지만 아직 구현되지 않은 결제사: 모든 결제·취소를 실패로 돌려 "돈 없이 결제 완료"가 생기지 않게 한다.
+class UnavailablePaymentAdapter implements PaymentAdapter {
+  constructor(readonly provider: string) {}
+  private fail(): PaymentResult { return { success: false, status: "FAILED", failReason: `결제사(${this.provider}) 연동이 아직 준비되지 않았습니다.` }; }
+  async createPayment() { return this.fail(); }
+  async confirmPayment() { return this.fail(); }
+  async cancelPayment() { return this.fail(); }
+  async refundPayment() { return this.fail(); }
+  verifyWebhook() { return false; }
 }
 
 // 배포 환경에서 실제 PG 없이 Mock 결제가 돌면 누구나 "결제 완료" 주문을 만들 수 있다.
 // 실제 PG 를 연동하기 전까지는 배포 환경에서 결제를 막는다. (시연이 필요하면 ALLOW_MOCK_PAYMENT=true)
+// 실제로 구현된 결제 어댑터. (여기에 없는 값을 PAYMENT_PROVIDER 에 넣으면 결제를 막는다 — Mock 으로 조용히 돌지 않게)
+export const IMPLEMENTED_PROVIDERS = ["mock"] as const;
+
 export function paymentBlockedReason(): string | null {
-  const provider = process.env.PAYMENT_PROVIDER ?? "mock";
+  const provider = (process.env.PAYMENT_PROVIDER || "mock").trim().toLowerCase();
+  if (!(IMPLEMENTED_PROVIDERS as readonly string[]).includes(provider)) {
+    console.error(`[payment] PAYMENT_PROVIDER=${provider} 어댑터가 아직 구현되지 않아 결제를 막았습니다.`);
+    return "결제 시스템 연동 준비 중입니다. 잠시 후 다시 이용해 주세요.";
+  }
   if (provider === "mock" && process.env.NODE_ENV === "production" && process.env.ALLOW_MOCK_PAYMENT !== "true") {
     return "결제 시스템 연동 준비 중입니다. 잠시 후 다시 이용해 주세요.";
   }

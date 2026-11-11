@@ -5,7 +5,7 @@ import { Package } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Textarea, Select } from "@/components/ui/input";
-import { formatKRW, calcSellerCommission } from "@/lib/utils";
+import { formatKRW, sellerUnitProfit } from "@/lib/utils";
 import { PRODUCT_CATEGORIES } from "@/lib/product-categories";
 
 // 창고(스튜디오) 상품 등록 — 등록한 상품은 셀러의 '판매 상품 둘러보기'와 예약 화면에 노출된다.
@@ -13,7 +13,7 @@ export function ProductForm({ facilities, returnHref = "/facility/products" }: {
   const router = useRouter();
   const [f, setF] = useState({
     facilityId: facilities[0]?.id ?? "", name: "", sku: "", category: "식품", description: "",
-    thumbnailUrl: "", salePrice: "", consumerPrice: "", stock: "", shippingInfo: "",
+    thumbnailUrl: "", salePrice: "", consumerPrice: "", supplyPrice: "", stock: "", shippingInfo: "",
     commissionType: "PERCENT", commissionValue: "10",
   });
   const [error, setError] = useState(""); const [loading, setLoading] = useState(false);
@@ -22,22 +22,24 @@ export function ProductForm({ facilities, returnHref = "/facility/products" }: {
   const num = (v: string) => Number(v.replace(/[^\d.]/g, "") || 0);
 
   const sale = num(f.salePrice), consumer = num(f.consumerPrice);
-  const preview = sale ? calcSellerCommission(sale, f.commissionType as "PERCENT" | "FIXED", num(f.commissionValue)) : 0;
+  const supply = f.supplyPrice.trim() ? num(f.supplyPrice) : null;
+  const preview = sale ? sellerUnitProfit({ salePrice: sale, supplyPrice: supply, commissionType: f.commissionType, commissionValue: num(f.commissionValue) }) : 0;
   const off = consumer > sale && sale > 0 ? Math.round((1 - sale / consumer) * 100) : 0;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault(); setError("");
     if (f.commissionType === "PERCENT" && num(f.commissionValue) > 100) return setError("정률 수수료는 100%를 넘을 수 없습니다.");
-    if (f.commissionType === "FIXED" && num(f.commissionValue) > sale) return setError("정액 수수료가 판매가보다 큽니다.");
+    if (supply == null && f.commissionType === "FIXED" && num(f.commissionValue) > sale) return setError("정액 수수료가 판매가보다 큽니다.");
+    if (supply != null && supply > sale) return setError("셀러 공급가는 판매가보다 클 수 없습니다.");
     setLoading(true);
     const res = await fetch("/api/facility-products", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...f, salePrice: sale, consumerPrice: consumer || sale, stock: num(f.stock), commissionValue: num(f.commissionValue), isSellable: true }),
+      body: JSON.stringify({ ...f, salePrice: sale, consumerPrice: consumer || sale, supplyPrice: supply, stock: num(f.stock), commissionValue: num(f.commissionValue), isSellable: true }),
     });
     const json = await res.json(); setLoading(false);
     if (!json.ok) { setError(json.error ?? "등록 실패"); return; }
     if (again) {
-      setF({ ...f, name: "", sku: "", description: "", thumbnailUrl: "", salePrice: "", consumerPrice: "", stock: "" });
+      setF({ ...f, name: "", sku: "", description: "", thumbnailUrl: "", salePrice: "", consumerPrice: "", supplyPrice: "", stock: "" });
       setError(""); router.refresh(); return;
     }
     router.push(returnHref); router.refresh();
@@ -60,7 +62,12 @@ export function ProductForm({ facilities, returnHref = "/facility/products" }: {
             <div><Label>소비자가(원)</Label><Input aria-label="소비자가(원)" value={f.consumerPrice} onChange={set("consumerPrice")} inputMode="numeric" placeholder="미입력 시 판매가" /></div>
             <div><Label>재고</Label><Input aria-label="재고" value={f.stock} onChange={set("stock")} inputMode="numeric" required /></div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-3">
+            <Label>셀러 공급가(원) — 권장</Label>
+            <Input aria-label="셀러 공급가(원)" value={f.supplyPrice} onChange={set("supplyPrice")} inputMode="numeric" placeholder="예: 판매가 30,000원이면 22,000" />
+            <p className="mt-1 text-[11px] text-slate-600">판매되면 창고(스튜디오)는 <b>공급가</b>를 받고, 셀러는 <b>판매가 − 판매 수수료 − 공급가</b>를 받습니다. 셀러는 공급가 이상에서 판매가를 조정할 수 있습니다. 비워 두면 아래 셀러 수수료 방식으로 계산합니다.</p>
+          </div>
+          <div className={`grid grid-cols-2 gap-3 ${supply != null ? "opacity-50" : ""}`}>
             <div><Label>셀러 수수료 방식</Label><Select aria-label="셀러 수수료 방식" value={f.commissionType} onChange={set("commissionType")}><option value="PERCENT">정률 (%)</option><option value="FIXED">정액 (원)</option></Select></div>
             <div><Label>수수료 값</Label><Input aria-label="수수료 값" value={f.commissionValue} onChange={set("commissionValue")} inputMode="numeric" /></div>
           </div>
@@ -84,7 +91,8 @@ export function ProductForm({ facilities, returnHref = "/facility/products" }: {
             <p className="text-[11px] text-slate-500">{f.category}</p>
             <p className="line-clamp-2 text-sm font-bold text-navy">{f.name || "상품명"}</p>
             <p className="text-base font-extrabold text-brand-700">{formatKRW(sale)}</p>
-            <p className="text-[11px] font-semibold text-purple-700">개당 셀러 수익 {formatKRW(preview)}</p>
+            {supply != null && <p className="text-[11px] text-slate-600">공급가 {formatKRW(supply)}</p>}
+            <p className="text-[11px] font-semibold text-purple-700">개당 셀러 {supply != null ? "마진" : "수익"} {formatKRW(preview)}{supply != null && " (수수료 차감 전)"}</p>
             <p className="text-[11px] text-slate-500">재고 {num(f.stock).toLocaleString()}개</p>
           </div>
         </div>

@@ -65,7 +65,7 @@ export default async function SellerProducts({ searchParams }: { searchParams: S
     id: r.id, name: r.product.name, category: r.product.category, description: r.product.description,
     image: r.product.thumbnailUrl ?? r.product.images[0]?.url ?? null,
     salePrice: r.salePrice, consumerPrice: r.consumerPrice, stock: r.stock, shippingInfo: r.shippingInfo,
-    commissionType: r.commissionType, commissionValue: r.commissionValue, bookedCount: r._count.bookingProducts,
+    commissionType: r.commissionType, commissionValue: r.commissionValue, bookedCount: r._count.bookingProducts, supplyPrice: r.supplyPrice,
     facility: { id: r.facility.id, name: r.facility.name, type: r.facility.type, region: r.facility.region, rating: r.facility.rating, autoApprove: r.facility.autoApprove },
   }));
 

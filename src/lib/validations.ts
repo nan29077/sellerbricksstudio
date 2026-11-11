@@ -45,6 +45,8 @@ export const facilityProductSchema = z.object({
   thumbnailUrl: z.string().optional(),
   salePrice: z.coerce.number().int().min(0),
   consumerPrice: z.coerce.number().int().min(0),
+  // 셀러 공급가: 판매되면 창고(스튜디오)가 받는 금액. 비우면 셀러 수수료 방식
+  supplyPrice: z.preprocess((v) => (v === "" || v === null || v === undefined ? null : v), z.union([z.coerce.number().int().min(0, "공급가는 0원 이상입니다.").max(100_000_000), z.null()])).optional(),
   stock: z.coerce.number().int().min(0),
   shippingInfo: z.string().optional(),
   commissionType: z.enum(["PERCENT", "FIXED"]),

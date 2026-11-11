@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Textarea } from "@/components/ui/input";
-import { formatKRW } from "@/lib/utils";
+import { formatKRW, shippingFeeFor, shippingLabel } from "@/lib/utils";
 import { Blocks, CreditCard, Wallet, Landmark } from "lucide-react";
 
 type P = { id: string; displayNumber: number; name: string; price: number; stock: number };
@@ -15,7 +15,9 @@ const METHODS = [
   { v: "BANK_TRANSFER", label: "간편 계좌이체", icon: Landmark },
 ];
 
-export function CheckoutForm({ slug, title, products, needsAddress = false }: { slug: string; title: string; products: P[]; needsAddress?: boolean }) {
+type Shipping = { shippingFee: number; freeShippingOver: number | null };
+
+export function CheckoutForm({ slug, title, products, shipping = { shippingFee: 0, freeShippingOver: null } }: { slug: string; title: string; products: P[]; shipping?: Shipping }) {
   const router = useRouter();
   const [cart, setCart] = useState<{ liveSessionProductId: string; quantity: number; optionLabel?: string }[]>([]);
   const [form, setForm] = useState({ buyerName: "", buyerPhone: "", buyerAddress: "" });
@@ -29,12 +31,14 @@ export function CheckoutForm({ slug, title, products, needsAddress = false }: { 
   }, [slug]);
 
   const lines = cart.map((c) => ({ ...c, p: products.find((p) => p.id === c.liveSessionProductId)! })).filter((x) => x.p);
-  const total = lines.reduce((s, x) => s + x.p.price * x.quantity, 0);
+  const subtotal = lines.reduce((s, x) => s + x.p.price * x.quantity, 0);
+  const shippingFee = lines.length ? shippingFeeFor(shipping, subtotal) : 0;
+  const total = subtotal + shippingFee;
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm({ ...form, [k]: e.target.value });
 
   async function pay() {
     if (!form.buyerName || !form.buyerPhone) { setError("이름과 연락처를 입력하세요."); return; }
-    if (needsAddress && form.buyerAddress.trim().length < 5) { setError("배송지를 입력하세요."); return; }
+    if (form.buyerAddress.trim().length < 5) { setError("배송지를 입력하세요."); return; }
     if (cart.length === 0) { setError("장바구니가 비어 있습니다."); return; }
     if (!agree) { setError("개인정보 수집·이용 및 판매자 제공에 동의해 주세요."); return; }
     setLoading(true); setError("");
@@ -62,14 +66,18 @@ export function CheckoutForm({ slug, title, products, needsAddress = false }: { 
                 <span className="w-20 text-right font-semibold">{formatKRW(x.p.price * x.quantity)}</span>
               </div>
             ))}
-          <div className="mt-3 flex justify-between border-t pt-3"><span className="font-semibold">총 결제금액</span><span className="text-lg font-bold text-brand-600">{formatKRW(total)}</span></div>
+          <div className="mt-3 space-y-1 border-t pt-3 text-sm">
+            <div className="flex justify-between"><span className="text-muted-foreground">상품 금액</span><span>{formatKRW(subtotal)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">배송비 <span className="text-xs">({shippingLabel(shipping)})</span></span><span>{shippingFee ? formatKRW(shippingFee) : "무료"}</span></div>
+          </div>
+          <div className="mt-2 flex justify-between border-t pt-3"><span className="font-semibold">총 결제금액</span><span className="text-lg font-bold text-brand-600">{formatKRW(total)}</span></div>
         </CardContent></Card>
 
         <Card><CardContent className="pt-5 space-y-3">
           <p className="font-semibold text-navy">주문자 정보</p>
           <div><Label htmlFor="co-name">이름</Label><Input id="co-name" autoComplete="name" value={form.buyerName} onChange={set("buyerName")} /></div>
           <div><Label htmlFor="co-phone">연락처</Label><Input id="co-phone" autoComplete="tel" value={form.buyerPhone} onChange={set("buyerPhone")} placeholder="010-0000-0000" inputMode="tel" /></div>
-          <div><Label htmlFor="co-addr">{needsAddress ? "배송지 (필수)" : "배송지 (선택)"}</Label><Textarea id="co-addr" autoComplete="street-address" value={form.buyerAddress} onChange={set("buyerAddress")} /></div>
+          <div><Label htmlFor="co-addr">배송지 (필수)</Label><Textarea id="co-addr" autoComplete="street-address" value={form.buyerAddress} onChange={set("buyerAddress")} /></div>
         </CardContent></Card>
 
         <Card><CardContent className="pt-5">

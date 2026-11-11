@@ -20,6 +20,8 @@ export default async function AdminPolicy() {
   // 예시: 판매가 30,000원 · 공급가 18,000원 · 셀러 수수료 10%
   const ex1 = splitLine({ lineTotal: 30000, unitPrice: 30000, quantity: 1, supplyPrice: 18000, facilityCommission: { type: "PERCENT", value: 10 }, sellerBrand: false }, policy);
   const ex2 = splitLine({ lineTotal: 30000, unitPrice: 30000, quantity: 1, supplyPrice: 18000, facilityCommission: null, sellerBrand: true }, policy);
+  // 창고(스튜디오)가 브랜드 상품을 입고해 셀러 공급가 24,000원으로 내놓은 경우
+  const ex3 = splitLine({ lineTotal: 30000, unitPrice: 30000, quantity: 1, supplyPrice: 18000, facilitySupply: 24000, facilityCommission: { type: "PERCENT", value: 0 }, sellerBrand: false }, policy);
   const brandFee = Math.round(18000 * policy.brandFeeRate / 100);
   const rows: [string, string, string][] = [
     ["판매 수수료", `${policy.salesFeeRate}%`, "구매자 결제금액 기준. 플랫폼이 가져가고 나머지를 브랜드·창고(스튜디오)·셀러에게 나눕니다."],
@@ -35,6 +37,10 @@ export default async function AdminPolicy() {
     ["방송 종료 후 주문", policy.orderAfterEndHours ? `${policy.orderAfterEndHours}시간까지` : "종료 즉시 마감", "방송을 종료한 뒤에도 이 시간 동안은 구매자가 주문할 수 있습니다."],
     ["구매 확정 유예", policy.settleAfterDays ? `배송 완료 ${policy.settleAfterDays}일 후` : "배송 완료 즉시", "배송 완료 후 이 기간이 지나야 판매·브랜드 정산 대상이 됩니다. 반품을 받는 기간에 맞춰 보통 7일로 둡니다."],
     ["구매자 정보 보관", `배송 완료 ${policy.piiRetentionDays}일 후 가림`, "이 기간이 지나면 브랜드 발주서 화면과 CSV에서 구매자 연락처·주소를 가립니다."],
+    ["셀러별 승인 대기 예약", policy.maxPendingBookings ? `최대 ${policy.maxPendingBookings}건` : "제한 없음", "셀러 한 명이 동시에 둘 수 있는 승인 대기 예약 수. 시간대를 잡아만 두는 것을 막습니다."],
+    ["이메일 인증 필수", policy.requireEmailVerify ? "켬" : "끔", "켜면 이메일을 인증한 계정만 예약 · 방송 · 브랜드 거래를 할 수 있습니다. 메일 발송 설정(연동 설정)을 마친 뒤 켜세요."],
+    ["창고(스튜디오) 상품 정산", "공급가 방식 권장", "창고가 셀러 공급가를 정하면 창고는 공급가, 셀러는 판매가−판매 수수료−공급가를 받습니다. 공급가가 없으면 셀러 수수료 방식으로 계산합니다."],
+    ["배송비", "셀러가 방송마다 설정", "무료 · 유료 · 조건부 무료. 받은 배송비는 판매 수수료 없이 셀러 정산에 포함됩니다."],
   ];
 
   return (
@@ -54,7 +60,9 @@ export default async function AdminPolicy() {
             { name: "orderAfterEndHours", label: "방송 종료 후 주문 허용(시간, 0=즉시 마감)", type: "number", min: 0, half: true, required: true },
             { name: "settleAfterDays", label: "구매 확정 유예(배송 완료 후 일)", type: "number", min: 0, half: true, required: true },
             { name: "piiRetentionDays", label: "구매자 정보 가림(배송 완료 후 일)", type: "number", min: 7, half: true, required: true },
+            { name: "maxPendingBookings", label: "셀러별 승인 대기 예약 최대(건, 0=제한 없음)", type: "number", min: 0, half: true, required: true },
             { name: "autoCompleteBookings", label: "종료된 승인 예약 자동 이용 완료", type: "checkbox" },
+            { name: "requireEmailVerify", label: "이메일 인증한 계정만 예약·방송·브랜드 거래 허용", type: "checkbox" },
           ]} />} />
       <Card><CardContent className="divide-y p-0">
         {rows.map(([k, v, d]) => (
@@ -69,8 +77,8 @@ export default async function AdminPolicy() {
 
       <Card><CardContent className="space-y-3 p-4 sm:p-5">
         <p className="font-extrabold text-navy">정산 예시 — 판매가 30,000원 · 브랜드 공급가 18,000원</p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {[["창고(스튜디오) 상품 (셀러 수수료 10%)", ex1], ["셀러가 가져온 직배송 상품", ex2]].map(([label, r]) => {
+        <div className="grid gap-3 sm:grid-cols-3">
+          {[["창고(스튜디오) 상품 (셀러 수수료 10%)", ex1], ["셀러가 가져온 직배송 상품", ex2], ["창고(스튜디오) 상품 (셀러 공급가 24,000원)", ex3]].map(([label, r]) => {
             const x = r as typeof ex1;
             return (
               <div key={label as string} className="rounded-xl bg-slate-50 p-3 text-sm">

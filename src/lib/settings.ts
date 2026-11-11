@@ -26,7 +26,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   bannerEnabled: false,
   bannerText: "🎉 셀러브릭스 셀러 매니지먼트, 지금 무료로 시작하세요!",
   bannerLinkLabel: "자세히 보기",
-  bannerLinkUrl: "/register",
+  bannerLinkUrl: "/signup",
   liveEnabled: true,
   managerDisabled: false,
   facilityDisabled: false,
