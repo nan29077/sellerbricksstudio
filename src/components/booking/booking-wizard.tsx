@@ -75,16 +75,26 @@ export function BookingWizard({
   const [notice, setNotice] = useState("");
 
   // 장소가 바뀌면 상품을 불러오고, 다른 창고 상품 선택은 정리
-  const loadProducts = useCallback(async (fid: string) => {
+  const loadProducts = useCallback(async (fid: string, signal: AbortSignal) => {
     setProductsLoading(true);
+    setProducts([]);
     try {
-      const r = await fetch(`/api/facilities/${fid}/products`); const j = await r.json();
+      const r = await fetch(`/api/facilities/${fid}/products`, { signal }); const j = await r.json();
+      if (signal.aborted) return;
       const list: FacilityProduct[] = Array.isArray(j.data) ? j.data : [];
       setProducts(list);
-      setPicks((prev) => Object.fromEntries(Object.entries(prev).filter(([id]) => list.some((p) => p.id === id))));
-    } catch { setProducts([]); } finally { setProductsLoading(false); }
+      setPicks((prev) => Object.fromEntries(list.flatMap((product) => (
+        prev[product.id] && product.stock > 0 ? [[product.id, Math.min(prev[product.id], product.stock)]] : []
+      ))));
+    } catch { /* 빈 상품 목록 유지 */ }
+    finally { if (!signal.aborted) setProductsLoading(false); }
   }, []);
-  useEffect(() => { if (facilityId) loadProducts(facilityId); }, [facilityId, loadProducts]);
+  useEffect(() => {
+    if (!facilityId) return;
+    const controller = new AbortController();
+    void loadProducts(facilityId, controller.signal);
+    return () => controller.abort();
+  }, [facilityId, loadProducts]);
 
   // 반복 예약 미리 확인
   useEffect(() => {
@@ -112,8 +122,7 @@ export function BookingWizard({
   function setQty(id: string, q: number, stock: number) {
     setPicks((prev) => {
       const next = { ...prev };
-      const max = stock > 0 ? stock : 100000;
-      if (q <= 0) delete next[id]; else next[id] = Math.min(max, q);
+      if (q <= 0 || stock <= 0) delete next[id]; else next[id] = Math.min(stock, q);
       return next;
     });
   }

@@ -19,7 +19,7 @@ import {
 export const dynamic = "force-dynamic";
 
 const ROLE_NAME: Record<string, string> = {
-  SUPER_ADMIN: "최고관리자", MANAGER: "중간관리자", FACILITY_ADMIN: "창고(스튜디오) 관리자", SELLER: "셀러", BUYER: "구매자",
+  SUPER_ADMIN: "최고관리자", MANAGER: "중간관리자", FACILITY_ADMIN: "창고(스튜디오) 관리자", BRAND_ADMIN: "브랜드사", SELLER: "셀러", BUYER: "구매자",
 };
 
 async function load() {
@@ -145,7 +145,7 @@ export default async function AdminDashboard() {
   }
 
   const urgentCount = d.facPending + d.todo.stalePending + d.todo.supportWaiting + d.todo.failedPayments;
-  const roleTone = { SELLER: "brand", FACILITY_ADMIN: "sky", MANAGER: "violet", SUPER_ADMIN: "navy", BUYER: "slate" } as const;
+  const roleTone = { SELLER: "brand", FACILITY_ADMIN: "sky", BRAND_ADMIN: "green", MANAGER: "violet", SUPER_ADMIN: "navy", BUYER: "slate" } as const;
   const todayGmv = d.todayOrders.reduce((s, o) => s + o.totalAmount, 0);
 
   const feed = [
@@ -230,7 +230,7 @@ export default async function AdminDashboard() {
         <Panel eyebrow="MEMBER MIX" title="회원 구성" action={{ href: "/admin/users", label: "회원 관리" }}>
           <Donut
             centerValue={d.totalUsers.toLocaleString("ko-KR")} centerLabel="전체 회원"
-            segments={(["SELLER", "FACILITY_ADMIN", "MANAGER", "BUYER", "SUPER_ADMIN"] as const)
+            segments={(["SELLER", "FACILITY_ADMIN", "BRAND_ADMIN", "MANAGER", "BUYER", "SUPER_ADMIN"] as const)
               .map((r) => ({ label: ROLE_NAME[r], value: d!.roles.find((x) => x.role === r)?._count ?? 0, tone: roleTone[r] }))
               .filter((s) => s.value > 0)}
           />

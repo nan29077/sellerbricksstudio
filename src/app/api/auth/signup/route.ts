@@ -12,6 +12,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const data = signupSchema.parse(body);
     data.email = data.email.trim().toLowerCase();
+    if (data.email === "brand@sellerbricks.kr") return fail("다른 이메일을 사용해 주세요.", 409);
 
     // 최고관리자가 가입을 막아둔 역할은 서버에서도 거절한다.
     const { managerDisabled, facilityDisabled } = await getSettings();

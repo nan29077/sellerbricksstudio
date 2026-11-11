@@ -118,12 +118,36 @@ npm run dev
 | 최고관리자 (SUPER_ADMIN) | `admin@sellerbricks.kr` | `/admin/dashboard` |
 | 중간관리자 (MANAGER) | `manager@sellerbricks.kr` | `/manager/dashboard` |
 | 창고(스튜디오) 관리자 (FACILITY_ADMIN) | `facility@sellerbricks.kr` | `/facility/dashboard` |
+| 브랜드사 (BRAND_ADMIN) | `brand@sellerbricks.kr` | `/brand/dashboard` |
 | 셀러 (SELLER) | `seller@sellerbricks.kr` | `/seller/dashboard` |
 | 구매자 (BUYER) | 로그인 불필요 | 방송 링크로 접속 |
 
 로그인 화면에서 역할 버튼을 누르면 이메일/비밀번호가 자동 입력됩니다.
 
-> 보안: 위 계정은 `npm run db:seed`로 DB에 만들어진 계정입니다. DB가 없어도 들어갈 수 있도록 코드에 고정된 데모 로그인은 **개발 환경에서만** 동작하며, 배포 환경에서는 `DEMO_LOGIN=true`를 설정했을 때만 허용됩니다. 같은 이메일로 10분 안에 5번 틀리면 10분간 로그인이 막힙니다.
+> 보안: 기존 테스트 계정은 `npm run db:seed`로 생성합니다. 브랜드사 테스트 계정은 데모 로그인이 활성화된 환경에서 첫 로그인 시 DB에 생성됩니다. 개발 환경에서 데모를 끄려면 `DEMO_LOGIN=false`를 설정하세요. 배포 환경에서 코드에 고정된 데모 로그인을 사용하려면 `DEMO_LOGIN=true`가 필요합니다. 같은 이메일로 10분 안에 5번 틀리면 10분간 로그인이 막힙니다.
+
+### 브랜드샵과 창고(스튜디오)샵
+
+1. 기존 개발 DB에 새 역할과 테이블을 추가하려면 `npm run db:push`를 실행합니다.
+2. 브랜드사 테스트 로그인 후 샵을 만들고 공급 단가·재고, 샘플 단가·재고를 입력합니다. 샘플 단가를 비우면 미제공, 0원이면 무료입니다.
+3. 최고관리자의 **브랜드샵 관리**에서 공개를 승인합니다. 셀러와 창고 관리자는 **브랜드샵**에서 공급 신청 또는 샘플 주문을 진행하고 **내 브랜드 신청**에서 상태를 확인합니다.
+4. 유료 샘플은 브랜드사가 저장한 계좌이체 안내를 주문자에게 표시하고 실제 입금을 확인한 뒤 발송합니다. 공급 신청의 거래 조건과 결제는 당사자가 협의합니다.
+5. 창고 관리자는 **창고(스튜디오)샵 관리**에서 공간별 디자인을 편집하고 **상품 관리**에서 예약용 판매 상품을 등록합니다. 셀러는 창고샵에서 상품을 예약에 담거나 예약 화면에서 직접 선택합니다. 최고관리자는 **창고(스튜디오) 관리**에서 샵과 상품을 편집할 수 있습니다.
+
+샵 배너와 PC 여백은 `public/images/shop-artwork/`의 ImageGen 프리셋 또는 직접 입력한 이미지 주소를 사용합니다. 각 샵에서 배너와 여백을 개별적으로 선택할 수 있습니다.
+
+| 파일 | 생성 장면 |
+|------|-----------|
+| `brand-beauty.webp` | 창업자와 연구원이 스킨케어 제품을 진열하는 뷰티 랩 |
+| `brand-fashion.webp` | 패션 창업자들이 자연광 아래 옷과 소재를 정리하는 쇼룸 |
+| `brand-accessories.webp` | 디자이너들이 가방과 액세서리를 배치하는 공방 |
+| `brand-food.webp` | 식품 브랜드 운영자가 간식과 식재료를 준비하는 스튜디오 |
+| `brand-illustration.webp` | 파스텔 톤 라이프스타일 매장에서 선물을 포장하는 3D 일러스트 |
+| `facility-fulfillment.webp` | 작업자들이 박스를 포장하는 풀필먼트 창고 |
+| `facility-live.webp` | 제작진이 카메라와 조명을 운영하는 라이브 스튜디오 |
+| `facility-logistics.webp` | 작업자들이 선반 앞에서 재고를 점검하는 물류 센터 |
+| `facility-daylight.webp` | 제작진이 자연광 아래 상품 촬영을 준비하는 스튜디오 |
+| `facility-illustration.webp` | 상품을 포장하고 촬영하는 창고 스튜디오의 3D 일러스트 |
 
 ---
 

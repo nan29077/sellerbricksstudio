@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
-import { Loader2, ShieldCheck, Store, Warehouse } from "lucide-react";
+import { Loader2, ShieldCheck, ShoppingBag, Store, Warehouse } from "lucide-react";
 
 const DEMO_ACCOUNTS = [
   { label: "최고관리자", role: "SUPER_ADMIN", email: "admin@sellerbricks.kr", icon: ShieldCheck, color: "text-red-600 bg-red-50 border-red-200" },
   { label: "창고(스튜디오) 관리자", role: "FACILITY_ADMIN", email: "facility@sellerbricks.kr", icon: Warehouse, color: "text-emerald-600 bg-emerald-50 border-emerald-200" },
   { label: "셀러", role: "SELLER", email: "seller@sellerbricks.kr", icon: Store, color: "text-brand-600 bg-brand-50 border-brand-200" },
+  { label: "브랜드사", role: "BRAND_ADMIN", email: "brand@sellerbricks.kr", icon: ShoppingBag, color: "text-violet-600 bg-violet-50 border-violet-200" },
 ];
 
 export default function LoginPage() {
@@ -20,7 +21,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState<string | null>(null);
-  const [flags, setFlags] = useState<{ facilityDisabled?: boolean }>({});
+  const [flags, setFlags] = useState<{ facilityDisabled?: boolean; brandDemoEnabled?: boolean }>({});
 
   useEffect(() => {
     fetch("/api/site-flags")
@@ -31,6 +32,7 @@ export default function LoginPage() {
 
   const visibleAccounts = DEMO_ACCOUNTS.filter((a) => {
     if (a.role === "FACILITY_ADMIN" && flags.facilityDisabled) return false;
+    if (a.role === "BRAND_ADMIN" && !flags.brandDemoEnabled) return false;
     return true;
   });
 

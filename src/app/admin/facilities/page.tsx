@@ -119,6 +119,8 @@ export default async function AdminFacilities({ searchParams }: { searchParams: 
                     <ResourceForm url={`/api/admin/facilities/${f.id}`} method="PATCH" title="수수료율 설정" triggerSize="sm" triggerVariant="ghost"
                       initial={{ feeRate: fee.get(f.id) ?? "" }} fields={[{ name: "feeRate", label: "플랫폼 수수료율(%)", type: "number", min: 0, max: 100, help: `비우고 저장하면 기본값 ${defaultRate}%를 사용합니다.` }]} />
                     <Link href={`/admin/bookings?facility=${f.id}`} className="inline-flex h-9 items-center rounded-lg px-3 text-sm font-semibold text-navy hover:bg-brand-50">예약 보기</Link>
+                    <Link href={`/admin/facilities/${f.id}/shop`} className="inline-flex h-9 items-center rounded-lg px-3 text-sm font-semibold text-navy hover:bg-brand-50">샵 꾸미기</Link>
+                    <Link href={`/admin/facility-products?facility=${f.id}`} className="inline-flex h-9 items-center rounded-lg px-3 text-sm font-semibold text-navy hover:bg-brand-50">샵 상품 관리</Link>
                   </div>
                 </CardContent>
               </Card>

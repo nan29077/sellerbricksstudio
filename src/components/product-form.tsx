@@ -9,7 +9,7 @@ import { formatKRW, calcSellerCommission } from "@/lib/utils";
 import { PRODUCT_CATEGORIES } from "@/lib/product-categories";
 
 // 창고(스튜디오) 상품 등록 — 등록한 상품은 셀러의 '판매 상품 둘러보기'와 예약 화면에 노출된다.
-export function ProductForm({ facilities }: { facilities: { id: string; name: string }[] }) {
+export function ProductForm({ facilities, returnHref = "/facility/products" }: { facilities: { id: string; name: string }[]; returnHref?: string }) {
   const router = useRouter();
   const [f, setF] = useState({
     facilityId: facilities[0]?.id ?? "", name: "", sku: "", category: "식품", description: "",
@@ -40,7 +40,7 @@ export function ProductForm({ facilities }: { facilities: { id: string; name: st
       setF({ ...f, name: "", sku: "", description: "", thumbnailUrl: "", salePrice: "", consumerPrice: "", stock: "" });
       setError(""); router.refresh(); return;
     }
-    router.push("/facility/products"); router.refresh();
+    router.push(returnHref); router.refresh();
   }
 
   return (

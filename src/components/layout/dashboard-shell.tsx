@@ -10,7 +10,7 @@ import {
   Warehouse, CalendarClock, Users, Building2, SquarePlus,
   Settings, ScrollText, Sliders, Image as ImageIcon,
   ChevronRight, Home, Globe, TrendingUp, Megaphone,
-  Share2, BarChart3, Ticket, LayoutTemplate, Star, Wallet, Coins, Package,
+  Share2, BarChart3, Ticket, LayoutTemplate, Star, Wallet, Coins, Package, ShoppingBag, ClipboardList,
 } from "lucide-react";
 import { NotificationBell } from "./notification-bell";
 import { cn } from "@/lib/utils";
@@ -26,6 +26,7 @@ const ROLE_NAV: Record<string, NavSection[]> = {
     { title: "회원 · 창고(스튜디오)", items: [
       { href: "/admin/users",      label: "회원 관리", icon: Users },
       { href: "/admin/facilities", label: "창고(스튜디오) 관리", icon: Building2 },
+      { href: "/admin/brands",     label: "브랜드샵 관리", icon: ShoppingBag },
       { href: "/admin/managers",   label: "매니저 관리", icon: Users },
       { href: "/admin/reviews",    label: "리뷰 관리", icon: Star },
     ]},
@@ -55,6 +56,10 @@ const ROLE_NAV: Record<string, NavSection[]> = {
       { href: "/seller/dashboard", label: "대시보드", icon: LayoutDashboard },
       { href: "/seller/bookings",  label: "예약 관리", icon: CalendarDays, requiresFacility: true },
     ]},
+    { title: "브랜드", items: [
+      { href: "/brands", label: "브랜드샵 둘러보기", icon: ShoppingBag },
+      { href: "/brand-requests", label: "내 브랜드 신청", icon: ClipboardList },
+    ]},
     { title: "창고·스튜디오", items: [
       { href: "/seller/products",           label: "판매 상품 둘러보기", icon: Package, requiresFacility: true },
       { href: "/facilities",                label: "창고(스튜디오) 검색", icon: Warehouse },
@@ -79,8 +84,12 @@ const ROLE_NAV: Record<string, NavSection[]> = {
       { href: "/facility/dashboard", label: "대시보드",  icon: LayoutDashboard },
       { href: "/facility/profile",   label: "창고(스튜디오) 정보 · 편집", icon: Warehouse },
       { href: "/facility/register",  label: "창고(스튜디오) 등록", icon: SquarePlus },
-      { href: "/facility/pages",     label: "창고(스튜디오) 페이지 꾸미기", icon: LayoutTemplate },
+      { href: "/facility/pages",     label: "창고(스튜디오)샵 관리", icon: LayoutTemplate },
       { href: "/facility/products",  label: "상품 관리", icon: Package },
+    ]},
+    { title: "브랜드", items: [
+      { href: "/brands", label: "브랜드샵 둘러보기", icon: ShoppingBag },
+      { href: "/brand-requests", label: "내 브랜드 신청", icon: ClipboardList },
     ]},
     { title: "예약 관리", items: [
       { href: "/facility/bookings",   label: "예약 현황", icon: CalendarDays },
@@ -92,6 +101,14 @@ const ROLE_NAV: Record<string, NavSection[]> = {
       { href: "/facility/settlements", label: "정산 내역", icon: TrendingUp },
       { href: "/facility/settings",    label: "설정",      icon: Settings },
     ]},
+  ],
+  BRAND_ADMIN: [
+    { title: "브랜드샵", items: [
+      { href: "/brand/dashboard", label: "샵 · 상품 관리", icon: LayoutTemplate },
+      { href: "/brand/requests", label: "공급 · 샘플 신청", icon: ClipboardList },
+      { href: "/brands", label: "브랜드샵 둘러보기", icon: ShoppingBag },
+    ]},
+    { title: "계정", items: [{ href: "/brand/settings", label: "설정", icon: Settings }] },
   ],
 };
 
@@ -114,6 +131,7 @@ const ROLE_BADGE_COLOR: Record<string, string> = {
   SUPER_ADMIN:    "bg-red-100 text-red-700",
   SELLER:         "bg-brand-100 text-brand-700",
   FACILITY_ADMIN: "bg-blue-100 text-blue-700",
+  BRAND_ADMIN:    "bg-violet-100 text-violet-700",
   MANAGER:        "bg-purple-100 text-purple-700",
 };
 

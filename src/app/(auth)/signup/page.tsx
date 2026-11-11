@@ -2,10 +2,11 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Store, Warehouse } from "lucide-react";
+import { ShoppingBag, Store, Warehouse } from "lucide-react";
 
 const roles = [
   { href: "/signup/seller", role: "SELLER", icon: Store, title: "셀러로 가입", desc: "창고/스튜디오를 예약하고 라이브 방송으로 판매하세요." },
+  { href: "/signup/brand", role: "BRAND_ADMIN", icon: ShoppingBag, title: "브랜드사로 가입", desc: "브랜드샵을 만들고 판매용 상품과 샘플을 셀러와 창고 운영자에게 소개하세요." },
   { href: "/signup/facility", role: "FACILITY_ADMIN", icon: Warehouse, title: "창고(스튜디오) 관리자로 가입", desc: "창고, 스튜디오, 농장, 공장, 농가 등 라이브 현장을 보유하고 운영하는 분들을 위한 계정입니다." },
 ];
 

@@ -46,7 +46,7 @@ export async function createBookings(user: SessionUser, input: CreateBookingInpu
     const fp = fps.find((x) => x.id === id);
     if (!fp || fp.facilityId !== facility.id) throw new Error("이 창고(스튜디오)의 상품만 선택할 수 있습니다.");
     if (!fp.isSellable) throw new Error(`판매 중단된 상품입니다: ${fp.product.name}`);
-    if (fp.stock > 0 && wanted.get(id)! > fp.stock) throw new Error(`재고보다 많이 선택했습니다: ${fp.product.name} (재고 ${fp.stock}개)`);
+    if (wanted.get(id)! > fp.stock) throw new Error(`재고보다 많이 선택했습니다: ${fp.product.name} (재고 ${fp.stock}개)`);
   }
   const productRows = fps.map((fp) => ({
     facilityProductId: fp.id, quantity: wanted.get(fp.id)!, nameSnapshot: fp.product.name, priceSnapshot: fp.salePrice,

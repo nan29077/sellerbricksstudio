@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { fail, handleError, ok } from "@/lib/http";
+import { isShopImageUrl } from "@/lib/shop-artwork";
 import {
   FACILITY_PAGE_THEMES,
   facilityPageSettingKey,
@@ -22,6 +23,7 @@ const pageSchema = z.object({
     (value) => value.startsWith("/images/profiles/") || value.startsWith("https://") || value.startsWith("http://"),
     "프로필 이미지는 기본 이미지 경로 또는 http(s) URL이어야 합니다.",
   ),
+  backgroundUrl: z.string().trim().max(500).refine(isShopImageUrl, "여백 이미지는 이미지 경로 또는 HTTPS 주소를 사용해 주세요.").optional(),
   theme: z.enum(Object.keys(FACILITY_PAGE_THEMES) as ["gold", "blue", "green", "coral"]),
   ctaLabel: z.string().trim().min(2).max(30),
   showEquipment: z.boolean(),
@@ -29,7 +31,7 @@ const pageSchema = z.object({
   showProducts: z.boolean(),
 });
 
-async function ownedFacility(id: string, ownerId: string) {
+async function editableFacility(id: string, ownerId?: string) {
   return prisma.facility.findFirst({
     where: { id, ownerId },
     select: { id: true, name: true, type: true, description: true },
@@ -38,8 +40,8 @@ async function ownedFacility(id: string, ownerId: string) {
 
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const user = await requireRole(["FACILITY_ADMIN"]);
-    const facility = await ownedFacility(params.id, user.id);
+    const user = await requireRole(["FACILITY_ADMIN", "SUPER_ADMIN"]);
+    const facility = await editableFacility(params.id, user.role === "SUPER_ADMIN" ? undefined : user.id);
     if (!facility) return fail("내 창고(스튜디오)만 편집할 수 있습니다.", 403);
     const setting = await prisma.setting.findUnique({ where: { key: facilityPageSettingKey(params.id) } });
     return ok(parseFacilityPageConfig(facility, setting?.value));
@@ -50,10 +52,12 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const user = await requireRole(["FACILITY_ADMIN"]);
-    const facility = await ownedFacility(params.id, user.id);
+    const user = await requireRole(["FACILITY_ADMIN", "SUPER_ADMIN"]);
+    const facility = await editableFacility(params.id, user.role === "SUPER_ADMIN" ? undefined : user.id);
     if (!facility) return fail("내 창고(스튜디오)만 편집할 수 있습니다.", 403);
-    const data = pageSchema.parse(await req.json());
+    const input = pageSchema.parse(await req.json());
+    const setting = input.backgroundUrl ? null : await prisma.setting.findUnique({ where: { key: facilityPageSettingKey(params.id) } });
+    const data = { ...input, backgroundUrl: input.backgroundUrl ?? parseFacilityPageConfig(facility, setting?.value).backgroundUrl };
     await prisma.setting.upsert({
       where: { key: facilityPageSettingKey(params.id) },
       create: { key: facilityPageSettingKey(params.id), value: JSON.stringify(data) },
@@ -64,7 +68,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       action: "FACILITY_PAGE_UPDATE",
       entity: "Facility",
       entityId: params.id,
-      meta: { theme: data.theme, bannerUrl: data.bannerUrl },
+      meta: { theme: data.theme, bannerUrl: data.bannerUrl, backgroundUrl: data.backgroundUrl },
     });
     return ok(data);
   } catch (error) {

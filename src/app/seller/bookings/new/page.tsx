@@ -39,7 +39,7 @@ export default async function NewBookingPage({ searchParams }: { searchParams: S
 
   // ?products=fpId:수량,fpId:수량 (상품 둘러보기에서 넘어온 선택)
   const products: Record<string, number> = {};
-  for (const part of (searchParams.products ?? "").split(",").slice(0, 50)) {
+  for (const part of (typeof searchParams.products === "string" ? searchParams.products : "").split(",").slice(0, 50)) {
     const [id, q] = part.split(":");
     if (id && /^[\w-]{5,40}$/.test(id)) products[id] = Math.max(1, Math.min(100000, Number(q) || 1));
   }

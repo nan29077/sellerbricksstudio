@@ -20,13 +20,13 @@ import { Users, UserPlus, UserX, Activity } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 const BASE = "/admin/users";
-const ROLE_TONE: Record<string, "navy" | "default" | "green" | "blue" | "gray"> = { SUPER_ADMIN: "navy", SELLER: "default", FACILITY_ADMIN: "green", MANAGER: "blue", BUYER: "gray" };
+const ROLE_TONE: Record<string, "navy" | "default" | "green" | "blue" | "gray" | "purple"> = { SUPER_ADMIN: "navy", SELLER: "default", FACILITY_ADMIN: "green", BRAND_ADMIN: "purple", MANAGER: "blue", BUYER: "gray" };
 
 const editFields: Field[] = [
   { name: "name", label: "이름", required: true, half: true },
   { name: "phone", label: "연락처", half: true },
   { name: "companyName", label: "회사명", half: true },
-  { name: "role", label: "역할", type: "select", half: true, options: [{ value: "SELLER", label: "셀러" }, { value: "FACILITY_ADMIN", label: "창고(스튜디오) 관리자" }, { value: "MANAGER", label: "중간관리자" }], help: "역할 변경은 다음 로그인부터 적용됩니다." },
+  { name: "role", label: "역할", type: "select", half: true, options: (["SELLER", "FACILITY_ADMIN", "BRAND_ADMIN", "MANAGER"] as const).map((value) => ({ value, label: ROLE_LABELS[value] })), help: "역할 변경은 다음 로그인부터 적용됩니다." },
   { name: "adminMemo", label: "관리자 메모 (회원 비공개)", type: "textarea" },
 ];
 
@@ -65,7 +65,7 @@ export default async function AdminUsers({ searchParams }: { searchParams: SP })
     <div className="space-y-5">
       <PageHeader title="회원 관리" description="회원 검색, 역할 변경, 계정 정지, 관리자 메모를 관리합니다." action={<RegisterManagerButton />} />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi label="전체 회원" value={`${all}명`} sub={`셀러 ${rc.SELLER ?? 0} · 창고 ${rc.FACILITY_ADMIN ?? 0} · 매니저 ${rc.MANAGER ?? 0}`} icon={Users} tone="navy" />
+        <Kpi label="전체 회원" value={`${all}명`} sub={`셀러 ${rc.SELLER ?? 0} · 창고 ${rc.FACILITY_ADMIN ?? 0} · 브랜드사 ${rc.BRAND_ADMIN ?? 0} · 매니저 ${rc.MANAGER ?? 0}`} icon={Users} tone="navy" />
         <Kpi label="최근 7일 가입" value={`${newThisWeek}명`} icon={UserPlus} tone="green" />
         <Kpi label="30일 내 로그인" value={`${activeRecent}명`} sub={all ? `활성률 ${Math.round((activeRecent / all) * 100)}%` : undefined} icon={Activity} tone="blue" />
         <Kpi label="정지 계정" value={`${inactive}명`} icon={UserX} tone="red" />
@@ -73,7 +73,7 @@ export default async function AdminUsers({ searchParams }: { searchParams: SP })
 
       <StatusTabs base={BASE} params={searchParams} paramKey="role" tabs={[
         { value: "", label: "전체", count: all },
-        ...(["SELLER", "FACILITY_ADMIN", "MANAGER", "SUPER_ADMIN"] as const).map((r) => ({ value: r, label: ROLE_LABELS[r], count: rc[r] ?? 0 })),
+        ...(["SELLER", "FACILITY_ADMIN", "BRAND_ADMIN", "MANAGER", "SUPER_ADMIN"] as const).map((r) => ({ value: r, label: ROLE_LABELS[r], count: rc[r] ?? 0 })),
       ]} />
       <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
         <FilterBar className="flex-1" fields={[

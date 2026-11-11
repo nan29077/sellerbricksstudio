@@ -6,7 +6,7 @@ export const signupSchema = z.object({
   name: z.string().trim().min(1, "이름을 입력하세요.").max(40),
   phone: z.string().optional(),
   companyName: z.string().optional(),
-  role: z.enum(["SELLER", "FACILITY_ADMIN", "MANAGER"]),
+  role: z.enum(["SELLER", "FACILITY_ADMIN", "MANAGER", "BRAND_ADMIN"]),
 });
 export type SignupInput = z.infer<typeof signupSchema>;
 

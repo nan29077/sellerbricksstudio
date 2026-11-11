@@ -5,11 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
-import { FACILITY_BANNERS, FACILITY_PAGE_THEMES, FACILITY_PROFILE_IMAGES, type FacilityPageConfig } from "@/lib/facility-page";
+import { FACILITY_PAGE_THEMES, FACILITY_PROFILE_IMAGES, type FacilityPageConfig } from "@/lib/facility-page";
+import { FACILITY_ARTWORK } from "@/lib/shop-artwork";
+import { ShopArtworkPicker } from "@/components/shop/shop-artwork-picker";
+import { ShopImage } from "@/components/shop/shop-image";
 import { cn } from "@/lib/utils";
 import {
-  Check, ExternalLink, Eye, Image as ImageIcon, LayoutTemplate,
-  Loader2, RotateCcw, Save, Sparkles, UserRound,
+  Check, ExternalLink, Eye, LayoutTemplate,
+  Loader2, RotateCcw, Save, UserRound,
 } from "lucide-react";
 
 type FacilitySummary = {
@@ -133,48 +136,9 @@ export function FacilityPageEditor({
           </div>
         </section>
 
-        <section className="rounded-2xl border border-border bg-white p-5 shadow-sm">
-          <div className="mb-5 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-700">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="font-extrabold text-navy">생성형 AI 기본 배너</h2>
-              <p className="text-xs text-muted-foreground">처음에는 5종 중 하나가 자동 배정되며, 선택하면 그 이미지로 고정됩니다.</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {FACILITY_BANNERS.map((banner) => {
-              const selected = form.bannerUrl === banner.url;
-              return (
-                <button
-                  type="button"
-                  key={banner.url}
-                  onClick={() => set("bannerUrl", banner.url)}
-                  className={cn(
-                    "group relative overflow-hidden rounded-xl border-2 bg-muted text-left transition",
-                    selected ? "border-brand-500 ring-2 ring-brand-100" : "border-transparent hover:border-brand-200",
-                  )}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={banner.url} alt={banner.label} className="aspect-[16/7] w-full object-cover" />
-                  <span className="block truncate bg-white px-2.5 py-2 text-xs font-semibold text-navy">{banner.label}</span>
-                  {selected && (
-                    <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white shadow">
-                      <Check className="h-3.5 w-3.5" />
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          <div className="mt-4">
-            <Label htmlFor="bannerUrl">직접 배너 URL 입력</Label>
-            <div className="relative">
-              <ImageIcon className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
-              <Input id="bannerUrl" className="pl-9" value={form.bannerUrl} onChange={(e) => set("bannerUrl", e.target.value)} placeholder="https://..." />
-            </div>
-          </div>
+        <section className="space-y-6 rounded-2xl border border-border bg-white p-5 shadow-sm">
+          <ShopArtworkPicker label="샵 배너 이미지" presets={FACILITY_ARTWORK} value={form.bannerUrl} onChange={(url) => set("bannerUrl", url)} />
+          <ShopArtworkPicker label="PC 여백 이미지" presets={FACILITY_ARTWORK} value={form.backgroundUrl} onChange={(url) => set("backgroundUrl", url)} />
         </section>
 
         <section className="rounded-2xl border border-border bg-white p-5 shadow-sm">
@@ -242,8 +206,7 @@ export function FacilityPageEditor({
             <div className="flex gap-1.5"><span className="h-7 w-7 rounded-lg border-2 border-navy bg-[#FFD552]" /><span className="h-7 w-7 rounded-lg border-2 border-navy bg-[#FFD552]" /></div>
           </div>
           <div className="relative aspect-[16/8] overflow-hidden bg-navy">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={form.bannerUrl} alt="배너 미리보기" className="h-full w-full object-cover" />
+            <ShopImage src={form.bannerUrl} fallback={initialConfig.bannerUrl} alt="배너 미리보기" className="h-full w-full object-cover" />
           </div>
           <div className="relative -mt-10 px-3 pb-4">
             <div className="relative rounded-[22px] border border-white bg-white p-4 pt-10 shadow-xl">

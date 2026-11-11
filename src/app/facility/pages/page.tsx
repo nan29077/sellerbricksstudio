@@ -29,13 +29,14 @@ export default async function FacilityPages() {
 
   return (
     <div className="space-y-6 pb-24 md:pb-0">
-      <PageHeader title="창고(스튜디오) 페이지 꾸미기" description="창고(스튜디오)마다 독립된 소개 페이지를 만들고 배너와 노출 내용을 관리하세요." />
+      <PageHeader title="창고(스튜디오)샵 관리" description="공간별 샵의 배너, PC 여백, 소개와 상품 노출을 설정합니다."
+        action={<Link href="/facility/register" className={buttonVariants({ variant: "outline" })}>새 공간 등록</Link>} />
 
       {pages.length === 0 ? (
         <EmptyState
           icon={<LayoutTemplate className="h-10 w-10" />}
           title="꾸밀 수 있는 창고(스튜디오)가 없습니다"
-          description="창고(스튜디오)가 등록되고 승인되면 전용 페이지를 꾸밀 수 있습니다."
+          description="창고(스튜디오)를 등록하면 샵을 꾸밀 수 있습니다. 최고관리자가 공간을 승인하면 샵이 공개됩니다."
         />
       ) : (
         <div className="grid gap-5 lg:grid-cols-2">

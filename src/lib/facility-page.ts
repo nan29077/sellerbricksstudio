@@ -1,13 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { PROFILE_ANIMALS, getProfileImage, legacyProfileImageIndex, stableProfileIndex } from "@/lib/profile";
-
-export const FACILITY_BANNERS = [
-  { url: "/images/facility-banners/warehouse-premium.webp", label: "프리미엄 물류 창고" },
-  { url: "/images/facility-banners/live-studio.webp", label: "라이브 커머스 스튜디오" },
-  { url: "/images/facility-banners/creator-studio.webp", label: "크리에이터 스튜디오" },
-  { url: "/images/facility-banners/smart-fulfillment.webp", label: "스마트 풀필먼트" },
-  { url: "/images/facility-banners/beauty-live.webp", label: "뷰티·패션 라이브" },
-] as const;
+import { FACILITY_ARTWORK, isShopImageUrl } from "@/lib/shop-artwork";
 
 export const FACILITY_PROFILE_IMAGES = PROFILE_ANIMALS.map((animal, index) => ({
   url: getProfileImage(index + 1),
@@ -28,6 +21,7 @@ export type FacilityPageConfig = {
   tagline: string;
   intro: string;
   bannerUrl: string;
+  backgroundUrl: string;
   profileImageUrl: string;
   theme: FacilityPageTheme;
   ctaLabel: string;
@@ -37,12 +31,6 @@ export type FacilityPageConfig = {
 };
 
 export const facilityPageSettingKey = (facilityId: string) => `facility-page:${facilityId}`;
-
-export function defaultBannerFor(facilityId: string) {
-  let hash = 0;
-  for (let i = 0; i < facilityId.length; i += 1) hash = (hash * 31 + facilityId.charCodeAt(i)) >>> 0;
-  return FACILITY_BANNERS[hash % FACILITY_BANNERS.length].url;
-}
 
 export function defaultProfileFor(facilityId: string) {
   return getProfileImage(stableProfileIndex(`facility:${facilityId}`));
@@ -63,7 +51,8 @@ export function defaultFacilityPageConfig(facility: {
     intro: facility.description ?? (isWarehouse
       ? "안전한 보관과 빠른 출고를 위한 창고(스튜디오)와 운영 노하우를 제공합니다."
       : "전문 장비와 쾌적한 환경을 갖춘 라이브 커머스 스튜디오입니다."),
-    bannerUrl: defaultBannerFor(facility.id),
+    bannerUrl: FACILITY_ARTWORK[isWarehouse ? 0 : 1].url,
+    backgroundUrl: FACILITY_ARTWORK[isWarehouse ? 2 : 3].url,
     profileImageUrl: defaultProfileFor(facility.id),
     theme: "gold",
     ctaLabel: "이 창고(스튜디오) 예약하기",
@@ -88,6 +77,7 @@ export function parseFacilityPageConfig(
       ...parsed,
       theme: parsed.theme && parsed.theme in FACILITY_PAGE_THEMES ? parsed.theme : defaults.theme,
       bannerUrl: parsed.bannerUrl?.trim() || defaults.bannerUrl,
+      backgroundUrl: parsed.backgroundUrl && isShopImageUrl(parsed.backgroundUrl) ? parsed.backgroundUrl : defaults.backgroundUrl,
       profileImageUrl: legacyIndex ? getProfileImage(legacyIndex) : profileUrl || defaults.profileImageUrl,
     };
   } catch {

@@ -5,6 +5,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   SUPER_ADMIN: "최고관리자",
   MANAGER: "중간관리자",
   FACILITY_ADMIN: "창고(스튜디오) 관리자",
+  BRAND_ADMIN: "브랜드사",
   SELLER: "셀러",
   BUYER: "구매자",
 };
@@ -13,6 +14,7 @@ export const ROLE_HOME: Record<Role, string> = {
   SUPER_ADMIN: "/admin/dashboard",
   MANAGER: "/manager/dashboard",
   FACILITY_ADMIN: "/facility/dashboard",
+  BRAND_ADMIN: "/brand/dashboard",
   SELLER: "/seller/dashboard",
   BUYER: "/",
 };

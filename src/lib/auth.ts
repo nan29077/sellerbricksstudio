@@ -45,10 +45,13 @@ export const authOptions: NextAuthOptions = {
           "manager@sellerbricks.kr":  { id: "demo-manager",  name: "중간관리자 (영업담당)", role: "MANAGER",             pw: "password1234" },
           "facility@sellerbricks.kr": { id: "demo-facility", name: "창고(스튜디오) 관리자", role: "FACILITY_ADMIN", pw: "password1234" },
           "seller@sellerbricks.kr":   { id: "demo-seller",   name: "셀러",                 role: "SELLER",              pw: "password1234" },
+          "brand@sellerbricks.kr":    { id: "demo-brand",    name: "브랜드사",             role: "BRAND_ADMIN",        pw: "password1234" },
         };
         const demo = demoLoginEnabled() ? DEMO_USERS[email] : undefined;
         const demoUser = demo && credentials.password === demo.pw
           ? { id: demo.id, email, role: demo.role, name: demo.name } : null;
+
+        if (email === "brand@sellerbricks.kr" && !demoLoginEnabled()) return null;
 
         // DB 계정을 우선 사용한다. (데모 고정 계정은 DB 계정이 없거나 DB에 연결할 수 없을 때만 사용)
         // 데모 id로 로그인하면 DB에 저장되는 예약·문의 등이 본인 데이터로 연결되지 않기 때문.
@@ -56,7 +59,25 @@ export const authOptions: NextAuthOptions = {
           const user = await prisma.user.findFirst({
             where: { email: { equals: email, mode: "insensitive" } }, include: { profile: true },
           });
-          if (!user) { if (demoUser) return demoUser; recordLoginFail(email); return null; }
+          if (!user) {
+            if (demoUser?.role === "BRAND_ADMIN") {
+              const account = await prisma.user.upsert({
+                where: { email },
+                update: {},
+                create: {
+                  email, role: "BRAND_ADMIN", passwordHash: await bcrypt.hash(credentials.password, 10),
+                  profile: { create: { name: demoUser.name, companyName: "온유 브랜드" } },
+                },
+              });
+              if (account.isActive && account.role === "BRAND_ADMIN" && await bcrypt.compare(credentials.password, account.passwordHash)) {
+                return { id: account.id, email, role: account.role, name: demoUser.name };
+              }
+              return null;
+            }
+            if (demoUser) return demoUser;
+            recordLoginFail(email);
+            return null;
+          }
           if (!user.isActive) { recordLoginFail(email); return null; }
           const ok = await bcrypt.compare(credentials.password, user.passwordHash);
           if (!ok) { recordLoginFail(email); return null; }

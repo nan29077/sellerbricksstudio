@@ -57,21 +57,30 @@ export default async function FacilityDetail({ params }: { params: { id: string 
     /* DB 없을 때 dummy 사용 */
   }
 
-  if (!f) {
+  if (!f && /^d[1-9]$/.test(params.id)) {
     f = { ...DUMMY_FACILITY, id: params.id };
-  } else if (f.status !== "APPROVED") {
+  } else if (!f || (f.status !== "APPROVED" && user?.role !== "SUPER_ADMIN" && f.ownerId !== user?.id)) {
     notFound();
   }
 
   const pageConfig = await getFacilityPageConfig(f);
-  const [reviews, fav] = await Promise.all([
+  const [reviews, fav, products] = await Promise.all([
     prisma.facilityReview.findMany({
       where: { facilityId: f.id, isHidden: false }, orderBy: { createdAt: "desc" }, take: 20,
       select: { id: true, rating: true, content: true, reply: true, createdAt: true, seller: { select: { profile: { select: { name: true } } } } },
     }).catch(() => []),
     user?.role === "SELLER" ? prisma.facilityFavorite.findUnique({ where: { userId_facilityId: { userId: user.id, facilityId: f.id } } }).catch(() => null) : Promise.resolve(null),
+    pageConfig.showProducts ? prisma.facilityProduct.findMany({
+      where: { facilityId: f.id, isSellable: true },
+      orderBy: [{ stock: "desc" }, { createdAt: "desc" }],
+      take: 12,
+      select: {
+        id: true, stock: true, salePrice: true,
+        product: { select: { name: true, category: true, thumbnailUrl: true } },
+      },
+    }).catch(() => []) : Promise.resolve([]),
   ]);
-  return <FacilityStorefront facility={f} pageConfig={pageConfig} user={user} favorited={!!fav}
+  return <FacilityStorefront facility={f} pageConfig={pageConfig} user={user} favorited={!!fav} products={products}
     reviews={reviews.map((r) => ({ id: r.id, rating: r.rating, content: r.content, reply: r.reply, createdAt: r.createdAt.toISOString(), author: maskName(r.seller.profile?.name) }))} />;
 }
 

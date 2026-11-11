@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/auth";
-import { ownedFacilityIds } from "@/lib/rbac";
+import { requireRole, type SessionUser } from "@/lib/auth";
 import { ok, fail, handleError } from "@/lib/http";
 import { audit } from "@/lib/audit";
 import { z } from "zod";
@@ -22,25 +21,27 @@ const patchSchema = z.object({
   thumbnailUrl: z.string().trim().max(1000).optional(),
 }).strip();
 
-async function assertOwner(userId: string, fpId: string) {
-  const fp = await prisma.facilityProduct.findUnique({ where: { id: fpId } });
-  if (!fp) throw new Error("상품을 찾을 수 없습니다.");
-  const owned = await ownedFacilityIds(userId);
-  if (!owned.includes(fp.facilityId)) throw new Error("FORBIDDEN");
+async function editableProduct(user: SessionUser, fpId: string) {
+  const fp = await prisma.facilityProduct.findFirst({
+    where: { id: fpId, ...(user.role !== "SUPER_ADMIN" && { facility: { ownerId: user.id } }) },
+  });
+  if (!fp) throw new Error("FORBIDDEN");
   return fp;
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const user = await requireRole(["FACILITY_ADMIN"]);
-    const fp = await assertOwner(user.id, params.id);
+    const user = await requireRole(["FACILITY_ADMIN", "SUPER_ADMIN"]);
+    const fp = await editableProduct(user, params.id);
     const parsed = patchSchema.safeParse(await req.json());
     if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "입력값이 올바르지 않습니다.");
     const { name, category, sku, description, thumbnailUrl, ...fpData } = parsed.data;
     if (fpData.commissionType === "PERCENT" && (fpData.commissionValue ?? 0) > 100) return fail("정률 수수료는 100%를 넘을 수 없습니다.");
     const productData = Object.fromEntries(Object.entries({ name, category, sku, description, thumbnailUrl }).filter(([, v]) => v !== undefined).map(([k, v]) => [k, k === "name" || k === "category" ? v : (v || null)]));
-    if (Object.keys(productData).length) await prisma.product.update({ where: { id: fp.productId }, data: productData });
-    const updated = await prisma.facilityProduct.update({ where: { id: params.id }, data: fpData });
+    const updated = await prisma.$transaction(async (tx) => {
+      if (Object.keys(productData).length) await tx.product.update({ where: { id: fp.productId }, data: productData });
+      return tx.facilityProduct.update({ where: { id: params.id }, data: fpData });
+    });
     await audit({ actorId: user.id, action: "PRODUCT_UPDATE", entity: "FacilityProduct", entityId: params.id });
     return ok(updated);
   } catch (e) { return handleError(e); }
@@ -49,7 +50,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await requireRole(["FACILITY_ADMIN"]);
-    await assertOwner(user.id, params.id);
+    await editableProduct(user, params.id);
     // 방송에 쓰인 상품은 기록 보존을 위해 삭제 대신 판매 중단 처리한다.
     const used = await prisma.liveSessionProduct.count({ where: { facilityProductId: params.id } });
     if (used > 0) {

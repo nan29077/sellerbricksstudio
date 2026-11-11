@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 
-const ROLE_LABEL: Record<string, string> = { SELLER: "셀러", FACILITY_ADMIN: "창고(스튜디오) 관리자" };
+const ROLE_LABEL = { SELLER: "셀러", FACILITY_ADMIN: "창고(스튜디오) 관리자", BRAND_ADMIN: "브랜드사" };
 
-export function SignupForm({ role }: { role: "SELLER" | "FACILITY_ADMIN" }) {
+export function SignupForm({ role }: { role: keyof typeof ROLE_LABEL }) {
   const router = useRouter();
   const [form, setForm] = useState({ email: "", password: "", name: "", phone: "", companyName: "" });
   const [error, setError] = useState(""); const [loading, setLoading] = useState(false);

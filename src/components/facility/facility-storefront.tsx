@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { formatKRW } from "@/lib/utils";
-import { FACILITY_PAGE_THEMES, type FacilityPageConfig } from "@/lib/facility-page";
+import { defaultProfileFor, FACILITY_PAGE_THEMES, type FacilityPageConfig } from "@/lib/facility-page";
+import { FACILITY_ARTWORK } from "@/lib/shop-artwork";
+import { ShopShell } from "@/components/shop/shop-shell";
+import { ShopImage } from "@/components/shop/shop-image";
 import { FacilityInquiryButton } from "@/components/facility/facility-inquiry-button";
 import { FavoriteButton } from "@/components/booking/favorite-button";
 import {
   ArrowRight, BadgeCheck, Boxes, CalendarDays, Camera,
-  CheckCircle2, ChevronLeft, Clock3, Home, MapPin,
+  CheckCircle2, ChevronLeft, Clock3, Home, LayoutTemplate, MapPin,
   MessageSquare, ShieldCheck, Store, Tag, UserRound,
   Warehouse, Wifi, Star,
 } from "lucide-react";
@@ -34,12 +37,14 @@ export function FacilityStorefront({
   user,
   reviews = [],
   favorited = false,
+  products,
 }: {
   facility: any;
   pageConfig: FacilityPageConfig;
   user: { role?: string; id?: string } | null;
   reviews?: PublicReview[];
   favorited?: boolean;
+  products: Array<{ id: string; stock: number; salePrice: number; product: { name: string; category: string; thumbnailUrl: string | null } }>;
 }) {
   const accent = FACILITY_PAGE_THEMES[pageConfig.theme].accent;
   const isWarehouse = f.type === "WAREHOUSE";
@@ -51,25 +56,33 @@ export function FacilityStorefront({
   const directBookingHref = `/seller/bookings/new?facilityId=${f.id}`;
   const isSeller = user?.role === "SELLER";
   const isLoggedIn = !!user;
+  const bookable = f.status === "APPROVED" && (isSeller || !isLoggedIn);
+  const artwork = FACILITY_ARTWORK[isWarehouse ? 0 : 1].url;
   const bookingHref = isSeller
     ? directBookingHref
-    : user
-      ? "/signup/seller"
-      : `/login?callbackUrl=${encodeURIComponent(directBookingHref)}`;
-  const bookingLabel = isSeller ? pageConfig.ctaLabel : user ? "셀러 계정으로 예약하기" : "로그인하고 예약하기";
+    : `/login?callbackUrl=${encodeURIComponent(directBookingHref)}`;
+  const bookingLabel = isSeller ? pageConfig.ctaLabel : "로그인하고 예약하기";
   const bookingHrefForSlot = (slot: any) => isSeller
     ? `${directBookingHref}&start=${encodeURIComponent(slot.startTime)}&end=${encodeURIComponent(slot.endTime)}`
     : bookingHref;
+  const management = user?.role === "SUPER_ADMIN" && f.ownerId ? `/admin/facilities/${f.id}/shop` : user?.id && user.id === f.ownerId ? `/facility/pages/${f.id}` : null;
+  const shopLinks = [
+    { href: "#store-home", label: "샵 홈", icon: Home },
+    ...(pageConfig.showProducts ? [{ href: "#store-products", label: "상품", icon: Boxes }] : []),
+    ...(bookable ? [{ href: "#store-booking", label: "예약", icon: CalendarDays }] : []),
+    { href: "#store-info", label: "공간 정보", icon: UserRound },
+    { href: "#store-inquiry", label: "문의", icon: MessageSquare },
+    ...(management ? [{ href: management, label: "샵 관리", icon: LayoutTemplate }] : []),
+  ];
 
   return (
-    <div className="min-h-screen bg-[#FBF8EE] pb-20 md:pb-0">
+    <ShopShell background={pageConfig.backgroundUrl} fallback={artwork} links={shopLinks}>
       {/* 상단 헤더 */}
       <div className="border-b border-[#EEEAE0] bg-white">
         <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between px-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-brand-100 bg-brand-50">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={pageConfig.profileImageUrl} alt="" className="h-full w-full object-cover" />
+              <ShopImage src={pageConfig.profileImageUrl} fallback={defaultProfileFor(f.id)} className="h-full w-full object-cover" />
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-black text-navy sm:text-base">{pageConfig.pageTitle}</p>
@@ -81,17 +94,16 @@ export function FacilityStorefront({
             <a href="#store-inquiry" aria-label="창고(스튜디오) 문의" className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-navy bg-white text-navy shadow-[2px_2px_0_#1A1A2E] transition hover:-translate-y-0.5">
               <MessageSquare className="h-5 w-5" />
             </a>
-            <Link href={bookingHref} aria-label="창고(스튜디오) 예약" className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-navy bg-[#FFD552] text-navy shadow-[2px_2px_0_#1A1A2E] transition hover:-translate-y-0.5">
+            {bookable && <Link href={bookingHref} aria-label="창고(스튜디오) 예약" className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-navy bg-[#FFD552] text-navy shadow-[2px_2px_0_#1A1A2E] transition hover:-translate-y-0.5">
               <CalendarDays className="h-5 w-5" />
-            </Link>
+            </Link>}
           </div>
         </div>
       </div>
 
       {/* 배너 */}
-      <section id="store-home" className="relative mx-auto h-[280px] max-w-[1440px] overflow-hidden bg-navy sm:h-[360px] lg:h-[430px]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={pageConfig.bannerUrl} alt={`${pageConfig.pageTitle} 커버`} className="h-full w-full object-cover" />
+      <section id="store-home" className="relative mx-3 mt-4 h-[230px] overflow-hidden rounded-[26px] bg-navy sm:mx-6 sm:mt-6 sm:h-[300px]">
+        <ShopImage src={pageConfig.bannerUrl} fallback={artwork} eager className="h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/5" />
         <Link href="/facilities" className="absolute left-4 top-4 inline-flex items-center gap-1 rounded-full border border-white/25 bg-black/30 px-3 py-2 text-xs font-bold text-white backdrop-blur-md hover:bg-black/45 sm:left-6">
           <ChevronLeft className="h-4 w-4" /> 창고(스튜디오) 목록
@@ -109,23 +121,16 @@ export function FacilityStorefront({
       </section>
 
       {/* 메인 카드 */}
-      <main className="relative z-10 mx-auto -mt-16 max-w-5xl px-3 sm:-mt-20 sm:px-6">
-        <section className="relative rounded-[28px] border border-white/80 bg-white p-5 pt-14 shadow-[0_14px_40px_rgba(26,26,46,0.14)] sm:p-8 sm:pt-16">
-          <div className="absolute -top-12 left-5 flex h-24 w-24 items-center justify-center rounded-full border-[5px] border-white bg-brand-50 shadow-md sm:-top-14 sm:left-8 sm:h-28 sm:w-28">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={pageConfig.profileImageUrl} alt={`${f.name} 프로필`} className="h-full w-full rounded-full object-cover" />
-            <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-red-500 px-3 py-1 text-[10px] font-black text-white shadow-sm">
-              ● OPEN
-            </span>
-          </div>
-
-          <div className="flex items-start justify-between gap-3 pl-[108px] sm:pl-[132px]">
+      <main className="relative z-10 mx-auto -mt-8 px-3 sm:-mt-10 sm:px-6">
+        <section className="relative mx-2 rounded-[28px] border border-white/80 bg-white p-5 shadow-[0_14px_40px_rgba(26,26,46,0.14)] sm:mx-5 sm:p-6">
+          <div className="flex items-center gap-3">
+            <ShopImage src={pageConfig.profileImageUrl} fallback={defaultProfileFor(f.id)} className="h-14 w-14 shrink-0 rounded-full border bg-brand-50 object-cover" />
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="truncate text-xl font-black text-navy sm:text-3xl">{pageConfig.pageTitle}</h1>
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg border-2 border-navy bg-[#FFD552] text-navy">
+                <h1 className="break-words text-xl font-black text-navy sm:text-2xl">{pageConfig.pageTitle}</h1>
+                {f.status === "APPROVED" && <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg border-2 border-navy bg-[#FFD552] text-navy">
                   <BadgeCheck className="h-4 w-4" />
-                </span>
+                </span>}
               </div>
               <p className="mt-1 hidden items-center gap-1 text-xs font-semibold text-muted-foreground sm:flex">
                 <MapPin className="h-3.5 w-3.5" />{f.address ?? f.region}
@@ -168,15 +173,16 @@ export function FacilityStorefront({
           )}
 
           {/* 예약 CTA */}
-          <Link
+          {bookable && <Link
             href={bookingHref}
-            className="mt-6 flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl border border-[#D99000] px-5 text-base font-black text-navy shadow-sm transition hover:brightness-105 sm:text-lg"
+            className="mt-6 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl border border-[#D99000] px-3 py-2 text-center text-sm font-black text-navy shadow-sm transition hover:brightness-105 sm:text-base"
             style={{ backgroundColor: accent }}
           >
-            <span className="rounded-full bg-red-500 px-2.5 py-1 text-[10px] font-black text-white">● 예약</span>
-            {bookingLabel}
-            <ArrowRight className="h-5 w-5" />
-          </Link>
+            <CalendarDays aria-hidden="true" className="h-4 w-4 shrink-0" />
+            <span className="break-keep">{bookingLabel}</span>
+            <ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0" />
+          </Link>}
+          {f.status !== "APPROVED" && <p className="mt-3 text-xs font-bold text-amber-800">비공개 미리보기</p>}
 
           {/* 문의 버튼 */}
           <div className="mt-3">
@@ -189,32 +195,37 @@ export function FacilityStorefront({
           </div>
         </section>
 
+        {pageConfig.showProducts && <section id="store-products" className="mt-5 scroll-mt-4 rounded-[24px] border bg-white p-4 sm:p-6">
+          <h2 className="text-xl font-black text-navy">예약과 함께 고르는 판매 상품</h2>
+          {products.length === 0 ? <p className="mt-3 text-sm text-slate-600">공개된 판매 상품이 없습니다.</p> : <>
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {products.map(({ id, stock, salePrice, product }) => <article key={id} className="overflow-hidden rounded-xl border">
+                <ShopImage src={product.thumbnailUrl} fallback={artwork} className="aspect-[4/3] w-full object-cover" />
+                <div className="space-y-1 p-2.5">
+                  <p className="text-xs text-slate-600">{product.category}</p>
+                  <h3 className="break-words text-sm font-bold">{product.name}</h3>
+                  <p className="text-xs font-semibold">{formatKRW(salePrice)} · {stock > 0 ? `재고 ${stock}개` : "품절"}</p>
+                  {bookable && isSeller && stock > 0 && <Link href={`${directBookingHref}&products=${encodeURIComponent(`${id}:1`)}`}
+                    className="mt-1 inline-flex min-h-9 items-center text-xs font-bold text-brand-800 hover:underline">예약에 담기 <ArrowRight className="ml-1 h-3 w-3" /></Link>}
+                </div>
+              </article>)}
+            </div>
+            {bookable && isSeller && <Link href={directBookingHref} className="mt-3 inline-flex min-h-10 items-center text-sm font-bold text-brand-800 hover:underline">예약 화면에서 전체 상품 선택 <ArrowRight className="ml-1 h-4 w-4" /></Link>}
+          </>}
+        </section>}
+
         {/* 퀵 예약 */}
-        <section id="store-booking" className="mt-5 scroll-mt-6 overflow-hidden rounded-[26px] border border-[#E9DFC5] bg-white shadow-[0_10px_30px_rgba(26,26,46,0.08)]">
+        {bookable && <section id="store-booking" className="mt-5 scroll-mt-6 overflow-hidden rounded-[26px] border border-[#E9DFC5] bg-white shadow-[0_10px_30px_rgba(26,26,46,0.08)]">
           <div className="grid lg:grid-cols-[1.15fr_0.85fr]">
-            <div className="p-5 sm:p-7 lg:p-8">
+            <div className="min-w-0 p-5 sm:p-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-700">Quick booking</p>
-                  <h2 className="mt-1 text-2xl font-black text-navy sm:text-3xl">원하는 시간으로 바로 예약하세요</h2>
+                  <h2 className="break-keep text-2xl font-black text-navy">예약 시간 선택</h2>
                   <p className="mt-2 text-sm font-medium leading-relaxed text-slate-500">창고(스튜디오)와 시간이 미리 선택된 예약 신청서로 바로 연결됩니다.</p>
                 </div>
                 <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#FFF7D6] text-brand-700">
                   <CalendarDays className="h-6 w-6" />
                 </span>
-              </div>
-
-              <div className="mt-6 grid grid-cols-3 gap-2">
-                {[
-                  { step: "01", title: "시간 선택" },
-                  { step: "02", title: "신청서 작성" },
-                  { step: "03", title: "관리자 승인" },
-                ].map((item) => (
-                  <div key={item.step} className="rounded-2xl bg-[#F8F9FB] px-2 py-4 text-center">
-                    <span className="text-[10px] font-black text-brand-700">STEP {item.step}</span>
-                    <p className="mt-1 text-xs font-black text-navy sm:text-sm">{item.title}</p>
-                  </div>
-                ))}
               </div>
 
               {slotCount > 0 && (
@@ -223,7 +234,7 @@ export function FacilityStorefront({
                     <p className="text-sm font-black text-navy">빠른 시간 선택</p>
                     <p className="text-[10px] font-bold text-slate-400">날짜는 신청서에서 선택</p>
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-3">
+                  <div className="grid gap-2">
                     {f.slots.slice(0, 3).map((slot: any) => (
                       <Link key={slot.id} href={bookingHrefForSlot(slot)} className="group flex items-center justify-between rounded-xl border border-[#E8E4DA] bg-[#FCFBF7] px-3 py-3 transition hover:border-brand-400 hover:bg-brand-50">
                         <div>
@@ -238,7 +249,7 @@ export function FacilityStorefront({
               )}
             </div>
 
-            <div className="flex flex-col justify-between bg-[#171B30] p-5 text-white sm:p-7 lg:p-8">
+            <div className="flex min-w-0 flex-col justify-between bg-[#171B30] p-5 text-white sm:p-6">
               <div>
                 <p className="text-xs font-bold text-white/55">창고(스튜디오) 이용료</p>
                 <p className="mt-2 text-3xl font-black text-[#FFD552]">무료</p>
@@ -247,7 +258,7 @@ export function FacilityStorefront({
                     <Clock3 className="h-4 w-4 text-[#FFD552]" /> 운영 {f.openTime ?? "09:00"}–{f.closeTime ?? "22:00"}
                   </p>
                   <p className="flex items-center gap-2 text-xs font-bold text-white/75">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-400" /> 승인 전에는 결제되지 않습니다
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400" /> 예약 후 진행 상태 확인
                   </p>
                   <p className="flex items-center gap-2 text-xs font-bold text-white/75">
                     <ShieldCheck className="h-4 w-4 text-emerald-400" /> 셀러브릭스 안전 예약
@@ -264,22 +275,9 @@ export function FacilityStorefront({
               )}
             </div>
           </div>
-        </section>
+        </section>}
 
         {/* 페이지 내비 */}
-        <nav className="mt-5 hidden grid-cols-4 overflow-hidden rounded-2xl border border-[#ECE8DD] bg-white p-1.5 shadow-sm md:grid">
-          {[
-            { href: "#store-home", label: "홈", icon: Home },
-            { href: "#store-specialty", label: "전문 분야", icon: Tag },
-            { href: "#store-schedule", label: "예약 일정", icon: CalendarDays },
-            { href: "#store-info", label: "창고(스튜디오) 정보", icon: UserRound },
-          ].map((item, index) => (
-            <Link key={item.href} href={item.href} className={`flex flex-col items-center justify-center gap-1 rounded-xl px-1 py-2.5 text-[10px] font-bold transition hover:bg-brand-50 sm:flex-row sm:text-xs ${index === 0 ? "bg-brand-50 text-brand-800" : "text-slate-400"}`}>
-              <item.icon className="h-4 w-4" />{item.label}
-            </Link>
-          ))}
-        </nav>
-
         <div className="mt-5 space-y-5">
           {/* 주요 취급 카테고리 */}
           <section id="store-specialty" className="scroll-mt-36 rounded-[24px] border border-[#EEEAE0] bg-white p-5 shadow-sm sm:p-7">
@@ -327,7 +325,7 @@ export function FacilityStorefront({
           </section>
 
           {/* 예약 일정 */}
-          {pageConfig.showSchedule && (
+          {pageConfig.showSchedule && bookable && (
             <section id="store-schedule" className="scroll-mt-36 rounded-[24px] border border-[#EEEAE0] bg-white p-5 shadow-sm sm:p-7">
               <div className="mb-5 flex items-center justify-between">
                 <div>
@@ -465,21 +463,7 @@ export function FacilityStorefront({
         </div>
       </main>
 
-      {/* 모바일 하단 내비 */}
-      <nav aria-label="창고(스튜디오) 페이지 메뉴" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 items-center border-t border-[#E8E5DE] bg-white/95 px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-[0_-3px_16px_rgba(26,26,46,0.05)] backdrop-blur md:hidden">
-        {[
-          { href: "#store-home", label: "홈", icon: Home },
-          { href: "#store-specialty", label: "카테고리", icon: Tag },
-          { href: bookingHref, label: "예약", icon: CalendarDays },
-          { href: "#store-inquiry", label: "문의", icon: MessageSquare },
-        ].map((item) => (
-          <Link key={item.label} href={item.href} className="flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-semibold text-slate-500 transition hover:bg-[#FAF8F3] hover:text-navy">
-            <item.icon className="h-[18px] w-[18px]" strokeWidth={1.9} />
-            {item.label}
-          </Link>
-        ))}
-      </nav>
-    </div>
+    </ShopShell>
   );
 }
 

@@ -8,7 +8,7 @@ import { useRef } from "react";
 import type { Role } from "@prisma/client";
 import {
   ArrowUpRight, CircleHelp, ClipboardList, Headset, House, LayoutDashboard, LogIn, LogOut,
-  Map, Menu, UserCircle, Warehouse, X,
+  Map, Menu, ShoppingBag, UserCircle, Warehouse, X,
 } from "lucide-react";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { ROLE_HOME, ROLE_LABELS } from "@/lib/rbac";
@@ -20,6 +20,7 @@ const settingsHref: Record<Role, string> = {
   SUPER_ADMIN: "/admin/settings",
   MANAGER: "/manager/settings",
   FACILITY_ADMIN: "/facility/settings",
+  BRAND_ADMIN: "/brand/settings",
   SELLER: "/seller/settings",
   BUYER: "/support#my-inquiries",
 };
@@ -60,7 +61,7 @@ export function StudioTopBar({ account }: { account: Account }) {
       <nav aria-label="모바일 하단 메뉴" className="safe-area-inset-bottom fixed bottom-0 left-1/2 z-40 grid w-full max-w-[716px] -translate-x-1/2 grid-cols-5 border-t border-slate-200 bg-[#F8F9FA]/95 shadow-[0_-6px_24px_#1A1A2E12] backdrop-blur-md lg:hidden">
         {[
           { href: "/", label: "홈", icon: House, active: pathname === "/" },
-          { href: "/intro", label: "서비스 소개", icon: Map },
+          { href: "/brands", label: "브랜드샵", icon: ShoppingBag, active: pathname.startsWith("/brands") },
           { href: "/#spaces", label: "공간 찾기", icon: Warehouse, active: pathname.startsWith("/showcase/") },
           { href: "/support", label: "도움말", icon: CircleHelp, active: pathname.startsWith("/support") },
           { href: account ? settingsHref[account.role] : "/login", label: "마이페이지", icon: UserCircle },
@@ -96,6 +97,7 @@ function MenuItems({ account, desktop, onNavigate }: { account: Account; desktop
     { href: "/", label: "홈", icon: House, active: pathname === "/" },
     { href: "/intro", label: "서비스 소개", icon: Map },
     { href: "/#spaces", label: "공간 찾기", icon: Warehouse, active: pathname.startsWith("/showcase/") },
+    { href: "/brands", label: "브랜드샵", icon: ShoppingBag, active: pathname.startsWith("/brands") },
     { href: "/order-lookup", label: "주문 조회", icon: ClipboardList },
     ...(home && home !== "/" ? [{ href: home, label: "대시보드", icon: LayoutDashboard }] : []),
     { href: "/support", label: desktop ? "도움말" : "도움말 · 문의하기", icon: CircleHelp, active: pathname === "/support" },

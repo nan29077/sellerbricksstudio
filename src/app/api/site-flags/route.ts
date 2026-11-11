@@ -1,5 +1,6 @@
 import { getSettings } from "@/lib/settings";
 import { ok, handleError } from "@/lib/http";
+import { demoLoginEnabled } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const { managerDisabled, facilityDisabled, liveEnabled } = await getSettings();
-    return ok({ managerDisabled, facilityDisabled, liveEnabled });
+    return ok({ managerDisabled, facilityDisabled, liveEnabled, brandDemoEnabled: demoLoginEnabled() });
   } catch (e) {
     return handleError(e);
   }

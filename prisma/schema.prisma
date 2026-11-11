@@ -15,6 +15,7 @@ enum Role {
   SUPER_ADMIN
   MANAGER
   FACILITY_ADMIN
+  BRAND_ADMIN
   SELLER
   BUYER
 }
@@ -138,6 +139,96 @@ model User {
   marketingAssets    MarketingAsset[]
   snsAccounts        SnsAccount[]
   snsPosts           SnsPost[]
+  brandShop          BrandShop?
+  brandRequests      BrandRequest[]
+}
+
+enum BrandShopStatus {
+  PENDING
+  APPROVED
+  SUSPENDED
+}
+
+enum BrandRequestKind {
+  SUPPLY
+  SAMPLE
+}
+
+enum BrandRequestStatus {
+  PENDING
+  AWAITING_PAYMENT
+  APPROVED
+  SHIPPED
+  COMPLETED
+  REJECTED
+  CANCELLED
+  REFUNDED
+}
+
+model BrandShop {
+  id           String          @id @default(cuid())
+  ownerId      String          @unique
+  owner        User            @relation(fields: [ownerId], references: [id])
+  name         String
+  tagline      String          @default("")
+  description  String          @default("") @db.Text
+  logoUrl      String          @default("")
+  bannerUrl    String          @default("")
+  backgroundUrl String         @default("")
+  paymentInstructions String   @default("") @db.Text
+  status       BrandShopStatus @default(PENDING)
+  moderationNote String       @default("")
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  products     BrandProduct[]
+
+  @@index([status, createdAt])
+}
+
+model BrandProduct {
+  id          String        @id @default(cuid())
+  shopId      String
+  shop        BrandShop     @relation(fields: [shopId], references: [id])
+  name        String
+  category    String
+  description String        @default("") @db.Text
+  imageUrl    String        @default("")
+  supplyPrice Int
+  stock       Int
+  samplePrice Int?
+  sampleStock Int           @default(0)
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  requests    BrandRequest[]
+
+  @@index([shopId, isActive])
+}
+
+model BrandRequest {
+  id          String             @id @default(cuid())
+  productId   String
+  product     BrandProduct       @relation(fields: [productId], references: [id])
+  buyerId     String
+  buyer       User               @relation(fields: [buyerId], references: [id])
+  requestKey  String
+  kind        BrandRequestKind
+  status      BrandRequestStatus
+  productName String
+  quantity    Int
+  unitPrice   Int
+  recipient   String
+  phone       String
+  address     String
+  message     String             @default("")
+  paymentInstructions String     @default("") @db.Text
+  trackingNumber String          @default("")
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([buyerId, createdAt])
+  @@unique([buyerId, requestKey])
+  @@index([productId, status])
 }
 
 enum SupportCategory {

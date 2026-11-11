@@ -6,7 +6,7 @@ import { audit } from "@/lib/audit";
 import { notify } from "@/lib/notify";
 
 // PATCH /api/admin/users/[id]
-// body: { isActive?: boolean, role?: "SELLER"|"FACILITY_ADMIN"|"MANAGER", adminMemo?: string, name?, phone?, companyName? }
+// body: { isActive?, role?, adminMemo?, name?, phone?, companyName? }
 // 정지된 계정은 로그인과 기존 세션 사용이 모두 막힌다.
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -23,7 +23,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const data: Record<string, unknown> = {};
     if (typeof body.isActive === "boolean") data.isActive = body.isActive;
     if (body.role !== undefined) {
-      if (!["SELLER", "FACILITY_ADMIN", "MANAGER"].includes(body.role)) return fail("변경할 수 없는 역할입니다.");
+      if (!["SELLER", "FACILITY_ADMIN", "BRAND_ADMIN", "MANAGER"].includes(body.role)) return fail("변경할 수 없는 역할입니다.");
       data.role = body.role;
     }
     if (typeof body.adminMemo === "string") data.adminMemo = body.adminMemo.slice(0, 2000) || null;
