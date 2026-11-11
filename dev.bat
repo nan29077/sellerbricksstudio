@@ -4,6 +4,13 @@ cd /d "%~dp0"
 rem Stop any leftover dev server of this project first (orphaned node keeps port 3007 + locks Prisma DLL)
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0stop-dev.ps1" -Quiet
 
+rem A production build (next build / E2E) left in .next mixes with the dev server and the pages lose all CSS.
+rem next dev never writes BUILD_ID, so its presence means .next must be cleared before starting.
+if exist ".next\BUILD_ID" (
+    echo Clearing production build output in .next ...
+    rmdir /s /q ".next"
+)
+
 rem Packages missing (node_modules emptied by an unfinished npm install/ci) -> reinstall first
 if not exist "node_modules\next\package.json" (
     echo node_modules is missing or incomplete. Running npm install...
