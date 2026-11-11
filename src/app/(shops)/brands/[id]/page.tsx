@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Boxes, ClipboardList, Headset, House, LayoutTemplate, LogIn, MessageSquare, Package, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Boxes, ClipboardList, Headset, Heart, House, LayoutTemplate, LogIn, MessageSquare, Package, ShoppingBag } from "lucide-react";
+import { BrandFavoriteButton } from "@/components/shop/brand-favorite-button";
 import { PartnerApply } from "@/components/brand/partner-apply";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
@@ -68,6 +69,7 @@ export default async function BrandStorefront({ params, searchParams }: { params
     : await prisma.facilityProduct.findMany({ where: { facility: { ownerId: user.id }, brandProductId: { in: products.map((p) => p.id) } }, select: { brandProductId: true } })
   ).map((x) => x.brandProductId!)) : new Set<string>();
   // 판매처 관계: 차단되면 신청·가져오기 불가, 승인제 브랜드는 승인 후 가져오기
+  const favorites = buyer && user && !user.id.startsWith("demo-") ? new Set((await prisma.brandProductFavorite.findMany({ where: { userId: user.id, brandProductId: { in: products.map((p) => p.id) } }, select: { brandProductId: true } })).map((f) => f.brandProductId)) : new Set<string>();
   const partner = buyer && user ? await prisma.brandPartner.findUnique({ where: { shopId_userId: { shopId: shop.id, userId: user.id } }, select: { status: true } }) : null;
   const blocked = partner?.status === "BLOCKED";
   const canImport = !blocked && (!shop.requireSellerApproval || partner?.status === "APPROVED");
@@ -78,7 +80,7 @@ export default async function BrandStorefront({ params, searchParams }: { params
   const links = [
     { href: "#shop-home", label: "샵 홈", icon: House },
     { href: "#shop-products", label: "상품", icon: Boxes },
-    ...(buyer ? [{ href: "/brand-requests", label: "내 신청", icon: ClipboardList }] : []),
+    ...(buyer ? [{ href: "/brand-requests", label: "내 신청", icon: ClipboardList }, { href: "/brand-favorites", label: "찜한 상품", icon: Heart }] : []),
     ...(buyer && !blocked ? [{ href: `/brand-messages?shop=${shop.id}`, label: "브랜드 문의", icon: MessageSquare }] : []),
     ...(management ? [{ href: management, label: "샵 관리", icon: LayoutTemplate }] : []),
     ...(!user ? [{ href: login, label: "로그인", icon: LogIn }] : []),
@@ -173,6 +175,7 @@ export default async function BrandStorefront({ params, searchParams }: { params
                     {product.samplePrice !== null && <p className="text-xs font-semibold text-slate-600"><Package className="mr-1 inline h-3.5 w-3.5" />샘플 {product.samplePrice === 0 ? "무료" : formatKRW(product.samplePrice)} · {product.sampleStock}개{product.sampleLimitPerBuyer > 0 && ` · 계정당 ${product.sampleLimitPerBuyer}회`}</p>}
                     {product.minSalePrice != null && <p className="text-[11px] font-semibold text-rose-700">최저 판매가 {formatKRW(product.minSalePrice)}</p>}
                     {buyer && published && !blocked && <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      <BrandFavoriteButton productId={product.id} initial={favorites.has(product.id)} />
                       {imported.has(product.id) ? <span className="rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-bold text-emerald-700">판매 목록에 있음</span> : null}
                       {user && canImport && <BrandImportButton target={user.role === "SELLER" ? "SELLER" : "FACILITY"} facilities={facilities}
                         product={{ id: product.id, name: product.name, supplyPrice: product.supplyPrice, consumerPrice: product.consumerPrice, stock: product.stock, allowDropship: product.allowDropship, allowWarehouse: product.allowWarehouse }} />}

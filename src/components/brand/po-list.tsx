@@ -74,7 +74,7 @@ export async function PurchaseOrderList({ scope, actor, base, params }: {
             <div className="min-w-0">
               <p className="text-xs font-semibold text-slate-500">{po.poNo} · {fmt(po.createdAt)}{actor === "ADMIN" && ` · ${po.brandShop.name}`}</p>
               <h2 className="mt-1 font-black text-navy">{po.items.map((i) => i.productName).join(", ")}</h2>
-              <p className="mt-0.5 text-xs text-slate-600">주문 {po.order.orderNo} · {po.facility.name} · 셀러 {po.seller.profile?.name ?? po.seller.email}</p>
+              <p className="mt-0.5 text-xs text-slate-600">주문 {po.order.orderNo} · {(po.facility?.name ?? "셀러 공간")} · 셀러 {po.seller.profile?.name ?? po.seller.email}</p>
             </div>
             <div className="flex flex-wrap gap-1">
               <Badge tone={po.fulfillment === "DROPSHIP" ? "blue" : "gray"}>{FULFILLMENT_LABEL[po.fulfillment]}</Badge>

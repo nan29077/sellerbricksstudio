@@ -13,7 +13,10 @@ export const dynamic = "force-dynamic";
 export default async function OrderComplete({ params }: { params: { orderId: string } }) {
   const order = await prisma.order.findUnique({
     where: { id: params.orderId },
-    include: { items: true, payment: true, liveSession: true },
+    include: {
+      items: true, payment: true, liveSession: true,
+      purchaseOrders: { where: { fulfillment: "DROPSHIP" }, select: { id: true, status: true, carrier: true, trackingNumber: true, brandShop: { select: { name: true } } } },
+    },
   });
   if (!order) notFound();
   const os = ORDER_STATUS[order.status];
@@ -50,6 +53,17 @@ export default async function OrderComplete({ params }: { params: { orderId: str
             ))}
           </div>
           {order.shippingFee > 0 && <div className="flex justify-between text-sm"><span className="text-muted-foreground">배송비</span><span>{formatKRW(order.shippingFee)}</span></div>}
+          {(order.localShippedAt || order.purchaseOrders.length > 0) && (
+            <div className="space-y-1 border-t pt-3 text-sm">
+              <p className="font-semibold text-navy">배송 조회</p>
+              {order.localShippedAt && (
+                <p className="text-slate-600">{order.facilityId ? "판매처 출고" : "셀러 출고"} · <b>{order.localDeliveredAt ? "배송 완료" : "배송 중"}</b>{order.shipTrackingNumber && ` · ${order.shipCarrier ?? ""} ${order.shipTrackingNumber}`}</p>
+              )}
+              {order.purchaseOrders.map((po) => (
+                <p key={po.id} className="text-slate-600">{po.brandShop.name} 직배송 · <b>{po.status === "DELIVERED" ? "배송 완료" : po.status === "SHIPPED" ? "배송 중" : po.status === "CANCELLED" || po.status === "RETURNED" ? "취소 · 반품" : "출고 준비 중"}</b>{po.trackingNumber && ` · ${po.carrier} ${po.trackingNumber}`}</p>
+              ))}
+            </div>
+          )}
           <div className="flex justify-between border-t pt-3"><span className="font-semibold">총 결제금액</span><span className="text-lg font-bold text-brand-600">{formatKRW(order.totalAmount)}</span></div>
         </CardContent></Card>
         <div className="mt-5 flex gap-2">

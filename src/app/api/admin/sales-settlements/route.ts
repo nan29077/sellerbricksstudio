@@ -36,10 +36,11 @@ export async function POST(req: NextRequest) {
       const waiting = policy.settleAfterDays ? await prisma.order.count({ where: { status: "DELIVERED", settlementId: null, deliveredAt: { gte: from, lt: end } } }) : 0;
       return fail(waiting ? `배송 완료 후 ${policy.settleAfterDays}일(구매 확정 유예)이 지나지 않은 주문 ${waiting}건은 다음 정산에 포함됩니다.` : "해당 기간에 정산할 배송 완료 주문이 없습니다.", 404);
     }
-    type Group = { sellerId: string; facilityId: string; orders: typeof orders; adjustments: typeof adjustments };
+    // 셀러 × 창고(스튜디오)별. 셀러 공간 방송(창고 없음)은 셀러 단독 정산서
+    type Group = { sellerId: string; facilityId: string | null; orders: typeof orders; adjustments: typeof adjustments };
     const groups = new Map<string, Group>();
-    const groupOf = (sellerId: string, facilityId: string) => {
-      const key = `${sellerId}:${facilityId}`;
+    const groupOf = (sellerId: string, facilityId: string | null) => {
+      const key = `${sellerId}:${facilityId ?? "own"}`;
       const g = groups.get(key) ?? { sellerId, facilityId, orders: [], adjustments: [] };
       groups.set(key, g);
       return g;
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
         return s;
       });
       created += 1;
-      const f = await prisma.facility.findUnique({ where: { id: st.facilityId }, select: { ownerId: true, name: true } });
+      const f = st.facilityId ? await prisma.facility.findUnique({ where: { id: st.facilityId }, select: { ownerId: true, name: true } }) : null;
       const extra = g.adjustments.length ? ` · 환불 차감 ${g.adjustments.length}건` : "";
       await notify({ userId: st.sellerId, type: "SETTLEMENT", title: "판매 정산서가 생성되었습니다", body: `${f?.name ?? ""} · 주문 ${g.orders.length}건${extra} · 셀러 정산 ${sum.seller.toLocaleString()}원`, link: "/seller/settlements?tab=sales" });
       if (f) await notify({ userId: f.ownerId, type: "SETTLEMENT", title: "판매 정산서가 생성되었습니다", body: `${f.name} · 주문 ${g.orders.length}건${extra} · 창고 정산 ${sum.facility.toLocaleString()}원`, link: "/facility/settlements" });

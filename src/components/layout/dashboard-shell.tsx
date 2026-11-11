@@ -13,6 +13,7 @@ import {
   ChevronRight, Home, Globe, TrendingUp, Megaphone,
   Share2, BarChart3, Ticket, LayoutTemplate, Star, Wallet, Coins, Package, ShoppingBag, ClipboardList,
   FileText, Percent, Banknote, PackagePlus, Undo2, UserCog,
+  Heart,
 } from "lucide-react";
 import { NotificationBell } from "./notification-bell";
 import { cn } from "@/lib/utils";
@@ -65,6 +66,7 @@ const ROLE_NAV: Record<string, NavSection[]> = {
     { title: "브랜드", items: [
       { href: "/brands", label: "브랜드샵 둘러보기", icon: ShoppingBag },
       { href: "/seller/brand-products", label: "내 브랜드 판매 상품", icon: PackagePlus },
+      { href: "/brand-favorites", label: "찜한 브랜드 상품", icon: Heart },
       { href: "/brand-requests", label: "샘플 신청 내역", icon: ClipboardList },
       { href: "/brand-messages", label: "브랜드 문의", icon: MessageSquare },
     ]},
@@ -98,6 +100,7 @@ const ROLE_NAV: Record<string, NavSection[]> = {
     { title: "브랜드", items: [
       { href: "/brands", label: "브랜드샵 둘러보기", icon: ShoppingBag },
       { href: "/facility/brand-products", label: "브랜드 판매 상품 · 입고", icon: PackagePlus },
+      { href: "/brand-favorites", label: "찜한 브랜드 상품", icon: Heart },
       { href: "/brand-requests", label: "샘플 · 입고 신청 내역", icon: ClipboardList },
       { href: "/brand-messages", label: "브랜드 문의", icon: MessageSquare },
     ]},

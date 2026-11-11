@@ -270,7 +270,7 @@ export default async function AdminDashboard() {
                 <li key={l.id}>
                   <Link href={`/live/${l.slug}`} className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50/50 p-3 hover:bg-rose-50">
                     <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-rose-500 text-white"><Radio className="h-5 w-5" /><span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-ping rounded-full bg-rose-400" /></span>
-                    <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-navy">{l.title}</span><span className="block truncate text-xs text-slate-500">{nameOf(l.seller)} · {l.facility.name}</span></span>
+                    <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-navy">{l.title}</span><span className="block truncate text-xs text-slate-500">{nameOf(l.seller)} · {(l.facility?.name ?? "셀러 공간")}</span></span>
                     <Pill tone="red">LIVE · 주문 {l._count.orders}</Pill>
                   </Link>
                 </li>
@@ -280,7 +280,7 @@ export default async function AdminDashboard() {
                 return (
                   <li key={l.id} className="flex items-center gap-3 rounded-2xl border border-[#EEEAE2] p-3">
                     <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-navy text-center text-[11px] font-bold leading-tight text-white">{p.month}/{p.day}<br />{String(p.hour).padStart(2, "0")}:{String(p.minute).padStart(2, "0")}</span>
-                    <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-navy">{l.title}</span><span className="block truncate text-xs text-slate-500">{nameOf(l.seller)} · {l.facility.name}</span></span>
+                    <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-navy">{l.title}</span><span className="block truncate text-xs text-slate-500">{nameOf(l.seller)} · {(l.facility?.name ?? "셀러 공간")}</span></span>
                     <Pill tone="blue">{relativeTime(l.scheduledStart!)}</Pill>
                   </li>
                 );

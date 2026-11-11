@@ -16,7 +16,7 @@ const editSchema = z.object({
 async function assertAccess(userId: string, role: string, sessionId: string) {
   const s = await prisma.liveSession.findUnique({ where: { id: sessionId }, include: { facility: true } });
   if (!s) throw new Error("세션을 찾을 수 없습니다.");
-  if (!(s.sellerId === userId || s.facility.ownerId === userId || role === "SUPER_ADMIN")) throw new Error("FORBIDDEN");
+  if (!(s.sellerId === userId || s.facility?.ownerId === userId || role === "SUPER_ADMIN")) throw new Error("FORBIDDEN");
   return s;
 }
 
@@ -61,7 +61,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if ((changesPrice || changesStock) && !admin) {
       const limits = await liveProductLimits(prisma, lsp.id);
       if (limits && changesPrice) {
-        const isFacilityOwner = session.facility.ownerId === user.id;
+        const isFacilityOwner = session.facility?.ownerId === user.id;
         if (limits.sellerPriceLocked && !isFacilityOwner) return fail("수수료 방식 창고(스튜디오) 상품은 창고(스튜디오)가 정한 가격으로만 팔 수 있습니다. 창고(스튜디오)에 공급가 설정을 요청해 주세요.", 403);
         if (patch.data.priceSnapshot! < limits.floor) return fail(`판매가는 ${limits.floor.toLocaleString()}원(공급가 · 브랜드 최저 판매가) 아래로 정할 수 없습니다.`);
       }

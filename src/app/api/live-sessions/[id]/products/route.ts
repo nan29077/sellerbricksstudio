@@ -11,7 +11,7 @@ import { optionSnapshotOf } from "@/lib/brands";
 async function assertAccess(userId: string, role: string, sessionId: string) {
   const s = await prisma.liveSession.findUnique({ where: { id: sessionId }, include: { facility: true } });
   if (!s) throw new Error("세션을 찾을 수 없습니다.");
-  const allowed = s.sellerId === userId || s.facility.ownerId === userId || role === "SUPER_ADMIN";
+  const allowed = s.sellerId === userId || s.facility?.ownerId === userId || role === "SUPER_ADMIN";
   if (!allowed) throw new Error("FORBIDDEN");
   return s;
 }
@@ -41,6 +41,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     type BrandFields = { brandProductId?: string; fulfillment?: "DROPSHIP" | "WAREHOUSE"; supplyPriceSnapshot?: number; optionSnapshot?: string | null; facilitySupplySnapshot?: number | null; commissionTypeSnapshot?: "PERCENT" | "FIXED"; commissionValueSnapshot?: number };
     let snapshot: { name: string; price: number; stock: number; image?: string | null; source: "CATALOG" | "AD_HOC"; facilityProductId?: string; brand?: BrandFields };
     if (data.sellerBrandProductId) {
+      // 셀러가 가져온 브랜드 상품은 셀러 본인 공간 방송에서만 판다 (창고(스튜디오) 방송은 창고 상품)
+      if (session.facilityId) return fail("셀러가 가져온 브랜드 상품은 '내 공간에서 방송'으로 만든 방송에서만 판매할 수 있습니다.", 400);
       // 셀러가 브랜드샵에서 가져온 직배송 상품
       const listing = await prisma.sellerBrandProduct.findUnique({
         where: { id: data.sellerBrandProductId },
@@ -62,7 +64,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     } else if (data.facilityProductId) {
       const fp = await prisma.facilityProduct.findUnique({ where: { id: data.facilityProductId }, include: { product: true } });
       if (!fp) return fail("상품을 찾을 수 없습니다.", 404);
-      if (fp.facilityId !== session.facilityId) return fail("이 방송 장소의 상품만 추가할 수 있습니다.", 403);
+      if (!session.facilityId || fp.facilityId !== session.facilityId) return fail("이 방송 장소의 상품만 추가할 수 있습니다.", 403);
       if (!fp.isSellable) return fail("판매 중단된 상품입니다.");
       const exists = await prisma.liveSessionProduct.findFirst({ where: { liveSessionId: params.id, facilityProductId: fp.id } });
       if (exists) return fail("이미 추가된 상품입니다.", 409);

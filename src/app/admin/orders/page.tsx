@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { PoChips, PO_CHIP_INCLUDE } from "@/components/brand/po-chips";
+import { LocalShipChip, PoChips, PO_CHIP_INCLUDE } from "@/components/brand/po-chips";
 import { requireRole } from "@/lib/auth";
 import { PageHeader } from "@/components/layout/dashboard-widgets";
 import { Table, Td } from "@/components/ui/table";
@@ -76,9 +76,9 @@ export default async function AdminOrders() {
               <Td>{o.seller?.profile?.name ?? "-"}</Td>
               <Td>{o.buyerName}</Td>
               <Td className="font-semibold text-navy">{formatKRW(o.totalAmount)}</Td>
-              <Td><Badge tone={s.tone}>{s.label}</Badge><PoChips pos={o.purchaseOrders} /></Td>
+              <Td><Badge tone={s.tone}>{s.label}</Badge><LocalShipChip order={o} /><PoChips pos={o.purchaseOrders} /></Td>
               <Td className="text-xs text-muted-foreground">{formatDateTime(o.createdAt)}</Td>
-              <Td><OrderStatusActions {...orderActionProps(o)} /></Td>
+              <Td><OrderStatusActions {...orderActionProps(o, { isAdmin: true, isSeller: false, isFacilityOwner: false })} /></Td>
             </tr>
           );
         })}

@@ -41,7 +41,7 @@ export async function GET(req: Request) {
       for (const it of po.items) {
         rows.push([
           po.poNo, new Date(po.createdAt.getTime() + 9 * 3600000).toISOString().replace("T", " ").slice(0, 16), po.brandShop.name,
-          PO_STATUS[po.status].label, FULFILLMENT_LABEL[po.fulfillment], po.order.orderNo, po.facility.name,
+          PO_STATUS[po.status].label, FULFILLMENT_LABEL[po.fulfillment], po.order.orderNo, (po.facility?.name ?? "셀러 공간"),
           hide(po) ? maskName(po.recipient) : po.recipient, hide(po) ? maskPhone(po.phone) : po.phone, hide(po) ? maskAddress(po.address) : po.address, it.productName, it.optionLabel ?? "", String(it.quantity), String(it.supplyPrice),
           String(it.supplyPrice * it.quantity), po.carrier, po.trackingNumber, po.brandMemo,
         ]);

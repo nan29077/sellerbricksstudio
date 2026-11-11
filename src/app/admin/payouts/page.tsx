@@ -76,19 +76,19 @@ export default async function AdminPayouts({ searchParams }: { searchParams: SP 
           <div className="space-y-3">
             <div className="flex justify-end">
               <CsvButton label="이체용 CSV" filename="판매정산" headers={["셀러", "창고(스튜디오)", "기간", "주문수", "매출", "플랫폼수수료", "브랜드대금", "셀러정산", "창고정산", "셀러 계좌", "창고 계좌", "상태"]}
-                rows={sales.map((s) => [s.seller.profile?.name ?? s.seller.email, s.facility.name, `${formatDate(s.periodStart)}~${formatDate(s.periodEnd)}`, s.orderCount, s.grossAmount, s.platformFee, s.brandAmount, s.commissionAmount, s.facilityAmount, `${s.seller.profile?.bankName ?? ""} ${s.seller.profile?.bankAccount ?? ""} ${s.seller.profile?.accountHolder ?? ""}`, `${s.facility.bankName ?? ""} ${s.facility.bankAccount ?? ""} ${s.facility.accountHolder ?? ""}`, SETTLEMENT_STATUS[s.status]?.label])} />
+                rows={sales.map((s) => [s.seller.profile?.name ?? s.seller.email, (s.facility?.name ?? "셀러 공간"), `${formatDate(s.periodStart)}~${formatDate(s.periodEnd)}`, s.orderCount, s.grossAmount, s.platformFee, s.brandAmount, s.commissionAmount, s.facilityAmount, `${s.seller.profile?.bankName ?? ""} ${s.seller.profile?.bankAccount ?? ""} ${s.seller.profile?.accountHolder ?? ""}`, (s.facility ? `${s.facility.bankName ?? ""} ${s.facility.bankAccount ?? ""} ${s.facility.accountHolder ?? ""}` : "-"), SETTLEMENT_STATUS[s.status]?.label])} />
             </div>
             {sales.map((s) => (
               <Card key={s.id}><CardContent className="flex flex-col gap-3 p-4 sm:p-5 lg:flex-row lg:items-center">
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge tone={SETTLEMENT_STATUS[s.status]?.tone}>{SETTLEMENT_STATUS[s.status]?.label}</Badge>
-                    <span className="font-bold text-navy">{s.seller.profile?.name ?? s.seller.email} · {s.facility.name}</span>
+                    <span className="font-bold text-navy">{s.seller.profile?.name ?? s.seller.email} · {(s.facility?.name ?? "셀러 공간")}</span>
                     <span className="text-xs text-slate-500">{formatDate(s.periodStart)} ~ {formatDate(s.periodEnd)} · 주문 {s.orderCount}건</span>
                   </div>
                   <p className="text-xs text-slate-500">매출 {formatKRW(s.grossAmount)} = 플랫폼 {formatKRW(s.platformFee)} + 브랜드 {formatKRW(s.brandAmount)} + 셀러 {formatKRW(s.commissionAmount)} + 창고 {formatKRW(s.facilityAmount)}</p>
                   <p className="text-xs text-slate-500">셀러 계좌: {s.seller.profile?.bankAccount ? `${s.seller.profile.bankName} ${s.seller.profile.bankAccount} (${s.seller.profile.accountHolder})` : <span className="font-semibold text-red-500">미등록</span>}
-                    {" · "}창고 계좌: {s.facility.bankAccount ? `${s.facility.bankName} ${s.facility.bankAccount} (${s.facility.accountHolder})` : <span className="font-semibold text-red-500">미등록</span>}</p>
+                    {s.facility && <>{" · "}창고 계좌: {s.facility.bankAccount ? `${s.facility.bankName} ${s.facility.bankAccount} (${s.facility.accountHolder})` : <span className="font-semibold text-red-500">미등록</span>}</>}</p>
                   {s.memo && <p className="text-xs text-slate-600">메모: {s.memo}</p>}
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-2">

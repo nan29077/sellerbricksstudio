@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { PoChips, PO_CHIP_INCLUDE } from "@/components/brand/po-chips";
+import { LocalShipChip, PoChips, PO_CHIP_INCLUDE } from "@/components/brand/po-chips";
 import { requireRole } from "@/lib/auth";
 import { ownedFacilityIds } from "@/lib/rbac";
 import { PageHeader } from "@/components/layout/dashboard-widgets";
@@ -13,18 +13,11 @@ import { ORDER_ACTION_INCLUDE, orderActionProps } from "@/lib/order-action-props
 
 export const dynamic = "force-dynamic";
 
-const DUMMY_ORDERS: any[] = [
-  { id:"o1", orderNo:"ORD-20260620-001", buyerName:"구매자1", totalAmount: 89000, status:"DELIVERED", createdAt:new Date("2026-06-20T15:30:00"), liveSession:{ title:"뷰티 신상 여름 컬렉션 라이브" }, seller:{ profile:{ name:"박지현" } } },
-  { id:"o2", orderNo:"ORD-20260620-002", buyerName:"구매자2", totalAmount:145000, status:"SHIPPED",   createdAt:new Date("2026-06-20T15:45:00"), liveSession:{ title:"뷰티 신상 여름 컬렉션 라이브" }, seller:{ profile:{ name:"박지현" } } },
-  { id:"o3", orderNo:"ORD-20260610-001", buyerName:"구매자3", totalAmount:320000, status:"DELIVERED", createdAt:new Date("2026-06-10T14:20:00"), liveSession:{ title:"패션 봄 신상 라이브" },         seller:{ profile:{ name:"홍길동" } } },
-  { id:"o4", orderNo:"ORD-20260610-002", buyerName:"구매자4", totalAmount: 56000, status:"CANCELLED", createdAt:new Date("2026-06-10T15:00:00"), liveSession:{ title:"패션 봄 신상 라이브" },         seller:{ profile:{ name:"홍길동" } } },
-];
-
 export default async function FacilityOrders() {
   const user = await requireRole(["FACILITY_ADMIN"]);
 
   let orders: any[] = [];
-  let isDemo = false;
+  const isDemo = false;
   try {
     const facIds = await ownedFacilityIds(user.id);
     orders = await prisma.order.findMany({
@@ -37,10 +30,8 @@ export default async function FacilityOrders() {
         ...ORDER_ACTION_INCLUDE,
       },
     });
-    if (orders.length === 0) { orders = DUMMY_ORDERS; isDemo = true; }
   } catch {
-    orders = DUMMY_ORDERS;
-    isDemo = true;
+    orders = []; // DB 오류 시 빈 목록 (예시 주문은 보여 주지 않는다)
   }
 
   return (
@@ -61,9 +52,9 @@ export default async function FacilityOrders() {
                 <Td key="seller">{o.seller?.profile?.name ?? "-"}</Td>,
                 <Td key="session">{o.liveSession?.title ?? "-"}</Td>,
                 <span key="amount" className="font-semibold text-navy">{formatKRW(o.totalAmount)}</span>,
-                <div key="status"><Badge tone={st.tone}>{st.label}</Badge><PoChips pos={o.purchaseOrders} /></div>,
+                <div key="status"><Badge tone={st.tone}>{st.label}</Badge><LocalShipChip order={o} /><PoChips pos={o.purchaseOrders} /></div>,
                 <Td key="date">{formatDateTime(o.createdAt)}</Td>,
-                isDemo ? <span key="act" className="text-xs text-muted-foreground">예시</span> : <OrderStatusActions key="act" {...orderActionProps(o)} />,
+                isDemo ? <span key="act" className="text-xs text-muted-foreground">예시</span> : <OrderStatusActions key="act" {...orderActionProps(o, { isAdmin: false, isSeller: false, isFacilityOwner: true })} />,
               ];
             })}
           />

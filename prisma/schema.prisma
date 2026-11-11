@@ -142,6 +142,7 @@ model User {
   supportInquiries      SupportInquiry[]
   reviews               FacilityReview[]        @relation("SellerReviews")
   favorites             FacilityFavorite[]
+  brandFavorites        BrandProductFavorite[]
   notifications         UserNotification[]
   marketingApplications MarketingApplication[]
   promotions            SellerPromotion[]
@@ -262,6 +263,7 @@ model BrandProduct {
   sellerListings      SellerBrandProduct[]
   liveProducts        LiveSessionProduct[]
   poItems             PurchaseOrderItem[]
+  favorites           BrandProductFavorite[]
 
   @@index([shopId, isActive])
 }
@@ -600,8 +602,8 @@ model LiveSession {
   booking             Booking?           @relation(fields: [bookingId], references: [id])
   sellerId            String
   seller              User               @relation("SellerLiveSessions", fields: [sellerId], references: [id])
-  facilityId          String
-  facility            Facility           @relation(fields: [facilityId], references: [id])
+  facilityId          String? // 비어 있으면 셀러 본인 공간 방송 (셀러가 가져온 브랜드 직배송 상품 판매)
+  facility            Facility?           @relation(fields: [facilityId], references: [id])
   title               String
   description         String?
   status              LiveStatus         @default(DRAFT)
@@ -685,14 +687,19 @@ model Order {
   liveSession     LiveSession @relation(fields: [liveSessionId], references: [id])
   sellerId        String
   seller          User        @relation("SellerOrders", fields: [sellerId], references: [id])
-  facilityId      String
-  facility        Facility    @relation(fields: [facilityId], references: [id])
+  facilityId      String?
+  facility        Facility?    @relation(fields: [facilityId], references: [id])
   buyerName       String
   buyerPhone      String
   buyerAddress    String?
   status          OrderStatus @default(ORDER_CREATED)
   totalAmount     Int // 결제 금액 = 상품 합계 + 배송비
   shippingFee     Int         @default(0) // 주문 시 적용된 배송비 (셀러 몫)
+  // 판매처 직접 출고분(창고(스튜디오) 상품 · 위탁 상품 · 셀러 공간 임시 상품)의 배송. 브랜드 직배송분은 발주서에서 관리
+  shipCarrier        String?
+  shipTrackingNumber String?
+  localShippedAt     DateTime?
+  localDeliveredAt   DateTime?
   refundedAmount  Int         @default(0) // 부분 취소·환불된 금액 합계
   deliveredAt     DateTime? // 배송 완료 시각 (구매 확정 유예·정산 기간 기준)
   privacyAgreedAt DateTime? // 구매자 개인정보 수집·제3자 제공 동의 시각
@@ -789,8 +796,8 @@ model Settlement {
   id               String            @id @default(cuid())
   sellerId         String
   seller           User              @relation("SellerSettlements", fields: [sellerId], references: [id])
-  facilityId       String
-  facility         Facility          @relation(fields: [facilityId], references: [id])
+  facilityId       String?
+  facility         Facility?          @relation(fields: [facilityId], references: [id])
   periodStart      DateTime
   periodEnd        DateTime
   grossAmount      Int // 총 매출
@@ -1165,8 +1172,8 @@ model PurchaseOrder {
   brandShop              BrandShop           @relation(fields: [brandShopId], references: [id])
   orderId                String
   order                  Order               @relation(fields: [orderId], references: [id])
-  facilityId             String
-  facility               Facility            @relation(fields: [facilityId], references: [id])
+  facilityId             String?
+  facility               Facility?            @relation(fields: [facilityId], references: [id])
   sellerId               String
   seller                 User                @relation("SellerPurchaseOrders", fields: [sellerId], references: [id])
   fulfillment            FulfillmentMode
@@ -1379,7 +1386,7 @@ model BrandSettlementAdjustment {
 model SalesAdjustment {
   id             String      @id @default(cuid())
   sellerId       String
-  facilityId     String
+  facilityId     String?
   orderId        String
   grossAmount    Int
   sellerAmount   Int
@@ -1392,4 +1399,17 @@ model SalesAdjustment {
   createdAt      DateTime    @default(now())
 
   @@index([sellerId, facilityId, settlementId])
+}
+
+// 셀러 · 창고(스튜디오)가 찜한 브랜드 상품
+model BrandProductFavorite {
+  id             String       @id @default(cuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brandProductId String
+  brandProduct   BrandProduct @relation(fields: [brandProductId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@unique([userId, brandProductId])
+  @@index([brandProductId])
 }

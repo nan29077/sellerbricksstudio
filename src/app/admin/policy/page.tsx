@@ -27,7 +27,7 @@ export default async function AdminPolicy() {
     ["판매 수수료", `${policy.salesFeeRate}%`, "구매자 결제금액 기준. 플랫폼이 가져가고 나머지를 브랜드·창고(스튜디오)·셀러에게 나눕니다."],
     ["브랜드 수수료 (기본)", `${policy.brandFeeRate}%`, "브랜드 공급대금 기준. 브랜드샵 관리에서 브랜드별로 따로 정할 수 있습니다."],
     ["유료 샘플 수수료", `${policy.sampleFeeRate}%`, "유료 샘플 결제금액 기준."],
-    ["셀러 몫 (셀러가 가져온 직배송 상품)", `${policy.sellerShareRate}%`, "판매가−공급가−판매 수수료 중 셀러 몫. 나머지는 방송한 창고(스튜디오)."],
+    ["셀러 몫 (셀러가 가져온 직배송 상품)", `${policy.sellerShareRate}%`, "판매가−공급가−판매 수수료 중 셀러 몫. 셀러가 가져온 브랜드 상품은 셀러 본인 공간에서 방송하므로 창고 몫 없이 전액 셀러에게 갑니다. (예전 창고 방송 주문만 이 비율 적용)"],
     ["승인 대기 예약 자동 만료", policy.pendingExpireHours ? `${policy.pendingExpireHours}시간` : "끔", "창고(스튜디오)가 이 시간 안에 승인하지 않으면 자동 거절되고 셀러에게 알립니다."],
     ["노쇼 처리 가능 시점", `시작 ${policy.noShowGraceMinutes}분 후`, "체크인 없이 이 시간이 지나면 창고(스튜디오)가 노쇼로 처리할 수 있습니다."],
     ["이용 완료 자동 처리", policy.autoCompleteBookings ? "켬" : "끔", "종료 시간이 지난 승인 예약을 이용 완료로 바꿉니다."],

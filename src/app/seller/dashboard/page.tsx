@@ -228,7 +228,7 @@ export default async function SellerDashboard() {
                     const tone = l.status === "LIVE" ? "red" : l.status === "READY" ? "blue" : "slate";
                     return (
                       <tr key={l.id}>
-                        <td className="max-w-0 px-1 py-2.5"><Link href={`/seller/live-sessions/${l.id}`} className="block truncate font-bold text-navy hover:text-brand-700">{l.title}</Link><span className="block truncate text-[11px] text-slate-500">{kstParts(when).month}/{kstParts(when).day} · {l.facility.name}</span></td>
+                        <td className="max-w-0 px-1 py-2.5"><Link href={`/seller/live-sessions/${l.id}`} className="block truncate font-bold text-navy hover:text-brand-700">{l.title}</Link><span className="block truncate text-[11px] text-slate-500">{kstParts(when).month}/{kstParts(when).day} · {(l.facility?.name ?? "셀러 공간")}</span></td>
                         <td className="px-1 py-2.5"><Pill tone={tone}>{st?.label ?? l.status}</Pill></td>
                         <td className="px-1 py-2.5 text-right text-slate-600">{l._count.products}</td>
                         <td className="px-1 py-2.5 text-right text-slate-600">{l._count.orders}</td>

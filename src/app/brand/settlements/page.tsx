@@ -54,7 +54,7 @@ export default async function BrandSettlements() {
               const closed = po.status === "CANCELLED" || po.status === "RETURNED";
               const fee = pct(po.supplyAmount, feeRate);
               return [formatDateTime(po.createdAt), <span key="n" className="font-mono text-xs">{po.poNo}</span>,
-                `${po.seller.profile?.name ?? po.seller.email} · ${po.facility.name}`, formatKRW(po.saleAmount), formatKRW(po.supplyAmount),
+                `${po.seller.profile?.name ?? po.seller.email} · ${(po.facility?.name ?? "셀러 공간")}`, formatKRW(po.saleAmount), formatKRW(po.supplyAmount),
                 <span key="f" className="text-slate-500">{formatKRW(fee)}</span>, <b key="m" className={closed ? "text-slate-400 line-through" : ""}>{formatKRW(po.supplyAmount - fee)}</b>,
                 <span key="s"><Badge tone={closed ? "gray" : po.status === "DELIVERED" ? "green" : "blue"}>{PO_STATUS[po.status]?.label ?? po.status}</Badge>{po.brandSettlementId && <span className="ml-1 text-[11px] text-slate-500">정산서</span>}</span>];
             })} />

@@ -115,7 +115,7 @@ export default async function SellerSettlements({ searchParams }: { searchParams
           <RevenueTable rows={revenue} perspective="SELLER" />
           {settlements.length === 0 ? <EmptyState title="판매 정산 내역이 없습니다" description="라이브 판매 정산이 생성되면 여기에 표시됩니다." /> : (
             <Table headers={["정산 기간", "창고(스튜디오)", "총 매출", "셀러 수익", "창고 정산금", "상태"]}
-              rows={settlements.map((s) => [`${formatDate(s.periodStart)} ~ ${formatDate(s.periodEnd)}`, s.facility.name, formatKRW(s.grossAmount), <b key="c">{formatKRW(s.commissionAmount)}</b>, formatKRW(s.facilityAmount), <Badge key="s" tone={SETTLE_STATUS[s.status]?.tone}>{SETTLE_STATUS[s.status]?.label}</Badge>])} />
+              rows={settlements.map((s) => [`${formatDate(s.periodStart)} ~ ${formatDate(s.periodEnd)}`, (s.facility?.name ?? "셀러 공간"), formatKRW(s.grossAmount), <b key="c">{formatKRW(s.commissionAmount)}</b>, formatKRW(s.facilityAmount), <Badge key="s" tone={SETTLE_STATUS[s.status]?.tone}>{SETTLE_STATUS[s.status]?.label}</Badge>])} />
           )}
         </>
       )}

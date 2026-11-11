@@ -18,7 +18,7 @@ export async function brandReport(shopId: string, from: Date, to: Date) {
     const m = byMonth.get(month) ?? { supply: 0, orders: 0 }; m.supply += po.supplyAmount; m.orders += 1; byMonth.set(month, m);
     const sellerName = po.seller.profile?.companyName || po.seller.profile?.name || po.seller.email.split("@")[0];
     const key = po.fulfillment === "WAREHOUSE" ? `f:${po.facilityId}` : `s:${po.sellerId}`;
-    const p = byPartner.get(key) ?? { name: po.fulfillment === "WAREHOUSE" ? po.facility.name : sellerName, kind: po.fulfillment === "WAREHOUSE" ? "창고 위탁" : "직배송", supply: 0, orders: 0 };
+    const p = byPartner.get(key) ?? { name: po.fulfillment === "WAREHOUSE" ? (po.facility?.name ?? "셀러 공간") : sellerName, kind: po.fulfillment === "WAREHOUSE" ? "창고 위탁" : "직배송", supply: 0, orders: 0 };
     p.supply += po.supplyAmount; p.orders += 1; byPartner.set(key, p);
     for (const it of po.items) {
       const x = byProduct.get(it.brandProductId) ?? { name: it.productName, qty: 0, supply: 0, sale: 0, orders: 0 };
@@ -33,7 +33,7 @@ export async function brandReport(shopId: string, from: Date, to: Date) {
   });
   const sampleBuyers = new Set(samples.map((s) => s.buyerId));
   const sellingPartners = new Set(pos.map((p) => p.sellerId));
-  const facilityOwners = await prisma.facility.findMany({ where: { id: { in: Array.from(new Set(pos.map((p) => p.facilityId))) } }, select: { ownerId: true } });
+  const facilityOwners = await prisma.facility.findMany({ where: { id: { in: Array.from(new Set(pos.map((p) => p.facilityId).filter((v): v is string => !!v))) } }, select: { ownerId: true } });
   facilityOwners.forEach((f) => sellingPartners.add(f.ownerId));
   const converted = Array.from(sampleBuyers).filter((id) => sellingPartners.has(id)).length;
   return {

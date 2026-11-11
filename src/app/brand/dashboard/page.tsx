@@ -212,7 +212,7 @@ export default async function BrandDashboard() {
         <Panel eyebrow="RECENT" title="최근 발주서" action={{ href: "/brand/orders", label: "전체 보기" }}>
           <Feed empty="아직 들어온 발주서가 없습니다" items={d.recentPos.map((p) => ({
             key: p.id, title: `${p.poNo} · ${compactKRW(p.supplyAmount)}`,
-            sub: `${p.seller.profile?.companyName || p.seller.profile?.name || p.seller.email} · ${p.facility.name} · ${FULFILLMENT_LABEL[p.fulfillment]} · ${PO_STATUS[p.status].label}`,
+            sub: `${p.seller.profile?.companyName || p.seller.profile?.name || p.seller.email} · ${(p.facility?.name ?? "셀러 공간")} · ${FULFILLMENT_LABEL[p.fulfillment]} · ${PO_STATUS[p.status].label}`,
             time: relativeTime(p.createdAt), icon: FileText, tone: p.status === "NEW" ? "amber" as const : p.status === "DELIVERED" ? "green" as const : "blue" as const, href: `/brand/orders?q=${p.poNo}`,
           }))} />
         </Panel>

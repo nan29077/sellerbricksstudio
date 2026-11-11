@@ -16,4 +16,14 @@ export function PoChips({ pos }: { pos?: Po[] | null }) {
   );
 }
 
+// 직접 출고분(창고(스튜디오) · 셀러) 배송 상태
+export function LocalShipChip({ order }: { order: { facilityId?: string | null; localShippedAt?: Date | string | null; localDeliveredAt?: Date | string | null; shipCarrier?: string | null; shipTrackingNumber?: string | null; status?: string } }) {
+  if (!order.localShippedAt) return null;
+  return (
+    <span className="mt-1 block text-[11px] text-slate-600">
+      {order.facilityId ? "창고 출고" : "셀러 출고"} · <b>{order.localDeliveredAt ? "배송 완료" : "배송 중"}</b>{order.shipTrackingNumber && ` · ${order.shipCarrier ?? ""} ${order.shipTrackingNumber}`}
+    </span>
+  );
+}
+
 export const PO_CHIP_INCLUDE = { select: { id: true, poNo: true, status: true, fulfillment: true, carrier: true, trackingNumber: true, cancelRequestedAt: true, cancelRequestReason: true, brandShop: { select: { name: true } } } } as const;

@@ -82,7 +82,7 @@ export default async function FacilitySettlements() {
           </div>}
           {salesSettlements.length === 0 ? <p className="py-3 text-center text-sm text-muted-foreground">아직 판매 정산서가 없습니다.</p> : (
             <Table headers={["정산 기간", "창고(스튜디오)", "셀러", "주문", "매출", "창고 지급액", "상태"]}
-              rows={salesSettlements.map((s) => [`${formatDate(s.periodStart)} ~ ${formatDate(s.periodEnd)}`, s.facility.name, s.seller.profile?.name ?? s.seller.email, `${s.orderCount}건`, formatKRW(s.grossAmount), <b key="p">{formatKRW(s.facilityAmount)}</b>, <Badge key="s" tone={SETTLEMENT_STATUS[s.status]?.tone}>{SETTLEMENT_STATUS[s.status]?.label}</Badge>])} />
+              rows={salesSettlements.map((s) => [`${formatDate(s.periodStart)} ~ ${formatDate(s.periodEnd)}`, (s.facility?.name ?? "셀러 공간"), s.seller.profile?.name ?? s.seller.email, `${s.orderCount}건`, formatKRW(s.grossAmount), <b key="p">{formatKRW(s.facilityAmount)}</b>, <Badge key="s" tone={SETTLEMENT_STATUS[s.status]?.tone}>{SETTLEMENT_STATUS[s.status]?.label}</Badge>])} />
           )}
         </CardContent>
       </Card>
@@ -95,13 +95,13 @@ export default async function FacilitySettlements() {
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">정산서</CardTitle>
           <CsvButton label="CSV" filename="정산서" headers={["창고(스튜디오)", "시작", "종료", "건수", "이용료합계", "수수료율", "수수료", "지급액", "상태", "지급일"]}
-            rows={settlements.map((s) => [s.facility.name, formatDate(s.periodStart), formatDate(s.periodEnd), s.bookingCount, s.grossAmount, s.feeRate, s.platformFee, s.payoutAmount, SETTLEMENT_STATUS[s.status]?.label, s.paidAt ? formatDate(s.paidAt) : ""])} />
+            rows={settlements.map((s) => [(s.facility?.name ?? "셀러 공간"), formatDate(s.periodStart), formatDate(s.periodEnd), s.bookingCount, s.grossAmount, s.feeRate, s.platformFee, s.payoutAmount, SETTLEMENT_STATUS[s.status]?.label, s.paidAt ? formatDate(s.paidAt) : ""])} />
         </CardHeader>
         <CardContent>
           {settlements.length === 0 ? <EmptyState className="py-10" title="아직 생성된 정산서가 없습니다" /> : (
             <Table headers={["정산 기간", "창고(스튜디오)", "건수", "이용료 합계", "수수료", "지급액", "상태"]}
               rows={settlements.map((s) => [
-                `${formatDate(s.periodStart)} ~ ${formatDate(s.periodEnd)}`, s.facility.name, `${s.bookingCount}건`, formatKRW(s.grossAmount),
+                `${formatDate(s.periodStart)} ~ ${formatDate(s.periodEnd)}`, (s.facility?.name ?? "셀러 공간"), `${s.bookingCount}건`, formatKRW(s.grossAmount),
                 <span key="f" className="text-slate-500">-{formatKRW(s.platformFee)} ({s.feeRate}%)</span>, <b key="p">{formatKRW(s.payoutAmount)}</b>,
                 <span key="s"><Badge tone={SETTLEMENT_STATUS[s.status]?.tone}>{SETTLEMENT_STATUS[s.status]?.label}</Badge>{s.paidAt && <span className="ml-1 text-[11px] text-slate-500">{formatDate(s.paidAt)}</span>}</span>,
               ])} />

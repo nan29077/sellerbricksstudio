@@ -79,7 +79,7 @@ export function BrandImportButton({ product, target, facilities = [] }: {
         {done ? (
           <div className="space-y-3 text-sm">
             <p className="rounded-xl bg-emerald-50 p-3 font-semibold text-emerald-800">
-              {done.kind === "SELLER" ? "내 브랜드 판매 상품에 담았습니다. 라이브 방송의 '판매 상품 선택 → 브랜드 상품'에서 바로 올릴 수 있어요."
+              {done.kind === "SELLER" ? "내 브랜드 판매 상품에 담았습니다. 라이브 세션 만들기에서 '내 공간에서 방송'을 고르면 이 상품을 올릴 수 있어요. 주문이 들어오면 브랜드가 구매자에게 바로 배송합니다."
                 : done.needsStock ? "창고 입고 방식으로 등록했습니다. 브랜드사에 입고를 요청하고, 입고 확인 후 판매가 시작됩니다."
                 : "창고(스튜디오) 판매 상품으로 등록했습니다. 셀러가 예약할 때 이 상품을 고를 수 있습니다."}
             </p>

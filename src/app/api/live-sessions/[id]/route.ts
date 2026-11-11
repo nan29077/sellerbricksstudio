@@ -18,7 +18,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const user = await requireUser();
     const s = await prisma.liveSession.findUnique({ where: { id: params.id }, include: { facility: { select: { ownerId: true } } } });
     if (!s) return fail("방송을 찾을 수 없습니다.", 404);
-    if (!(s.sellerId === user.id || s.facility.ownerId === user.id || user.role === "SUPER_ADMIN")) return fail("권한이 없습니다.", 403);
+    if (!(s.sellerId === user.id || s.facility?.ownerId === user.id || user.role === "SUPER_ADMIN")) return fail("권한이 없습니다.", 403);
     if (s.status === "CANCELLED") return fail("취소된 방송은 바꿀 수 없습니다.", 409);
     const data = schema.parse(await req.json().catch(() => ({})));
     const freeShippingOver = data.shippingFee > 0 && data.freeShippingOver ? data.freeShippingOver : null;

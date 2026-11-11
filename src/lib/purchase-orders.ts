@@ -4,6 +4,7 @@ import { notify } from "./notify";
 import { makePoNo } from "./brands";
 import { brandRecipients } from "./brand-access";
 import { pct } from "./policy";
+import { refreshOrderStatusInTx } from "./order-fulfillment";
 
 type Tx = Prisma.TransactionClient;
 
@@ -152,9 +153,10 @@ export async function createPurchaseOrdersInTx(tx: Tx, orderId: string) {
           data: {
             poNo: makePoNo(), brandShopId: group.shopId, orderId: order.id, facilityId: order.facilityId, sellerId: order.sellerId,
             fulfillment: group.fulfillment, status: dropship ? "NEW" : "CONFIRMED", confirmedAt: dropship ? null : new Date(),
-            recipient: dropship ? order.buyerName : order.facility.name,
-            phone: dropship ? order.buyerPhone : order.facility.contactPhone ?? "",
-            address: dropship ? order.buyerAddress ?? "" : order.facility.address,
+            // 창고 위탁분은 창고 재고에서 나가므로 받는 곳은 창고(스튜디오), 직배송은 구매자
+            recipient: dropship || !order.facility ? order.buyerName : order.facility.name,
+            phone: dropship || !order.facility ? order.buyerPhone : order.facility.contactPhone ?? "",
+            address: dropship || !order.facility ? order.buyerAddress ?? "" : order.facility.address,
             saleAmount: items.reduce((s, i) => s + i.salePrice * i.quantity, 0),
             supplyAmount: items.reduce((s, i) => s + i.supplyPrice * i.quantity, 0),
             items: { create: items },
@@ -242,7 +244,7 @@ async function settledPoAdjustmentInTx(tx: Tx, po: { id: string; brandShopId: st
   return true;
 }
 
-export type PoChange = { shopId: string; poNo: string; id: string; to: PurchaseOrderStatus; orderId: string; sellerId: string; facilityId: string };
+export type PoChange = { shopId: string; poNo: string; id: string; to: PurchaseOrderStatus; orderId: string; sellerId: string; facilityId: string | null };
 
 // 발주서를 취소·반품 상태로 바꾼다. 출고 전 취소면 브랜드·창고 재고를 되돌린다.
 export async function closePurchaseOrderInTx(tx: Tx, poId: string, to: "CANCELLED" | "RETURNED", reason: string): Promise<PoChange | null> {
@@ -279,7 +281,8 @@ export async function syncPurchaseOrdersWithOrder(tx: Tx, orderId: string, statu
     if (status === "SHIPPED") {
       if (po.fulfillment === "WAREHOUSE" && (po.status === "NEW" || po.status === "CONFIRMED")) to = "SHIPPED";
     } else if (status === "DELIVERED") {
-      if (po.status === "SHIPPED" || (po.fulfillment === "WAREHOUSE" && po.status === "CONFIRMED")) to = "DELIVERED";
+      // 창고 위탁 발주만 주문을 따라간다. 브랜드 직배송 발주는 브랜드가 직접 배송 완료 처리한다.
+      if (po.fulfillment === "WAREHOUSE" && (po.status === "SHIPPED" || po.status === "CONFIRMED" || po.status === "NEW")) to = "DELIVERED";
     }
     if (!to) continue;
     const row = await tx.purchaseOrder.update({
@@ -305,33 +308,18 @@ export async function notifyPurchaseOrderChanges(changed: PoChange[]) {
 }
 
 // 발주서 상태 알림을 셀러·창고(스튜디오) 관리자에게 각자 자기 화면 링크로 보낸다.
-export async function notifyPoPartners(po: { sellerId: string; facilityId: string }, params: { title: string; body?: string }) {
-  const facility = await prisma.facility.findUnique({ where: { id: po.facilityId }, select: { ownerId: true } }).catch(() => null);
+export async function notifyPoPartners(po: { sellerId: string; facilityId: string | null }, params: { title: string; body?: string }) {
+  const facility = po.facilityId ? await prisma.facility.findUnique({ where: { id: po.facilityId }, select: { ownerId: true } }).catch(() => null) : null;
   await notify({ userId: po.sellerId, type: "SYSTEM", ...params, link: "/seller/orders" });
   if (facility?.ownerId && facility.ownerId !== po.sellerId) await notify({ userId: facility.ownerId, type: "SYSTEM", ...params, link: "/facility/orders" });
 }
 
 // ---------------------------------------------------------------------------
-// 브랜드가 직배송 발주를 출고·배송완료 처리하면, 주문 전체가 직배송 상품뿐일 때 주문 상태도 따라간다.
+// 브랜드가 직배송 발주를 출고·배송완료 처리하면 주문 전체 상태를 다시 맞춘다.
+// (창고(스튜디오) 직접 출고분이 섞여 있으면 그쪽도 출고·배송 완료되어야 주문 상태가 바뀐다)
 // ---------------------------------------------------------------------------
 export async function syncOrderFromPurchaseOrders(tx: Tx, orderId: string) {
-  const order = await tx.order.findUnique({
-    where: { id: orderId },
-    select: { id: true, status: true, items: { select: { id: true, cancelledAt: true } }, purchaseOrders: { select: { status: true, fulfillment: true, items: { select: { orderItemId: true } } } } },
-  });
-  if (!order) return null;
-  const liveItems = order.items.filter((i) => !i.cancelledAt);
-  const dropshipPos = order.purchaseOrders.filter((p) => p.fulfillment === "DROPSHIP" && p.status !== "CANCELLED" && p.status !== "RETURNED");
-  const covered = new Set(dropshipPos.flatMap((p) => p.items.map((i) => i.orderItemId)));
-  if (!liveItems.length || liveItems.some((i) => !covered.has(i.id))) return null; // 창고 출고 상품이 섞여 있으면 셀러·창고가 처리
-  const allShipped = dropshipPos.every((p) => p.status === "SHIPPED" || p.status === "DELIVERED");
-  const allDelivered = dropshipPos.every((p) => p.status === "DELIVERED");
-  let next: OrderStatus | null = null;
-  if (allDelivered && ["PAID", "PREPARING", "SHIPPED"].includes(order.status)) next = "DELIVERED";
-  else if (allShipped && ["PAID", "PREPARING"].includes(order.status)) next = "SHIPPED";
-  if (!next) return null;
-  await tx.order.update({ where: { id: order.id }, data: { status: next, ...(next === "DELIVERED" && { deliveredAt: new Date() }) } });
-  return next;
+  return refreshOrderStatusInTx(tx, orderId);
 }
 
 // 정산 금액 미리 계산용 (대시보드)

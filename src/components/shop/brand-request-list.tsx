@@ -48,7 +48,7 @@ export async function BrandRequestList({ scope, manager, params, base }: {
   const listed = new Set([...sellerListings.map((x) => `${x.sellerId}:${x.brandProductId}`), ...facilityListings.map((x) => `${x.facility.ownerId}:${x.brandProductId}`)]);
   const sold = new Map<string, number>();
   for (const it of soldItems) {
-    for (const owner of Array.from(new Set([it.purchaseOrder.sellerId, it.purchaseOrder.facility.ownerId]))) {
+    for (const owner of Array.from(new Set([it.purchaseOrder.sellerId, it.purchaseOrder.facility?.ownerId].filter((v): v is string => !!v)))) {
       const key = `${owner}:${it.brandProductId}`; sold.set(key, (sold.get(key) ?? 0) + it.quantity);
     }
   }

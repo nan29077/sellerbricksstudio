@@ -44,7 +44,7 @@ export default async function BrandChannelsPage() {
     const byFacility = new Map<string, { n: number; amt: number }>();
     for (const p of pos) {
       const s = bySeller.get(p.sellerId) ?? { n: 0, amt: 0 }; s.n += 1; s.amt += p.supplyAmount; bySeller.set(p.sellerId, s);
-      const f = byFacility.get(p.facilityId) ?? { n: 0, amt: 0 }; f.n += 1; f.amt += p.supplyAmount; byFacility.set(p.facilityId, f);
+      if (p.facilityId) { const f = byFacility.get(p.facilityId) ?? { n: 0, amt: 0 }; f.n += 1; f.amt += p.supplyAmount; byFacility.set(p.facilityId, f); }
     }
     const sellers = new Set(sellerListings.filter((l) => l.isActive).map((l) => l.seller.id));
     const facilities = new Set(facilityListings.map((l) => l.facility.id));

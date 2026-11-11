@@ -3,23 +3,26 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import { ORDER_NEXT_STATUS } from "@/lib/status";
 import { formatKRW } from "@/lib/utils";
 
 const ACTIONS: Record<string, { label: string; variant?: "outline"; ask?: string; confirm?: string }> = {
   PREPARING: { label: "준비 시작", confirm: "상품 준비를 시작할까요?" },
-  SHIPPED: { label: "발송", confirm: "발송 처리할까요? 구매자에게 배송중으로 표시됩니다." },
-  DELIVERED: { label: "배송 완료", confirm: "배송 완료로 처리할까요?" },
+  SHIPPED: { label: "발송 (운송장 입력)", confirm: "직접 출고하는 상품의 택배사와 운송장 번호를 입력하세요. 브랜드 직배송 상품까지 모두 출고되면 주문이 배송중으로 바뀝니다." },
+  DELIVERED: { label: "배송 완료", confirm: "직접 출고한 상품을 배송 완료로 처리할까요?" },
   CANCELLED: { label: "전체 취소", variant: "outline", ask: "결제가 취소되고 재고가 복구됩니다." },
   REFUNDED: { label: "전체 환불", variant: "outline", ask: "남은 결제 금액 전체가 환불됩니다." },
 };
 
 export type OrderLine = { id: string; productName: string; optionLabel?: string | null; quantity: number; lineTotal: number; cancelledAt?: string | Date | null; poId?: string | null };
 export type CancelRequest = { poId: string; poNo: string; brand: string; reason: string };
+export type OrderActionSet = { statuses: string[]; canCancel: boolean; canRefund: boolean; isShipper: boolean; localShipper: "FACILITY" | "SELLER" | null };
+
+const CARRIERS = ["CJ대한통운", "한진택배", "롯데택배", "우체국택배", "로젠택배", "경동택배", "직접 전달"];
 
 // 주문 목록의 상태 처리 버튼. 현재 상태에서 가능한 다음 단계 + 부분 취소(상품 줄 · 발주서 단위)
-export function OrderStatusActions({ orderId, status, items = [], cancelRequests = [], refundedAmount = 0 }: {
-  orderId: string; status: string; items?: OrderLine[]; cancelRequests?: CancelRequest[]; refundedAmount?: number;
+// 배송 담당(창고(스튜디오) · 셀러 공간 셀러)만 준비 · 발송 · 배송 완료를 누를 수 있다. 셀러는 창고 방송 주문을 확인하고 출고 전 취소만 할 수 있다.
+export function OrderStatusActions({ orderId, status, items = [], cancelRequests = [], refundedAmount = 0, actions }: {
+  orderId: string; status: string; items?: OrderLine[]; cancelRequests?: CancelRequest[]; refundedAmount?: number; actions: OrderActionSet;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -27,10 +30,15 @@ export function OrderStatusActions({ orderId, status, items = [], cancelRequests
   const [reason, setReason] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const [error, setError] = useState("");
-  const next = ORDER_NEXT_STATUS[status] ?? [];
+  const [carrier, setCarrier] = useState(CARRIERS[0]);
+  const [tracking, setTracking] = useState("");
+  const next = actions.statuses;
   const open = items.filter((i) => !i.cancelledAt);
-  const canPartial = ["PAID", "PREPARING", "SHIPPED", "DELIVERED"].includes(status) && open.length > 1;
-  if (next.length === 0 && !canPartial) return <span className="text-xs text-muted-foreground">{refundedAmount > 0 ? `환불 ${formatKRW(refundedAmount)}` : "-"}</span>;
+  const canPartial = (actions.canCancel || actions.canRefund) && open.length > 1;
+  const viewOnly = !actions.isShipper && ["PAID", "PREPARING", "SHIPPED"].includes(status)
+    ? (actions.localShipper === "FACILITY" ? "배송은 창고(스튜디오)가 처리 · 확인만 가능" : actions.localShipper === null ? "브랜드가 배송 처리 · 확인만 가능" : "")
+    : "";
+  if (next.length === 0 && !canPartial) return <span className="text-xs text-muted-foreground">{refundedAmount > 0 ? `환불 ${formatKRW(refundedAmount)}` : viewOnly || "-"}</span>;
 
   // 같은 발주서(브랜드)에 묶인 줄은 함께 선택된다
   const togglePick = (id: string) => {
@@ -59,7 +67,7 @@ export function OrderStatusActions({ orderId, status, items = [], cancelRequests
   const current = dialog && "to" in dialog ? ACTIONS[dialog.to] : null;
   const partial = dialog && "partial" in dialog;
   const pickedAmount = open.filter((i) => picked.includes(i.id)).reduce((s, i) => s + i.lineTotal, 0);
-  const preShip = status === "PAID" || status === "PREPARING";
+  const preShip = actions.canCancel;
 
   return (
     <div className="flex flex-col items-start gap-1.5">
@@ -78,15 +86,27 @@ export function OrderStatusActions({ orderId, status, items = [], cancelRequests
         {canPartial && <Button size="sm" variant="outline" disabled={busy !== null} className="h-9 px-3 text-xs" onClick={() => { setDialog({ partial: true }); setError(""); }}>부분 {preShip ? "취소" : "환불"}</Button>}
       </div>
       {refundedAmount > 0 && <span className="text-[11px] text-slate-500">부분 환불 {formatKRW(refundedAmount)}</span>}
+      {viewOnly && <span className="text-[11px] text-slate-500">{viewOnly}</span>}
 
       <Dialog open={!!current} onClose={() => setDialog(null)} title={current ? `${current.label}` : ""}
         footer={<>
           <Button variant="outline" onClick={() => setDialog(null)}>닫기</Button>
-          <Button disabled={busy !== null || (!!current?.ask && !reason.trim())} onClick={() => dialog && "to" in dialog && send({ status: dialog.to, reason: current?.ask ? reason : undefined }, dialog.to)}>
+          <Button disabled={busy !== null || (!!current?.ask && !reason.trim()) || (dialog !== null && "to" in dialog && dialog.to === "SHIPPED" && !tracking.trim())}
+            onClick={() => dialog && "to" in dialog && send({ status: dialog.to, reason: current?.ask ? reason : undefined, ...(dialog.to === "SHIPPED" && { carrier, trackingNumber: tracking.trim() }) }, dialog.to)}>
             {busy ? "처리 중…" : "확인"}
           </Button>
         </>}>
         <p className="text-sm text-slate-700">{current?.ask ?? current?.confirm}</p>
+        {dialog && "to" in dialog && dialog.to === "SHIPPED" && (
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <label className="block text-sm font-semibold text-navy">택배사
+              <select value={carrier} onChange={(e) => setCarrier(e.target.value)} className="mt-1 h-10 w-full rounded-lg border border-border px-2 text-sm">{CARRIERS.map((c) => <option key={c}>{c}</option>)}</select>
+            </label>
+            <label className="block text-sm font-semibold text-navy">운송장 번호{carrier === "직접 전달" && " (전달 메모)"}
+              <input value={tracking} onChange={(e) => setTracking(e.target.value)} maxLength={100} className="mt-1 h-10 w-full rounded-lg border border-border px-2 text-sm" placeholder={carrier === "직접 전달" ? "예: 현장 수령" : "숫자만"} />
+            </label>
+          </div>
+        )}
         {current?.ask && <label className="mt-3 block text-sm font-semibold text-navy" htmlFor={`reason-${orderId}`}>사유 (필수)</label>}
         {current?.ask && <textarea id={`reason-${orderId}`} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={300} rows={3} className="mt-1 w-full rounded-lg border border-border p-2 text-sm" />}
         {error && <p role="alert" className="mt-2 text-sm text-red-600">{error}</p>}

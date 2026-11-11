@@ -42,7 +42,7 @@ export default async function LiveSessionDetail({ params }: { params: { id: stri
     dbSession &&
     session.sellerId !== user.id &&
     user.role !== "SUPER_ADMIN" &&
-    session.facility.ownerId !== user.id
+    session.facility?.ownerId !== user.id
   ) {
     redirect("/seller/live-sessions");
   }
@@ -56,7 +56,7 @@ export default async function LiveSessionDetail({ params }: { params: { id: stri
 
   return (
     <div>
-      <PageHeader title={session.title} description={session.facility.name}
+      <PageHeader title={session.title} description={session.facility?.name ?? "셀러 공간 방송 (브랜드 직배송 상품)"}
         action={isDemo ? undefined : <Link href={`/seller/live-sessions/${session.id}/numbering`}><Button><Hash className="h-5 w-5" />상품번호 관리</Button></Link>} />
 
       {isDemo && (

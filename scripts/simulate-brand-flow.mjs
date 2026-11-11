@@ -156,30 +156,43 @@ async function main() {
   const lspW = session.products.find((p) => p.facilityProductId === fpW);
   ok(lspW?.brandProductId === p1.id && lspW.fulfillment === "WAREHOUSE" && lspW.supplyPriceSnapshot === 10000 && !!lspW.optionSnapshot, "예약 상품이 브랜드 정보·옵션과 함께 방송에 등록", lspW);
   r = await seller.req("POST", `/api/live-sessions/${session.id}/products`, { sellerBrandProductId: listing });
-  ok(r.status === 201 && r.data.fulfillment === "DROPSHIP", "셀러 직배송 브랜드 상품 방송 추가", r);
+  ok(r.status === 400, "셀러가 가져온 브랜드 상품은 창고(스튜디오) 방송에 추가 불가", r);
+  // 셀러 본인 공간 방송 (예약 · 창고 없음) — 셀러가 가져온 브랜드 직배송 상품을 판다
+  r = await seller.req("POST", "/api/live-sessions", { title: `셀러 공간 라이브 ${Date.now()}` });
+  const own = r.data;
+  ok(r.status === 201 && own?.facilityId === null && !own.bookingId, "예약 없이 셀러 공간 방송 생성", r);
+  r = await seller.req("POST", `/api/live-sessions/${own.id}/products`, { sellerBrandProductId: listing });
+  ok(r.status === 201 && r.data.fulfillment === "DROPSHIP", "셀러 공간 방송에 브랜드 직배송 상품 추가", r);
   const lspS = r.data;
-  r = await seller.req("POST", `/api/live-sessions/${session.id}/products`, { sellerBrandProductId: listing });
+  r = await seller.req("POST", `/api/live-sessions/${own.id}/products`, { sellerBrandProductId: listing });
   ok(r.status === 409, "같은 브랜드 상품 중복 추가 거절", r);
+  r = await seller.req("POST", `/api/live-sessions/${own.id}/products`, { facilityProductId: fpW });
+  ok(r.status === 403, "셀러 공간 방송에는 창고 상품 추가 불가", r);
   r = await seller.req("POST", `/api/live-sessions/${session.id}/products`, { facilityProductId: fpD });
   ok(r.status === 201, "창고 직배송 상품(마스크팩) 방송 추가", r);
   const lspD = r.data;
 
   console.log("\n[8] 구매자 결제 → 브랜드 발주서 자동 생성");
   const buyer = { sessionSlug: session.slug, buyerName: "구매자", buyerPhone: "010-5555-6666", method: "CARD", agreePrivacy: true };
-  r = await guest.req("POST", "/api/orders", { ...buyer, items: [{ liveSessionProductId: lspS.id, quantity: 1, optionLabel: "용량:30ml" }] });
+  const buyerOwn = { ...buyer, sessionSlug: own.slug };
+  r = await guest.req("POST", "/api/orders", { ...buyerOwn, items: [{ liveSessionProductId: lspS.id, quantity: 1, optionLabel: "용량:30ml" }] });
   ok(r.status === 400 && /배송지/.test(r.error), "직배송 상품은 배송지 필수", r);
-  r = await guest.req("POST", "/api/orders", { ...buyer, buyerAddress: "부산 해운대구 1", items: [{ liveSessionProductId: lspS.id, quantity: 1 }] });
+  r = await guest.req("POST", "/api/orders", { ...buyerOwn, buyerAddress: "부산 해운대구 1", items: [{ liveSessionProductId: lspS.id, quantity: 1 }] });
   ok(r.status === 400 && /옵션/.test(r.error), "옵션 미선택 거절", r);
-  r = await guest.req("POST", "/api/orders", { ...buyer, buyerAddress: "부산 해운대구 1", items: [{ liveSessionProductId: lspS.id, quantity: 1, optionLabel: "용량:99ml" }] });
+  r = await guest.req("POST", "/api/orders", { ...buyerOwn, buyerAddress: "부산 해운대구 1", items: [{ liveSessionProductId: lspS.id, quantity: 1, optionLabel: "용량:99ml" }] });
   ok(r.status === 400, "없는 옵션 거절", r);
   const before = await db.brandProduct.findUnique({ where: { id: p1.id } });
-  r = await guest.req("POST", "/api/orders", { ...buyer, buyerAddress: "부산 해운대구 1", items: [
-    { liveSessionProductId: lspS.id, quantity: 2, optionLabel: "용량:50ml" }, { liveSessionProductId: lspW.id, quantity: 3, optionLabel: "용량:30ml" }] });
-  ok(r.status === 201, "주문 1 결제 (셀러 직배송 2개 + 창고 위탁 3개)", r);
+  r = await guest.req("POST", "/api/orders", { ...buyerOwn, buyerAddress: "부산 해운대구 1", items: [{ liveSessionProductId: lspS.id, quantity: 2, optionLabel: "용량:50ml" }] });
+  ok(r.status === 201, "주문 1-b 결제 (셀러 공간 방송 · 브랜드 직배송 2개)", r);
+  const order1b = r.data.orderId;
+  const o1b = await db.order.findUnique({ where: { id: order1b }, include: { items: true } });
+  ok(o1b.facilityId === null && o1b.items.every((i) => i.facilityAmount === 0 && i.sellerAmount > 0), "셀러 공간 주문: 창고 없음 · 창고 몫 0 (셀러 몫에 포함)", o1b.items);
+  r = await guest.req("POST", "/api/orders", { ...buyer, buyerAddress: "부산 해운대구 1", items: [{ liveSessionProductId: lspW.id, quantity: 3, optionLabel: "용량:30ml" }] });
+  ok(r.status === 201, "주문 1 결제 (창고 방송 · 브랜드 위탁 3개)", r);
   const order1 = r.data.orderId;
-  let pos1 = await db.purchaseOrder.findMany({ where: { orderId: order1 }, include: { items: true } });
+  let pos1 = [...await db.purchaseOrder.findMany({ where: { orderId: order1b }, include: { items: true } }), ...await db.purchaseOrder.findMany({ where: { orderId: order1 }, include: { items: true } })];
   const poD1 = pos1.find((p) => p.fulfillment === "DROPSHIP"), poW1 = pos1.find((p) => p.fulfillment === "WAREHOUSE");
-  ok(pos1.length === 2 && poD1?.status === "NEW" && poW1?.status === "CONFIRMED", "발주서 2장: 직배송(신규) + 창고 위탁(정산용 확인)", pos1.map((p) => [p.fulfillment, p.status]));
+  ok(pos1.length === 2 && poD1?.status === "NEW" && poW1?.status === "CONFIRMED" && poD1.orderId === order1b && poW1.orderId === order1, "발주서: 셀러 공간 주문 → 직배송(신규) · 창고 주문 → 위탁(정산용 확인)", pos1.map((p) => [p.fulfillment, p.status]));
   ok(poD1.supplyAmount === 20000 && poD1.recipient === "구매자" && poD1.address.includes("해운대") && poD1.items[0].optionLabel === "용량:50ml", "직배송 발주서: 공급가 합계·구매자 배송지·옵션", poD1);
   ok(poW1.supplyAmount === 30000 && poW1.recipient === F.name, "위탁 발주서: 공급가 합계·출고 창고", poW1);
   ok((await db.brandProduct.findUnique({ where: { id: p1.id } })).stock === before.stock - 2, "직배송분만 브랜드 재고 차감");
@@ -191,14 +204,22 @@ async function main() {
   ok(r.status === 400, "운송장 없이 출고 거절", r);
   r = await brand.req("PATCH", `/api/purchase-orders/${poW1.id}`, { status: "SHIPPED", trackingNumber: "x" });
   ok(r.status === 409, "브랜드는 위탁 발주 출고 불가 (창고가 출고)", r);
+  r = await seller.req("PATCH", `/api/orders/${order1b}`, { status: "SHIPPED", carrier: "CJ대한통운", trackingNumber: "1" });
+  ok(r.status === 403, "셀러는 브랜드 직배송 주문의 배송 상태 변경 불가 (확인만)", r);
   r = await brand.req("PATCH", `/api/purchase-orders/${poD1.id}`, { status: "SHIPPED", carrier: "CJ대한통운", trackingNumber: "5555" });
-  ok(r.ok && r.data.orderStatus === null, "직배송 출고 (창고 상품이 섞여 있어 주문 상태는 유지)", r);
+  ok(r.ok && r.data.orderStatus === "SHIPPED", "전부 직배송 주문 → 브랜드 출고 시 주문도 배송 중", r);
+  r = await seller.req("PATCH", `/api/orders/${order1}`, { status: "PREPARING" });
+  ok(r.status === 403, "셀러는 창고 출고 주문의 배송 상태 변경 불가 (확인만)", r);
   await fac.req("PATCH", `/api/orders/${order1}`, { status: "PREPARING" });
-  await fac.req("PATCH", `/api/orders/${order1}`, { status: "SHIPPED" });
-  ok((await db.purchaseOrder.findUnique({ where: { id: poW1.id } })).status === "SHIPPED", "창고가 주문 발송 → 위탁 발주도 배송 중");
+  r = await fac.req("PATCH", `/api/orders/${order1}`, { status: "SHIPPED" });
+  ok(r.status === 400 && /운송장/.test(r.error ?? ""), "창고 발송은 운송장 필수", r);
+  r = await fac.req("PATCH", `/api/orders/${order1}`, { status: "SHIPPED", carrier: "CJ대한통운", trackingNumber: "8888" });
+  const o1 = await db.order.findUnique({ where: { id: order1 } });
+  ok(r.ok && o1.status === "SHIPPED" && o1.shipTrackingNumber === "8888" && (await db.purchaseOrder.findUnique({ where: { id: poW1.id } })).status === "SHIPPED", "창고 발송(운송장) → 주문 배송 중 · 위탁 발주도 배송 중", o1);
   await fac.req("PATCH", `/api/orders/${order1}`, { status: "DELIVERED" });
-  pos1 = await db.purchaseOrder.findMany({ where: { orderId: order1 } });
-  ok(pos1.every((p) => p.status === "DELIVERED"), "주문 배송 완료 → 발주서 모두 배송 완료", pos1.map((p) => p.status));
+  ok((await db.order.findUnique({ where: { id: order1 } })).status === "DELIVERED" && (await db.purchaseOrder.findUnique({ where: { id: poW1.id } })).status === "DELIVERED", "창고 배송 완료 → 주문 · 위탁 발주 배송 완료");
+  r = await brand.req("PATCH", `/api/purchase-orders/${poD1.id}`, { status: "DELIVERED" });
+  ok((await db.order.findUnique({ where: { id: order1b } })).status === "DELIVERED", "브랜드 배송 완료 → 셀러 공간 주문 배송 완료", r);
 
   r = await guest.req("POST", "/api/orders", { ...buyer, buyerAddress: "대구 중구 2", items: [{ liveSessionProductId: lspD.id, quantity: 4 }] });
   const order2 = r.data.orderId;
@@ -236,11 +257,13 @@ async function main() {
   ok(r.status === 403, "셀러는 정책 수정 불가", r);
   const today = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
   r = await admin.req("POST", "/api/admin/sales-settlements", { from: today, to: today });
-  ok(r.status === 201 && r.data.orders === 2, "판매 정산서 생성 (배송 완료 2건)", r);
+  ok(r.status === 201 && r.data.orders === 3, "판매 정산서 생성 (배송 완료 3건)", r);
   const st = await db.settlement.findFirst({ where: { orders: { some: { id: order1 } } }, include: { orders: true } });
   const sum = st.platformFee + st.brandAmount + st.commissionAmount + st.facilityAmount;
   ok(sum === st.grossAmount, `판매 정산 금액 일치: ${st.grossAmount} = 플랫폼 ${st.platformFee} + 브랜드 ${st.brandAmount} + 셀러 ${st.commissionAmount} + 창고 ${st.facilityAmount}`);
-  ok(st.brandAmount === 70000, "브랜드 공급대금 = 발주서 공급가 합계 (20,000+30,000+20,000)", st.brandAmount);
+  ok(st.brandAmount === 50000, "창고 정산서 브랜드 공급대금 = 위탁 30,000 + 창고 직배송 20,000", st.brandAmount);
+  const stOwn = await db.settlement.findFirst({ where: { orders: { some: { id: order1b } } } });
+  ok(stOwn?.facilityId === null && stOwn.facilityAmount === 0 && stOwn.brandAmount === 20000 && stOwn.platformFee + stOwn.brandAmount + stOwn.commissionAmount === stOwn.grossAmount, "셀러 공간 정산서: 창고 몫 없이 셀러 단독", stOwn);
   r = await admin.req("POST", "/api/admin/sales-settlements", { from: today, to: today });
   ok(r.status === 404, "같은 주문 중복 정산 방지", r);
   r = await admin.req("POST", "/api/admin/brand-settlements", { from: today, to: today });
@@ -331,6 +354,31 @@ async function main() {
   r = await seller.req("PATCH", `/api/orders/${plainOrder}`, { status: "CANCELLED", reason: "중복" });
   ok(r.status === 409, "이미 취소된 주문 중복 취소 거절", r);
 
+  console.log("\n[11-d] 혼합 주문 — 창고 출고분 + 브랜드 직배송분이 모두 끝나야 주문 상태 변경");
+  r = await guest.req("POST", "/api/orders", { sessionSlug: session.slug, buyerName: "혼합구매자", buyerPhone: "010-1111-4444", buyerAddress: "서울 송파구 1", method: "CARD", agreePrivacy: true,
+    items: [{ liveSessionProductId: lspD.id, quantity: 1 }, { liveSessionProductId: lspW.id, quantity: 1, optionLabel: "용량:30ml" }] });
+  const oM = r.data?.orderId;
+  const poM = await db.purchaseOrder.findFirst({ where: { orderId: oM, fulfillment: "DROPSHIP" } });
+  await fac.req("PATCH", `/api/orders/${oM}`, { status: "SHIPPED", carrier: "한진택배", trackingNumber: "4444" });
+  ok((await db.order.findUnique({ where: { id: oM } })).status === "PREPARING", "창고분만 출고 → 주문은 준비중 (브랜드분 대기)");
+  await brand.req("PATCH", `/api/purchase-orders/${poM.id}`, { status: "SHIPPED", carrier: "CJ대한통운", trackingNumber: "4445" });
+  ok((await db.order.findUnique({ where: { id: oM } })).status === "SHIPPED", "브랜드분까지 출고 → 주문 배송 중");
+  await fac.req("PATCH", `/api/orders/${oM}`, { status: "DELIVERED" });
+  ok((await db.order.findUnique({ where: { id: oM } })).status === "SHIPPED", "창고분만 배송 완료 → 주문은 배송 중 유지");
+  r = await seller.req("PATCH", `/api/orders/${oM}`, { status: "CANCELLED", reason: "x" });
+  ok(r.status === 409 || r.status === 403, "출고된 주문은 셀러가 취소 불가", r);
+  r = await fac.req("PATCH", `/api/orders/${oM}`, { status: "REFUNDED", reason: "혼합 주문 테스트 정리" });
+  ok(r.ok && (await db.order.findUnique({ where: { id: oM } })).status === "REFUNDED", "창고가 출고 후 환불", r);
+
+  console.log("\n[11-e] 브랜드 상품 찜");
+  r = await seller.req("POST", "/api/brand-favorites", { productId: p1.id });
+  ok(r.ok && r.data.favorited === true, "브랜드 상품 찜", r);
+  r = await seller.req("POST", "/api/brand-favorites", { productId: p1.id });
+  ok(r.ok && r.data.favorited === false, "찜 해제", r);
+  await seller.req("POST", "/api/brand-favorites", { productId: p1.id });
+  r = await brand.req("POST", "/api/brand-favorites", { productId: p1.id });
+  ok(r.status === 403, "브랜드사 계정은 찜 불가", r);
+
   console.log("\n[11-c] 셀러 배송비 · 판매가 하한");
   r = await seller.req("PATCH", `/api/live-sessions/${s2.id}`, { shippingFee: 3000, freeShippingOver: 50000 });
   ok(r.ok && r.data.shippingFee === 3000, "셀러 배송비 설정 (3,000원 · 5만 원 이상 무료)", r);
@@ -370,39 +418,40 @@ async function main() {
   r = await brand.req("POST", "/api/brands", { ...base, name: "한정 수량 세럼", category: "코스메틱", supplyPrice: 5000, consumerPrice: 15000, stock: 3, samplePrice: null, sampleStock: 0, allowDropship: true, allowWarehouse: false });
   const p3 = r.data.id;
   const lst3 = (await seller.req("POST", "/api/brand-imports", { action: "import", brandProductId: p3, target: "SELLER", fulfillment: "DROPSHIP", salePrice: 12000 })).data.id;
-  const lspA = (await seller.req("POST", `/api/live-sessions/${session.id}/products`, { sellerBrandProductId: lst3 })).data;
-  const lspB = (await seller.req("POST", `/api/live-sessions/${s2.id}/products`, { sellerBrandProductId: lst3 })).data;
+  const own2 = (await seller.req("POST", "/api/live-sessions", { title: `셀러 공간 라이브 2 ${Date.now()}` })).data;
+  const lspA = (await seller.req("POST", `/api/live-sessions/${own.id}/products`, { sellerBrandProductId: lst3 })).data;
+  const lspB = (await seller.req("POST", `/api/live-sessions/${own2.id}/products`, { sellerBrandProductId: lst3 })).data;
   ok(lspA?.stockSnapshot === 3 && lspB?.stockSnapshot === 3, "두 방송에 같은 브랜드 상품(재고 3) 등록", [lspA?.stockSnapshot, lspB?.stockSnapshot]);
-  r = await guest.req("POST", "/api/orders", { ...buy("010-7000-0003"), items: [{ liveSessionProductId: lspA.id, quantity: 2 }] });
+  r = await guest.req("POST", "/api/orders", { ...buy("010-7000-0003"), sessionSlug: own.slug, items: [{ liveSessionProductId: lspA.id, quantity: 2 }] });
   ok(r.status === 201 && (await db.brandProduct.findUnique({ where: { id: p3 } })).stock === 1, "방송 A 2개 판매 → 브랜드 재고 1", r);
   ok((await db.liveSessionProduct.findUnique({ where: { id: lspB.id } })).stockSnapshot === 1, "방송 B 화면 재고도 1로 맞춰짐");
-  r = await guest.req("POST", "/api/orders", { ...buy("010-7000-0004"), sessionSlug: s2.slug, items: [{ liveSessionProductId: lspB.id, quantity: 2 }] });
+  r = await guest.req("POST", "/api/orders", { ...buy("010-7000-0004"), sessionSlug: own2.slug, items: [{ liveSessionProductId: lspB.id, quantity: 2 }] });
   ok(r.status === 409, "방송 B 에서 남은 재고보다 많이 주문 거절", r);
   await db.liveSessionProduct.update({ where: { id: lspB.id }, data: { stockSnapshot: 5 } }); // 화면 재고가 어긋난 상황을 강제로 만들어도
-  r = await guest.req("POST", "/api/orders", { ...buy("010-7000-0005"), sessionSlug: s2.slug, items: [{ liveSessionProductId: lspB.id, quantity: 2 }] });
+  r = await guest.req("POST", "/api/orders", { ...buy("010-7000-0005"), sessionSlug: own2.slug, items: [{ liveSessionProductId: lspB.id, quantity: 2 }] });
   ok(r.status === 409 && /브랜드 재고/.test(r.error ?? ""), "결제 시점 브랜드 실재고 확인으로 초과 판매 차단", r);
   ok((await db.liveSessionProduct.findUnique({ where: { id: lspB.id } })).stockSnapshot === 5 && (await db.brandProduct.findUnique({ where: { id: p3 } })).stock === 1, "거절된 주문은 재고를 건드리지 않음 (롤백)");
-  r = await guest.req("POST", "/api/orders", { ...buy("010-7000-0006"), sessionSlug: s2.slug, items: [{ liveSessionProductId: lspB.id, quantity: 1 }] });
+  r = await guest.req("POST", "/api/orders", { ...buy("010-7000-0006"), sessionSlug: own2.slug, items: [{ liveSessionProductId: lspB.id, quantity: 1 }] });
   ok(r.status === 201 && (await db.brandProduct.findUnique({ where: { id: p3 } })).stock === 0, "마지막 1개 판매 → 브랜드 재고 0", r);
   ok(!!(await db.userNotification.findFirst({ where: { userId: nb.id, title: { contains: "한정 수량 세럼" } } })), "브랜드에 재고 부족·품절 알림");
 
   console.log("\n[15] 부분 취소 (발주서 단위) · 정산 제외");
-  r = await guest.req("POST", "/api/orders", { ...buy("010-7000-0007"), items: [{ liveSessionProductId: lspS.id, quantity: 1, optionLabel: "용량:30ml" }, { liveSessionProductId: lspW.id, quantity: 1, optionLabel: "용량:30ml" }] });
+  r = await guest.req("POST", "/api/orders", { ...buy("010-7000-0007"), items: [{ liveSessionProductId: lspD.id, quantity: 1 }, { liveSessionProductId: lspW.id, quantity: 1, optionLabel: "용량:30ml" }] });
   const oP = r.data.orderId;
   const posP = await db.purchaseOrder.findMany({ where: { orderId: oP } });
   const poDrop = posP.find((p) => p.fulfillment === "DROPSHIP");
-  const stockBefore = (await db.brandProduct.findUnique({ where: { id: p1.id } })).stock;
-  const lspSBefore = (await db.liveSessionProduct.findUnique({ where: { id: lspS.id } })).stockSnapshot;
+  const stockBefore = (await db.brandProduct.findUnique({ where: { id: p2 } })).stock;
+  const lspDRow = await db.liveSessionProduct.findUnique({ where: { id: lspD.id } });
   r = await seller.req("PATCH", `/api/orders/${oP}`, { action: "cancel-items", purchaseOrderId: poDrop.id, reason: "구매자 일부 취소" });
   const oPRow = await db.order.findUnique({ where: { id: oP }, include: { items: true } });
-  ok(r.ok && oPRow.status === "PAID" && oPRow.refundedAmount === 25000 && oPRow.items.filter((i) => i.cancelledAt).length === 1, "직배송 발주서만 부분 취소 (주문은 유지, 25,000원 환불)", r);
+  ok(r.ok && oPRow.status === "PAID" && oPRow.refundedAmount === lspDRow.priceSnapshot && oPRow.items.filter((i) => i.cancelledAt).length === 1, "셀러가 출고 전 직배송 발주서만 부분 취소 (주문은 유지)", r);
   ok((await db.purchaseOrder.findUnique({ where: { id: poDrop.id } })).status === "CANCELLED" && (await db.purchaseOrder.findFirst({ where: { orderId: oP, fulfillment: "WAREHOUSE" } })).status === "CONFIRMED", "취소한 발주서만 취소, 위탁 발주는 그대로");
-  ok((await db.brandProduct.findUnique({ where: { id: p1.id } })).stock === stockBefore + 1 && (await db.liveSessionProduct.findUnique({ where: { id: lspS.id } })).stockSnapshot === lspSBefore + 1, "브랜드 재고 · 방송 재고 복구");
+  ok((await db.brandProduct.findUnique({ where: { id: p2 } })).stock === stockBefore + 1 && (await db.liveSessionProduct.findUnique({ where: { id: lspD.id } })).stockSnapshot === lspDRow.stockSnapshot + 1, "브랜드 재고 · 방송 재고 복구");
   r = await seller.req("PATCH", `/api/orders/${oP}`, { action: "cancel-items", itemIds: ["없는줄"], reason: "x" });
   ok(r.status === 400, "다른 주문의 상품 줄은 취소 불가", r);
 
   console.log("\n[16] 브랜드 출고 불가 요청 → 판매처 부분 취소 / 최고관리자 발주 취소 = 구매자 환불");
-  r = await guest.req("POST", "/api/orders", { ...buy("010-7000-0008"), items: [{ liveSessionProductId: lspS.id, quantity: 1, optionLabel: "용량:50ml" }] });
+  r = await guest.req("POST", "/api/orders", { ...buy("010-7000-0008"), sessionSlug: own.slug, items: [{ liveSessionProductId: lspS.id, quantity: 1, optionLabel: "용량:50ml" }] });
   const oQ = r.data.orderId;
   const poQ = await db.purchaseOrder.findFirst({ where: { orderId: oQ } });
   r = await brand.req("PATCH", `/api/purchase-orders/${poQ.id}`, { action: "REQUEST_CANCEL" });
@@ -413,7 +462,7 @@ async function main() {
   r = await seller.req("PATCH", `/api/orders/${oQ}`, { action: "cancel-items", purchaseOrderId: poQ.id, reason: "브랜드 품절" });
   const oQRow = await db.order.findUnique({ where: { id: oQ }, include: { payment: true } });
   ok(r.ok && r.data.full && oQRow.status === "CANCELLED" && oQRow.payment.status === "CANCELLED", "남은 상품이 없으면 주문 전체 취소 · 결제 취소", r);
-  r = await guest.req("POST", "/api/orders", { ...buy("010-7000-0009"), items: [{ liveSessionProductId: lspS.id, quantity: 1, optionLabel: "용량:30ml" }] });
+  r = await guest.req("POST", "/api/orders", { ...buy("010-7000-0009"), sessionSlug: own.slug, items: [{ liveSessionProductId: lspS.id, quantity: 1, optionLabel: "용량:30ml" }] });
   const oR = r.data.orderId;
   const poR = await db.purchaseOrder.findFirst({ where: { orderId: oR } });
   r = await admin.req("PATCH", `/api/purchase-orders/${poR.id}`, { status: "CANCELLED", reason: "관리자 확인 결과 출고 불가" });
@@ -422,6 +471,8 @@ async function main() {
 
   console.log("\n[17] 정산 후 환불 → 다음 정산에서 자동 차감 · 반품 수령 확인");
   r = await seller.req("PATCH", `/api/orders/${order2}`, { status: "REFUNDED", reason: "정산 후 반품" });
+  ok(r.status === 403, "셀러는 창고 방송 주문의 출고 후 환불 불가 (창고 · 최고관리자)", r);
+  r = await fac.req("PATCH", `/api/orders/${order2}`, { status: "REFUNDED", reason: "정산 후 반품" });
   const po2Row = await db.purchaseOrder.findUnique({ where: { id: po2.id } });
   ok(r.ok && po2Row.status === "RETURNED", "정산 끝난 주문 환불 → 발주 반품 처리", r);
   const badj = await db.brandSettlementAdjustment.findFirst({ where: { purchaseOrderId: po2.id } });
@@ -556,7 +607,7 @@ async function main() {
   const pages = [
     [admin, ["/admin/dashboard", "/admin/purchase-orders", "/admin/payouts", "/admin/payouts?tab=brand", "/admin/policy", "/admin/bookings", `/admin/brands/${nb.brandShop.id}`, "/admin/brands/requests", "/admin/orders", "/admin/settlements"]],
     [brand, ["/brand/dashboard", "/brand/orders", "/brand/requests", "/brand/settlements", `/brands/${nb.brandShop.id}`, "/brand/claims", "/brand/messages", "/brand/reports", "/brand/team", "/brand/channels", "/brand/products", "/brand/shop"]],
-    [seller, ["/seller/dashboard", "/seller/brand-products", "/seller/bookings", "/seller/orders", "/seller/settlements?tab=sales", `/seller/live-sessions/${session.id}/products`, "/brand-requests", "/brands", `/brands/${nb.brandShop.id}`, "/seller/bookings/new", "/brand-messages", `/brand-messages?shop=${nb.brandShop.id}`, "/seller/orders"]],
+    [seller, ["/seller/dashboard", "/seller/brand-products", "/seller/bookings", "/seller/orders", "/seller/settlements?tab=sales", `/seller/live-sessions/${session.id}/products`, "/brand-requests", "/brands", `/brands/${nb.brandShop.id}`, "/seller/bookings/new", "/brand-messages", `/brand-messages?shop=${nb.brandShop.id}`, "/seller/orders", "/brand-favorites", `/seller/live-sessions/${own.id}`, `/order-complete/${order1}`]],
     [fac, ["/facility/dashboard", "/facility/brand-products", "/facility/bookings", "/facility/schedule", "/facility/orders", "/facility/settlements", "/facility/products", `/brands/${nb.brandShop.id}`]],
     [guest, ["/signup/brand", "/signup/seller", `/live/${session.slug}`, `/checkout/${session.slug}`, "/brands", "/terms", "/privacy", "/forgot-password", "/reset-password?token=x", "/login"]],
   ];

@@ -4,6 +4,7 @@ import { getPolicy } from "./policy";
 import { SETTLEMENT_ORDER_INCLUDE, splitOrder } from "./settlement";
 import { getPaymentAdapter } from "./adapters/payment";
 import { audit } from "./audit";
+import { refreshOrderStatusInTx } from "./order-fulfillment";
 import {
   closePurchaseOrderInTx, notifyPoPartners, notifyPurchaseOrderChanges, releaseOrderStockInTx,
   restoreOwnFacilityStockInTx, syncPurchaseOrdersWithOrder, type PoChange,
@@ -105,7 +106,7 @@ export async function cancelOrderItems(params: { orderId: string; itemIds?: stri
   if (!targets.length) throw new OrderActionError("취소할 상품을 선택하세요. (이미 취소된 상품은 제외됩니다)");
 
   const remaining = order.items.filter((i) => !i.cancelledAt && !selected.has(i.id));
-  const preShip = PRE_SHIP.includes(order.status);
+  const preShip = PRE_SHIP.includes(order.status) && !order.localShippedAt; // 직접 출고분이 이미 나갔으면 환불로 본다
   const amount = targets.reduce((s, i) => s + i.lineTotal, 0);
 
   // 남는 상품이 없으면 주문 전체 처리
@@ -171,6 +172,30 @@ export async function cancelOrderItems(params: { orderId: string; itemIds?: stri
   await notifyPurchaseOrderChanges(poChanges);
   await audit({ actorId: params.actorId, action: "ORDER_PARTIAL_CANCEL", entity: "Order", entityId: order.id, meta: { reason, amount, items: targets.length, preShip } });
   return { status: order.status, refunded: amount, full: false };
+}
+
+// ---------------------------------------------------------------------------
+// 직접 출고분(창고(스튜디오) 상품 · 위탁 상품 · 임시 상품) 출고 · 배송 완료
+//  - 출고할 때 택배사 · 운송장을 남긴다. 창고 위탁 발주서도 함께 따라간다.
+//  - 브랜드 직배송분까지 모두 출고 · 배송 완료되면 주문 전체 상태가 바뀐다.
+// ---------------------------------------------------------------------------
+export async function shipLocalPartInTx(tx: Tx, orderId: string, to: "SHIPPED" | "DELIVERED", info: { carrier?: string; trackingNumber?: string } = {}) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`order:${orderId}`}))`;
+  const order = await tx.order.findUnique({ where: { id: orderId }, select: { id: true, status: true, localShippedAt: true, localDeliveredAt: true } });
+  if (!order) throw new OrderActionError("주문을 찾을 수 없습니다.", 404);
+  if (!["PAID", "PREPARING", "SHIPPED"].includes(order.status)) throw new OrderActionError("현재 주문 상태에서는 배송 처리를 할 수 없습니다.", 409);
+  const now = new Date();
+  if (to === "SHIPPED") {
+    if (order.localShippedAt) throw new OrderActionError("이미 출고 처리된 주문입니다. 새로고침해 주세요.", 409);
+    await tx.order.update({ where: { id: order.id }, data: { localShippedAt: now, shipCarrier: info.carrier?.slice(0, 30) || null, shipTrackingNumber: info.trackingNumber?.slice(0, 100) || null } });
+  } else {
+    if (!order.localShippedAt) throw new OrderActionError("먼저 출고(발송) 처리해 주세요.", 409);
+    if (order.localDeliveredAt) throw new OrderActionError("이미 배송 완료된 주문입니다. 새로고침해 주세요.", 409);
+    await tx.order.update({ where: { id: order.id }, data: { localDeliveredAt: now } });
+  }
+  const poChanges = await syncPurchaseOrdersWithOrder(tx, order.id, to);
+  const next = await refreshOrderStatusInTx(tx, order.id);
+  return { poChanges, next };
 }
 
 // 결제 실패·확정 실패 시: 확보한 재고를 돌려놓고 주문을 닫는다.

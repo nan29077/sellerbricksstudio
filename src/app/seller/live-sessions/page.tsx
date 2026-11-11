@@ -47,10 +47,10 @@ export default async function SellerLiveSessions({ searchParams }: { searchParam
     <div className="pb-24 md:pb-0">
       <PageHeader title="라이브 세션" description="방송 세션을 만들고 상품번호를 관리하세요." />
 
-      {approvedBookings.length > 0 && (
+      {(
         <Card className="mb-6 border-brand-200 bg-brand-50/50">
           <CardContent className="pt-6">
-            <p className="font-semibold text-navy mb-3">승인된 예약으로 라이브 세션 만들기</p>
+            <p className="font-semibold text-navy mb-3">라이브 세션 만들기</p>
             <LiveSessionCreate
               bookings={approvedBookings.map((b) => ({
                 id: b.id,

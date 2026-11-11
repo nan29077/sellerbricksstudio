@@ -56,7 +56,7 @@ export const facilityProductSchema = z.object({
 
 export const liveSessionSchema = z.object({
   bookingId: z.string().optional(),
-  facilityId: z.string().min(1),
+  facilityId: z.string().min(1).optional(), // 비우면 셀러 본인 공간 방송
   title: z.string().min(1, "방송 제목을 입력하세요."),
   description: z.string().optional(),
   scheduledStart: z.string().optional(),

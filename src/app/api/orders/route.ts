@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
       const l = map.get(i.liveSessionProductId)!;
       const lineTotal = l.priceSnapshot * i.quantity;
       subtotal += lineTotal;
-      const split = splitLine(lineInputOf(l, { lineTotal, unitPrice: l.priceSnapshot, quantity: i.quantity }), policy);
+      const split = splitLine(lineInputOf(l, { lineTotal, unitPrice: l.priceSnapshot, quantity: i.quantity }, { ownSpace: !session.facilityId }), policy);
       return {
         liveSessionProductId: l.id, displayNumber: l.displayNumber, productName: l.nameSnapshot, unitPrice: l.priceSnapshot, quantity: i.quantity, optionLabel: i.optionLabel, lineTotal,
         platformFee: split.platformFee, brandAmount: split.brand, facilityAmount: split.facility, sellerAmount: split.seller,

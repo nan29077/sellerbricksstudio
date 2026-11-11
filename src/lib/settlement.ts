@@ -19,6 +19,7 @@ export type LineInput = {
   facilitySupply?: number | null;    // 창고(스튜디오)가 정한 셀러 공급가 (공급가 방식)
   facilityCommission: { type: CommissionType; value: number } | null;
   sellerBrand: boolean;
+  ownSpace?: boolean;                // 셀러 본인 공간 방송 (창고(스튜디오) 없음) → 창고 몫도 셀러
 };
 
 export type LineSplit = { gross: number; platformFee: number; brand: number; facility: number; seller: number };
@@ -37,6 +38,7 @@ export function splitLine(line: LineInput, policy: Pick<Policy, "salesFeeRate" |
     else if (line.sellerBrand) seller = pct(net, policy.sellerShareRate);
     facility = net - seller;
   }
+  if (line.ownSpace) { seller += facility; facility = 0; }
   return { gross: line.lineTotal, platformFee, brand, seller, facility };
 }
 
@@ -47,7 +49,7 @@ export type LspForSplit = {
   facilityProduct: { commissionType: CommissionType; commissionValue: number; brandProductId: string | null } | null;
 };
 
-export function lineInputOf(lsp: LspForSplit, line: { lineTotal: number; unitPrice: number; quantity: number }): LineInput {
+export function lineInputOf(lsp: LspForSplit, line: { lineTotal: number; unitPrice: number; quantity: number }, opts: { ownSpace?: boolean } = {}): LineInput {
   const fp = lsp.facilityProduct;
   const isBrand = !!(lsp.brandProductId ?? fp?.brandProductId);
   return {
@@ -56,6 +58,7 @@ export function lineInputOf(lsp: LspForSplit, line: { lineTotal: number; unitPri
     facilitySupply: fp ? lsp.facilitySupplySnapshot ?? null : null,
     facilityCommission: fp ? { type: lsp.commissionTypeSnapshot ?? fp.commissionType, value: lsp.commissionValueSnapshot ?? fp.commissionValue } : null,
     sellerBrand: !fp && !!lsp.brandProductId,
+    ownSpace: !!opts.ownSpace,
   };
 }
 
@@ -138,7 +141,7 @@ export async function revenueLines(where: { sellerId?: string; facilityIds?: str
     const r = splitOrder(o, policy);
     return {
       id: o.id, orderNo: o.orderNo, status: o.status, createdAt: o.createdAt, title: o.liveSession.title,
-      facilityName: o.facility.name, sellerName: o.seller.profile?.name ?? o.seller.email, settled: !!o.settlementId,
+      facilityName: (o.facility?.name ?? "셀러 공간"), sellerName: o.seller.profile?.name ?? o.seller.email, settled: !!o.settlementId,
       shipping: r.shipping, gross: r.gross, platformFee: r.platformFee, brand: r.brand, facility: r.facility, seller: r.seller, lines,
     };
   });
