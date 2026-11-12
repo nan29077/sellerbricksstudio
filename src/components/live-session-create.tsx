@@ -15,9 +15,9 @@ export function LiveSessionCreate({ bookings, defaultBookingId }: { bookings: B[
   const [bookingId, setBookingId] = useState(defaultBookingId ?? bookings[0]?.id ?? OWN);
   const [title, setTitle] = useState("");
   const [loading, setLoading] = useState(false); const [error, setError] = useState("");
-  const [sns, setSns] = useState<string[]>([]);
-
-  const toggle = (t: string) => setSns((p) => p.includes(t) ? p.filter((x) => x !== t) : [...p, t]);
+  // 방송 채널 주소 (선택). 스토리지마켓은 직접 송출하지 않고, 셀러의 외부 채널을 주문 화면에 연결한다.
+  const [urls, setUrls] = useState<Record<string, string>>({ YOUTUBE: "", INSTAGRAM: "", TIKTOK: "", ETC: "" });
+  const setUrl = (t: string, v: string) => setUrls((p) => ({ ...p, [t]: v }));
 
   async function create() {
     const b = bookings.find((x) => x.id === bookingId);
@@ -26,7 +26,7 @@ export function LiveSessionCreate({ bookings, defaultBookingId }: { bookings: B[
     setLoading(true); setError("");
     const res = await fetch("/api/live-sessions", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...(b && { bookingId, facilityId: b.facilityId }), title, snsChannels: sns.map((type) => ({ type })) }),
+      body: JSON.stringify({ ...(b && { bookingId, facilityId: b.facilityId }), title, snsChannels: Object.entries(urls).filter(([, u]) => u.trim()).map(([type, url]) => ({ type, url: url.trim() })) }),
     });
     const json = await res.json(); setLoading(false);
     if (!json.ok) { setError(json.error ?? "생성 실패"); return; }
@@ -47,12 +47,17 @@ export function LiveSessionCreate({ bookings, defaultBookingId }: { bookings: B[
       </div>
       <div><Label>방송 제목</Label><Input aria-label="방송 제목" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="예: 주말 특가 라이브" /></div>
       <div>
-        <Label>송출 채널 (자체 송출은 자동 포함)</Label>
-        <div className="flex flex-wrap gap-2">
-          {["YOUTUBE", "INSTAGRAM", "TIKTOK", "ETC"].map((t) => (
-            <button key={t} type="button" onClick={() => toggle(t)} className={`rounded-full border px-3 py-1.5 text-sm ${sns.includes(t) ? "bg-navy text-white" : "bg-white"}`}>{t}</button>
-          ))}
-        </div>
+        <Label htmlFor="lc-youtube">유튜브 방송 주소 (선택)</Label>
+        <Input id="lc-youtube" type="url" inputMode="url" value={urls.YOUTUBE} onChange={(e) => setUrl("YOUTUBE", e.target.value)} placeholder="https://www.youtube.com/live/..." />
+        <p className="mt-1 text-xs text-slate-500">방송은 내 채널(유튜브 · 인스타그램 · 틱톡 등)에서 켭니다. 주소를 넣으면 구매자 주문 화면에 영상이 나오고, 나중에 방송 상세에서 넣어도 됩니다.</p>
+        <details className="mt-2 text-sm">
+          <summary className="cursor-pointer select-none py-1 text-xs font-semibold text-brand-700">다른 채널 주소 넣기</summary>
+          <div className="mt-2 space-y-2">
+            {([["INSTAGRAM", "인스타그램", "https://www.instagram.com/내계정"], ["TIKTOK", "틱톡", "https://www.tiktok.com/@내계정/live"], ["ETC", "기타 채널", "https://"]] as const).map(([t, label, ph]) => (
+              <div key={t}><Label htmlFor={`lc-${t}`}>{label}</Label><Input id={`lc-${t}`} type="url" inputMode="url" value={urls[t]} onChange={(e) => setUrl(t, e.target.value)} placeholder={ph} /></div>
+            ))}
+          </div>
+        </details>
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <Button onClick={create} disabled={loading}>{loading ? "생성 중..." : "라이브 세션 생성"}</Button>

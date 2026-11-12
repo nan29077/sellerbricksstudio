@@ -155,23 +155,23 @@ export default function IntroPage() {
         </div>
       </section>
 
-      {/* -- 섹션 2: 자체 송출 라이브커머스 -- */}
+      {/* -- 섹션 2: 내 SNS 채널 연결 라이브커머스 (스토리지마켓은 직접 송출하지 않음) -- */}
       <section className="py-16 md:py-20 bg-[#FFFBF0]">
         <div className="container">
           <div className="grid md:grid-cols-2 gap-10 items-center">
             <div>
-              <SectionBadge>자체 송출 채널</SectionBadge>
+              <SectionBadge>SNS 채널 연결</SectionBadge>
               <h2 className="text-3xl md:text-4xl font-extrabold text-navy mb-4">
-                스토리지마켓<br />자체 라이브커머스
+                내 채널 그대로<br />라이브커머스
               </h2>
               <p className="text-muted-foreground leading-relaxed mb-6">
-                스토리지마켓 자체 라이브커머스 채널을 운영합니다.
-                방송 전 상품 세팅부터 방송 후 정산까지 완전한 원스톱 서비스를 제공합니다.
+                셀러가 운영하는 유튜브 · 인스타그램 · 틱톡 방송에 스토리지마켓 주문 페이지를 연결합니다.
+                시청자는 방송을 보면서 상품번호로 바로 주문하고, 방송 전 상품 세팅부터 방송 후 정산까지 원스톱으로 지원합니다.
               </p>
               <ul className="space-y-3">
                 {[
                   "전문 장비·조명·세트 완비된 스튜디오",
-                  "자체 라이브커머스 채널 운영",
+                  "유튜브 · 인스타그램 · 틱톡 방송 연결",
                   "방송 전 상품 세팅 완전 대행",
                   "방송 후 정산까지 원스톱",
                   "실시간 주문·CS 즉시 대응",
@@ -189,7 +189,7 @@ export default function IntroPage() {
                   <SiteLogo className="w-full" />
                 </div>
                 <p className="font-extrabold text-xl mb-1">LIVE NOW</p>
-                <p className="text-brand-100 text-sm">스토리지마켓 채널</p>
+                <p className="text-brand-100 text-sm">내 SNS 방송 + 주문 페이지</p>
                 <div className="mt-4 flex justify-center gap-4 text-sm">
                   <span className="bg-white/20 rounded-lg px-3 py-1.5">전문 장비</span>
                   <span className="bg-white/20 rounded-lg px-3 py-1.5">조명 완비</span>

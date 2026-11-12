@@ -1,10 +1,10 @@
 // 방송 영상 표시 도우미
 //  - 셀러가 입력한 유튜브 방송 주소에서 영상 ID 를 뽑아 구매자 화면에 끼워 넣는다.
 //  - 인스타그램 · 틱톡 등은 끼워 넣을 수 없어 '앱에서 보기' 버튼으로 연다.
-//  - 테스트용(Mock) 송출 주소는 구매자에게 보여 주지 않는다.
+//  스토리지마켓은 직접 송출하지 않는다. 방송은 셀러의 외부 채널에서 하고, 여기서는 연결만 한다.
 
 export const CHANNEL_LABEL: Record<string, string> = {
-  YOUTUBE: "유튜브", INSTAGRAM: "인스타그램", TIKTOK: "틱톡", ETC: "기타", CATENOID: "자체 송출",
+  YOUTUBE: "유튜브", INSTAGRAM: "인스타그램", TIKTOK: "틱톡", ETC: "기타 채널",
 };
 
 /** http(s) 주소만 받는다. 아니면 null */
@@ -33,12 +33,7 @@ export function youtubeId(raw: string | null | undefined): string | null {
   return null;
 }
 
-/** 테스트용(Mock) 송출 주소인지 */
-export function isMockStreamUrl(raw: string | null | undefined) {
-  return !raw || /mock\.catenoid\.local|^rtmp:\/\/mock\./.test(raw);
-}
-
-/** 이 주소가 해당 채널의 주소처럼 보이는지 (오입력 방지용, 기타 · 자체 송출은 통과) */
+/** 이 주소가 해당 채널의 주소처럼 보이는지 (오입력 방지용, 기타 채널은 통과) */
 export function looksLikeChannel(type: string, url: string) {
   const host = (() => { try { return new URL(url).hostname.replace(/^www\.|^m\./, ""); } catch { return ""; } })();
   if (type === "YOUTUBE") return host === "youtube.com" || host === "youtu.be";

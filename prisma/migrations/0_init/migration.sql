@@ -20,7 +20,7 @@ CREATE TYPE "ProductSource" AS ENUM ('CATALOG', 'AD_HOC', 'TEMP_PRODUCT');
 CREATE TYPE "LiveStatus" AS ENUM ('DRAFT', 'READY', 'LIVE', 'ENDED', 'CANCELLED');
 
 -- CreateEnum
-CREATE TYPE "SnsChannelType" AS ENUM ('YOUTUBE', 'INSTAGRAM', 'TIKTOK', 'ETC', 'CATENOID');
+CREATE TYPE "SnsChannelType" AS ENUM ('YOUTUBE', 'INSTAGRAM', 'TIKTOK', 'ETC');
 
 -- CreateEnum
 CREATE TYPE "OrderStatus" AS ENUM ('ORDER_CREATED', 'PAYMENT_PENDING', 'PAID', 'PREPARING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED');
@@ -429,10 +429,7 @@ CREATE TABLE "LiveSession" (
     "status" "LiveStatus" NOT NULL DEFAULT 'DRAFT',
     "scheduledStart" TIMESTAMP(3),
     "scheduledEnd" TIMESTAMP(3),
-    "selfStreamUrl" TEXT,
     "buyerLinkUrl" TEXT,
-    "catenoidStreamId" TEXT,
-    "catenoidPlaybackUrl" TEXT,
     "alimtalkStatus" "NotificationStatus" NOT NULL DEFAULT 'PENDING',
     "numberVersion" INTEGER NOT NULL DEFAULT 0,
     "endedAt" TIMESTAMP(3),
@@ -688,17 +685,6 @@ CREATE TABLE "StreamChannel" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "StreamChannel_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "CatenoidStreamLog" (
-    "id" TEXT NOT NULL,
-    "liveSessionId" TEXT NOT NULL,
-    "action" TEXT NOT NULL,
-    "payload" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "CatenoidStreamLog_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -1345,9 +1331,6 @@ CREATE INDEX "NotificationLog_liveSessionId_idx" ON "NotificationLog"("liveSessi
 CREATE INDEX "StreamChannel_liveSessionId_idx" ON "StreamChannel"("liveSessionId");
 
 -- CreateIndex
-CREATE INDEX "CatenoidStreamLog_liveSessionId_idx" ON "CatenoidStreamLog"("liveSessionId");
-
--- CreateIndex
 CREATE INDEX "AuditLog_entity_entityId_idx" ON "AuditLog"("entity", "entityId");
 
 -- CreateIndex
@@ -1622,9 +1605,6 @@ ALTER TABLE "NotificationLog" ADD CONSTRAINT "NotificationLog_liveSessionId_fkey
 
 -- AddForeignKey
 ALTER TABLE "StreamChannel" ADD CONSTRAINT "StreamChannel_liveSessionId_fkey" FOREIGN KEY ("liveSessionId") REFERENCES "LiveSession"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "CatenoidStreamLog" ADD CONSTRAINT "CatenoidStreamLog_liveSessionId_fkey" FOREIGN KEY ("liveSessionId") REFERENCES "LiveSession"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_actorId_fkey" FOREIGN KEY ("actorId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;

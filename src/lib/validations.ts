@@ -62,8 +62,8 @@ export const liveSessionSchema = z.object({
   scheduledStart: z.string().optional(),
   scheduledEnd: z.string().optional(),
   snsChannels: z.array(z.object({
-    type: z.enum(["YOUTUBE", "INSTAGRAM", "TIKTOK", "ETC", "CATENOID"]),
-    url: z.string().optional(),
+    type: z.enum(["YOUTUBE", "INSTAGRAM", "TIKTOK", "ETC"]),
+    url: z.string().max(500).optional().nullable(),
   })).optional(),
 });
 

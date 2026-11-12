@@ -80,23 +80,26 @@ export default async function LiveSessionDetail({ params }: { params: { id: stri
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><Tv className="h-5 w-5 text-brand-500" />송출 정보</CardTitle></CardHeader>
-            <CardContent className="space-y-3 text-sm">
+            <CardHeader><CardTitle className="flex items-center gap-2"><Tv className="h-5 w-5 text-brand-500" />방송 채널 · 주문 링크</CardTitle></CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <ol className="space-y-1 rounded-xl bg-brand-50/60 p-3 text-xs leading-relaxed text-slate-700">
+                <li><b className="text-navy">1.</b> 유튜브 · 인스타그램 · 틱톡 등 내 채널에서 방송을 켭니다. (스토리지마켓은 영상을 직접 송출하지 않아요)</li>
+                <li><b className="text-navy">2.</b> 방송 주소를 아래에 넣으면 구매자 주문 화면에 영상(유튜브) 또는 &apos;앱에서 보기&apos; 버튼이 나옵니다.</li>
+                <li><b className="text-navy">3.</b> 구매자용 주문 링크를 방송 설명 · 고정 댓글 · 프로필 링크에 올려 주세요.</li>
+              </ol>
               <div>
-                <p className="text-muted-foreground mb-1">구매자용 방송 링크</p>
+                <p className="text-muted-foreground mb-1">구매자용 주문 링크</p>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 truncate rounded bg-muted px-2 py-1.5 text-xs">{session.buyerLinkUrl}</code>
+                  <code className="min-w-0 flex-1 truncate rounded bg-muted px-2 py-1.5 text-xs">{session.buyerLinkUrl}</code>
                   <Link href={`/live/${session.slug}`} target="_blank"><Button size="sm" variant="outline"><ExternalLink className="h-4 w-4" />열기</Button></Link>
                 </div>
               </div>
-              <div><p className="text-muted-foreground mb-1">자체 송출 URL (카테노이드 · Mock)</p><code className="block truncate rounded bg-muted px-2 py-1.5 text-xs">{session.selfStreamUrl ?? "-"}</code></div>
-              <div><p className="text-muted-foreground mb-1">재생 URL</p><code className="block truncate rounded bg-muted px-2 py-1.5 text-xs">{session.catenoidPlaybackUrl ?? "-"}</code></div>
               <div>
-                <p className="text-muted-foreground mb-1">외부 송출 채널</p>
+                <p className="text-muted-foreground mb-1">방송 채널 주소</p>
                 {isDemo
                   ? <div className="flex flex-wrap gap-2">{session.streamChannels.map((c: any) => <Badge key={c.id} tone="navy">{CHANNEL_LABEL[c.type] ?? c.type}</Badge>)}</div>
                   : <LiveChannelsForm sessionId={session.id} disabled={session.status === "ENDED" || session.status === "CANCELLED"}
-                      channels={session.streamChannels.filter((c: any) => c.type !== "CATENOID").map((c: any) => ({ type: c.type, url: c.url }))} />}
+                      channels={session.streamChannels.map((c: any) => ({ type: c.type, url: c.url }))} />}
               </div>
             </CardContent>
           </Card>

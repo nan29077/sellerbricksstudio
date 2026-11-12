@@ -12,8 +12,6 @@ export type DemoLiveSession = {
   scheduledStart: Date;
   facility: { name: string; ownerId: string };
   buyerLinkUrl: string;
-  selfStreamUrl: string | null;
-  catenoidPlaybackUrl: string | null;
   alimtalkStatus: "PENDING" | "SENT";
   streamChannels: { id: string; type: string }[];
   _count: { products: number; orders: number };
@@ -29,10 +27,8 @@ export const DEMO_LIVE_SESSIONS: DemoLiveSession[] = [
     scheduledStart: new Date("2026-06-20T14:00:00"),
     facility: { name: "강남 프리미엄 라이브 스튜디오", ownerId: "demo-facility" },
     buyerLinkUrl: "https://sellerbricks.kr/live/demo-beauty-summer",
-    selfStreamUrl: "rtmp://stream.sellerbricks.kr/live/demo-beauty-summer",
-    catenoidPlaybackUrl: "https://cdn.catenoid.net/demo-beauty-summer/index.m3u8",
     alimtalkStatus: "SENT",
-    streamChannels: [{ id: "sc1", type: "YOUTUBE" }, { id: "sc2", type: "KAKAO" }],
+    streamChannels: [{ id: "sc1", type: "YOUTUBE" }, { id: "sc2", type: "INSTAGRAM" }],
     _count: { products: 12, orders: 87 },
   },
   {
@@ -44,10 +40,8 @@ export const DEMO_LIVE_SESSIONS: DemoLiveSession[] = [
     scheduledStart: new Date("2026-06-22T10:00:00"),
     facility: { name: "성수 인더스트리얼 스튜디오", ownerId: "demo-facility" },
     buyerLinkUrl: "https://sellerbricks.kr/live/demo-food-special",
-    selfStreamUrl: "rtmp://stream.sellerbricks.kr/live/demo-food-special",
-    catenoidPlaybackUrl: null,
     alimtalkStatus: "PENDING",
-    streamChannels: [{ id: "sc3", type: "NAVER" }],
+    streamChannels: [{ id: "sc3", type: "ETC" }],
     _count: { products: 8, orders: 0 },
   },
   {
@@ -59,8 +53,6 @@ export const DEMO_LIVE_SESSIONS: DemoLiveSession[] = [
     scheduledStart: new Date("2026-06-10T13:00:00"),
     facility: { name: "판교 IT 테크 스튜디오", ownerId: "demo-facility" },
     buyerLinkUrl: "https://sellerbricks.kr/live/demo-fashion-spring",
-    selfStreamUrl: "rtmp://stream.sellerbricks.kr/live/demo-fashion-spring",
-    catenoidPlaybackUrl: "https://cdn.catenoid.net/demo-fashion-spring/index.m3u8",
     alimtalkStatus: "SENT",
     streamChannels: [{ id: "sc4", type: "YOUTUBE" }],
     _count: { products: 15, orders: 234 },

@@ -2,7 +2,6 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { ok, fail, handleError } from "@/lib/http";
-import { getCatenoidAdapter } from "@/lib/adapters/catenoid";
 import { audit } from "@/lib/audit";
 import { getSettings } from "@/lib/settings";
 
@@ -38,10 +37,6 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return fail(s.status === "ENDED" ? "종료된 방송은 다시 시작할 수 없습니다. 새 방송을 만들어 주세요." : "현재 방송 상태에서는 바꿀 수 없는 상태입니다.", 409);
     }
 
-    if (status === "ENDED" && s.catenoidStreamId) {
-      await getCatenoidAdapter().endLiveStream(s.catenoidStreamId);
-      await prisma.catenoidStreamLog.create({ data: { liveSessionId: s.id, action: "END" } });
-    }
     const updated = await prisma.liveSession.update({
       where: { id: params.id },
       data: { status, ...(status === "ENDED" ? { endedAt: new Date() } : s.status === "ENDED" ? { endedAt: null } : {}) },

@@ -113,6 +113,16 @@ try {
   process.exit(1);
 }
 
+// 한 번만 필요한 정리 SQL (prisma/cleanup/*.sql, 이름 순). 데이터 삭제 확인 없이 db push 가 되도록 먼저 맞춘다.
+// 각 파일은 여러 번 실행해도 안전하게 작성한다. 실패해도 db push 단계에서 다시 안내한다.
+const cleanupDir = path.join(root, "prisma", "cleanup");
+if (dbUp && fs.existsSync(cleanupDir)) {
+  for (const f of fs.readdirSync(cleanupDir).filter((n) => n.endsWith(".sql")).sort()) {
+    try { execSync(`npx prisma db execute --schema prisma/schema.prisma --file "prisma/cleanup/${f}"`, { cwd: root, stdio: ["ignore", "ignore", "inherit"], env: process.env }); }
+    catch { say(`\x1b[31m정리 SQL 실행 실패\x1b[0m — prisma/cleanup/${f}`); }
+  }
+}
+
 let dbOk = true;
 try {
   run("npx prisma db push --skip-generate");

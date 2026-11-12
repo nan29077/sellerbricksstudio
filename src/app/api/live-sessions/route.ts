@@ -5,7 +5,7 @@ import { requireRole } from "@/lib/auth";
 import { liveSessionSchema } from "@/lib/validations";
 import { ok, fail, handleError } from "@/lib/http";
 import { slugify, parseKST } from "@/lib/utils";
-import { getCatenoidAdapter } from "@/lib/adapters/catenoid";
+import { looksLikeChannel, safeHttpUrl } from "@/lib/stream-embed";
 import { audit } from "@/lib/audit";
 import { emailVerifyBlock } from "@/lib/account-guards";
 import { getSettings } from "@/lib/settings";
@@ -41,9 +41,16 @@ export async function POST(req: NextRequest) {
     const slug = slugify("live");
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
-    // 자체 송출(카테노이드) Mock 스트림 생성
-    const catenoid = getCatenoidAdapter();
-    const stream = await catenoid.createLiveStream({ sessionId: slug, title: data.title });
+    // 방송 채널: 스토리지마켓은 직접 송출하지 않는다. 셀러가 외부 채널(유튜브 등) 주소를 넣으면 구매자 화면에 연결된다.
+    const channels: { type: "YOUTUBE" | "INSTAGRAM" | "TIKTOK" | "ETC"; url: string }[] = [];
+    for (const c of data.snsChannels ?? []) {
+      if (channels.some((x) => x.type === c.type)) continue;
+      const raw = (c.url ?? "").trim();
+      if (!raw) continue; // 빈 칸은 저장하지 않는다
+      const url = safeHttpUrl(raw);
+      if (!url || !looksLikeChannel(c.type, url)) return fail("방송 채널 주소를 확인해 주세요. (https:// 로 시작하는 해당 서비스 주소)");
+      channels.push({ type: c.type, url });
+    }
 
     const session = await prisma.liveSession.create({
       data: {
@@ -52,17 +59,8 @@ export async function POST(req: NextRequest) {
         scheduledStart: data.scheduledStart ? parseKST(data.scheduledStart) : booking?.startAt,
         scheduledEnd: data.scheduledEnd ? parseKST(data.scheduledEnd) : booking?.endAt,
         status: "DRAFT",
-        selfStreamUrl: stream.ingestUrl,
-        catenoidStreamId: stream.streamId,
-        catenoidPlaybackUrl: stream.playbackUrl,
         buyerLinkUrl: `${appUrl}/live/${slug}`,
-        streamChannels: {
-          create: [
-            { type: "CATENOID", url: stream.playbackUrl, externalId: stream.streamId },
-            ...(data.snsChannels ?? []).filter((c) => c.type !== "CATENOID").map((c) => ({ type: c.type, url: c.url })),
-          ],
-        },
-        catenoidLogs: { create: { action: "CREATE", payload: JSON.stringify(stream) } },
+        ...(channels.length && { streamChannels: { create: channels } }),
       },
     });
     // 예약할 때 고른 상품을 판매 상품으로 자동 등록 (상품번호 1번부터, 준비 불가 표시된 상품 제외)

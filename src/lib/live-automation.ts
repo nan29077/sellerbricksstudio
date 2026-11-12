@@ -2,7 +2,6 @@ import { prisma } from "./prisma";
 import { getPolicy } from "./policy";
 import { notify } from "./notify";
 import { audit } from "./audit";
-import { getCatenoidAdapter } from "./adapters/catenoid";
 
 // 방송 자동 종료
 //  - 셀러가 '방송 종료'를 누르지 않아도, 방송 예정 종료 시각(예약 종료)이 지나고 정책의 n시간이 더 지나면 종료한다.
@@ -30,17 +29,13 @@ export async function endOverdueLiveSessions(opts: { force?: boolean; now?: Date
           { scheduledEnd: null, updatedAt: { lt: idleBefore } },
         ],
       },
-      select: { id: true, title: true, sellerId: true, catenoidStreamId: true, facility: { select: { ownerId: true } } },
+      select: { id: true, title: true, sellerId: true, facility: { select: { ownerId: true } } },
       take: 100,
     });
     for (const s of overdue) {
       const r = await prisma.liveSession.updateMany({ where: { id: s.id, status: "LIVE" }, data: { status: "ENDED", endedAt: new Date(nowMs) } });
       if (!r.count) continue;
       ended += 1;
-      if (s.catenoidStreamId) {
-        await getCatenoidAdapter().endLiveStream(s.catenoidStreamId).catch(() => null);
-        await prisma.catenoidStreamLog.create({ data: { liveSessionId: s.id, action: "END", payload: JSON.stringify({ auto: true }) } }).catch(() => null);
-      }
       await audit({ actorId: null, action: "LIVE_AUTO_END", entity: "LiveSession", entityId: s.id });
       await notify({ userId: s.sellerId, type: "SYSTEM", category: "live", title: "방송이 자동 종료되었습니다", body: `${s.title} · 방송 예정 시간이 지나 종료했습니다.`, link: `/seller/live-sessions/${s.id}` });
       if (s.facility?.ownerId && s.facility.ownerId !== s.sellerId) {

@@ -17,8 +17,8 @@ const groupsOf = (option: string | null): Group[] => {
 const KEY_SEP = "::";
 
 export function BuyerLive({
-  slug, sessionId, title, sellerName, facilityName, status, playbackUrl, initial, shippingText, channels = [],
-}: { slug: string; sessionId: string; title: string; sellerName: string; facilityName: string; status: string; playbackUrl: string | null; initial: Item[]; shippingText?: string; channels?: { type: string; url: string }[] }) {
+  slug, sessionId, title, sellerName, facilityName, status, initial, shippingText, channels = [],
+}: { slug: string; sessionId: string; title: string; sellerName: string; facilityName: string; status: string; initial: Item[]; shippingText?: string; channels?: { type: string; url: string }[] }) {
   const router = useRouter();
   const [items, setItems] = useState<Item[]>(initial);
   const [version, setVersion] = useState(0);
@@ -102,13 +102,11 @@ export function BuyerLive({
             <iframe className="h-full w-full" src={`https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&mute=1&playsinline=1`}
               title={`${title} 방송 영상`} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" />
           </div>
-        ) : playbackUrl && live ? (
-          <video className="aspect-video w-full rounded-xl bg-black" src={playbackUrl} controls autoPlay muted playsInline />
         ) : (
           <div className="aspect-video w-full rounded-xl bg-navy flex flex-col items-center justify-center text-white/70">
             <Radio className="h-10 w-10 mb-2 text-brand-500" />
             <p className="text-sm">{status === "ENDED" ? "방송이 종료되었습니다" : live ? "라이브 방송 중" : "방송 대기 중"}</p>
-            {live && otherChannels.length > 0 && <p className="mt-1 text-xs text-white/60">아래 버튼으로 방송을 볼 수 있어요</p>}
+            {status !== "ENDED" && <p className="mt-1 px-6 text-center text-xs text-white/60">{otherChannels.length > 0 ? "아래 버튼으로 방송을 볼 수 있어요" : "방송을 보면서 아래 상품번호로 바로 주문하세요"}</p>}
           </div>
         )}
         {otherChannels.length > 0 && status !== "ENDED" && (

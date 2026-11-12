@@ -66,19 +66,28 @@ async function main() {
     ok(r.ok && r.data?.status === "LIVE", "예정 시간 안의 방송은 정상 시작", r);
 
     console.log("\n[2] 외부 송출 채널 → 구매자 방송 화면");
+    r = await seller.req("POST", "/api/live-sessions", { title: `채널 주소로 만드는 방송 ${stamp}`, snsChannels: [{ type: "YOUTUBE", url: "https://youtu.be/dQw4w9WgXcQ" }, { type: "TIKTOK", url: "" }] });
+    const made = r.data;
+    const madeCh = made ? await db.streamChannel.findMany({ where: { liveSessionId: made.id } }) : [];
+    ok(r.status === 201 && madeCh.length === 1 && madeCh[0].type === "YOUTUBE", "방송 만들 때 채널 주소 저장 (빈 칸은 무시, 자체 송출 채널 없음)", madeCh);
+    ok(made && !("selfStreamUrl" in made) && !("catenoidStreamId" in made), "방송 기록에 자체 송출 항목 없음", made && Object.keys(made));
+    r = await seller.req("POST", "/api/live-sessions", { title: `잘못된 채널 ${stamp}`, snsChannels: [{ type: "YOUTUBE", url: "https://example.com/x" }] });
+    ok(r.status === 400, "방송 만들 때 잘못된 채널 주소 거절", r);
     r = await seller.req("PUT", `/api/live-sessions/${onTime.id}/channels`, { channels: [{ type: "YOUTUBE", url: "https://www.instagram.com/abc" }] });
     ok(r.status === 400, "유튜브 칸에 다른 주소는 거절", r);
     r = await seller.req("PUT", `/api/live-sessions/${onTime.id}/channels`, { channels: [{ type: "ETC", url: "javascript:alert(1)" }] });
     ok(r.status === 400, "javascript: 주소 거절", r);
     r = await seller.req("PUT", `/api/live-sessions/${onTime.id}/channels`, { channels: [{ type: "YOUTUBE", url: "https://www.youtube.com/live/dQw4w9WgXcQ" }, { type: "INSTAGRAM", url: "https://www.instagram.com/sb_live" }] });
-    ok(r.ok && r.data.filter((c) => c.type !== "CATENOID").length === 2, "유튜브 · 인스타그램 주소 저장", r);
+    ok(r.ok && r.data.length === 2, "유튜브 · 인스타그램 주소 저장", r);
     r = await other.req("PUT", `/api/live-sessions/${onTime.id}/channels`, { channels: [] });
     ok(r.status === 401 || r.status === 403, "다른 사람은 채널 수정 불가", r.status);
     const lp = await guest.page(`/live/${onTime.slug}`);
     ok(lp.text.includes("youtube-nocookie.com/embed/dQw4w9WgXcQ"), "구매자 화면에 유튜브 영상 표시");
     ok(lp.text.includes("인스타그램에서 보기"), "인스타그램 '앱에서 보기' 버튼 표시");
-    ok(!lp.text.includes("mock.catenoid"), "테스트용 송출 주소는 구매자에게 안 보임");
+    ok(!/catenoid|rtmp:\/\//i.test(lp.text), "자체 송출 흔적(송출 주소) 없음");
     ok(/<title>\[LIVE\] 제시간 방송/.test(lp.text), "방송 링크 제목(공유 카드)에 방송 제목 표시");
+    r = await seller.req("PUT", `/api/live-sessions/${onTime.id}/channels`, { channels: [{ type: "YOUTUBE", url: "https://www.youtube.com/live/dQw4w9WgXcQ" }, { type: "INSTAGRAM", url: "" }] });
+    ok(r.ok && r.data.length === 1 && r.data[0].type === "YOUTUBE", "칸을 비우면 그 채널은 지워짐", r.data);
 
     console.log("\n[3] 쿠폰 결제 (셀러 부담 · 줄마다 셀러 몫 비례)");
     const { s: S, p1, p2 } = await liveSessionFor(sellerUser.id, `쿠폰 방송 ${stamp}`);

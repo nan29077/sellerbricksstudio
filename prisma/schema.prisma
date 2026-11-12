@@ -64,7 +64,6 @@ enum SnsChannelType {
   INSTAGRAM
   TIKTOK
   ETC
-  CATENOID // 자체 송출
 }
 
 enum OrderStatus {
@@ -618,10 +617,7 @@ model LiveSession {
   status              LiveStatus         @default(DRAFT)
   scheduledStart      DateTime?
   scheduledEnd        DateTime?
-  selfStreamUrl       String? // 자체 송출 URL
-  buyerLinkUrl        String? // 구매자용 방송 링크
-  catenoidStreamId    String?
-  catenoidPlaybackUrl String?
+  buyerLinkUrl        String? // 구매자용 방송 링크 (주문 페이지). 방송 영상은 셀러의 외부 채널(StreamChannel)에서 송출
   alimtalkStatus      NotificationStatus @default(PENDING)
   numberVersion       Int                @default(0) // 상품번호 변경 폴링용 버전
   endedAt             DateTime? // 방송 종료 시각 (종료 후 주문 허용 시간 계산)
@@ -635,7 +631,6 @@ model LiveSession {
   orders         Order[]
   streamChannels StreamChannel[]
   notifications  NotificationLog[]
-  catenoidLogs   CatenoidStreamLog[]
 
   @@index([sellerId])
   @@index([facilityId])
@@ -918,7 +913,10 @@ model NotificationLog {
   @@index([liveSessionId])
 }
 
-// ===================== Streaming =====================
+// ===================== 방송 채널 =====================
+// 스토리지마켓은 직접 송출하지 않는다. 셀러가 유튜브 · 인스타그램 · 틱톡 등 외부 채널에서 방송하고,
+// 그 주소를 등록하면 구매자 방송 화면(주문 페이지)에 영상 · '앱에서 보기'로 연결된다.
+// 다른 서비스(예: 셀러브릭스)와 연동할 때는 type=ETC 와 externalId 로 연결할 수 있다.
 model StreamChannel {
   id            String         @id @default(cuid())
   liveSessionId String
@@ -927,17 +925,6 @@ model StreamChannel {
   url           String?
   externalId    String?
   createdAt     DateTime       @default(now())
-
-  @@index([liveSessionId])
-}
-
-model CatenoidStreamLog {
-  id            String      @id @default(cuid())
-  liveSessionId String
-  liveSession   LiveSession @relation(fields: [liveSessionId], references: [id], onDelete: Cascade)
-  action        String // CREATE|INFO|END|PLAYBACK|EXTERNAL
-  payload       String?
-  createdAt     DateTime    @default(now())
 
   @@index([liveSessionId])
 }

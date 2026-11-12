@@ -19,12 +19,16 @@ export function LiveSessionControls({ sessionId, status }: { sessionId: string; 
     router.refresh();
   }
   return (
+    <div className="space-y-2">
     <div className="flex flex-wrap gap-2">
       {status === "DRAFT" && <Button onClick={() => setStatus("READY")} disabled={busy} variant="outline">방송 준비</Button>}
       {(status === "DRAFT" || status === "READY") && <Button onClick={() => setStatus("LIVE")} disabled={busy}><Play className="h-4 w-4" />방송 시작</Button>}
       {status === "LIVE" && <Button onClick={() => setStatus("ENDED")} disabled={busy} variant="destructive"><Square className="h-4 w-4" />방송 종료</Button>}
       {status === "ENDED" && <span className="flex items-center gap-1 text-sm text-emerald-600"><CheckCircle2 className="h-4 w-4" />방송이 종료되었습니다.</span>}
       {status !== "ENDED" && status !== "CANCELLED" && <Button onClick={() => setStatus("CANCELLED")} disabled={busy} variant="ghost">취소</Button>}
+    </div>
+    {(status === "DRAFT" || status === "READY") && <p className="text-xs text-slate-500">내 채널(유튜브 등)에서 방송을 켠 뒤 &apos;방송 시작&apos;을 누르면 구매자 주문이 열립니다.</p>}
+    {status === "LIVE" && <p className="text-xs text-slate-500">구매자 주문을 받는 중입니다. 내 채널 방송을 끝내면 &apos;방송 종료&apos;를 눌러 주세요.</p>}
     </div>
   );
 }

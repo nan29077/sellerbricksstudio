@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { BuyerLive } from "@/components/buyer-live";
 import { shippingLabel } from "@/lib/utils";
-import { isMockStreamUrl, safeHttpUrl } from "@/lib/stream-embed";
+import { safeHttpUrl } from "@/lib/stream-embed";
 import type { Metadata } from "next";
 import { SITE_NAME } from "@/lib/site-brand";
 
@@ -35,9 +35,8 @@ export default async function LivePage({ params }: { params: { sessionSlug: stri
       sellerName={session.seller.profile?.name ?? "셀러"}
       facilityName={session.facility?.name ?? "셀러 라이브"}
       status={session.status}
-      // 테스트용(Mock) 송출 주소는 구매자에게 내보내지 않는다.
-      playbackUrl={isMockStreamUrl(session.catenoidPlaybackUrl) ? null : safeHttpUrl(session.catenoidPlaybackUrl)}
-      channels={session.streamChannels.filter((c) => c.type !== "CATENOID" && safeHttpUrl(c.url)).map((c) => ({ type: c.type, url: safeHttpUrl(c.url)! }))}
+      // 방송 영상은 셀러가 등록한 외부 채널(유튜브 등)에서 보여 준다. (스토리지마켓은 직접 송출하지 않음)
+      channels={session.streamChannels.filter((c) => safeHttpUrl(c.url)).map((c) => ({ type: c.type, url: safeHttpUrl(c.url)! }))}
       initial={session.products.map((p) => ({ id: p.id, displayNumber: p.displayNumber, name: p.nameSnapshot, price: p.priceSnapshot, stock: p.stockSnapshot, image: p.imageSnapshot, option: p.optionSnapshot }))}
       sessionId={session.id}
       shippingText={shippingLabel(session)}

@@ -22,8 +22,8 @@ export function LiveChannelsForm({ sessionId, channels, disabled }: { sessionId:
 
   async function save() {
     setBusy(true); setMsg("");
-    const keep = new Set(channels.map((c) => c.type));
-    const body = { channels: TYPES.filter(([t]) => vals[t].trim() || keep.has(t)).map(([t]) => ({ type: t, url: vals[t].trim() || null })) };
+    // 채운 칸만 보낸다 (비운 칸의 채널은 지워진다)
+    const body = { channels: TYPES.filter(([t]) => vals[t].trim()).map(([t]) => ({ type: t, url: vals[t].trim() })) };
     const res = await fetch(`/api/live-sessions/${sessionId}/channels`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const json = await res.json().catch(() => ({ ok: false }));
     setBusy(false);
