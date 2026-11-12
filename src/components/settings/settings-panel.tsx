@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { PROFILE_ANIMALS, getProfileImage } from "@/lib/profile";
+import { WithdrawSection } from "./withdraw-section";
 import { cn } from "@/lib/utils";
 
 type BookingRow = { id: string; facilityName: string; dateLabel: string; status: string };
@@ -27,6 +28,9 @@ export type SettingsPanelProps = {
   isDemo: boolean;
   showBookings: boolean;
   bookings: BookingRow[];
+  /** 서버에 저장된 값 (없으면 null — 예전에 이 기기에만 저장한 값이 있으면 옮겨 온다) */
+  sns?: { instagram: string; youtube: string; tiktok: string } | null;
+  notifyPrefs?: { order: boolean; settlement: boolean; live: boolean } | null;
 };
 
 const BOOKING_STATUS: Record<string, { label: string; cls: string }> = {
@@ -91,7 +95,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
   // ---- 프로필 관리 ----
   const [name, setName] = useState(props.name);
   const [phone, setPhone] = useState(props.phone);
-  const [sns, setSns] = useState({ instagram: "", youtube: "", tiktok: "" });
+  const [sns, setSns] = useState(props.sns ?? { instagram: "", youtube: "", tiktok: "" });
   const [imageIndex, setImageIndex] = useState(props.profileImageIndex);
   const [avatarUrl, setAvatarUrl] = useState(props.avatarUrl);
   const [photoChanged, setPhotoChanged] = useState(false);
@@ -106,17 +110,29 @@ export function SettingsPanel(props: SettingsPanelProps) {
   const [pwMsg, setPwMsg] = useState<{ tone: "success" | "error"; text: string } | null>(null);
 
   // ---- 알림 ----
-  const [notif, setNotif] = useState({ order: true, settlement: true, live: true });
+  const [notif, setNotif] = useState(props.notifyPrefs ?? { order: true, settlement: true, live: true });
+  const [notifMsg, setNotifMsg] = useState("");
 
   const snsKey = `sb.sns.${email}`;
   const notifKey = `sb.notif.${email}`;
 
+  // 예전 버전은 SNS 주소 · 알림 설정을 이 기기(브라우저)에만 저장했다. 서버에 값이 없으면 한 번 옮겨 온다.
   useEffect(() => {
+    if (isDemo) return;
     try {
       const s = localStorage.getItem(snsKey);
-      if (s) setSns((prev) => ({ ...prev, ...JSON.parse(s) }));
+      if (s && !props.sns) {
+        const v = { instagram: "", youtube: "", tiktok: "", ...JSON.parse(s) };
+        setSns(v);
+        void fetch("/api/me/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sns: v }) });
+      }
       const n = localStorage.getItem(notifKey);
-      if (n) setNotif((prev) => ({ ...prev, ...JSON.parse(n) }));
+      if (n && !props.notifyPrefs) {
+        const v = { order: true, settlement: true, live: true, ...JSON.parse(n) };
+        setNotif(v);
+        void fetch("/api/me/notification-prefs", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(v) });
+      }
+      localStorage.removeItem(snsKey); localStorage.removeItem(notifKey);
     } catch { /* ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -143,12 +159,11 @@ export function SettingsPanel(props: SettingsPanelProps) {
     setProfileSaving(true);
     setProfileMsg(null);
     try {
-      localStorage.setItem(snsKey, JSON.stringify(sns));
       const res = await fetch("/api/me/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name, phone, profileImageIndex: imageIndex,
+          name, phone, profileImageIndex: imageIndex, sns,
           ...(photoChanged ? { avatarUrl } : {}),
         }),
       });
@@ -195,12 +210,15 @@ export function SettingsPanel(props: SettingsPanelProps) {
     }
   }
 
-  function toggleNotif(key: keyof typeof notif) {
-    setNotif((prev) => {
-      const nx = { ...prev, [key]: !prev[key] };
-      try { localStorage.setItem(notifKey, JSON.stringify(nx)); } catch { /* ignore */ }
-      return nx;
-    });
+  async function toggleNotif(key: keyof typeof notif) {
+    const prev = notif;
+    const nx = { ...prev, [key]: !prev[key] };
+    setNotif(nx); setNotifMsg("");
+    if (isDemo) { setNotifMsg("데모 계정은 설정이 저장되지 않습니다."); return; }
+    const res = await fetch("/api/me/notification-prefs", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(nx) }).catch(() => null);
+    const json = res ? await res.json().catch(() => ({ ok: false })) : { ok: false };
+    if (!json.ok) { setNotif(prev); setNotifMsg(json.error ?? "저장하지 못했습니다. 잠시 후 다시 시도해 주세요."); return; }
+    setNotifMsg("저장했습니다.");
   }
 
   return (
@@ -392,6 +410,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
               </button>
             </div>
           ))}
+          <p className="text-xs text-muted-foreground sm:col-span-2 2xl:col-span-3">끈 알림은 앱 알림과 메일 모두 보내지 않습니다. 예약 · 계정 · 보안 관련 알림은 항상 받습니다.{notifMsg && <span role="status" className="ml-1 font-semibold text-navy">{notifMsg}</span>}</p>
         </div>
       )}
 
@@ -412,6 +431,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
           </dl>
           <EmailVerifyRow />
           <p className="mt-4 text-xs text-muted-foreground">계정 정보는 읽기 전용입니다. 변경이 필요하면 관리자에게 문의하세요.</p>
+          {!isDemo && role !== "SUPER_ADMIN" && <WithdrawSection />}
         </div>
       )}
 

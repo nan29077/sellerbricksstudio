@@ -99,3 +99,7 @@ footer { padding-bottom: env(safe-area-inset-bottom, 0); }
   .rtable td:not([data-label])::before, .rtable td[data-label=""]::before { display: none; }
   .rtable td .truncate { white-space: normal; overflow: visible; }
 }
+
+/* 작은 글자 링크 · 칩의 누르는 영역만 넓힌다 (보이는 모양은 그대로). 손가락으로 누르기 쉽게 */
+.hit { position: relative; }
+.hit::after { content: ""; position: absolute; inset: -10px -6px; }

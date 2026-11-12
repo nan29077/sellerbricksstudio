@@ -7,8 +7,9 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: [{
       userAgent: "*",
-      allow: ["/", "/intro", "/facilities"],
-      disallow: ["/admin", "/seller", "/facility", "/manager", "/api", "/checkout", "/order-complete", "/live"],
+      allow: ["/", "/intro", "/facilities", "/brands", "/notices"],
+      // 끝에 / 를 붙여 /facility/(대시보드)만 막고 /facilities(공개 목록)는 막지 않는다.
+      disallow: ["/admin/", "/seller/", "/facility/", "/manager/", "/brand/", "/api/", "/checkout/", "/order-complete/", "/live/"],
     }],
     sitemap: `${SITE.replace(/\/$/, "")}/sitemap.xml`,
   };

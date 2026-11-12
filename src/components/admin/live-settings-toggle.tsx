@@ -52,6 +52,7 @@ export function LiveSettingsToggle({ initial }: { initial: boolean }) {
             type="button"
             role="switch"
             aria-checked={on}
+            aria-label="라이브 기능 켜기"
             disabled={busy}
             onClick={toggle}
             className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition disabled:opacity-50 ${on ? "bg-brand-500" : "bg-muted-foreground/30"}`}

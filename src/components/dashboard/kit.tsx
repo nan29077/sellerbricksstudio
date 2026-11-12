@@ -80,7 +80,7 @@ export function HeroPanel({ title, children, href, cta }: { title: string; child
       <p className="text-[11px] font-bold tracking-wider text-white/60">{title}</p>
       <div className="mt-2">{children}</div>
       {href && (
-        <Link href={href} className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-brand-300 hover:text-white">
+        <Link href={href} className="hit mt-3 inline-flex items-center gap-1 text-xs font-bold text-brand-300 hover:text-white">
           {cta ?? "자세히"}<ChevronRight className="h-3.5 w-3.5" />
         </Link>
       )}
@@ -101,7 +101,7 @@ export function Panel({ eyebrow, title, action, children, className, bodyClassNa
           <h2 className="mt-0.5 break-keep text-base font-extrabold text-navy sm:text-lg">{title}</h2>
         </div>
         {isLink ? (
-          <Link href={(action as { href: string }).href} className="inline-flex shrink-0 items-center gap-0.5 rounded-full px-2 py-1 text-xs font-bold text-brand-700 hover:bg-brand-50 hover:text-navy">
+          <Link href={(action as { href: string }).href} className="hit inline-flex shrink-0 items-center gap-0.5 rounded-full px-2 py-1 text-xs font-bold text-brand-700 hover:bg-brand-50 hover:text-navy">
             {(action as { label: string }).label}<ChevronRight className="h-3.5 w-3.5" />
           </Link>
         ) : (action as React.ReactNode)}

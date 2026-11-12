@@ -125,7 +125,7 @@ export async function BrandRequestList({ scope, manager, params, base }: {
                 <p className="mt-1 break-keep">판매 목록에 담아 방송에 올리면, 주문이 들어올 때마다 배송 정보가 담긴 발주서가 브랜드사로 자동 전달됩니다. 직배송 상품은 브랜드사가 출고·운송장 입력을 하고, 진행 상태는 주문 관리에서 확인할 수 있습니다.</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {onList
-                    ? <><Link href={manage} className="font-bold text-brand-800 hover:underline">판매 상품 관리 →</Link><Link href={orders} className="font-bold text-brand-800 hover:underline">주문 · 발주 현황 →</Link></>
+                    ? <><Link href={manage} className="hit font-bold text-brand-800 hover:underline">판매 상품 관리 →</Link><Link href={orders} className="hit font-bold text-brand-800 hover:underline">주문 · 발주 현황 →</Link></>
                     : request.product.isActive
                       ? <Link href={brandProductHref(request.product.shop.id, request.productId)} className="font-bold text-brand-800 hover:underline">판매 상품으로 가져오기 →</Link>
                       : <span className="text-slate-500">브랜드가 판매를 중단한 상품입니다.</span>}

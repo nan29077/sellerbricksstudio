@@ -35,6 +35,7 @@ export default async function SellerLiveSessions({ searchParams }: { searchParam
       prisma.liveSession.findMany({
         where: { sellerId: user.id },
         orderBy: { createdAt: "desc" },
+        take: 100, // 최근 100개
         include: { facility: true, _count: { select: { products: true, orders: true } } },
       }),
     ]);

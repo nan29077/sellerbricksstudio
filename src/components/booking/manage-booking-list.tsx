@@ -115,7 +115,7 @@ export function ManageBookingList({ rows, showFacility = true }: { rows: ManageB
                   <p className="text-sm text-slate-700">{b.when} <span className="text-muted-foreground">· {b.hours}시간</span></p>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
                     <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{b.sellerEmail}</span>
-                    {b.sellerPhone && <a href={`tel:${b.sellerPhone}`} className="flex items-center gap-1 hover:underline"><Phone className="h-3 w-3" />{b.sellerPhone}</a>}
+                    {b.sellerPhone && <a href={`tel:${b.sellerPhone}`} className="hit flex items-center gap-1 hover:underline"><Phone className="h-3 w-3" />{b.sellerPhone}</a>}
                     {b.headcount && <span className="flex items-center gap-1"><Users className="h-3 w-3" />{b.headcount}명</span>}
                     {b.purpose && <span>목적: {b.purpose}</span>}
                   </div>

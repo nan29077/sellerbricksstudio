@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { LocalShipChip, PoChips } from "@/components/brand/po-chips";
 import { OrderStatusActions } from "@/components/order-status-actions";
 import { OrderDetail } from "@/components/order-detail";
+import { OrderClaimPanel } from "@/components/order-claim-panel";
 import { ORDER_STATUS } from "@/lib/status";
 import { formatKRW, formatDateTime } from "@/lib/utils";
 import { orderActionProps } from "@/lib/order-action-props";
@@ -46,6 +47,7 @@ export function OrderCardList({ orders, actor, piiRetentionDays, show = {} }: { 
             <LocalShipChip order={o} />
             <PoChips pos={o.purchaseOrders} />
             <OrderDetail detail={orderDetailProps(o, actor, piiRetentionDays)} />
+            {o.claims?.length > 0 && <OrderClaimPanel claims={o.claims} />}
             <div className="mt-3 border-t border-slate-100 pt-3">
               <OrderStatusActions {...orderActionProps(o, actor)} />
             </div>

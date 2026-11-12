@@ -170,8 +170,8 @@ export function LiveProductManager({
                   </div>
                   <p className="text-sm text-muted-foreground">{formatKRW(it.priceSnapshot)} · 재고 {it.stockSnapshot}</p>
                 </div>
-                <button onClick={() => { setEditing(it.id); setEditValue(String(it.displayNumber)); }} className="tap p-2 text-muted-foreground hover:text-navy"><Pencil className="h-4 w-4" /></button>
-                <button onClick={() => removeItem(it.id)} className="tap p-2 text-muted-foreground hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+                <button onClick={() => { setEditing(it.id); setEditValue(String(it.displayNumber)); }} aria-label={`${it.displayNumber}번 상품번호 바꾸기`} className="tap p-2 text-muted-foreground hover:text-navy"><Pencil className="h-4 w-4" /></button>
+                <button onClick={() => removeItem(it.id)} aria-label={`${it.displayNumber}번 상품 빼기`} className="tap p-2 text-muted-foreground hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
               </div>
             ))}
           </div>

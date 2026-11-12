@@ -74,7 +74,7 @@ const ITEM_INCLUDE = {
 } as const;
 
 type ItemForSplit = {
-  lineTotal: number; unitPrice: number; quantity: number; cancelledAt?: Date | null;
+  lineTotal: number; unitPrice: number; quantity: number; cancelledAt?: Date | null; discountAmount?: number | null;
   platformFee?: number | null; brandAmount?: number | null; facilityAmount?: number | null; sellerAmount?: number | null;
   liveSessionProduct: LspForSplit;
 };
@@ -96,7 +96,8 @@ export function shippingRecipient(order: OrderForSplit): "FACILITY" | "SELLER" {
 /** 주문 줄 하나의 분배: 주문할 때 저장한 값이 있으면 그 값, 없으면(예전 주문) 지금 기준으로 계산 */
 export function splitItem(it: ItemForSplit, policy: Policy): LineSplit {
   if (it.sellerAmount != null && it.facilityAmount != null && it.platformFee != null && it.brandAmount != null) {
-    return { gross: it.lineTotal, platformFee: it.platformFee, brand: it.brandAmount, facility: it.facilityAmount, seller: it.sellerAmount };
+    // 쿠폰 할인이 있으면 저장된 셀러 몫에서 이미 빠져 있다. 판매액도 실제 결제 기준으로 맞춘다.
+    return { gross: it.lineTotal - Math.max(0, it.discountAmount ?? 0), platformFee: it.platformFee, brand: it.brandAmount, facility: it.facilityAmount, seller: it.sellerAmount };
   }
   return splitLine(lineInputOf(it.liveSessionProduct, it), policy);
 }

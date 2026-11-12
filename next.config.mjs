@@ -21,6 +21,8 @@ const nextConfig = (phase) => ({
   distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next-dev" : ".next",
   reactStrictMode: true,
   poweredByHeader: false,
+  // src/instrumentation.ts (선택: INTERNAL_CRON=1 일 때 서버 내장 스케줄러)
+  experimental: { instrumentationHook: true },
   images: { remotePatterns: imageHosts.map((hostname) => ({ protocol: "https", hostname })) },
   // ESLint 는 `npm run lint` 로 따로 돌린다 (빌드는 TypeScript 타입 체크만으로 막는다)
   eslint: { ignoreDuringBuilds: true },

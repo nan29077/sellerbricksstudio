@@ -57,6 +57,7 @@ function ToggleRow({ settingKey, title, icon: Icon, descOn, descOff, initial }: 
             type="button"
             role="switch"
             aria-checked={on}
+            aria-label={title}
             disabled={busy}
             onClick={toggle}
             className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition disabled:opacity-50 ${on ? "bg-red-500" : "bg-muted-foreground/30"}`}

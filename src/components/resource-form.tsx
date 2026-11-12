@@ -94,7 +94,7 @@ export function DeleteButton({ url, confirmText = "삭제할까요? 되돌릴 �
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   return (
-    <Button type="button" size="sm" variant="ghost" className="text-red-600 hover:bg-red-50 hover:text-red-700" disabled={busy}
+    <Button type="button" size="sm" variant="ghost" className="text-red-600 hover:bg-red-50 hover:text-red-700" disabled={busy} aria-label={label ? undefined : "삭제"}
       onClick={async () => {
         if (!(await appConfirm(confirmText))) return;
         setBusy(true);

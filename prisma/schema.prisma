@@ -119,6 +119,7 @@ model User {
   sessionVersion    Int       @default(0) // 비밀번호·역할 변경 시 올려서 기존 로그인 세션을 끊는다
   termsAgreedAt     DateTime? // 이용약관 동의 시각
   privacyAgreedAt   DateTime? // 개인정보 수집·이용 동의 시각
+  withdrawnAt       DateTime? // 회원 탈퇴 시각 (개인정보는 지우고 거래 기록만 남긴다)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -353,6 +354,8 @@ model Profile {
   bankAccount    String?
   accountHolder  String?
   bankChangedAt  DateTime?
+  snsLinks       Json? // 내 SNS 주소 { instagram, youtube, tiktok }
+  notifyPrefs    Json? // 알림 받기 설정 { order, settlement, live } (false 면 끔)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -707,6 +710,9 @@ model Order {
   localShippedAt     DateTime?
   localDeliveredAt   DateTime?
   refundedAmount  Int         @default(0) // 부분 취소·환불된 금액 합계
+  discountAmount  Int         @default(0) // 셀러 쿠폰 할인 금액 (셀러 몫에서 빠진다)
+  couponId        String? // 사용한 셀러 쿠폰
+  couponCode      String?
   deliveredAt     DateTime? // 배송 완료 시각 (구매 확정 유예·정산 기간 기준)
   privacyAgreedAt DateTime? // 구매자 개인정보 수집·제3자 제공 동의 시각
   settlementId    String? // 판매 정산서에 포함되면 연결 (중복 정산 방지)
@@ -717,11 +723,46 @@ model Order {
   items          OrderItem[]
   payment        Payment?
   purchaseOrders PurchaseOrder[]
+  claims         OrderClaim[]
 
   @@index([liveSessionId])
   @@index([sellerId])
   @@index([facilityId])
   @@index([settlementId])
+  @@index([createdAt])
+  @@index([status])
+}
+
+enum OrderClaimType {
+  CANCEL // 주문 취소
+  RETURN // 반품
+  EXCHANGE // 교환
+}
+
+enum OrderClaimStatus {
+  REQUESTED // 구매자가 요청함 (판매자 확인 대기)
+  RESOLVED // 판매자가 처리함
+  REJECTED // 판매자가 거절함
+  WITHDRAWN // 구매자가 요청을 거둠
+}
+
+// 구매자 취소 · 반품 · 교환 요청 (비회원 구매자가 주문 화면에서 남긴다)
+model OrderClaim {
+  id         String           @id @default(cuid())
+  orderId    String
+  order      Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  type       OrderClaimType
+  status     OrderClaimStatus @default(REQUESTED)
+  reason     String
+  detail     String?
+  answer     String? // 판매자 답변 (구매자에게 보임)
+  resolvedBy String? // 처리한 사용자 id
+  resolvedAt DateTime?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  @@index([orderId])
+  @@index([status])
 }
 
 model OrderItem {
@@ -736,6 +777,7 @@ model OrderItem {
   quantity             Int
   optionLabel          String?
   lineTotal            Int
+  discountAmount       Int                 @default(0) // 이 줄에 나눠 넣은 쿠폰 할인 (환불 · 정산은 lineTotal - discountAmount 기준)
   cancelledAt          DateTime? // 부분 취소된 줄
   // 주문 시점에 확정한 수익 분배 (이후 수수료·공급가가 바뀌어도 그대로). 비어 있으면 예전 주문
   platformFee          Int?

@@ -242,7 +242,7 @@ export default async function FacilityDashboard() {
                   <span className="min-w-0 flex-1 truncate text-sm font-extrabold text-navy">{f.name}</span>
                   {f.status !== "APPROVED" && <Pill tone={f.status === "PENDING" ? "amber" : "red"}>{f.status === "PENDING" ? "승인 심사 중" : "운영 정지"}</Pill>}
                   {f.autoApprove && <Pill tone="green">즉시 확정</Pill>}
-                  <Link href={`/facilities/${f.id}`} className="shrink-0 text-xs font-bold text-brand-700 hover:underline">샵 바로가기</Link>
+                  <Link href={`/facilities/${f.id}`} className="hit shrink-0 text-xs font-bold text-brand-700 hover:underline">샵 바로가기</Link>
                 </div>
                 <Meter label={`${f.region} · ${f.type === "WAREHOUSE" ? "창고" : "스튜디오"} · ★ ${f.rating.toFixed(1)}`} value={f.util} max={100} right={`가동률 ${f.util}%`} tone={f.util >= 80 ? "red" : f.util >= 40 ? "brand" : "green"}
                   sub={`이번 달 ${f.monthCount}건 · ${hoursText(f.hours)}${f.pending ? ` · 대기 ${f.pending}건` : ""}`} />

@@ -17,8 +17,8 @@ export function ManagerCommissionEditor({ managerId, type, value }: { managerId:
   }
   return (
     <div className="flex items-center gap-2">
-      <Select value={t} onChange={(e) => setT(e.target.value)} className="w-28"><option value="PERCENT">정률(%)</option><option value="FIXED">정액(원)</option></Select>
-      <Input value={v} onChange={(e) => setV(e.target.value)} className="w-24" inputMode="numeric" />
+      <Select aria-label="수수료 방식" value={t} onChange={(e) => setT(e.target.value)} className="w-28"><option value="PERCENT">정률(%)</option><option value="FIXED">정액(원)</option></Select>
+      <Input aria-label="수수료 값" value={v} onChange={(e) => setV(e.target.value)} className="w-24" inputMode="numeric" />
       <Button size="sm" onClick={save} disabled={busy}>{busy ? "저장중" : "저장"}</Button>
     </div>
   );

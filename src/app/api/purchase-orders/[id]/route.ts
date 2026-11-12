@@ -8,6 +8,7 @@ import { PO_STATUS, poActions } from "@/lib/brands";
 import { notifyPoPartners, syncOrderFromPurchaseOrders } from "@/lib/purchase-orders";
 import { brandRecipients, brandShopIdFor } from "@/lib/brand-access";
 import { cancelOrderItems, OrderActionError } from "@/lib/order-actions";
+import { notifyBuyer } from "@/lib/order-notify";
 
 const schema = z.object({
   status: z.enum(["CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED", "RETURNED"]).optional(),
@@ -98,6 +99,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     });
 
     await audit({ actorId: user.id, action: "PO_UPDATE", entity: "PurchaseOrder", entityId: po.id, meta: { from: po.status, to: data.status, tracking: data.trackingNumber } });
+    if (data.status === "SHIPPED" && po.fulfillment === "DROPSHIP") {
+      await notifyBuyer(po.orderId, { kind: "SHIPPED", carrier: data.carrier ?? po.carrier, trackingNumber: data.trackingNumber ?? po.trackingNumber, from: `${po.brandShop.name} 직배송` });
+    }
     if (data.status) {
       await notifyPoPartners(po, {
         title: `발주서 ${po.poNo} · ${PO_STATUS[data.status].label}`,

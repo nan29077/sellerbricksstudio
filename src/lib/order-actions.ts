@@ -5,6 +5,8 @@ import { SETTLEMENT_ORDER_INCLUDE, splitOrder } from "./settlement";
 import { getPaymentAdapter } from "./adapters/payment";
 import { audit } from "./audit";
 import { refreshOrderStatusInTx } from "./order-fulfillment";
+import { notifyBuyer } from "./order-notify";
+import { releaseCouponInTx } from "./coupons";
 import {
   closePurchaseOrderInTx, notifyPoPartners, notifyPurchaseOrderChanges, releaseOrderStockInTx,
   restoreOwnFacilityStockInTx, syncPurchaseOrdersWithOrder, type PoChange,
@@ -56,6 +58,7 @@ export async function applyOrderStatusInTx(tx: Tx, orderId: string, status: Orde
     }
     await restoreOwnFacilityStockInTx(tx, order.id, open.map((i) => i.id));
     await tx.liveSession.update({ where: { id: order.liveSessionId }, data: { numberVersion: { increment: 1 } } });
+    await releaseCouponInTx(tx, order.id);
   }
   if (closing) await salesAdjustmentInTx(tx, order.id, null, status === "CANCELLED" ? "취소 (정산 후)" : "환불 (정산 후)", true);
   const poChanges = await syncPurchaseOrdersWithOrder(tx, order.id, status, note || undefined);
@@ -107,7 +110,8 @@ export async function cancelOrderItems(params: { orderId: string; itemIds?: stri
 
   const remaining = order.items.filter((i) => !i.cancelledAt && !selected.has(i.id));
   const preShip = PRE_SHIP.includes(order.status) && !order.localShippedAt; // 직접 출고분이 이미 나갔으면 환불로 본다
-  const amount = targets.reduce((s, i) => s + i.lineTotal, 0);
+  // 쿠폰 할인을 나눠 받은 줄은 실제로 낸 금액(lineTotal - discountAmount)만큼 환불한다.
+  const amount = Math.min(targets.reduce((s, i) => s + i.lineTotal - (i.discountAmount ?? 0), 0), Math.max(0, order.totalAmount - order.refundedAmount));
 
   // 남는 상품이 없으면 주문 전체 처리
   if (!remaining.length) {
@@ -127,6 +131,7 @@ export async function cancelOrderItems(params: { orderId: string; itemIds?: stri
         for (const t of targets) await tx.liveSessionProduct.update({ where: { id: t.liveSessionProductId }, data: { stockSnapshot: { increment: t.quantity } } });
         await restoreOwnFacilityStockInTx(tx, order.id, targets.map((t) => t.id));
         await tx.liveSession.update({ where: { id: order.liveSessionId }, data: { numberVersion: { increment: 1 } } });
+        await releaseCouponInTx(tx, order.id);
       }
       await salesAdjustmentInTx(tx, order.id, targets.map((t) => t.id), preShip ? "취소 (정산 후)" : "환불 (정산 후)", true);
       if (order.payment) {
@@ -139,6 +144,7 @@ export async function cancelOrderItems(params: { orderId: string; itemIds?: stri
     });
     await notifyPurchaseOrderChanges(result.poChanges);
     await audit({ actorId: params.actorId, action: `ORDER_${status}`, entity: "Order", entityId: order.id, meta: { reason, partial: false } });
+    await notifyBuyer(order.id, { kind: status === "CANCELLED" ? "CANCELLED" : "REFUNDED", amount: refundLeft, reason });
     return { status: result.status, refunded: refundLeft, full: true };
   }
 
@@ -171,6 +177,7 @@ export async function cancelOrderItems(params: { orderId: string; itemIds?: stri
   });
   await notifyPurchaseOrderChanges(poChanges);
   await audit({ actorId: params.actorId, action: "ORDER_PARTIAL_CANCEL", entity: "Order", entityId: order.id, meta: { reason, amount, items: targets.length, preShip } });
+  await notifyBuyer(order.id, { kind: preShip ? "CANCELLED" : "REFUNDED", amount, reason, partial: true });
   return { status: order.status, refunded: amount, full: false };
 }
 
@@ -204,6 +211,7 @@ export async function failPendingOrder(orderId: string, paymentId: string | null
     const order = await tx.order.findUnique({ where: { id: orderId }, select: { status: true } });
     if (!order || order.status !== "PAYMENT_PENDING") return;
     await releaseOrderStockInTx(tx, orderId, { liveStock: true });
+    await releaseCouponInTx(tx, orderId);
     if (paymentId) {
       await tx.payment.update({ where: { id: paymentId }, data: { status: "FAILED", failReason: reason.slice(0, 300) } });
       await tx.paymentEvent.create({ data: { paymentId, type: "FAILED", payload: JSON.stringify({ reason }) } });

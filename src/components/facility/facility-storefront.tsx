@@ -469,7 +469,7 @@ export function FacilityStorefront({
         </div>
 
         <div className="py-8 text-center">
-          <Link href="/facilities" className="inline-flex items-center gap-1 text-sm font-black text-slate-400 hover:text-brand-700">
+          <Link href="/facilities" className="hit inline-flex min-h-[44px] items-center gap-1 text-sm font-black text-slate-400 hover:text-brand-700">
             <ChevronLeft className="h-4 w-4" /> 다른 창고(스튜디오) 둘러보기
           </Link>
         </div>

@@ -1,5 +1,7 @@
 export const SITE_NAME = "스토리지마켓";
 export const SITE_NAME_EN = "STORAGE MARKET";
+/** 페이지가 따로 제목을 정하지 않았을 때의 브라우저 탭 제목 */
+export const DEFAULT_SITE_TITLE = `${SITE_NAME} | 좋은 상품이 더 멀리 닿는 라이브`;
 
 export const SITE_LOGO = {
   light: "/images/brand/storage-market-logo-on-light.png",

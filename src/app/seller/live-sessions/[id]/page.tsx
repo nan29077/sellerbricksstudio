@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LiveSessionAlimtalk, LiveSessionControls } from "@/components/live-session-controls";
 import { LiveShippingForm } from "@/components/live-shipping-form";
+import { LiveChannelsForm } from "@/components/live-channels-form";
+import { CHANNEL_LABEL } from "@/lib/stream-embed";
 import { LIVE_STATUS } from "@/lib/status";
 import { formatDateTime, shippingLabel } from "@/lib/utils";
 import { getDemoLiveSession } from "@/lib/live-demo";
@@ -90,8 +92,11 @@ export default async function LiveSessionDetail({ params }: { params: { id: stri
               <div><p className="text-muted-foreground mb-1">자체 송출 URL (카테노이드 · Mock)</p><code className="block truncate rounded bg-muted px-2 py-1.5 text-xs">{session.selfStreamUrl ?? "-"}</code></div>
               <div><p className="text-muted-foreground mb-1">재생 URL</p><code className="block truncate rounded bg-muted px-2 py-1.5 text-xs">{session.catenoidPlaybackUrl ?? "-"}</code></div>
               <div>
-                <p className="text-muted-foreground mb-1">연결 채널</p>
-                <div className="flex flex-wrap gap-2">{session.streamChannels.map((c: any) => <Badge key={c.id} tone="navy">{c.type}</Badge>)}</div>
+                <p className="text-muted-foreground mb-1">외부 송출 채널</p>
+                {isDemo
+                  ? <div className="flex flex-wrap gap-2">{session.streamChannels.map((c: any) => <Badge key={c.id} tone="navy">{CHANNEL_LABEL[c.type] ?? c.type}</Badge>)}</div>
+                  : <LiveChannelsForm sessionId={session.id} disabled={session.status === "ENDED" || session.status === "CANCELLED"}
+                      channels={session.streamChannels.filter((c: any) => c.type !== "CATENOID").map((c: any) => ({ type: c.type, url: c.url }))} />}
               </div>
             </CardContent>
           </Card>

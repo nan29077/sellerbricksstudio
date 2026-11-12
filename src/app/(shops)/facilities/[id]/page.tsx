@@ -3,6 +3,14 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
 import { getFacilityPageConfig } from "@/lib/facility-page";
 import { FacilityStorefront } from "@/components/facility/facility-storefront";
+import type { Metadata } from "next";
+import { SITE_NAME } from "@/lib/site-brand";
+
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+  const f = await prisma.facility.findUnique({ where: { id: params.id }, select: { name: true, region: true, status: true, description: true } }).catch(() => null);
+  if (!f || f.status !== "APPROVED") return { title: `창고(스튜디오) | ${SITE_NAME}` };
+  return { title: `${f.name} · ${f.region} | ${SITE_NAME}`, description: f.description?.slice(0, 120) || undefined, openGraph: { title: `${f.name} | ${SITE_NAME}` } };
+}
 
 export const dynamic = "force-dynamic";
 

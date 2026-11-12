@@ -88,7 +88,7 @@ export function SiteSettingsForm({ initial }: { initial: SiteSettings }) {
               <p className="font-medium text-navy text-sm">배너 표시</p>
               <p className="text-xs text-muted-foreground">메인 페이지 상단에 안내 배너를 노출합니다.</p>
             </div>
-            <Toggle on={form.bannerEnabled} onChange={(v) => set("bannerEnabled", v)} />
+            <Toggle label="배너 표시" on={form.bannerEnabled} onChange={(v) => set("bannerEnabled", v)} />
           </label>
           <div>
             <Label>배너 문구</Label>
@@ -122,12 +122,13 @@ export function SiteSettingsForm({ initial }: { initial: SiteSettings }) {
   );
 }
 
-function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ on, onChange, label = "사용" }: { on: boolean; onChange: (v: boolean) => void; label?: string }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={on}
+      aria-label={label}
       onClick={() => onChange(!on)}
       className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition ${on ? "bg-brand-500" : "bg-muted-foreground/30"}`}
     >

@@ -14,11 +14,14 @@
     "db:push": "prisma db push",
     "db:sync": "node scripts/ensure-db.mjs --force",
     "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:baseline": "prisma migrate resolve --applied 0_init",
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset --force",
     "postinstall": "prisma generate",
     "test:e2e": "node scripts/simulate-brand-flow.mjs",
-    "test:e2e:izbeau": "node scripts/simulate-izbeau-features.mjs"
+    "test:e2e:izbeau": "node scripts/simulate-izbeau-features.mjs",
+    "test:e2e:buyer": "node scripts/simulate-buyer-features.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

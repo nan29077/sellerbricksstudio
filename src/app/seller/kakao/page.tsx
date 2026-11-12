@@ -39,9 +39,9 @@ export default async function SellerKakao() {
             {logs.length === 0 ? <EmptyState title="발송 내역이 없습니다" /> : (
               <div className="space-y-2 max-h-96 overflow-y-auto">
                 {logs.map((l) => (
-                  <div key={l.id} className="rounded-lg border border-border p-3 text-sm">
+                  <div key={l.id} className="min-w-0 rounded-lg border border-border p-3 text-sm">
                     <div className="flex items-center justify-between"><span className="font-medium">{l.recipient}</span><Badge tone={l.status === "SENT" ? "green" : "red"}>{l.status}</Badge></div>
-                    <p className="mt-1 text-xs text-muted-foreground truncate">{l.content}</p>
+                    <p className="mt-1 line-clamp-2 break-all text-xs text-muted-foreground">{l.content}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">{formatDateTime(l.createdAt)} · {l.provider}</p>
                   </div>
                 ))}

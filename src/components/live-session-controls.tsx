@@ -52,7 +52,7 @@ export function LiveSessionAlimtalk({ sessionId, channels }: { sessionId: string
   if (channels.length === 0) return <p className="text-sm text-muted-foreground">등록된 카카오 채널/가입자가 없습니다.</p>;
   return (
     <div className="space-y-3">
-      <Select value={channelId} onChange={(e) => setChannelId(e.target.value)}>
+      <Select aria-label="알림톡 보낼 채널" value={channelId} onChange={(e) => setChannelId(e.target.value)}>
         {channels.map((c) => <option key={c.id} value={c.id}>{c.name} (가입자 {c.count}명)</option>)}
       </Select>
       <Button onClick={send} disabled={busy} className="w-full"><Send className="h-4 w-4" />{busy ? "발송 중..." : "방송 링크 알림톡 발송"}</Button>

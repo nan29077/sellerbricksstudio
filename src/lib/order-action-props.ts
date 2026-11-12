@@ -9,6 +9,8 @@ export const ORDER_ACTION_INCLUDE = {
       ...FULFILLMENT_ITEM_SELECT,
     },
   },
+  // 구매자 취소 · 반품 · 교환 요청 (주문 카드에 표시)
+  claims: { orderBy: { createdAt: "desc" }, take: 5, select: { id: true, type: true, status: true, reason: true, detail: true, answer: true, createdAt: true } },
 } as const;
 
 type IncludedOrder = Omit<OrderForFulfillment, "items" | "purchaseOrders"> & {

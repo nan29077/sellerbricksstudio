@@ -30,6 +30,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (status === "LIVE" && user.role !== "SUPER_ADMIN" && !(await getSettings()).liveEnabled) {
       return fail("지금은 라이브 기능이 꺼져 있어 방송을 시작할 수 없습니다. 최고관리자에게 문의해 주세요.", 403);
     }
+    // 예정 종료 시각이 이미 지난 방송은 시작하지 못한다. (시작하자마자 자동 종료되는 것을 막는다)
+    if (status === "LIVE" && user.role !== "SUPER_ADMIN" && s.scheduledEnd && s.scheduledEnd.getTime() <= Date.now()) {
+      return fail("방송 예정 시간이 이미 지났습니다. 새 예약으로 방송을 다시 만들어 주세요.", 409);
+    }
     if (user.role !== "SUPER_ADMIN" && !(NEXT[s.status] ?? []).includes(status)) {
       return fail(s.status === "ENDED" ? "종료된 방송은 다시 시작할 수 없습니다. 새 방송을 만들어 주세요." : "현재 방송 상태에서는 바꿀 수 없는 상태입니다.", 409);
     }

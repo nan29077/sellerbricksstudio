@@ -17,7 +17,7 @@ export default async function FacilityLiveSessions() {
   const user = await requireRole(["FACILITY_ADMIN"]);
   if (!(await getSettings()).liveEnabled) redirect("/facility/dashboard");
   const ids = await ownedFacilityIds(user.id);
-  const sessions = await prisma.liveSession.findMany({ where: { facilityId: { in: ids } }, orderBy: { createdAt: "desc" }, include: { seller: { include: { profile: true } }, _count: { select: { products: true } } } });
+  const sessions = await prisma.liveSession.findMany({ where: { facilityId: { in: ids } }, orderBy: { createdAt: "desc" }, take: 100, include: { seller: { include: { profile: true } }, _count: { select: { products: true } } } });
   return (
     <div>
       <PageHeader title="라이브 세션" description="내 창고(스튜디오)에서 진행되는 방송입니다. 방송 중 상품 추가가 가능합니다." />

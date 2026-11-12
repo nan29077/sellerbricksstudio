@@ -17,6 +17,7 @@ export function OrderDetail({ detail, defaultOpen = false }: { detail: OrderDeta
           </li>
         ))}
         {detail.shippingFee > 0 && <li className="text-slate-500">배송비 {formatKRW(detail.shippingFee)}</li>}
+        {!!detail.discount && <li className="text-emerald-700">쿠폰 할인 -{formatKRW(detail.discount)} (셀러 부담)</li>}
       </ul>
       <dl className="mt-2 space-y-0.5 rounded-lg border border-slate-200 p-2.5">
         <div className="flex gap-2"><dt className="w-12 shrink-0 text-slate-500">받는 분</dt><dd className="font-semibold text-navy">{detail.shipTo.name}</dd></div>

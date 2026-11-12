@@ -21,6 +21,14 @@ import { Pagination } from "@/components/list/pagination";
 import { BrandOrderButton } from "@/components/shop/brand-order-button";
 import { ShopImage } from "@/components/shop/shop-image";
 import { ShopShell } from "@/components/shop/shop-shell";
+import type { Metadata } from "next";
+import { SITE_NAME } from "@/lib/site-brand";
+
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+  const b = await prisma.brandShop.findUnique({ where: { id: params.id }, select: { name: true, tagline: true, status: true } }).catch(() => null);
+  if (!b || b.status !== "APPROVED") return { title: `브랜드샵 | ${SITE_NAME}` };
+  return { title: `${b.name} 브랜드샵 | ${SITE_NAME}`, description: b.tagline || undefined, openGraph: { title: `${b.name} | ${SITE_NAME}` } };
+}
 
 export const dynamic = "force-dynamic";
 

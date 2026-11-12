@@ -23,7 +23,15 @@ export async function PATCH(req: NextRequest) {
     const u = await requireUser();
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object" || Array.isArray(body)) return fail("프로필 설정 형식이 올바르지 않습니다.");
-    const { name, phone, profileImageIndex, avatarUrl } = body;
+    const { name, phone, profileImageIndex, avatarUrl, sns } = body;
+    // SNS 주소: 인스타그램 · 유튜브 · 틱톡 (주소 또는 @핸들, 200자까지)
+    let snsLinks: { instagram: string; youtube: string; tiktok: string } | undefined;
+    if (sns !== undefined) {
+      if (!sns || typeof sns !== "object" || Array.isArray(sns)) return fail("SNS 주소 형식이 올바르지 않습니다.");
+      const pick = (k: string) => { const v = (sns as Record<string, unknown>)[k]; return typeof v === "string" ? v.trim().slice(0, 200) : ""; };
+      snsLinks = { instagram: pick("instagram"), youtube: pick("youtube"), tiktok: pick("tiktok") };
+      if (Object.values(snsLinks).some((v) => /^\s*(javascript|data):/i.test(v))) return fail("SNS 주소를 확인해 주세요.");
+    }
     if ((name != null && typeof name !== "string") || (phone != null && typeof phone !== "string")) {
       return fail("이름과 연락처를 확인해 주세요.");
     }
@@ -48,11 +56,12 @@ export async function PATCH(req: NextRequest) {
         ...(profileImageIndex !== undefined ? { profileImageIndex } : {}),
         profile: {
           upsert: {
-            create: { name: (name ?? u.email) as string, phone: phone ?? null, avatarUrl: avatarUrl ?? null },
+            create: { name: (name ?? u.email) as string, phone: phone ?? null, avatarUrl: avatarUrl ?? null, ...(snsLinks && { snsLinks }) },
             update: {
               ...(name != null ? { name: name as string } : {}),
               ...(phone !== undefined ? { phone: phone ?? null } : {}),
               ...(avatarUrl !== undefined ? { avatarUrl } : {}),
+              ...(snsLinks ? { snsLinks } : {}),
             },
           },
         },

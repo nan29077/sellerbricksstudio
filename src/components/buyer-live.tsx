@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatKRW } from "@/lib/utils";
-import { Blocks, Search, ShoppingCart, Plus, Minus, X, Radio } from "lucide-react";
+import { Blocks, Search, ShoppingCart, Plus, Minus, X, Radio, ExternalLink } from "lucide-react";
+import { CHANNEL_LABEL, youtubeId } from "@/lib/stream-embed";
 
 type Item = { id: string; displayNumber: number; name: string; price: number; stock: number; image: string | null; option: string | null };
 type Group = { name: string; values: string[] };
@@ -16,8 +17,8 @@ const groupsOf = (option: string | null): Group[] => {
 const KEY_SEP = "::";
 
 export function BuyerLive({
-  slug, sessionId, title, sellerName, facilityName, status, playbackUrl, initial, shippingText,
-}: { slug: string; sessionId: string; title: string; sellerName: string; facilityName: string; status: string; playbackUrl: string | null; initial: Item[]; shippingText?: string }) {
+  slug, sessionId, title, sellerName, facilityName, status, playbackUrl, initial, shippingText, channels = [],
+}: { slug: string; sessionId: string; title: string; sellerName: string; facilityName: string; status: string; playbackUrl: string | null; initial: Item[]; shippingText?: string; channels?: { type: string; url: string }[] }) {
   const router = useRouter();
   const [items, setItems] = useState<Item[]>(initial);
   const [version, setVersion] = useState(0);
@@ -78,6 +79,10 @@ export function BuyerLive({
 
   const live = status === "LIVE";
 
+  const ytId = channels.map((c) => (c.type === "YOUTUBE" ? youtubeId(c.url) : null)).find(Boolean) ?? null;
+
+  const otherChannels = channels.filter((c) => !(c.type === "YOUTUBE" && youtubeId(c.url) === ytId && ytId));
+
   return (
     <div className="min-h-screen bg-muted/30 pb-28">
       {/* Header */}
@@ -91,18 +96,38 @@ export function BuyerLive({
 
       <div className="container max-w-3xl py-4">
         {/* 영상 영역 */}
-        <div className="aspect-video w-full rounded-xl bg-navy flex flex-col items-center justify-center text-white/70">
-          <Radio className="h-10 w-10 mb-2 text-brand-500" />
-          <p className="text-sm">{live ? "라이브 방송 중" : "방송 대기 중"}</p>
-          {playbackUrl && <p className="mt-1 text-xs text-white/40 px-4 text-center break-all">재생 URL: {playbackUrl}</p>}
-        </div>
+        <h1 className="sr-only">{title}</h1>
+        {ytId && status !== "ENDED" ? (
+          <div className="aspect-video w-full overflow-hidden rounded-xl bg-black">
+            <iframe className="h-full w-full" src={`https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&mute=1&playsinline=1`}
+              title={`${title} 방송 영상`} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" />
+          </div>
+        ) : playbackUrl && live ? (
+          <video className="aspect-video w-full rounded-xl bg-black" src={playbackUrl} controls autoPlay muted playsInline />
+        ) : (
+          <div className="aspect-video w-full rounded-xl bg-navy flex flex-col items-center justify-center text-white/70">
+            <Radio className="h-10 w-10 mb-2 text-brand-500" />
+            <p className="text-sm">{status === "ENDED" ? "방송이 종료되었습니다" : live ? "라이브 방송 중" : "방송 대기 중"}</p>
+            {live && otherChannels.length > 0 && <p className="mt-1 text-xs text-white/60">아래 버튼으로 방송을 볼 수 있어요</p>}
+          </div>
+        )}
+        {otherChannels.length > 0 && status !== "ENDED" && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {otherChannels.map((c) => (
+              <a key={c.type + c.url} href={c.url} target="_blank" rel="noopener noreferrer"
+                className="inline-flex min-h-[44px] items-center gap-1 rounded-full border border-border bg-white px-4 text-sm font-semibold text-navy">
+                {CHANNEL_LABEL[c.type] ?? c.type}에서 보기 <ExternalLink className="h-4 w-4" />
+              </a>
+            ))}
+          </div>
+        )}
         <p className="mt-2 text-sm text-muted-foreground">{sellerName} · {facilityName}{shippingText && <> · <span className="font-semibold text-brand-700">{shippingText}</span></>}</p>
 
         {/* 상품번호 검색 */}
         <div className="mt-4 flex items-center gap-2 rounded-xl border border-border bg-white px-3">
           <Search className="h-4 w-4 text-muted-foreground" />
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="상품번호 또는 상품명 검색" className="h-12 flex-1 bg-transparent text-base outline-none" inputMode="text" />
-          {query && <button onClick={() => setQuery("")} className="tap p-1"><X className="h-4 w-4" /></button>}
+          {query && <button onClick={() => setQuery("")} aria-label="검색어 지우기" className="tap p-1"><X className="h-4 w-4" /></button>}
         </div>
 
         {/* 상품 리스트 */}

@@ -89,6 +89,7 @@ export const checkoutSchema = z.object({
   buyerPhone: z.string().trim().regex(/^[0-9\-+ ]{8,20}$/, "연락처를 정확히 입력하세요."),
   buyerAddress: z.string().trim().max(300).optional(),
   method: z.enum(["CARD", "EASY_PAY", "BANK_TRANSFER"]),
+  couponCode: z.string().trim().max(20).optional(),
   items: z.array(z.object({
     liveSessionProductId: z.string().min(1),
     quantity: z.coerce.number().int().min(1).max(99, "한 상품은 최대 99개까지 주문할 수 있습니다."),

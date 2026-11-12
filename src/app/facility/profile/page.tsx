@@ -133,7 +133,7 @@ export default async function FacilityProfile() {
                       <Link
                         href={`/facilities/${f.id}`}
                         target="_blank"
-                        className="flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline"
+                        className="hit flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline"
                       >
                         창고(스튜디오) 페이지 보기 <ExternalLink className="h-3 w-3" />
                       </Link>

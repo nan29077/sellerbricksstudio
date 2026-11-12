@@ -13,6 +13,7 @@ export const ORDER_FILTERS = [
   { key: "shipping", label: "배송중" },
   { key: "done", label: "배송완료" },
   { key: "closed", label: "취소 · 환불" },
+  { key: "claim", label: "구매자 요청" },
 ] as const;
 
 export function orderFilterWhere(key: string | undefined) {
@@ -21,12 +22,13 @@ export function orderFilterWhere(key: string | undefined) {
     case "shipping": return { OR: [{ status: "SHIPPED" as const }, { status: "PREPARING" as const, localShippedAt: { not: null } }] };
     case "done": return { status: "DELIVERED" as const };
     case "closed": return { status: { in: ["CANCELLED", "REFUNDED"] as ("CANCELLED" | "REFUNDED")[] } };
+    case "claim": return { claims: { some: { status: "REQUESTED" as const } } };
     default: return {};
   }
 }
 
 type OrderForDetail = Omit<OrderForFulfillment, "items" | "purchaseOrders"> & {
-  buyerName: string; buyerPhone: string; buyerAddress?: string | null; shippingFee?: number | null;
+  buyerName: string; buyerPhone: string; buyerAddress?: string | null; shippingFee?: number | null; discountAmount?: number | null;
   deliveredAt?: Date | string | null; updatedAt?: Date | string | null;
   shipCarrier?: string | null; shipTrackingNumber?: string | null;
   items?: (OrderForFulfillment["items"][number] & { id: string; productName: string; optionLabel: string | null; quantity: number; lineTotal: number })[];
@@ -36,6 +38,7 @@ type OrderForDetail = Omit<OrderForFulfillment, "items" | "purchaseOrders"> & {
 export type OrderDetailView = {
   lines: { id: string; name: string; option: string | null; quantity: number; lineTotal: number; cancelled: boolean; shipper: Shipper }[];
   shippingFee: number;
+  discount?: number;
   shipTo: { name: string; phone: string; address: string; masked: boolean; note: string };
 };
 
@@ -58,6 +61,7 @@ export function orderDetailProps(o: OrderForDetail, actor: OrderActor, piiRetent
       cancelled: !!i.cancelledAt, shipper: shipperOf(o, i.liveSessionProduct),
     })),
     shippingFee: Math.max(0, o.shippingFee ?? 0),
+    discount: Math.max(0, o.discountAmount ?? 0),
     shipTo: {
       name: full ? o.buyerName : maskName(o.buyerName), phone: full ? o.buyerPhone : maskPhone(o.buyerPhone),
       address: full ? address : maskAddress(address), masked: !full, note,

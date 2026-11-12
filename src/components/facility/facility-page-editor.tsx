@@ -201,7 +201,7 @@ export function FacilityPageEditor({
       <aside className="xl:sticky xl:top-6 xl:h-fit">
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm font-extrabold text-navy"><Eye className="h-4 w-4" /> 실시간 미리보기</div>
-          <Link href={`/facilities/${facility.id}`} target="_blank" className="inline-flex items-center gap-1 text-xs font-bold text-brand-700 hover:underline">
+          <Link href={`/facilities/${facility.id}`} target="_blank" className="hit inline-flex items-center gap-1 text-xs font-bold text-brand-700 hover:underline">
             공개 페이지 열기 <ExternalLink className="h-3.5 w-3.5" />
           </Link>
         </div>

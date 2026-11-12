@@ -13,12 +13,12 @@ export function Pagination({ base, params, page, size, total }: { base: string; 
     <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
       <p className="text-xs text-slate-500">총 {total.toLocaleString()}건 · {page}/{pages} 페이지</p>
       <div className="flex gap-1">
-        {page > 1 && <Link className={cn(btn, "border-border bg-white")} href={withParams(base, params, { page: page - 1 })}><ChevronLeft className="h-4 w-4" /></Link>}
+        {page > 1 && <Link className={cn(btn, "border-border bg-white")} href={withParams(base, params, { page: page - 1 })} aria-label="이전 페이지"><ChevronLeft className="h-4 w-4" /></Link>}
         {nums.map((n) => (
           <Link key={n} href={withParams(base, params, { page: n })}
             className={cn(btn, n === page ? "border-navy bg-navy text-white" : "border-border bg-white text-navy hover:bg-brand-50")}>{n}</Link>
         ))}
-        {page < pages && <Link className={cn(btn, "border-border bg-white")} href={withParams(base, params, { page: page + 1 })}><ChevronRight className="h-4 w-4" /></Link>}
+        {page < pages && <Link className={cn(btn, "border-border bg-white")} href={withParams(base, params, { page: page + 1 })} aria-label="다음 페이지"><ChevronRight className="h-4 w-4" /></Link>}
       </div>
     </div>
   );

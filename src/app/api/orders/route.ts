@@ -11,6 +11,8 @@ import { checkLowStock, createPurchaseOrdersInTx, notifyNewPurchaseOrders, reser
 import { cleanupStalePendingOrders, failPendingOrder } from "@/lib/order-actions";
 import { endOverdueLiveSessions } from "@/lib/live-automation";
 import { lineInputOf, splitLine } from "@/lib/settlement";
+import { notifyBuyer, notifyNewOrder } from "@/lib/order-notify";
+import { allocateDiscount, couponBlockedReason, couponDiscount, findCoupon, normalizeCouponCode, claimCouponInTx } from "@/lib/coupons";
 import { Prisma } from "@prisma/client";
 
 // 방송 상태별 주문 가능 여부: 방송 중에만 주문을 받는다. (종료 후에는 정책의 '종료 후 주문 허용 시간' 안에서만)
@@ -90,11 +92,25 @@ export async function POST(req: NextRequest) {
       const split = splitLine(lineInputOf(l, { lineTotal, unitPrice: l.priceSnapshot, quantity: i.quantity }, { ownSpace: !session.facilityId }), policy);
       return {
         liveSessionProductId: l.id, displayNumber: l.displayNumber, productName: l.nameSnapshot, unitPrice: l.priceSnapshot, quantity: i.quantity, optionLabel: i.optionLabel, lineTotal,
-        platformFee: split.platformFee, brandAmount: split.brand, facilityAmount: split.facility, sellerAmount: split.seller,
+        platformFee: split.platformFee, brandAmount: split.brand, facilityAmount: split.facility, sellerAmount: split.seller, discountAmount: 0,
       };
     });
     const shippingFee = shippingFeeFor(session, subtotal);
-    const total = subtotal + shippingFee;
+
+    // 셀러 쿠폰: 할인은 셀러 몫에서만 뺀다 (줄마다 셀러 몫에 비례해 나눔)
+    const couponCode = normalizeCouponCode(data.couponCode);
+    let coupon: Awaited<ReturnType<typeof findCoupon>> = null;
+    let discount = 0;
+    if (couponCode) {
+      coupon = await findCoupon(couponCode);
+      const blockedCoupon = couponBlockedReason(coupon, session.sellerId, subtotal);
+      if (blockedCoupon) return fail(blockedCoupon, 409);
+      discount = couponDiscount(coupon!, subtotal, itemData.reduce((s, i) => s + i.sellerAmount, 0));
+      if (discount <= 0) return fail("이 주문에는 쿠폰 할인을 적용할 수 없습니다.", 409);
+      const shares = allocateDiscount(discount, itemData.map((i) => i.sellerAmount));
+      itemData.forEach((it, idx) => { it.discountAmount = shares[idx]; it.sellerAmount -= shares[idx]; });
+    }
+    const total = subtotal - discount + shippingFee;
 
     // 1) 주문 생성 + 재고 확보 (방송 재고 · 브랜드 실재고 · 창고 재고) — 하나라도 모자라면 전체 롤백
     const reserve = () => prisma.$transaction(async (tx) => {
@@ -105,6 +121,7 @@ export async function POST(req: NextRequest) {
         });
         if (dec.count !== 1) throw new StockError(`${map.get(id)!.nameSnapshot}: 방금 재고가 소진되었습니다.`);
       }
+      if (coupon && !(await claimCouponInTx(tx, coupon.id))) throw new StockError("방금 모두 사용된 쿠폰입니다. 쿠폰을 빼고 다시 결제해 주세요.");
       let order;
       try {
           order = await tx.order.create({
@@ -112,6 +129,7 @@ export async function POST(req: NextRequest) {
               orderNo: orderNo(), liveSessionId: session.id, sellerId: session.sellerId, facilityId: session.facilityId,
               buyerName: data.buyerName, buyerPhone: data.buyerPhone, buyerAddress: data.buyerAddress,
               status: "PAYMENT_PENDING", totalAmount: total, shippingFee, privacyAgreedAt: new Date(),
+              discountAmount: discount, couponId: coupon?.id ?? null, couponCode: coupon?.code ?? null,
               items: { create: itemData },
             },
           });
@@ -167,6 +185,8 @@ export async function POST(req: NextRequest) {
     }
 
     await audit({ action: "ORDER_PAID", entity: "Order", entityId: order.id, meta: { total } });
+    await notifyNewOrder(order.id);
+    await notifyBuyer(order.id, { kind: "PAID" });
     return ok({ orderId: order.id, orderNo: order.orderNo }, 201);
   } catch (e) {
     if (e instanceof StockError || e instanceof OrderNoClash) return fail(e.message, 409);

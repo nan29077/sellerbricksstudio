@@ -171,7 +171,7 @@ export default async function SellerBookings({ searchParams }: { searchParams: S
                       <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 text-xs text-slate-600">
                         {b.purpose && <span>목적: {b.purpose}</span>}
                         {b.headcount && <span>인원: {b.headcount}명</span>}
-                        {b.liveSession && <Link href={`/seller/live-sessions/${b.liveSession.id}`} className="font-semibold text-brand-700 hover:underline">라이브 세션 보기 →</Link>}
+                        {b.liveSession && <Link href={`/seller/live-sessions/${b.liveSession.id}`} className="hit font-semibold text-brand-700 hover:underline">라이브 세션 보기 →</Link>}
                       </div>
                       {b.products.length > 0 ? (
                         <div className="flex flex-wrap gap-1.5 pt-1">

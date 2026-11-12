@@ -77,7 +77,7 @@ export default async function AdminFacilityOccupancy({ searchParams }: { searchP
           <CardTitle className="text-base">창고(스튜디오) 비교</CardTitle>
           <div className="flex flex-wrap items-center gap-1.5">
             {[["util", "가동률순"], ["revenue", "매출순"], ["pending", "대기순"]].map(([k, l]) => (
-              <Link key={k} href={withParams(BASE, searchParams, { sort: k })} className={cn("rounded-full border px-3 py-1 text-xs font-semibold", sort === k ? "border-navy bg-navy text-white" : "border-border bg-white")}>{l}</Link>
+              <Link key={k} href={withParams(BASE, searchParams, { sort: k })} className={cn("hit rounded-full border px-3 py-1 text-xs font-semibold", sort === k ? "border-navy bg-navy text-white" : "border-border bg-white")}>{l}</Link>
             ))}
             <CsvButton label="CSV" filename={`창고별현황_${monthKey(month)}`} headers={["창고(스튜디오)", "확정건", "대기", "이용시간", "운영시간", "가동률(%)", "매출", "취소·거절률(%)"]}
               rows={stats.map((s) => [s.f.name, s.count, s.pending, Math.round(s.bookedH), Math.round(s.openH), s.util, s.revenue, s.cancelRate])} />

@@ -1,13 +1,21 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { CheckoutForm } from "@/components/checkout-form";
+import type { Metadata } from "next";
+import { SITE_NAME } from "@/lib/site-brand";
+
+export const metadata: Metadata = { title: `결제하기 | ${SITE_NAME}`, robots: { index: false } };
 
 export const dynamic = "force-dynamic";
 
 export default async function CheckoutPage({ params }: { params: { sessionSlug: string } }) {
   const session = await prisma.liveSession.findUnique({
     where: { slug: params.sessionSlug },
-    include: { products: { where: { isActive: true } } },
+    include: {
+      products: { where: { isActive: true } },
+      facility: { select: { name: true, contactPhone: true } },
+      seller: { select: { profile: { select: { name: true, companyName: true, businessNumber: true } } } },
+    },
   });
   if (!session) notFound();
   // 주문은 방송 중에만 받는다 (시작 전 · 취소된 방송은 안내만)
@@ -22,5 +30,11 @@ export default async function CheckoutPage({ params }: { params: { sessionSlug: 
   }
   const products = session.products.map((p) => ({ id: p.id, displayNumber: p.displayNumber, name: p.nameSnapshot, price: p.priceSnapshot, stock: p.stockSnapshot }));
   // 모든 주문은 배송지가 필요하고, 배송비는 셀러가 방송마다 정한다.
-  return <CheckoutForm slug={session.slug} title={session.title} products={products} shipping={{ shippingFee: session.shippingFee, freeShippingOver: session.freeShippingOver }} />;
+  const brandShip = session.products.some((p) => !!p.brandProductId && p.fulfillment !== "WAREHOUSE");
+  const seller = {
+    name: session.seller.profile?.companyName || session.seller.profile?.name || "셀러",
+    businessNumber: session.seller.profile?.businessNumber ?? null,
+    place: session.facility?.name ?? null, placePhone: session.facility?.contactPhone ?? null, brandShip,
+  };
+  return <CheckoutForm slug={session.slug} title={session.title} products={products} seller={seller} shipping={{ shippingFee: session.shippingFee, freeShippingOver: session.freeShippingOver }} />;
 }

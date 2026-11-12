@@ -42,9 +42,9 @@ export async function endOverdueLiveSessions(opts: { force?: boolean; now?: Date
         await prisma.catenoidStreamLog.create({ data: { liveSessionId: s.id, action: "END", payload: JSON.stringify({ auto: true }) } }).catch(() => null);
       }
       await audit({ actorId: null, action: "LIVE_AUTO_END", entity: "LiveSession", entityId: s.id });
-      await notify({ userId: s.sellerId, type: "SYSTEM", title: "방송이 자동 종료되었습니다", body: `${s.title} · 방송 예정 시간이 지나 종료했습니다.`, link: `/seller/live-sessions/${s.id}` });
+      await notify({ userId: s.sellerId, type: "SYSTEM", category: "live", title: "방송이 자동 종료되었습니다", body: `${s.title} · 방송 예정 시간이 지나 종료했습니다.`, link: `/seller/live-sessions/${s.id}` });
       if (s.facility?.ownerId && s.facility.ownerId !== s.sellerId) {
-        await notify({ userId: s.facility.ownerId, type: "SYSTEM", title: "방송이 자동 종료되었습니다", body: s.title, link: "/facility/live-sessions" });
+        await notify({ userId: s.facility.ownerId, type: "SYSTEM", category: "live", title: "방송이 자동 종료되었습니다", body: s.title, link: "/facility/live-sessions" });
       }
     }
   } catch (e) {

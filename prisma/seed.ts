@@ -62,15 +62,19 @@ async function main() {
     { name: "부산 식품 전문 창고", type: FacilityType.WAREHOUSE, region: "부산", address: "부산 해운대구 센텀중앙로 90", equipment: "냉장쇼케이스, 조리대, 조명", basePrice: 100000, rating: 4.5 },
   ];
 
+  // 예시 사진은 저장소 안의 이미지를 쓴다 (외부 사진 사이트가 느리거나 막혀도 화면이 깨지지 않게)
+  const FAC_IMAGES = ["/images/facility-banners/warehouse-premium.webp", "/images/facility-banners/creator-studio.webp", "/images/facility-banners/smart-fulfillment.webp", "/images/facility-banners/live-studio.webp", "/images/facility-banners/beauty-live.webp"];
+  const facImg = (n: number) => FAC_IMAGES[n % FAC_IMAGES.length];
+  const PRODUCT_IMAGE = "/images/placeholder/product.svg";
   const facilities: Awaited<ReturnType<typeof prisma.facility.create>>[] = [];
-  for (const f of facData) {
+  for (const [fi, f] of facData.entries()) {
     const fac = await prisma.facility.create({
       data: {
         ...f, ownerId: facilityAdmin.id, status: FacilityStatus.APPROVED,
         description: `${f.name} 입니다. 라이브 커머스에 최적화된 공간과 장비를 제공합니다.`,
         openTime: "09:00", closeTime: "22:00",
-        thumbnailUrl: `https://picsum.photos/seed/${encodeURIComponent(f.name)}/800/500`,
-        images: { create: [0, 1, 2].map((i) => ({ url: `https://picsum.photos/seed/${encodeURIComponent(f.name)}${i}/1000/600`, sortOrder: i })) },
+        thumbnailUrl: facImg(fi),
+        images: { create: [0, 1, 2].map((i) => ({ url: facImg(fi + i), sortOrder: i })) },
         slots: { create: [1, 2, 3, 4, 5].flatMap((wd) => [
           { weekday: wd, startTime: "10:00", endTime: "12:00" },
           { weekday: wd, startTime: "14:00", endTime: "16:00" },
@@ -100,8 +104,8 @@ async function main() {
       data: {
         name: p.name, sku: p.sku, category: p.category,
         description: `${p.name} 상품입니다.`,
-        thumbnailUrl: `https://picsum.photos/seed/${encodeURIComponent(p.name)}/600/600`,
-        images: { create: [{ url: `https://picsum.photos/seed/${encodeURIComponent(p.name)}d/800/800`, sortOrder: 0 }] },
+        thumbnailUrl: PRODUCT_IMAGE,
+        images: { create: [{ url: PRODUCT_IMAGE, sortOrder: 0 }] },
         options: p.category === "의류"
           ? { create: [
               { name: "사이즈", value: "S", stock: 40 },

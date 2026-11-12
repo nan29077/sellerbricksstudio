@@ -47,7 +47,7 @@ export function MonthCalendar({
         <Link href={withParams(base, params, { [monthParam]: monthKey(addMonths(first, -1)) })} className="rounded-lg p-2 hover:bg-muted" aria-label="이전 달"><ChevronLeft className="h-4 w-4" /></Link>
         <div className="text-center">
           <p className="text-base font-extrabold text-navy">{p.year}년 {p.month}월</p>
-          <Link href={withParams(base, params, { [monthParam]: undefined })} className="text-[11px] font-semibold text-brand-700 hover:underline">오늘로</Link>
+          <Link href={withParams(base, params, { [monthParam]: undefined })} className="hit text-[11px] font-semibold text-brand-700 hover:underline">오늘로</Link>
         </div>
         <Link href={withParams(base, params, { [monthParam]: monthKey(addMonths(first, 1)) })} className="rounded-lg p-2 hover:bg-muted" aria-label="다음 달"><ChevronRight className="h-4 w-4" /></Link>
       </div>

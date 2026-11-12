@@ -4,6 +4,7 @@ import { ROLE_LABELS } from "@/lib/rbac";
 import { resolveProfileAvatar } from "@/lib/profile";
 import { SettingsPanel } from "./settings-panel";
 import { PayoutAccountForm } from "./payout-account-form";
+import { readNotifyPrefs } from "@/lib/notify";
 
 function fmtDate(d: Date): string {
   // 하이드레이션 불일치 방지를 위해 서버에서 문자열로 고정 포맷
@@ -30,6 +31,8 @@ export async function SettingsView({ role, showBookings = false }: { role: strin
   let phone = "";
   let companyName = "";
   let createdAtLabel = "-";
+  let sns: { instagram: string; youtube: string; tiktok: string } | null = null;
+  let notifyPrefs: { order: boolean; settlement: boolean; live: boolean } | null = null;
 
   try {
     const dbUser = await prisma.user.findUnique({ where: { id: u.id }, include: { profile: true } });
@@ -39,6 +42,9 @@ export async function SettingsView({ role, showBookings = false }: { role: strin
       phone = dbUser.profile?.phone ?? "";
       companyName = dbUser.profile?.companyName ?? "";
       createdAtLabel = fmtDate(dbUser.createdAt);
+      const raw = dbUser.profile?.snsLinks as Record<string, unknown> | null | undefined;
+      if (raw && typeof raw === "object") sns = { instagram: String(raw.instagram ?? ""), youtube: String(raw.youtube ?? ""), tiktok: String(raw.tiktok ?? "") };
+      if (dbUser.profile?.notifyPrefs) notifyPrefs = readNotifyPrefs(dbUser.profile.notifyPrefs);
     }
   } catch { /* DB 미가동 등 — 기본값 사용 */ }
 
@@ -77,6 +83,8 @@ export async function SettingsView({ role, showBookings = false }: { role: strin
       isDemo={isDemo}
       showBookings={showBookings}
       bookings={bookings}
+      sns={sns}
+      notifyPrefs={notifyPrefs}
     />
     {payout && !isDemo && <div className="mt-5 max-w-2xl"><PayoutAccountForm description={payout} /></div>}
     </>

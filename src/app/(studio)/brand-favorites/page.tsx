@@ -27,7 +27,7 @@ export default async function BrandFavorites() {
     <div className="space-y-5 px-4 py-7 sm:px-6">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <h1 className="flex items-center gap-2 text-2xl font-black text-navy"><Heart className="h-6 w-6 text-red-500" />찜한 브랜드 상품</h1>
-        <Link href="/brands" className="text-sm font-bold text-brand-800 hover:underline">브랜드샵 둘러보기</Link>
+        <Link href="/brands" className="hit text-sm font-bold text-brand-800 hover:underline">브랜드샵 둘러보기</Link>
       </div>
       <p className="text-sm text-slate-600">상품을 눌러 샘플을 신청하거나 판매 상품으로 가져오세요. 샘플 구매는 판매와 별개로 진행됩니다.</p>
       {rows.length === 0 ? (
@@ -38,12 +38,12 @@ export default async function BrandFavorites() {
             const available = p.isActive && p.shop.status === "APPROVED";
             return (
               <article key={p.id} className="overflow-hidden rounded-2xl border bg-white">
-                <Link href={brandProductHref(p.shop.id, p.id)} className="block bg-[#F4F0E9]">
+                <Link href={brandProductHref(p.shop.id, p.id)} aria-label={`${p.name} 상품 보기`} className="block bg-[#F4F0E9]">
                   {p.imageUrl ? <img src={p.imageUrl} alt={p.name} className="aspect-square w-full object-cover" /> : <div className="aspect-square w-full" />}
                 </Link>
                 <div className="space-y-1 p-3">
                   <p className="text-[11px] text-slate-500">{p.shop.name}</p>
-                  <Link href={brandProductHref(p.shop.id, p.id)} className="line-clamp-2 text-sm font-bold text-navy hover:underline">{p.name}</Link>
+                  <Link href={brandProductHref(p.shop.id, p.id)} className="line-clamp-2 py-0.5 text-sm font-bold text-navy hover:underline">{p.name}</Link>
                   <p className="text-xs font-semibold">공급 {formatKRW(p.supplyPrice)}{p.consumerPrice > 0 && <span className="text-slate-500"> · 권장 {formatKRW(p.consumerPrice)}</span>}</p>
                   <p className="text-[11px] text-slate-600">샘플 {p.samplePrice === null ? "미제공" : p.samplePrice === 0 ? "무료" : formatKRW(p.samplePrice)} · 재고 {p.stock}개</p>
                   <div className="flex flex-wrap items-center gap-1.5 pt-1">

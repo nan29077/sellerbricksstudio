@@ -6,6 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Kpi } from "@/components/list/charts";
 import { formatDateTime } from "@/lib/utils";
 import { addDays } from "@/lib/kst";
+import { getPaymentAdapter, IMPLEMENTED_PROVIDERS } from "@/lib/adapters/payment";
+import { getKakaoAdapter } from "@/lib/adapters/kakao";
+import { getCatenoidAdapter } from "@/lib/adapters/catenoid";
 import { Database, Mail, CreditCard, MessageCircle, Radio, HardDrive, ShieldCheck, CheckCircle2, AlertTriangle } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -34,10 +37,22 @@ export default async function AdminIntegrations() {
     prisma.payment.groupBy({ by: ["status"], where: { createdAt: { gte: since } }, _count: true }),
     prisma.paymentEvent.findFirst({ where: { type: "WEBHOOK" }, orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
   ]) : [[], null, [], null];
+  // 키가 있어도 실제로 쓰이는 어댑터가 테스트(Mock)이면 '연동됨'으로 보이지 않게 한다.
+  const provider: Record<string, string> = {
+    pay: getPaymentAdapter().provider, kakao: getKakaoAdapter().provider, stream: getCatenoidAdapter().provider,
+  };
   const states = GROUPS.map((g) => {
-    const ok = g.key === "db" ? dbOk : g.required.every(has);
-    const partial = !ok && g.required.some(has);
-    return { ...g, ok, partial };
+    const keys = g.key === "db" ? dbOk : g.required.every(has);
+    const p = provider[g.key];
+    const mock = p === "mock";
+    const unsupported = g.key === "pay" && !mock && !(IMPLEMENTED_PROVIDERS as readonly string[]).includes(p);
+    const ok = keys && !mock && !unsupported;
+    const partial = !keys && g.required.some(has);
+    const label = ok ? "연동됨" : unsupported ? "연동 준비 안 됨" : partial ? "일부 설정" : "테스트 모드";
+    const tone: "green" | "yellow" | "gray" | "red" = ok ? "green" : unsupported ? "red" : partial ? "yellow" : "gray";
+    const hint = g.key === "pay" && mock && process.env.NODE_ENV === "production" && process.env.ALLOW_MOCK_PAYMENT !== "true" ? "배포 환경에서 테스트 결제는 막혀 있어 지금은 주문을 받을 수 없습니다. PG 연동이 필요합니다."
+      : mock && keys ? "키는 입력됐지만 실제 연동 코드가 아직 없어 테스트 모드로 동작합니다." : unsupported ? `결제사 '${p}' 연동이 아직 구현되지 않아 모든 결제가 실패합니다. PAYMENT_PROVIDER=mock 으로 두거나 연동을 먼저 구현하세요.` : "";
+    return { ...g, ok, partial, label, tone, hint };
   });
   const live = states.filter((s) => s.ok).length;
   const notiFail = notiByStatus.find((n) => n.status === "FAILED")?._count ?? 0;
@@ -47,7 +62,7 @@ export default async function AdminIntegrations() {
     <div className="space-y-5">
       <PageHeader title="연동 설정" description="외부 서비스 연동 상태를 점검합니다. 키 값은 서버 환경변수(.env)로만 관리되며 화면에 표시하지 않습니다." />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi label="연동 완료" value={`${live} / ${states.length}`} icon={CheckCircle2} tone="green" />
+        <Kpi label="실제 연동" value={`${live} / ${states.length}`} icon={CheckCircle2} tone="green" />
         <Kpi label="DB 응답" value={dbOk ? `${dbMs}ms` : "연결 실패"} icon={Database} tone={dbOk ? "blue" : "red"} />
         <Kpi label="알림 발송 (7일)" value={`${notiAll}건`} sub={notiFail ? `실패 ${notiFail}건` : "실패 없음"} icon={MessageCircle} tone={notiFail ? "red" : "brand"} />
         <Kpi label="결제 (7일)" value={`${payByStatus.reduce((s, p) => s + p._count, 0)}건`} sub={lastWebhook ? `마지막 웹훅 ${formatDateTime(lastWebhook.createdAt)}` : "웹훅 수신 없음"} icon={CreditCard} tone="navy" />
@@ -57,10 +72,11 @@ export default async function AdminIntegrations() {
           <Card key={s.key}>
             <CardHeader className="flex-row items-start justify-between space-y-0">
               <CardTitle className="flex items-center gap-2 text-base"><s.icon className="h-5 w-5 text-brand-600" />{s.name}</CardTitle>
-              <Badge tone={s.ok ? "green" : s.partial ? "yellow" : "gray"}>{s.ok ? "연동됨" : s.partial ? "일부 설정" : "Mock 동작"}</Badge>
+              <Badge tone={s.tone}>{s.label}</Badge>
             </CardHeader>
             <CardContent className="space-y-2">
               <p className="text-xs text-slate-500">{s.note}</p>
+              {s.hint && <p className="text-xs font-semibold text-amber-700">{s.hint}</p>}
               <div className="flex flex-wrap gap-1.5">
                 {[...s.required.map((k) => ({ k, req: true })), ...s.optional.map((k) => ({ k, req: false }))].map(({ k, req }) => (
                   <span key={k} className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 font-mono text-[11px] ${has(k) ? "border-emerald-200 bg-emerald-50 text-emerald-700" : req ? "border-red-200 bg-red-50 text-red-600" : "border-slate-200 bg-slate-50 text-slate-400"}`}>

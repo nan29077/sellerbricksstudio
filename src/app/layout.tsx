@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 import { Providers } from "@/components/providers";
-import { SITE_NAME as siteName } from "@/lib/site-brand";
+import { DEFAULT_SITE_TITLE, SITE_NAME as siteName } from "@/lib/site-brand";
 
 const shareTitle = "좋은 상품이 더 멀리 닿는 라이브";
 const shareDescription = `창고(스튜디오) 찾기부터 라이브 준비와 판매 관리까지, ${siteName}이 함께합니다.`;
@@ -41,7 +41,7 @@ export function generateMetadata(): Metadata {
   const shareImageUrl = new URL(shareImage, siteUrl).toString();
   return {
     metadataBase: siteUrl,
-    title: `${siteName} | 좋은 상품이 더 멀리 닿는 라이브`,
+    title: DEFAULT_SITE_TITLE,
     description: shareDescription,
     openGraph: {
       type: "website",
