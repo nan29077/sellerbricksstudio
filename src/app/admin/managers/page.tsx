@@ -8,7 +8,7 @@ import { Kpi } from "@/components/list/charts";
 import { ManagerCommissionEditor } from "@/components/manager-commission-editor";
 import { FacilityAssign } from "@/components/admin/facility-assign";
 import { RegisterManagerButton } from "../users/RegisterManagerModal";
-import { calcManagerCommission } from "@/lib/manager-commission";
+import { calcManagerCommission, managerFeeRows } from "@/lib/manager-commission";
 import { formatDateTime, formatKRW } from "@/lib/utils";
 import { addMonths, kstStartOfMonth } from "@/lib/kst";
 import { Users, Building2, DollarSign, TrendingUp } from "lucide-react";
@@ -27,15 +27,20 @@ export default async function AdminManagers() {
     prisma.managerFacility.findMany({ include: { manager: { select: { profile: { select: { name: true } }, email: true } } } }),
   ]);
   const allFacIds = Array.from(new Set(managers.flatMap((m) => m.managedFacilities.map((x) => x.facilityId))));
-  const [monthAgg, totalAgg] = await Promise.all([
+  const [monthAgg, totalAgg, fees] = await Promise.all([
     prisma.booking.groupBy({ by: ["facilityId"], where: { facilityId: { in: allFacIds }, status: "COMPLETED", startAt: { gte: mStart, lt: addMonths(mStart, 1) } }, _sum: { totalPrice: true }, _count: true }),
     prisma.booking.groupBy({ by: ["facilityId"], where: { facilityId: { in: allFacIds }, status: "COMPLETED" }, _sum: { totalPrice: true }, _count: true }),
+    managerFeeRows(allFacIds), // 배송 완료 주문의 플랫폼 판매 수수료 (정률 수수료 기준)
   ]);
-  const sumFor = (ids: string[], agg: typeof monthAgg) => agg.filter((a) => ids.includes(a.facilityId)).reduce((s, a) => ({ rev: s.rev + (a._sum.totalPrice ?? 0), n: s.n + a._count }), { rev: 0, n: 0 });
+  const mEnd = addMonths(mStart, 1);
+  const sumFor = (ids: string[], agg: typeof monthAgg, monthOnly: boolean) => ({
+    n: agg.filter((a) => ids.includes(a.facilityId)).reduce((s, a) => s + a._count, 0),
+    rev: fees.filter((f) => ids.includes(f.facilityId) && (!monthOnly || (f.at >= mStart && f.at < mEnd))).reduce((s, f) => s + f.fee, 0),
+  });
 
   const rows = managers.map((m) => {
     const ids = m.managedFacilities.map((x) => x.facilityId);
-    const mo = sumFor(ids, monthAgg), tot = sumFor(ids, totalAgg);
+    const mo = sumFor(ids, monthAgg, true), tot = sumFor(ids, totalAgg, false);
     const rule = m.managerCommission[0] ?? null;
     return { m, rule, ids, mo, tot, monthCommission: calcManagerCommission(rule, mo.rev, mo.n), totalCommission: calcManagerCommission(rule, tot.rev, tot.n) };
   });
@@ -45,14 +50,14 @@ export default async function AdminManagers() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="중간관리자 관리" description="영업 담당 창고(스튜디오)를 배정하고, 이용 완료 매출 기준 수수료율을 설정합니다." action={<RegisterManagerButton />} />
+      <PageHeader title="중간관리자 관리" description="영업 담당 창고(스튜디오)를 배정하고, 영업 수수료(판매 수수료의 % 또는 이용 완료 건당 정액)를 설정합니다." action={<RegisterManagerButton />} />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="중간관리자" value={`${managers.length}명`} sub={`활성 ${managers.filter((m) => m.isActive).length}명`} icon={Users} tone="navy" />
         <Kpi label="배정된 창고(스튜디오)" value={`${allFacIds.length}곳`} sub={`미배정 ${unassigned}곳`} icon={Building2} tone="brand" />
         <Kpi label="이번 달 수수료 합계" value={formatKRW(rows.reduce((s, r) => s + r.monthCommission, 0))} icon={DollarSign} tone="green" />
         <Kpi label="누적 수수료 합계" value={formatKRW(rows.reduce((s, r) => s + r.totalCommission, 0))} icon={TrendingUp} tone="blue" />
       </div>
-      <p className="rounded-xl border border-[#E9E5DC] bg-white px-4 py-3 text-xs text-slate-600">수수료 계산: <b>정률</b> = 담당 창고(스튜디오)의 이용 완료 예약 이용료 × %, <b>정액</b> = 이용 완료 1건당 금액</p>
+      <p className="rounded-xl border border-[#E9E5DC] bg-white px-4 py-3 text-xs text-slate-600">수수료 계산: <b>정률</b> = 담당 창고(스튜디오) 방송의 배송 완료 주문에서 플랫폼이 받은 판매 수수료 × % (창고 이용료는 무료), <b>정액</b> = 이용 완료 1건당 금액</p>
       {rows.length === 0 ? <EmptyState icon={<Users className="h-10 w-10" />} title="중간관리자가 없습니다" description="오른쪽 위 버튼으로 중간관리자 계정을 만들 수 있습니다." /> : (
         <div className="space-y-3">
           {rows.map(({ m, rule, ids, mo, tot, monthCommission, totalCommission }) => (
@@ -72,7 +77,7 @@ export default async function AdminManagers() {
                       ))}
                     </div>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                      {[["이번 달 완료", `${mo.n}건 · ${formatKRW(mo.rev)}`], ["이번 달 수수료", formatKRW(monthCommission)], ["누적 완료", `${tot.n}건 · ${formatKRW(tot.rev)}`], ["누적 수수료", formatKRW(totalCommission)]].map(([l, v]) => (
+                      {[["이번 달", `완료 ${mo.n}건 · 판매 수수료 ${formatKRW(mo.rev)}`], ["이번 달 수수료", formatKRW(monthCommission)], ["누적", `완료 ${tot.n}건 · 판매 수수료 ${formatKRW(tot.rev)}`], ["누적 수수료", formatKRW(totalCommission)]].map(([l, v]) => (
                         <div key={l} className="rounded-lg bg-muted/40 p-2 text-center"><p className="text-[11px] text-muted-foreground">{l}</p><p className="text-xs font-bold text-navy">{v}</p></div>
                       ))}
                     </div>

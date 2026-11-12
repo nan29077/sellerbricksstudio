@@ -3,6 +3,7 @@ import { notify } from "./notify";
 import { notifyWaitlist } from "./booking";
 import { getPolicy } from "./policy";
 import { formatDateTime } from "./utils";
+import { endOverdueLiveSessions } from "./live-automation";
 
 // 예약 자동 처리 (별도 스케줄러 없이도 동작하도록 화면을 열 때 가볍게 실행 + /api/cron/bookings 로도 실행 가능)
 //  1) 승인 대기 자동 만료  2) 종료된 승인 예약 이용 완료  3) 이용 전 알림
@@ -13,6 +14,7 @@ export async function runBookingMaintenance(scope: { facilityIds?: string[]; sel
   const now = Date.now();
   if (!opts.force && now - (lastRun.get(key) ?? 0) < 60_000) return { skipped: true, expired: 0, completed: 0, reminded: 0 };
   lastRun.set(key, now);
+  await endOverdueLiveSessions(); // 예정 시간이 지난 방송 자동 종료 (1분에 한 번)
   try {
     const policy = await getPolicy();
     const where = { ...(scope.facilityIds && { facilityId: { in: scope.facilityIds } }), ...(scope.sellerId && { sellerId: scope.sellerId }) };

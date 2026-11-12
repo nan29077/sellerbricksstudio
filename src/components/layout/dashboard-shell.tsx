@@ -41,7 +41,6 @@ const ROLE_NAV: Record<string, NavSection[]> = {
     ]},
     { title: "정산 · 마케팅", items: [
       { href: "/admin/payouts",     label: "판매 · 브랜드 정산", icon: Banknote },
-      { href: "/admin/settlements", label: "이용료 정산",  icon: TrendingUp },
       { href: "/admin/policy",      label: "수수료 · 운영 정책", icon: Percent },
       { href: "/admin/marketing",   label: "마케팅 지원",  icon: Megaphone },
     ]},
@@ -242,7 +241,7 @@ export function DashboardShell({
         </div>
       </div>
 
-      <nav aria-label="업무 메뉴" className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4 [scrollbar-width:thin]">
+      <nav aria-label="업무 메뉴" className="scrollbar-on-dark min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4">
         {sections.map((section) => (
           <div key={section.title} className="space-y-0.5">
             <p className="px-3 pb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-white/35">

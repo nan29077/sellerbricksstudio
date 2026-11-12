@@ -139,7 +139,7 @@ export default async function BrandDashboard() {
           { label: `판매처 ${d.channels.sellers + d.channels.facilities}곳` },
           { label: `공개 상품 ${d.products.active}개` },
         ]}
-        actions={<><HeroButton href="/brand/orders?status=NEW" primary><FileText className="h-4 w-4" />신규 발주 확인</HeroButton><HeroButton href="/brand/products?new=1"><PackagePlus className="h-4 w-4" />상품 등록</HeroButton><HeroButton href={`/brands/${shop.id}`}><Store className="h-4 w-4" />공개 샵 보기</HeroButton></>}
+        actions={<><HeroButton href="/brand/orders?status=NEW" primary><FileText className="h-4 w-4" />신규 발주 확인</HeroButton><HeroButton href="/brand/products?new=1"><PackagePlus className="h-4 w-4" />상품 등록</HeroButton><HeroButton href={`/brands/${shop.id}`} newTab><Store className="h-4 w-4" />샵 바로가기</HeroButton></>}
         aside={
           <HeroPanel title="정산 현황" href="/brand/settlements" cta="정산 내역">
             <p className="text-[11px] text-white/60">정산 예정 (배송 완료)</p>

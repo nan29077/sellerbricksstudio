@@ -1,4 +1,4 @@
-import type { CommissionType } from "@prisma/client";
+import type { CommissionType, FulfillmentMode } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { calcSellerCommission } from "@/lib/utils";
 import { getPolicy, pct, type Policy } from "@/lib/policy";
@@ -10,7 +10,9 @@ import { getPolicy, pct, type Policy } from "@/lib/policy";
 //  - 창고(스튜디오) 상품 · 수수료 방식(예전 방식): 셀러는 상품에 정한 셀러 수수료, 나머지는 창고(스튜디오)
 //  - 셀러가 가져온 브랜드 직배송 상품: (판매가 − 공급가 − 판매 수수료) 중 셀러 몫 비율만큼 셀러, 나머지는 방송 장소
 //  - 임시 상품: 셀러 수수료 없음 (기존 규칙)
-//  - 배송비: 셀러가 정해 받는 금액이므로 전액 셀러 몫 (판매 수수료 없음)
+//  - 배송비: 셀러가 방송마다 정하고, 실제로 택배를 보내는 쪽이 받는다 (판매 수수료 없음)
+//      · 창고(스튜디오) 방송에서 창고가 출고하는 상품(창고 상품 · 위탁 상품 · 임시 상품)이 있으면 → 창고(스튜디오) 몫
+//      · 그 밖(브랜드 직배송 상품만 있는 주문 · 셀러 공간 방송) → 셀러 몫. 브랜드 직배송 택배비는 브랜드 공급가에 포함된 것으로 본다
 // 주문할 때 줄마다 계산해 OrderItem 에 저장한다. 이후 수수료율 · 공급가 · 셀러 수수료가 바뀌어도 이미 팔린 주문은 그대로다.
 // ---------------------------------------------------------------------------
 export type LineInput = {
@@ -44,9 +46,9 @@ export function splitLine(line: LineInput, policy: Pick<Policy, "salesFeeRate" |
 
 // 방송 상품(LiveSessionProduct) 정보로 줄 계산 입력을 만든다. (방송에 올릴 때 남긴 스냅샷 우선)
 export type LspForSplit = {
-  brandProductId: string | null; supplyPriceSnapshot: number | null;
+  brandProductId: string | null; supplyPriceSnapshot: number | null; fulfillment?: FulfillmentMode | null;
   facilitySupplySnapshot?: number | null; commissionTypeSnapshot?: CommissionType | null; commissionValueSnapshot?: number | null;
-  facilityProduct: { commissionType: CommissionType; commissionValue: number; brandProductId: string | null } | null;
+  facilityProduct: { commissionType: CommissionType; commissionValue: number; brandProductId: string | null; fulfillment?: FulfillmentMode | null } | null;
 };
 
 export function lineInputOf(lsp: LspForSplit, line: { lineTotal: number; unitPrice: number; quantity: number }, opts: { ownSpace?: boolean } = {}): LineInput {
@@ -63,8 +65,8 @@ export function lineInputOf(lsp: LspForSplit, line: { lineTotal: number; unitPri
 }
 
 const LSP_SELECT = {
-  brandProductId: true, supplyPriceSnapshot: true, facilitySupplySnapshot: true, commissionTypeSnapshot: true, commissionValueSnapshot: true,
-  facilityProduct: { select: { commissionType: true, commissionValue: true, brandProductId: true } },
+  brandProductId: true, supplyPriceSnapshot: true, fulfillment: true, facilitySupplySnapshot: true, commissionTypeSnapshot: true, commissionValueSnapshot: true,
+  facilityProduct: { select: { commissionType: true, commissionValue: true, brandProductId: true, fulfillment: true } },
 } as const;
 
 const ITEM_INCLUDE = {
@@ -76,7 +78,20 @@ type ItemForSplit = {
   platformFee?: number | null; brandAmount?: number | null; facilityAmount?: number | null; sellerAmount?: number | null;
   liveSessionProduct: LspForSplit;
 };
-type OrderForSplit = { shippingFee?: number | null; items: ItemForSplit[] };
+type OrderForSplit = { shippingFee?: number | null; facilityId?: string | null; items: ItemForSplit[] };
+
+/** 이 주문의 배송비를 받는 쪽: 창고(스튜디오) 방송에서 창고가 직접 출고하는 상품이 있으면 창고, 아니면 셀러 */
+export function shippingRecipient(order: OrderForSplit): "FACILITY" | "SELLER" {
+  if (!order.facilityId) return "SELLER";
+  const facilityShips = order.items.some((it) => {
+    if (it.cancelledAt) return false;
+    const lsp = it.liveSessionProduct;
+    const brand = lsp.brandProductId ?? lsp.facilityProduct?.brandProductId ?? null;
+    const mode = lsp.fulfillment ?? lsp.facilityProduct?.fulfillment ?? "DROPSHIP";
+    return !(brand && mode !== "WAREHOUSE");
+  });
+  return facilityShips ? "FACILITY" : "SELLER";
+}
 
 /** 주문 줄 하나의 분배: 주문할 때 저장한 값이 있으면 그 값, 없으면(예전 주문) 지금 기준으로 계산 */
 export function splitItem(it: ItemForSplit, policy: Policy): LineSplit {
@@ -88,14 +103,15 @@ export function splitItem(it: ItemForSplit, policy: Policy): LineSplit {
 
 /** 주문 전체 분배. includeShipping=false 면 배송비를 뺀다 (부분 취소 조정용) */
 export function splitOrder(order: OrderForSplit, policy: Policy, opts: { includeShipping?: boolean } = {}) {
-  const sum = { gross: 0, platformFee: 0, brand: 0, seller: 0, facility: 0, shipping: 0 };
+  const sum = { gross: 0, platformFee: 0, brand: 0, seller: 0, facility: 0, shipping: 0, shippingTo: shippingRecipient(order) };
   for (const it of order.items) {
     if (it.cancelledAt) continue; // 부분 취소된 줄은 정산에서 뺀다
     const r = splitItem(it, policy);
     sum.gross += r.gross; sum.platformFee += r.platformFee; sum.brand += r.brand; sum.seller += r.seller; sum.facility += r.facility;
   }
   const shipping = opts.includeShipping === false ? 0 : Math.max(0, order.shippingFee ?? 0);
-  sum.gross += shipping; sum.seller += shipping; sum.shipping = shipping;
+  sum.gross += shipping; sum.shipping = shipping;
+  if (sum.shippingTo === "FACILITY") sum.facility += shipping; else sum.seller += shipping;
   return sum;
 }
 
@@ -142,7 +158,7 @@ export async function revenueLines(where: { sellerId?: string; facilityIds?: str
     return {
       id: o.id, orderNo: o.orderNo, status: o.status, createdAt: o.createdAt, title: o.liveSession.title,
       facilityName: (o.facility?.name ?? "셀러 공간"), sellerName: o.seller.profile?.name ?? o.seller.email, settled: !!o.settlementId,
-      shipping: r.shipping, gross: r.gross, platformFee: r.platformFee, brand: r.brand, facility: r.facility, seller: r.seller, lines,
+      shipping: r.shipping, shippingTo: r.shippingTo, gross: r.gross, platformFee: r.platformFee, brand: r.brand, facility: r.facility, seller: r.seller, lines,
     };
   });
 }

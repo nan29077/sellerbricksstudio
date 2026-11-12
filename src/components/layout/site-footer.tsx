@@ -4,10 +4,11 @@ import { SiteLogo } from "@/components/layout/site-logo";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { BUSINESS_INFO as B, bizInfoCheckUrl } from "@/lib/business-info";
 
 const footerLinks = [
-  { title: "서비스", links: [{ href: "/intro", label: "서비스 소개" }, { href: "/facilities", label: "창고(스튜디오) 찾기" }, { href: "/facilities?type=STUDIO", label: "스튜디오" }, { href: "/facilities?type=WAREHOUSE", label: "창고" }, { href: "/order-lookup", label: "주문 조회" }] },
-  { title: "시작하기", links: [{ href: "/signup/seller", label: "셀러 가입" }, { href: "/signup/facility", label: "창고(스튜디오) 관리자 가입" }, { href: "/login", label: "로그인" }, { href: "/support", label: "문의하기" }] },
+  { title: "서비스", links: [{ href: "/intro", label: "서비스 소개" }, { href: "/facilities", label: "창고(스튜디오) 찾기" }, { href: "/facilities?type=STUDIO", label: "스튜디오" }, { href: "/facilities?type=WAREHOUSE", label: "창고" }, { href: "/order-lookup", label: "주문 조회" }, { href: "/notices", label: "공지사항" }] },
+  { title: "시작하기", links: [{ href: "/signup/seller", label: "셀러 가입" }, { href: "/signup/brand", label: "브랜드사 가입" }, { href: "/signup/facility", label: "창고(스튜디오) 가입" }, { href: "/login", label: "로그인" }, { href: "/support", label: "문의하기" }] },
 ];
 
 export function SiteFooter() {
@@ -27,7 +28,11 @@ export function SiteFooter() {
           {footerLinks.map((group) => <div key={group.title}><p className="text-xs font-extrabold tracking-[0.18em] text-brand-300">{group.title}</p><ul className="mt-5 space-y-3">{group.links.map((item) => <li key={item.href}><Link href={item.href} className="group inline-flex items-center gap-1 text-sm text-white/60 transition hover:text-white">{item.label}<ArrowUpRight className="h-3.5 w-3.5 opacity-0 transition group-hover:opacity-100" /></Link></li>)}</ul></div>)}
         </div>
       </div>
-      <div className="border-t border-white/10"><div className="container flex flex-col gap-2 py-5 text-xs text-white/35 sm:flex-row sm:items-center sm:justify-between"><p className="flex flex-wrap items-center gap-x-4 gap-y-1">© {new Date().getFullYear()} 스토리지마켓. All rights reserved.<Link href="/terms" className="font-semibold text-white/60 hover:text-white">이용약관</Link><Link href="/privacy" className="font-bold text-white/80 hover:text-white">개인정보처리방침</Link></p><p>Made for the moments that move your business forward.</p></div></div>
+      <div className="border-t border-white/10"><div className="container space-y-1 pt-5 text-xs leading-6 text-white/40">
+        <p className="flex flex-wrap gap-x-3"><span>상호 {B.companyName}</span><span>대표 {B.ceoName}</span><span>사업자등록번호 {B.businessNumber} <a href={bizInfoCheckUrl(B.businessNumber)} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-white">사업자정보 확인</a></span><span>통신판매업 신고 {B.mailOrderNumber}</span></p>
+        <p className="flex flex-wrap gap-x-3"><span>주소 {B.address}</span><span>고객센터 {B.phone}</span><span>이메일 {B.email}</span><span>개인정보보호책임자 {B.privacyOfficer}</span></p>
+      </div></div>
+      <div><div className="container flex flex-col gap-2 py-5 text-xs text-white/35 sm:flex-row sm:items-center sm:justify-between"><p className="flex flex-wrap items-center gap-x-4 gap-y-1">© {new Date().getFullYear()} 스토리지마켓. All rights reserved.<Link href="/terms" className="font-semibold text-white/60 hover:text-white">이용약관</Link><Link href="/privacy" className="font-bold text-white/80 hover:text-white">개인정보처리방침</Link></p><p>Made for the moments that move your business forward.</p></div></div>
     </footer>
   );
 }

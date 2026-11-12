@@ -1,44 +1,59 @@
 import { prisma } from "@/lib/prisma";
-import { LocalShipChip, PoChips, PO_CHIP_INCLUDE } from "@/components/brand/po-chips";
+import { PO_CHIP_INCLUDE } from "@/components/brand/po-chips";
 import { requireRole } from "@/lib/auth";
 import { PageHeader } from "@/components/layout/dashboard-widgets";
-import { Table, Td } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty";
 import { Card, CardContent } from "@/components/ui/card";
-import { ORDER_STATUS } from "@/lib/status";
-import { formatKRW, formatDateTime } from "@/lib/utils";
-import { OrderStatusActions } from "@/components/order-status-actions";
-import { ORDER_ACTION_INCLUDE, orderActionProps } from "@/lib/order-action-props";
+import { formatKRW } from "@/lib/utils";
+import { OrderCardList } from "@/components/order-card-list";
+import { ORDER_ACTION_INCLUDE } from "@/lib/order-action-props";
+import { Pagination } from "@/components/list/pagination";
+import { pageOf, sp, type SP } from "@/lib/list";
+import { getPolicy } from "@/lib/policy";
+import { OrderFilterTabs } from "@/components/order-filter-tabs";
+import { orderFilterWhere } from "@/lib/order-view";
 import { Package, ShoppingCart, TrendingUp, Truck, CheckCircle2 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminOrders() {
+const BASE = "/admin/orders";
+
+export default async function AdminOrders({ searchParams }: { searchParams: SP }) {
   await requireRole(["SUPER_ADMIN"]);
+  const status = sp(searchParams, "status") ?? "";
+  const q = sp(searchParams, "q") ?? "";
+  const { page, size, skip, take } = pageOf(searchParams, 30);
+  const policy = await getPolicy();
+  let total = 0;
 
   let orders: any[] = [];
   let totalAmount = 0;
   let counts = { total: 0, paid: 0, preparing: 0, shipped: 0, delivered: 0 };
 
   try {
-    orders = await prisma.order.findMany({
-      orderBy: { createdAt: "desc" },
-      include: {
-        facility: { select: { name: true } },
-        seller: { include: { profile: { select: { name: true } } } },
-        purchaseOrders: PO_CHIP_INCLUDE,
-        ...ORDER_ACTION_INCLUDE,
-      },
-      take: 200,
-    });
-    totalAmount = orders.reduce((sum, o) => sum + (o.totalAmount - o.refundedAmount), 0);
-    counts = {
-      total: orders.length,
-      paid: orders.filter((o) => o.status === "PAID").length,
-      preparing: orders.filter((o) => o.status === "PREPARING").length,
-      shipped: orders.filter((o) => o.status === "SHIPPED").length,
-      delivered: orders.filter((o) => o.status === "DELIVERED").length,
+    const where = {
+      ...orderFilterWhere(status),
+      ...(q && { AND: [{ OR: [{ orderNo: { contains: q, mode: "insensitive" as const } }, { buyerName: { contains: q } }] }] }),
     };
+    const [rows, count, byStatus, sum] = await Promise.all([
+      prisma.order.findMany({
+        where, orderBy: { createdAt: "desc" }, skip, take,
+        include: {
+          facility: { select: { name: true } },
+          seller: { select: { profile: { select: { name: true } } } },
+          liveSession: { select: { title: true } },
+          purchaseOrders: PO_CHIP_INCLUDE,
+          ...ORDER_ACTION_INCLUDE,
+        },
+      }),
+      prisma.order.count({ where }),
+      prisma.order.groupBy({ by: ["status"], _count: true }),
+      prisma.order.aggregate({ where: { status: { in: ["PAID", "PREPARING", "SHIPPED", "DELIVERED"] } }, _sum: { totalAmount: true, refundedAmount: true } }),
+    ]);
+    orders = rows; total = count;
+    const n = (k: string) => byStatus.find((b) => b.status === k)?._count ?? 0;
+    totalAmount = (sum._sum.totalAmount ?? 0) - (sum._sum.refundedAmount ?? 0);
+    counts = { total: byStatus.reduce((a, b) => a + b._count, 0), paid: n("PAID"), preparing: n("PREPARING"), shipped: n("SHIPPED"), delivered: n("DELIVERED") };
   } catch { /* DB not available */ }
 
   return (
@@ -66,23 +81,12 @@ export default async function AdminOrders() {
         ))}
       </div>
 
-      <Table headers={["주문번호", "창고(스튜디오)", "셀러", "구매자", "금액", "상태", "일시", "처리"]}>
-        {orders.map((o) => {
-          const s = ORDER_STATUS[o.status] ?? { label: o.status, tone: "gray" };
-          return (
-            <tr key={o.id} className="hover:bg-muted/30 transition">
-              <Td className="font-mono text-xs text-muted-foreground">{o.orderNo}</Td>
-              <Td className="font-medium text-navy">{o.facility?.name ?? "-"}</Td>
-              <Td>{o.seller?.profile?.name ?? "-"}</Td>
-              <Td>{o.buyerName}</Td>
-              <Td className="font-semibold text-navy">{formatKRW(o.totalAmount)}</Td>
-              <Td><Badge tone={s.tone}>{s.label}</Badge><LocalShipChip order={o} /><PoChips pos={o.purchaseOrders} /></Td>
-              <Td className="text-xs text-muted-foreground">{formatDateTime(o.createdAt)}</Td>
-              <Td><OrderStatusActions {...orderActionProps(o, { isAdmin: true, isSeller: false, isFacilityOwner: false })} /></Td>
-            </tr>
-          );
-        })}
-      </Table>
+      <OrderFilterTabs base={BASE} params={searchParams} current={status} q={q} exportHref="/api/orders/export" />
+
+      {orders.length === 0
+        ? <EmptyState title="주문이 없습니다" description={status || q ? "조건에 맞는 주문이 없습니다." : "라이브 방송 후 주문이 들어오면 여기에 표시됩니다."} className="mt-4" />
+        : <OrderCardList orders={orders} actor={{ isAdmin: true, isSeller: false, isFacilityOwner: false }} piiRetentionDays={policy.piiRetentionDays} show={{ seller: true, place: true }} />}
+      <Pagination base={BASE} params={searchParams} page={page} size={size} total={total} />
     </div>
   );
 }

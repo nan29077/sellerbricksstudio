@@ -219,7 +219,7 @@ export default async function SellerDashboard() {
         <Panel eyebrow="LIVE REPORT" title="최근 라이브 성과" action={{ href: "/seller/live-sessions", label: "라이브 관리" }}>
           {d.lives.length === 0 ? <Empty icon={Radio} text="아직 진행한 라이브가 없습니다" action={{ href: "/seller/live-sessions", label: "라이브 만들기" }} /> : (
             <div className="-mx-1 overflow-x-auto">
-              <table className="w-full min-w-[480px] text-sm">
+              <table className="w-full min-w-[480px] text-sm rtable">
                 <thead><tr className="text-left text-[11px] font-bold text-slate-400"><th className="px-1 pb-2">방송</th><th className="px-1 pb-2">상태</th><th className="px-1 pb-2 text-right">상품</th><th className="px-1 pb-2 text-right">주문</th><th className="px-1 pb-2 text-right">매출</th></tr></thead>
                 <tbody className="divide-y divide-[#F0ECE6]">
                   {d.lives.map((l) => {
@@ -228,11 +228,11 @@ export default async function SellerDashboard() {
                     const tone = l.status === "LIVE" ? "red" : l.status === "READY" ? "blue" : "slate";
                     return (
                       <tr key={l.id}>
-                        <td className="max-w-0 px-1 py-2.5"><Link href={`/seller/live-sessions/${l.id}`} className="block truncate font-bold text-navy hover:text-brand-700">{l.title}</Link><span className="block truncate text-[11px] text-slate-500">{kstParts(when).month}/{kstParts(when).day} · {(l.facility?.name ?? "셀러 공간")}</span></td>
-                        <td className="px-1 py-2.5"><Pill tone={tone}>{st?.label ?? l.status}</Pill></td>
-                        <td className="px-1 py-2.5 text-right text-slate-600">{l._count.products}</td>
-                        <td className="px-1 py-2.5 text-right text-slate-600">{l._count.orders}</td>
-                        <td className="px-1 py-2.5 text-right font-extrabold text-navy">{formatKRW(l.gmv)}</td>
+                        <td data-label="방송" className="max-w-0 px-1 py-2.5"><Link href={`/seller/live-sessions/${l.id}`} className="block truncate font-bold text-navy hover:text-brand-700">{l.title}</Link><span className="block truncate text-[11px] text-slate-500">{kstParts(when).month}/{kstParts(when).day} · {(l.facility?.name ?? "셀러 공간")}</span></td>
+                        <td data-label="상태" className="px-1 py-2.5"><Pill tone={tone}>{st?.label ?? l.status}</Pill></td>
+                        <td data-label="상품" className="px-1 py-2.5 text-right text-slate-600">{l._count.products}</td>
+                        <td data-label="주문" className="px-1 py-2.5 text-right text-slate-600">{l._count.orders}</td>
+                        <td data-label="매출" className="px-1 py-2.5 text-right font-extrabold text-navy">{formatKRW(l.gmv)}</td>
                       </tr>
                     );
                   })}

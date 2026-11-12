@@ -1,2 +1,9 @@
+import { getSettings } from "@/lib/settings";
 import { SignupForm } from "@/components/signup-form";
-export default function Page() { return <SignupForm role="SELLER" />; }
+
+export const dynamic = "force-dynamic";
+
+export default async function Page() {
+  const { facilityDisabled } = await getSettings();
+  return <SignupForm role="SELLER" facilityDisabled={facilityDisabled} />;
+}

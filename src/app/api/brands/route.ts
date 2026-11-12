@@ -75,6 +75,9 @@ const commandSchema = z.discriminatedUnion("action", [
     shippingFee: price.default(0), leadDays: z.number().int().min(0).max(60).default(2),
     sampleLimitPerBuyer: z.number().int().min(0).max(100).default(1),
     minSalePrice: price.nullable().optional(), // 최저 판매가 (판매처가 이보다 싸게 팔 수 없음)
+    minOrderQty: z.number().int().min(1).max(10000).optional(), // 창고 입고 요청 최소 수량(MOQ). 보내지 않으면 기존 값 유지
+    // 상품 정보 고시 (화장품·식품 등). 보내지 않으면 기존 값을 그대로 둔다
+    volume: line(60).optional(), expiryInfo: line(60).optional(), ingredients: line(3000).optional(), certification: line(200).optional(),
   }),
   z.object({
     action: z.literal("request"), productId: id, requestKey: z.string().regex(/^[0-9a-f]{32}$/), kind: z.enum(["SUPPLY", "SAMPLE"]),
@@ -284,6 +287,7 @@ export async function POST(req: Request) {
         }
         if (!sample) {
           if (!product.allowWarehouse) throw new BrandConflict("이 상품은 창고 입고(위탁)를 받지 않습니다.");
+          if (command.quantity < product.minOrderQty) throw new BrandConflict(`이 상품은 창고 입고를 최소 ${product.minOrderQty.toLocaleString("ko-KR")}개부터 요청할 수 있습니다.`);
           const listing = command.facilityProductId ? await tx.facilityProduct.findFirst({
             where: { id: command.facilityProductId, brandProductId: product.id, fulfillment: "WAREHOUSE", facility: { ownerId: user.id } },
             select: { id: true },

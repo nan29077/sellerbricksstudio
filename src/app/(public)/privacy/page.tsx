@@ -20,9 +20,9 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-base font-bold text-navy">1. 수집하는 개인정보와 이용 목적·보관 기간</h2>
           <div className="mt-3 overflow-x-auto">
-            <table className="w-full min-w-[560px] border-collapse text-left text-[13px]">
+            <table className="w-full min-w-[560px] border-collapse text-left text-[13px] rtable">
               <thead><tr className="border-b bg-slate-50">{["구분", "항목", "목적", "보관 기간"].map((h) => <th key={h} className="px-3 py-2 font-bold text-navy">{h}</th>)}</tr></thead>
-              <tbody>{ROWS.map((r) => <tr key={r[0]} className="border-b align-top">{r.map((c, i) => <td key={i} className="px-3 py-2">{c}</td>)}</tr>)}</tbody>
+              <tbody>{ROWS.map((r) => <tr key={r[0]} className="border-b align-top">{r.map((c, i) => <td key={i} data-label={["구분", "항목", "목적", "보관 기간"][i]} className="px-3 py-2">{c}</td>)}</tr>)}</tbody>
             </table>
           </div>
         </section>

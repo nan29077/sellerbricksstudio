@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type HomeFeatureBannerProps = {
@@ -32,11 +32,12 @@ export function HomeFeatureBanner({ id, title, description, image, href, linkLab
         <Link
           href={href}
           className={cn(
-            "mt-3 inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
-            dark ? "bg-brand-500 text-navy hover:bg-brand-400 focus-visible:outline-brand-300" : "bg-navy text-white hover:bg-navy-700 focus-visible:outline-navy",
+            buttonVariants({ variant: "secondary" }),
+            "mt-3 rounded-xl px-4 font-bold",
+            dark && "bg-brand-300 text-navy hover:bg-brand-200",
           )}
         >
-          {linkLabel}<ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0" />
+          {linkLabel}
         </Link>
       </div>
       <div className="relative row-start-1 aspect-[2.5/1] overflow-hidden sm:col-start-2 sm:aspect-auto">

@@ -7,13 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Megaphone, Bell, Save, X } from "lucide-react";
 
 /* ── 타입 ── */
-interface Banner {
-  id: string;
-  title: string;
-  imageUrl: string;
-  linkUrl: string;
-  active: boolean;
-}
 interface Notice {
   id: string;
   title: string;
@@ -22,149 +15,77 @@ interface Notice {
   createdAt: string;
 }
 
-const STORAGE_KEY_BANNERS = "sb_site_banners";
-const STORAGE_KEY_NOTICES = "sb_site_notices";
-
-function uid() {
-  return Math.random().toString(36).slice(2, 10);
-}
-
-function usePersist<T>(key: string, init: T): [T, (v: T) => void] {
-  const [val, setVal] = useState<T>(() => {
-    try {
-      const saved = typeof window !== "undefined" ? localStorage.getItem(key) : null;
-      return saved ? JSON.parse(saved) : init;
-    } catch {
-      return init;
-    }
-  });
-  const set = (v: T) => {
-    setVal(v);
-    try { localStorage.setItem(key, JSON.stringify(v)); } catch {}
-  };
-  return [val, set];
-}
+const STORAGE_KEY_NOTICES = "sb_site_notices"; // 예전 브라우저 저장 공지 (처음 열 때 서버로 옮김)
 
 /* ─────────────────────────────── BANNERS ─────────────────────────────── */
+// 예전 '배너 관리'는 관리자 브라우저에만 저장되고 사이트 어디에도 표시되지 않았다.
+// 실제로 사이트에 보이는 배너(메인 상단 띠 배너)는 '사이트 설정'에서 서버에 저장하므로 그쪽으로 안내한다.
 function BannerSection() {
-  const [banners, setBanners] = usePersist<Banner[]>(STORAGE_KEY_BANNERS, []);
-  const [editing, setEditing] = useState<Banner | null>(null);
-  const [form, setForm] = useState({ title: "", imageUrl: "", linkUrl: "", active: true });
-
-  const openNew = () => {
-    setEditing({ id: "", title: "", imageUrl: "", linkUrl: "", active: true });
-    setForm({ title: "", imageUrl: "", linkUrl: "", active: true });
-  };
-  const openEdit = (b: Banner) => {
-    setEditing(b);
-    setForm({ title: b.title, imageUrl: b.imageUrl, linkUrl: b.linkUrl, active: b.active });
-  };
-  const save = () => {
-    if (!form.title) return;
-    if (editing!.id) {
-      setBanners(banners.map((b) => b.id === editing!.id ? { ...b, ...form } : b));
-    } else {
-      setBanners([...banners, { id: uid(), ...form }]);
-    }
-    setEditing(null);
-  };
-  const remove = (id: string) => setBanners(banners.filter((b) => b.id !== id));
-  const toggle = (id: string) =>
-    setBanners(banners.map((b) => b.id === id ? { ...b, active: !b.active } : b));
-
   return (
-    <section>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Megaphone className="h-5 w-5 text-brand-600" />
-          <h2 className="text-lg font-bold text-navy">배너 관리</h2>
-          <Badge tone="brand">{banners.length}개</Badge>
-        </div>
-        <Button size="sm" onClick={openNew} className="gap-1">
-          <Plus className="h-4 w-4" />배너 추가
-        </Button>
+    <section className="mb-10">
+      <div className="mb-4 flex items-center gap-2">
+        <Megaphone className="h-5 w-5 text-brand-500" />
+        <h2 className="text-lg font-bold text-navy">배너 관리</h2>
       </div>
-
-      {editing !== null && (
-        <Card className="mb-5 border-brand-200">
-          <CardContent className="pt-5 pb-5 space-y-3">
-            <p className="font-semibold text-navy">{editing.id ? "배너 수정" : "새 배너 추가"}</p>
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">배너 제목</label>
-                <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="배너 제목" />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">이미지 URL</label>
-                <Input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} placeholder="https://..." />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">링크 URL</label>
-                <Input value={form.linkUrl} onChange={(e) => setForm({ ...form, linkUrl: e.target.value })} placeholder="https://..." />
-              </div>
-              <div className="flex items-end gap-2">
-                <label className="flex items-center gap-2 cursor-pointer text-sm">
-                  <input
-                    type="checkbox"
-                    checked={form.active}
-                    onChange={(e) => setForm({ ...form, active: e.target.checked })}
-                    className="rounded"
-                  />
-                  활성화
-                </label>
-              </div>
-            </div>
-            {form.imageUrl && (
-              <div className="rounded-lg overflow-hidden border border-border max-w-xs">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={form.imageUrl} alt="미리보기" className="w-full h-32 object-cover" onError={(e) => (e.currentTarget.style.display = "none")} />
-              </div>
-            )}
-            <div className="flex gap-2">
-              <Button size="sm" onClick={save} className="gap-1"><Save className="h-4 w-4" />저장</Button>
-              <Button size="sm" variant="ghost" onClick={() => setEditing(null)} className="gap-1"><X className="h-4 w-4" />취소</Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {banners.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-8 text-center">등록된 배너가 없습니다. 배너를 추가해 주세요.</p>
-      ) : (
-        <div className="space-y-3">
-          {banners.map((b) => (
-            <Card key={b.id} className={b.active ? "" : "opacity-60"}>
-              <CardContent className="py-3 flex items-center gap-4">
-                {b.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={b.imageUrl} alt={b.title} className="h-14 w-24 object-cover rounded-lg border border-border shrink-0" onError={(e) => (e.currentTarget.style.display = "none")} />
-                ) : (
-                  <div className="h-14 w-24 rounded-lg bg-muted flex items-center justify-center text-xs text-muted-foreground shrink-0">이미지 없음</div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-navy truncate">{b.title}</p>
-                  {b.linkUrl && <p className="text-xs text-muted-foreground truncate">{b.linkUrl}</p>}
-                  <Badge tone={b.active ? "green" : "gray"} className="mt-1">{b.active ? "활성" : "비활성"}</Badge>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button size="sm" variant="ghost" onClick={() => toggle(b.id)}>
-                    {b.active ? "비활성화" : "활성화"}
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => openEdit(b)}><Pencil className="h-4 w-4" /></Button>
-                  <Button size="sm" variant="ghost" onClick={() => remove(b.id)} className="text-red-500 hover:text-red-700"><Trash2 className="h-4 w-4" /></Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      <Card>
+        <CardContent className="space-y-3 p-5 text-sm text-slate-700">
+          <p>메인 상단 띠 배너(문구 · 링크 · 켜기/끄기)는 <b>사이트 설정</b>에서 관리합니다. 저장하면 모든 방문자에게 바로 보입니다.</p>
+          <div className="flex flex-wrap gap-2">
+            <a href="/admin/site-settings" className="inline-flex h-10 items-center rounded-lg bg-navy px-4 text-sm font-bold text-white hover:opacity-90">사이트 설정에서 배너 관리</a>
+            <a href="/admin/home-background" className="inline-flex h-10 items-center rounded-lg border px-4 text-sm font-bold text-navy hover:bg-brand-50">메인 배경 이미지 관리</a>
+          </div>
+        </CardContent>
+      </Card>
     </section>
   );
 }
 
 /* ─────────────────────────────── NOTICES ─────────────────────────────── */
+/** 공지는 서버(DB)에 저장한다. 예전에 이 브라우저에만 저장된 공지가 있으면 처음 한 번 서버로 옮긴다. */
+type ServerNotice = { id: string; title: string; body: string; pinned: boolean; createdAt: string };
+function useServerNotices(): [Notice[], { create: (n: Omit<Notice, "id" | "createdAt">) => Promise<void>; update: (id: string, n: Partial<Notice>) => Promise<void>; remove: (id: string) => Promise<void> }, string] {
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [error, setError] = useState("");
+  const toView = (n: ServerNotice): Notice => ({ id: n.id, title: n.title, content: n.body, pinned: n.pinned, createdAt: new Date(n.createdAt).toLocaleDateString("ko-KR") });
+  const call = async (method: string, body?: unknown, query = "") => {
+    const json = await fetch(`/api/admin/notices${query}`, { method, headers: body ? { "Content-Type": "application/json" } : undefined, body: body ? JSON.stringify(body) : undefined })
+      .then((r) => r.json()).catch(() => ({ ok: false, error: "서버에 연결하지 못했습니다." }));
+    if (!json.ok) throw new Error(json.error ?? "처리하지 못했습니다.");
+    return json.data;
+  };
+  const reload = async () => {
+    try { setNotices(((await call("GET")) as ServerNotice[]).map(toView)); setError(""); }
+    catch (e) { setError(e instanceof Error ? e.message : "공지를 불러오지 못했습니다."); }
+  };
+  useEffect(() => {
+    (async () => {
+      try {
+        const rows = (await call("GET")) as ServerNotice[];
+        const legacy = (() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY_NOTICES) ?? "[]") as Notice[]; } catch { return []; } })();
+        if (legacy.length && rows.length === 0) {
+          await call("POST", { import: legacy.filter((n) => n.title).map((n) => ({ title: n.title.slice(0, 120), body: (n.content ?? "").slice(0, 5000), pinned: !!n.pinned })) });
+          try { localStorage.removeItem(STORAGE_KEY_NOTICES); } catch { /* 저장소 사용 불가 */ }
+          await reload();
+          return;
+        }
+        if (legacy.length) { try { localStorage.removeItem(STORAGE_KEY_NOTICES); } catch { /* 저장소 사용 불가 */ } }
+        setNotices(rows.map(toView));
+      } catch (e) { setError(e instanceof Error ? e.message : "공지를 불러오지 못했습니다."); }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const wrap = (fn: () => Promise<unknown>) => async () => {
+    try { await fn(); await reload(); } catch (e) { setError(e instanceof Error ? e.message : "처리하지 못했습니다."); }
+  };
+  return [notices, {
+    create: (n) => wrap(() => call("POST", { title: n.title, body: n.content, pinned: n.pinned }))(),
+    update: (id, n) => wrap(() => call("PATCH", { id, ...(n.title !== undefined && { title: n.title }), ...(n.content !== undefined && { body: n.content }), ...(n.pinned !== undefined && { pinned: n.pinned }) }))(),
+    remove: (id) => wrap(() => call("DELETE", undefined, `?id=${encodeURIComponent(id)}`))(),
+  }, error];
+}
+
 function NoticeSection() {
-  const [notices, setNotices] = usePersist<Notice[]>(STORAGE_KEY_NOTICES, []);
+  const [notices, api, loadError] = useServerNotices();
   const [editing, setEditing] = useState<Notice | null>(null);
   const [form, setForm] = useState({ title: "", content: "", pinned: false });
 
@@ -176,18 +97,17 @@ function NoticeSection() {
     setEditing(n);
     setForm({ title: n.title, content: n.content, pinned: n.pinned });
   };
-  const save = () => {
+  const save = async () => {
     if (!form.title) return;
-    if (editing!.id) {
-      setNotices(notices.map((n) => n.id === editing!.id ? { ...n, ...form } : n));
-    } else {
-      setNotices([{ id: uid(), ...form, createdAt: new Date().toLocaleDateString("ko-KR") }, ...notices]);
-    }
+    if (editing!.id) await api.update(editing!.id, form);
+    else await api.create(form);
     setEditing(null);
   };
-  const remove = (id: string) => setNotices(notices.filter((n) => n.id !== id));
-  const togglePin = (id: string) =>
-    setNotices(notices.map((n) => n.id === id ? { ...n, pinned: !n.pinned } : n));
+  const remove = (id: string) => { void api.remove(id); };
+  const togglePin = (id: string) => {
+    const target = notices.find((n) => n.id === id);
+    if (target) void api.update(id, { pinned: !target.pinned });
+  };
 
   const sorted = [...notices].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
 
@@ -203,6 +123,8 @@ function NoticeSection() {
           <Plus className="h-4 w-4" />공지 추가
         </Button>
       </div>
+      {loadError && <p role="alert" className="mb-3 text-sm text-red-700">{loadError}</p>}
+      <p className="mb-3 text-xs text-slate-500">공지는 서버에 저장되며 사이트 하단의 <a href="/notices" target="_blank" className="underline">공지사항</a> 페이지에 공개됩니다.</p>
 
       {editing !== null && (
         <Card className="mb-5 border-brand-200">
@@ -271,7 +193,7 @@ export default function SiteManagementPage() {
     <div className="space-y-2">
       <div className="mb-6">
         <h1 className="text-2xl font-extrabold text-navy">사이트 관리</h1>
-        <p className="text-sm text-muted-foreground mt-1">배너와 공지사항을 관리합니다. 변경 사항은 자동 저장됩니다.</p>
+        <p className="text-sm text-muted-foreground mt-1">공지사항을 관리하고, 배너 관리 화면으로 이동합니다.</p>
       </div>
       <BannerSection />
       <NoticeSection />

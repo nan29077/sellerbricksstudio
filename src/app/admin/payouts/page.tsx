@@ -47,9 +47,9 @@ export default async function AdminPayouts({ searchParams }: { searchParams: SP 
           <Link href="/admin/policy" className="inline-flex h-9 items-center rounded-lg border px-3 text-sm font-semibold">수수료 정책</Link>
           {tab === "sales"
             ? <ResourceForm url="/api/admin/sales-settlements" title="판매 정산서 생성" triggerSize="sm" successMessage="판매 정산서를 생성했습니다." initial={range}
-                fields={[{ name: "from", label: "주문일 시작", type: "date", required: true, half: true }, { name: "to", label: "주문일 끝", type: "date", required: true, half: true }]} />
+                fields={[{ name: "from", label: "배송 완료일 시작", type: "date", required: true, half: true }, { name: "to", label: "배송 완료일 끝", type: "date", required: true, half: true }]} />
             : <ResourceForm url="/api/admin/brand-settlements" title="브랜드 정산서 생성" triggerSize="sm" successMessage="브랜드 정산서를 생성했습니다." initial={range}
-                fields={[{ name: "from", label: "발주일 시작", type: "date", required: true, half: true }, { name: "to", label: "발주일 끝", type: "date", required: true, half: true }]} />}
+                fields={[{ name: "from", label: "배송 완료일 시작", type: "date", required: true, half: true }, { name: "to", label: "배송 완료일 끝", type: "date", required: true, half: true }]} />}
         </div>} />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { reportDbError, type DbIssue } from "@/lib/db-error";
 import { requireRole } from "@/lib/auth";
@@ -16,7 +17,7 @@ import {
 } from "@/components/dashboard/kit";
 import {
   BadgeAlert, Building2, CalendarCheck, CalendarClock, CalendarDays, CircleDollarSign, ClipboardCheck, FileText, Gauge as GaugeIcon,
-  MessageSquare, Package, PackagePlus, Radio, Repeat, ShoppingBag, Star, Wallet, Warehouse,
+  MessageSquare, Package, PackagePlus, Radio, Repeat, ShoppingBag, Star, Store, Wallet, Warehouse,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -164,7 +165,7 @@ export default async function FacilityDashboard() {
           { label: `오늘 예약 ${d.todayCount}건` },
           ...(d.liveNow ? [{ label: `방송 중 ${d.liveNow}건`, tone: "live" as const }] : []),
         ]}
-        actions={<><HeroButton href="/facility/bookings?status=PENDING" primary><ClipboardCheck className="h-4 w-4" />예약 승인하기</HeroButton><HeroButton href="/facility/schedule"><CalendarClock className="h-4 w-4" />운영 일정</HeroButton></>}
+        actions={<><HeroButton href="/facility/bookings?status=PENDING" primary><ClipboardCheck className="h-4 w-4" />예약 승인하기</HeroButton><HeroButton href="/facility/schedule"><CalendarClock className="h-4 w-4" />운영 일정</HeroButton>{d.perFac[0] && <HeroButton href={`/facilities/${d.perFac[0].id}`}><Store className="h-4 w-4" />{d.perFac.length > 1 ? `샵 바로가기 · ${d.perFac[0].name}` : "샵 바로가기"}</HeroButton>}</>}
         aside={
           <HeroPanel title="이번 달 가동률" href="/facility/bookings?view=calendar" cta="예약 캘린더">
             <p className="text-4xl font-extrabold">{d.util}<span className="text-lg text-white/60">%</span></p>
@@ -241,6 +242,7 @@ export default async function FacilityDashboard() {
                   <span className="min-w-0 flex-1 truncate text-sm font-extrabold text-navy">{f.name}</span>
                   {f.status !== "APPROVED" && <Pill tone={f.status === "PENDING" ? "amber" : "red"}>{f.status === "PENDING" ? "승인 심사 중" : "운영 정지"}</Pill>}
                   {f.autoApprove && <Pill tone="green">즉시 확정</Pill>}
+                  <Link href={`/facilities/${f.id}`} className="shrink-0 text-xs font-bold text-brand-700 hover:underline">샵 바로가기</Link>
                 </div>
                 <Meter label={`${f.region} · ${f.type === "WAREHOUSE" ? "창고" : "스튜디오"} · ★ ${f.rating.toFixed(1)}`} value={f.util} max={100} right={`가동률 ${f.util}%`} tone={f.util >= 80 ? "red" : f.util >= 40 ? "brand" : "green"}
                   sub={`이번 달 ${f.monthCount}건 · ${hoursText(f.hours)}${f.pending ? ` · 대기 ${f.pending}건` : ""}`} />

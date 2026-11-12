@@ -59,7 +59,7 @@ export async function BrandShopPanel({ shop, name, admin = false, header = true,
           description="샵 디자인, 소개, 사업자 · 정산 정보를 관리합니다. 상품은 '상품 · 재고 관리'에서 따로 관리합니다."
           action={shop ? <div className="flex flex-wrap gap-2">
             {!admin && <Link className={buttonVariants({ variant: "outline" })} href="/brand/products">상품 · 재고 관리</Link>}
-            <Link className={buttonVariants({ variant: "outline" })} href={`/brands/${shop.id}`}>공개 샵 보기</Link>
+            <a className={buttonVariants({ variant: "outline" })} href={`/brands/${shop.id}`} target="_blank" rel="noopener noreferrer">샵 바로가기 (새 창)</a>
           </div> : undefined} />
       )}
       {shop && <StatusLine shop={shop} />}
@@ -149,7 +149,7 @@ export async function BrandProductsPanel({ shop, params, admin = false, header =
           description="공급가 · 권장 소비자가 · 옵션 · 배송 방식(직배송/창고 입고) · 샘플 조건을 상품마다 정합니다."
           action={!admin ? <div className="flex flex-wrap gap-2">
             <Link className={buttonVariants({ variant: "outline" })} href="/brand/shop">샵 꾸미기 · 정보</Link>
-            <Link className={buttonVariants({ variant: "outline" })} href={`/brands/${shop.id}`}>공개 샵 보기</Link>
+            <a className={buttonVariants({ variant: "outline" })} href={`/brands/${shop.id}`} target="_blank" rel="noopener noreferrer">샵 바로가기 (새 창)</a>
           </div> : undefined} />
       ) : (
         <div><h2 className="text-xl font-black text-navy">상품 및 재고</h2>
@@ -234,6 +234,7 @@ export async function BrandProductsPanel({ shop, params, admin = false, header =
                   subCategory: product.subCategory, sku: product.sku, consumerPrice: product.consumerPrice, images: product.images, options: product.options,
                   allowDropship: product.allowDropship, allowWarehouse: product.allowWarehouse, shippingFee: product.shippingFee,
                   leadDays: product.leadDays, sampleLimitPerBuyer: product.sampleLimitPerBuyer, minSalePrice: product.minSalePrice,
+                  minOrderQty: product.minOrderQty, volume: product.volume, expiryInfo: product.expiryInfo, ingredients: product.ingredients, certification: product.certification,
                 }} />
               </div>
             </details>

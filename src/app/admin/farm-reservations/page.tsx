@@ -84,20 +84,20 @@ export default async function AdminFacilityOccupancy({ searchParams }: { searchP
           </div>
         </CardHeader>
         <CardContent className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-sm">
+          <table className="w-full min-w-[640px] text-sm rtable">
             <thead><tr className="border-b text-left text-xs text-slate-500">{["창고(스튜디오)", "가동률", "확정", "대기", "매출", "취소·거절", ""].map((h) => <th key={h} className="px-2 py-2 font-bold">{h}</th>)}</tr></thead>
             <tbody>
               {stats.map((s) => (
                 <tr key={s.f.id} className={cn("border-b border-[#F0ECE6] last:border-0", fid === s.f.id && "bg-brand-50/60")}>
-                  <td className="px-2 py-2.5"><p className="font-semibold text-navy">{s.f.name}</p><p className="text-[11px] text-slate-400">{s.f.region} · {formatKRW(s.f.basePrice)}/h</p></td>
-                  <td className="w-48 px-2 py-2.5">
+                  <td data-label="창고(스튜디오)" className="px-2 py-2.5"><p className="font-semibold text-navy">{s.f.name}</p><p className="text-[11px] text-slate-400">{s.f.region} · {formatKRW(s.f.basePrice)}/h</p></td>
+                  <td data-label="가동률" className="w-48 px-2 py-2.5">
                     <div className="flex items-center gap-2"><div className="h-2 flex-1 rounded-full bg-slate-100"><div className={cn("h-full rounded-full", s.util >= 70 ? "bg-emerald-500" : s.util >= 30 ? "bg-brand-500" : "bg-red-400")} style={{ width: `${s.util}%` }} /></div><span className="w-10 text-right text-xs font-bold">{s.util}%</span></div>
                   </td>
-                  <td className="px-2 py-2.5 text-xs">{s.count}건 · {Math.round(s.bookedH)}h</td>
-                  <td className="px-2 py-2.5">{s.pending ? <Badge tone="yellow">{s.pending}</Badge> : <span className="text-xs text-slate-400">0</span>}</td>
-                  <td className="px-2 py-2.5 text-xs font-bold">{formatKRW(s.revenue)}</td>
-                  <td className="px-2 py-2.5 text-xs">{s.cancelRate}%</td>
-                  <td className="px-2 py-2.5 text-right"><Link href={withParams(BASE, searchParams, { facility: fid === s.f.id ? undefined : s.f.id })} className="text-xs font-semibold text-brand-700 hover:underline">{fid === s.f.id ? "전체 보기" : "달력 보기"}</Link></td>
+                  <td data-label="확정" className="px-2 py-2.5 text-xs">{s.count}건 · {Math.round(s.bookedH)}h</td>
+                  <td data-label="대기" className="px-2 py-2.5">{s.pending ? <Badge tone="yellow">{s.pending}</Badge> : <span className="text-xs text-slate-400">0</span>}</td>
+                  <td data-label="매출" className="px-2 py-2.5 text-xs font-bold">{formatKRW(s.revenue)}</td>
+                  <td data-label="취소·거절" className="px-2 py-2.5 text-xs">{s.cancelRate}%</td>
+                  <td data-label="" className="px-2 py-2.5 text-right"><Link href={withParams(BASE, searchParams, { facility: fid === s.f.id ? undefined : s.f.id })} className="text-xs font-semibold text-brand-700 hover:underline">{fid === s.f.id ? "전체 보기" : "달력 보기"}</Link></td>
                 </tr>
               ))}
             </tbody>

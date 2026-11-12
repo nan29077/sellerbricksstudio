@@ -45,7 +45,7 @@ export default async function ManagerSales() {
 
   return (
     <div className="space-y-5 pb-24 md:pb-0">
-      <PageHeader title="매출 현황" description="담당 창고(스튜디오)의 확정 예약(승인·이용 완료) 이용료 기준 매출입니다." />
+      <PageHeader title="매출 현황" description="담당 창고(스튜디오)의 확정 예약(승인·이용 완료) 현황입니다. 창고 이용료는 무료이며, 판매 실적은 대시보드의 거래액을 참고하세요." />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="이번 달 매출" value={formatKRW(cur.value)} delta={growth(cur.value, prev.value)} sub="지난달 대비" icon={Wallet} tone="green" />
         <Kpi label="이번 달 예약" value={`${cur.n}건`} delta={growth(cur.n, prev.n)} icon={CalendarCheck} tone="blue" />

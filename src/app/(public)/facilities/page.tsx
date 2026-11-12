@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { Card, CardContent } from "@/components/ui/card";
+import { cardActionClassName, cardLinkClassName } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty";
-import { formatKRW } from "@/lib/utils";
+import { Input, Select } from "@/components/ui/input";
+import { ShopImage } from "@/components/shop/shop-image";
+import { registeredSpaceThumbnail } from "@/lib/showcase";
+import { cn } from "@/lib/utils";
 import { Star, MapPin, Search, Warehouse } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -68,31 +72,36 @@ export default async function FacilitiesPage({
   };
 
   return (
-    <div className="container py-8 pb-24 md:pb-8">
-      <h1 className="text-2xl font-bold text-navy">창고 · 스튜디오 찾기</h1>
-      <p className="mt-1 text-sm text-muted-foreground">방송할 공간을 검색하고 예약하세요.</p>
+    <div className="container pb-24 pt-8 sm:pt-10 md:pb-10">
+      <div className="flex items-center gap-3">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand-100 text-brand-800"><Warehouse aria-hidden="true" className="h-6 w-6" /></span>
+        <div>
+          <h1 className="break-keep text-2xl font-black tracking-tight text-navy sm:text-3xl">창고 · 스튜디오 찾기</h1>
+          <p className="mt-1 text-sm leading-5 text-slate-600">방송할 공간을 검색하고 예약하세요.</p>
+        </div>
+      </div>
 
-      <form className="mt-5 flex flex-col gap-3 rounded-xl border border-border bg-white p-4" action="/facilities" method="get">
-        <div className="flex items-center gap-2 rounded-lg border border-border px-3">
-          <Search className="h-4 w-4 text-muted-foreground" />
-          <input name="q" aria-label="창고(스튜디오)명 또는 지역 검색" defaultValue={q} placeholder="창고(스튜디오)명 또는 지역 검색" className="h-11 flex-1 bg-transparent text-sm outline-none" />
+      <form className="mt-6 flex flex-col gap-3 rounded-[20px] border border-slate-200 bg-white p-3 sm:p-4" action="/facilities" method="get">
+        <div className="relative">
+          <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-slate-500" />
+          <Input type="search" name="q" aria-label="창고(스튜디오)명 또는 지역 검색" defaultValue={q} placeholder="공간 이름 또는 지역 검색" className="pl-9" />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <select name="type" aria-label="창고 종류" defaultValue={type ?? ""} className="h-10 rounded-lg border border-border px-2 text-sm bg-white">
+          <Select name="type" aria-label="창고 종류" defaultValue={type ?? ""}>
             <option value="">전체 구분</option>
             <option value="WAREHOUSE">창고</option>
             <option value="STUDIO">스튜디오</option>
-          </select>
-          <select name="region" aria-label="지역" defaultValue={region ?? ""} className="h-10 rounded-lg border border-border px-2 text-sm bg-white">
+          </Select>
+          <Select name="region" aria-label="지역" defaultValue={region ?? ""}>
             {REGIONS.map((r) => <option key={r} value={r === "전체" ? "" : r}>{r}</option>)}
-          </select>
-          <select name="sort" aria-label="정렬" defaultValue={sort ?? ""} className="h-10 rounded-lg border border-border px-2 text-sm bg-white">
+          </Select>
+          <Select name="sort" aria-label="정렬" defaultValue={sort ?? ""}>
             <option value="">인기순</option>
             <option value="price">상품 많은 순</option>
-          </select>
-          <button type="submit" className="h-10 rounded-lg bg-brand-500 text-white text-sm font-semibold hover:bg-brand-600 transition">
+          </Select>
+          <Button type="submit" variant="secondary" className="rounded-xl">
             검색
-          </button>
+          </Button>
         </div>
       </form>
 
@@ -101,11 +110,12 @@ export default async function FacilitiesPage({
           <Link
             key={t}
             href={qs({ type: t === "전체" ? "" : t })}
-            className={`text-xs px-3 py-1 rounded-full border transition ${
+            aria-current={(type ?? "") === (t === "전체" ? "" : t) ? "true" : undefined}
+            className={cn("inline-flex min-h-11 items-center rounded-full border px-4 text-xs font-bold transition-colors",
               (type ?? "") === (t === "전체" ? "" : t)
-                ? "bg-brand-500 text-white border-brand-500"
-                : "border-border text-muted-foreground hover:border-brand-300"
-            }`}
+                ? "border-navy bg-navy text-white"
+                : "border-slate-200 bg-white text-slate-700 hover:border-brand-300"
+            )}
           >
             {t === "전체" ? "전체" : t === "WAREHOUSE" ? "창고" : "스튜디오"}
           </Link>
@@ -123,38 +133,31 @@ export default async function FacilitiesPage({
           />
         </div>
       ) : (
-        <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {facilities.map((f: any) => (
-            <Link key={f.id} href={`/facilities/${f.id}`}>
-              <Card className="overflow-hidden hover:shadow-lg transition group cursor-pointer">
-                <div className="aspect-[16/9] overflow-hidden bg-muted">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={f.thumbnailUrl ?? "https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&q=70&auto=format&fit=crop"}
-                    alt={f.name}
-                    className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {facilities.map((f) => (
+            <Link key={f.id} href={`/facilities/${f.id}`} aria-label={`${f.name} 공간 보기`} className={cardLinkClassName}>
+              <div className="aspect-[16/9] overflow-hidden bg-slate-100">
+                <ShopImage src={f.thumbnailUrl} fallback={registeredSpaceThumbnail(f.id, f.type === "WAREHOUSE" ? "WAREHOUSE" : "STUDIO")}
+                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03] motion-reduce:transition-none" />
+              </div>
+              <div className="flex flex-1 flex-col p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <Badge tone={f.type === "WAREHOUSE" ? "blue" : "purple"}>{f.type === "WAREHOUSE" ? "창고" : "스튜디오"}</Badge>
+                  <span className="flex items-center gap-1 text-xs font-bold text-navy">
+                    <Star aria-hidden="true" className="h-3.5 w-3.5 fill-brand-400 text-brand-400" />
+                    <span className="sr-only">평점 </span>{(f.rating ?? 0).toFixed(1)}
+                  </span>
                 </div>
-                <CardContent className="pt-3 pb-4">
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <Badge tone={f.type === "WAREHOUSE" ? "blue" : "purple"}>
-                      {f.type === "WAREHOUSE" ? "창고" : "스튜디오"}
-                    </Badge>
-                    <div className="flex items-center gap-0.5 ml-auto">
-                      <Star className="h-3.5 w-3.5 text-amber-400 fill-amber-400" />
-                      <span className="text-xs font-semibold text-navy">{(f.rating ?? 0).toFixed(1)}</span>
-                    </div>
+                <h2 className="mt-2 break-words text-lg font-extrabold tracking-tight text-navy">{f.name}</h2>
+                <p className="mb-3 mt-1 flex items-center gap-1 text-xs text-slate-600"><MapPin aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />{f.region}</p>
+                <div className="mt-auto border-t border-slate-100 pt-3">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs text-slate-600">
+                    <span>상품 {f._count?.products ?? 0}개</span>
+                    <span className="font-bold">이용료 <strong className="text-sm font-extrabold text-emerald-800">무료</strong></span>
                   </div>
-                  <p className="font-bold text-navy line-clamp-1">{f.name}</p>
-                  <p className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                    <MapPin className="h-3.5 w-3.5 shrink-0" />{f.region}
-                  </p>
-                  <div className="mt-3 flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">{f._count?.products ?? 0}개 상품 판매 가능</span>
-                    <span className="text-sm font-bold text-emerald-700">이용료 무료</span>
-                  </div>
-                </CardContent>
-              </Card>
+                  <span className={cardActionClassName}>공간 보기</span>
+                </div>
+              </div>
             </Link>
           ))}
         </div>

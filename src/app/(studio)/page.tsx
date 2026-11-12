@@ -2,12 +2,17 @@ import Link from "next/link";
 import { ArrowRight, CalendarDays, Camera, ClipboardList, Headset, PackageCheck, Radio, Wallet } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
+import { getSessionUser } from "@/lib/auth";
+import { SignupRoleCards } from "@/components/signup/signup-role-cards";
 import { getHomeBrandProducts } from "@/lib/home-brand-products";
+import { canSeeSupplyPrice } from "@/lib/brands";
 import { registeredSpaceThumbnail, SHOWCASE_SPACES, type SpaceCard } from "@/lib/showcase";
 import { BrandProductShowcase } from "@/components/home/brand-product-showcase";
 import { HeroSlider } from "@/components/home/hero-slider";
 import { HomeFeatureBanner } from "@/components/home/home-feature-banner";
 import { SpaceMarketplace } from "@/components/home/space-marketplace";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +57,9 @@ const liveChecklist = [
 ];
 
 export default async function HomePage() {
-  const [{ spaces, available }, settings, brandProducts] = await Promise.all([getRegisteredSpaces(), getSettings(), getHomeBrandProducts()]);
+  // 공급가 공개 여부는 로그인 계정에 따라 달라지므로 계정을 먼저 확인한다
+  const user = await getSessionUser().catch(() => null);
+  const [{ spaces, available }, settings, brandProducts] = await Promise.all([getRegisteredSpaces(), getSettings(), getHomeBrandProducts(new Date(), canSeeSupplyPrice(user?.role))]);
 
   return (
     <>
@@ -64,7 +71,16 @@ export default async function HomePage() {
           )}
         </div>
       )}
-      <HeroSlider />
+      <HeroSlider showSignup={!user} />
+      {!user && (
+        <section id="signup-roles" aria-labelledby="signup-roles-heading" className="scroll-mt-20 px-4 pt-8 sm:px-6 sm:pt-10">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="signup-roles-heading" className="break-keep text-xl font-black tracking-tight text-navy min-[390px]:text-2xl sm:text-3xl">어떤 회원으로 시작할까요?</h2>
+            <Link href="/login" className="inline-flex min-h-11 items-center px-1 text-xs font-bold text-slate-600 underline decoration-slate-300 underline-offset-4 hover:text-navy sm:px-2 sm:text-sm">로그인</Link>
+          </div>
+          <div className="mt-4"><SignupRoleCards facilityDisabled={settings.facilityDisabled} variant="home" /></div>
+        </section>
+      )}
       <BrandProductShowcase data={brandProducts} />
       <HomeFeatureBanner
         id="brand-samples-heading"
@@ -87,19 +103,18 @@ export default async function HomePage() {
         tone="dark"
         className="mb-8 sm:mb-10"
       />
-      <section className="border-y border-[#E8E5DD] bg-white px-4 py-9 sm:px-6 sm:py-12">
-        <p className="text-[11px] font-extrabold tracking-[0.2em] text-brand-700">YOUR LIVE WORKFLOW</p>
-        <h2 className="mt-2 break-keep text-2xl font-black tracking-tight text-navy sm:text-3xl">공간을 찾은 뒤에도 함께합니다</h2>
+      <section className="border-y border-slate-200 bg-white px-4 py-9 sm:px-6 sm:py-12">
+        <h2 className="break-keep text-2xl font-black tracking-tight text-navy sm:text-3xl">예약부터 판매·정산까지</h2>
         <div className="mt-5 grid grid-cols-2 gap-3">
           {steps.map(({ icon: Icon, title, description }) => (
-            <div key={title} className="rounded-2xl border border-[#EFE9DC] bg-[#FAF8F3] p-4">
-              <Icon className="h-5 w-5 text-brand-700" />
+            <div key={title} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-100 text-brand-800"><Icon aria-hidden="true" className="h-4 w-4" /></span>
               <h3 className="mt-3 text-sm font-bold text-navy">{title}</h3>
               <p className="mt-1 text-xs leading-5 text-slate-600">{description}</p>
             </div>
           ))}
         </div>
-        <Link href="/intro" className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-bold text-brand-700 hover:text-navy">서비스 자세히 보기<ArrowRight className="h-4 w-4" /></Link>
+        <Link href="/intro" className={buttonVariants({ variant: "outline", className: "mt-4 rounded-xl px-4" })}>서비스 자세히 보기</Link>
       </section>
       <section id="live-checklist" aria-labelledby="live-checklist-heading" className="scroll-mt-20 px-4 pt-9 sm:px-6 sm:pt-12">
         <h2 id="live-checklist-heading" className="break-keep text-2xl font-black tracking-tight text-navy sm:text-3xl">방송 전 체크리스트</h2>
@@ -123,10 +138,10 @@ export default async function HomePage() {
           <h2 className="mt-3 text-xl font-extrabold">이용에 도움이 필요하신가요?</h2>
           <p className="mt-2 text-sm leading-6 text-white/75">자주 묻는 질문을 찾아보거나, 운영팀에 1:1 문의를 남기세요.</p>
           <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-            <Link href="/support#faq" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand-500 px-4 text-sm font-extrabold text-navy hover:bg-brand-400">
-              자주 묻는 질문<ArrowRight aria-hidden="true" className="h-4 w-4" />
+            <Link href="/support#faq" className={cn(buttonVariants(), "rounded-xl bg-brand-300 px-4 font-bold text-navy hover:bg-brand-200")}>
+              자주 묻는 질문
             </Link>
-            <Link href="/support#new-inquiry" className="inline-flex min-h-11 items-center px-1 text-sm font-bold text-white underline decoration-white/50 underline-offset-4 hover:text-brand-200">1:1 문의하기</Link>
+            <Link href="/support#new-inquiry" className={cn(buttonVariants({ variant: "outline" }), "rounded-xl border-white/40 bg-transparent px-4 text-white hover:border-brand-300 hover:bg-navy-700")}>1:1 문의하기</Link>
           </div>
         </div>
       </section>

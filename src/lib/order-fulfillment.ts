@@ -69,7 +69,10 @@ export function orderActions(order: OrderForFulfillment, actor: OrderActor): Ord
     if (order.localShippedAt && !order.localDeliveredAt) statuses.push("DELIVERED");
   }
   const canCancel = open && !p.anyShipped && ["PAID", "PREPARING"].includes(order.status as string) && (isOperator || actor.isSeller);
-  const canRefund = open && p.anyShipped && isOperator;
+  // 출고 후 환불: 창고(스튜디오) 방송은 창고. 셀러 공간 방송은 셀러가 직접 출고한 주문만 셀러가 하고,
+  // 브랜드가 이미 보낸 상품이 있으면 (반품 확인 · 브랜드 정산 차감이 걸리므로) 최고관리자가 처리한다.
+  const sellerOwnShip = p.operator === "SELLER" && actor.isSeller && !p.hasBrand && !order.purchaseOrders.length;
+  const canRefund = open && p.anyShipped && (actor.isAdmin || (p.operator === "FACILITY" ? actor.isFacilityOwner : sellerOwnShip));
   if (canCancel) statuses.push("CANCELLED");
   if (canRefund) statuses.push("REFUNDED");
   return { statuses, canCancel, canRefund, isShipper, localShipper: p.localShipper };

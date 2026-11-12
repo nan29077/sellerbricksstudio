@@ -16,10 +16,13 @@ const schema = z.object({
   poConfirmHours: z.coerce.number().int().min(1).max(24 * 14),
   sampleMaxPerOrder: z.coerce.number().int().min(1).max(1000),
   orderAfterEndHours: z.coerce.number().int().min(0).max(24 * 30),
+  liveAutoEndHours: z.coerce.number().int().min(0).max(24 * 7),
   settleAfterDays: z.coerce.number().int().min(0).max(60),
   piiRetentionDays: z.coerce.number().int().min(7).max(3650),
   requireEmailVerify: z.preprocess((v) => v === "false" ? false : v === "true" ? true : v, z.boolean()),
   maxPendingBookings: z.coerce.number().int().min(0).max(100),
+  requestReplyHours: z.coerce.number().int().min(0).max(24 * 30),
+  requestAutoRejectHours: z.coerce.number().int().min(0).max(24 * 30),
 }).partial();
 
 export async function GET() {

@@ -6,6 +6,8 @@ import { notify } from "@/lib/notify";
 import { BRAND_BUYER_ROLES } from "@/lib/brands";
 import { brandContext, brandRecipients } from "@/lib/brand-access";
 import { consume, MINUTE } from "@/lib/rate-limit";
+import { audit } from "@/lib/audit";
+import { detectContactInfo, DIRECT_TRADE_WARNING } from "@/lib/contact-detect";
 
 const schema = z.object({
   body: z.string().trim().min(1, "내용을 입력하세요.").max(2000),
@@ -45,8 +47,11 @@ export async function POST(req: Request) {
     } else return fail("브랜드 문의는 브랜드사 · 셀러 · 창고(스튜디오) 계정으로 이용할 수 있습니다.", 403);
 
     const fromBrand = !!ctx;
-    await prisma.$transaction([
-      prisma.brandMessage.create({ data: { threadId: thread.id, senderId: user.id, body: data.body } }),
+    // 직거래 의심(전화번호·계좌번호 등): 보내기는 허용하고 메시지에 표시 + 감사 기록
+    const contacts = detectContactInfo(data.body);
+    const flagged = contacts.length > 0;
+    const [message] = await prisma.$transaction([
+      prisma.brandMessage.create({ data: { threadId: thread.id, senderId: user.id, body: data.body, flagged }, select: { id: true } }),
       prisma.brandThread.update({
         where: { id: thread.id },
         data: { lastMessageAt: new Date(), ...(fromBrand ? { partnerUnread: { increment: 1 } } : { brandUnread: { increment: 1 } }) },
@@ -58,6 +63,7 @@ export async function POST(req: Request) {
       title: fromBrand ? `${shop?.name ?? "브랜드"}에서 메시지가 왔습니다` : "판매처 문의가 도착했습니다",
       body: data.body.slice(0, 120), link: fromBrand ? `/brand-messages?t=${thread.id}` : `/brand/messages?t=${thread.id}`,
     });
-    return ok({ threadId: thread.id }, 201);
+    if (flagged) await audit({ actorId: user.id, action: "BRAND_MESSAGE_CONTACT_FLAG", entity: "BrandMessage", entityId: message.id, meta: { threadId: thread.id, shopId: thread.shopId, contacts } });
+    return ok({ threadId: thread.id, ...(flagged && { warning: DIRECT_TRADE_WARNING }) }, 201);
   } catch (e) { return handleError(e); }
 }

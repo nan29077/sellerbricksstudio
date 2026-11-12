@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { ArrowUpRight, ClipboardList, Gift, PackagePlus, Search, ShoppingBag, Sparkles, Store } from "lucide-react";
+import { ClipboardList, Gift, PackagePlus, Search, ShoppingBag, Sparkles, Store } from "lucide-react";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
-import { BRAND_CATEGORIES, PUBLIC_BRAND_SHOP, brandArtworkFor, brandProductHref } from "@/lib/brands";
-import { generatedBrandProductArtwork } from "@/lib/brand-product-artwork";
+import { BRAND_CATEGORIES, PUBLIC_BRAND_SHOP, canSeeSupplyPrice } from "@/lib/brands";
 import { categoryFilterValues } from "@/lib/categories";
 import { BRAND_ARTWORK } from "@/lib/shop-artwork";
 import { reportDbError } from "@/lib/db-error";
@@ -12,9 +11,11 @@ import { pageOf, sp, withParams, type SP } from "@/lib/list";
 import { cn, formatKRW } from "@/lib/utils";
 import { defaultProfileImage } from "@/lib/profile";
 import { Input, Select } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cardActionClassName, cardLinkClassName } from "@/components/ui/card";
 import { Pagination } from "@/components/list/pagination";
 import { ShopImage } from "@/components/shop/shop-image";
+import { BrandCatalogProductCard } from "@/components/shop/brand-catalog-product-card";
 import { DataNotice } from "@/components/dashboard/kit";
 
 export const dynamic = "force-dynamic";
@@ -47,6 +48,8 @@ export default async function BrandDirectory({ searchParams }: { searchParams: S
   const link = (patch: Record<string, string | null>) => withParams("/brands", searchParams, { page: null, ...patch });
 
   const user = await getSessionUser().catch(() => null);
+  // 공급가는 거래 파트너(셀러·창고)·최고관리자에게만 보여 준다
+  const showSupply = canSeeSupplyPrice(user?.role);
   let data;
   try {
     const activeProduct: Prisma.BrandProductWhereInput = { isActive: true, shop: visibleShop };
@@ -71,8 +74,8 @@ export default async function BrandDirectory({ searchParams }: { searchParams: S
       prisma.brandProduct.groupBy({ by: ["shopId"], where: { shopId: { in: ids }, isActive: true }, _min: { supplyPrice: true } }),
     ]) : [[], []];
     data = {
-      shops: shops.map((s) => ({ ...s, samples: samples.find((x) => x.shopId === s.id)?._count ?? 0, minPrice: minPrices.find((x) => x.shopId === s.id)?._min.supplyPrice ?? null })),
-      total, shopCount, productCount, sampleCount, fresh,
+      shops: shops.map((s) => ({ ...s, samples: samples.find((x) => x.shopId === s.id)?._count ?? 0, minPrice: showSupply ? minPrices.find((x) => x.shopId === s.id)?._min.supplyPrice ?? null : null })),
+      total, shopCount, productCount, sampleCount, fresh: fresh.map((p) => ({ ...p, supplyPrice: showSupply ? p.supplyPrice : null })),
     };
   } catch (e) {
     const issue = reportDbError("brands", e);
@@ -115,7 +118,7 @@ export default async function BrandDirectory({ searchParams }: { searchParams: S
         <Button type="submit"><Search className="h-4 w-4" /> 검색</Button>
       </form>
 
-      <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
+      <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
         <Link href={link({ sample: sampleOnly ? null : "1" })} className={cn("inline-flex shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-bold", sampleOnly ? "border-navy bg-navy text-white" : "border-brand-300 bg-brand-50 text-navy")}>
           <Gift className="h-3.5 w-3.5" />샘플 가능
         </Link>
@@ -128,20 +131,11 @@ export default async function BrandDirectory({ searchParams }: { searchParams: S
       {data.fresh.length > 0 && (
         <section>
           <h2 className="mb-3 flex items-center gap-1.5 text-lg font-black text-navy"><Sparkles className="h-5 w-5 text-brand-600" />새로 들어온 상품</h2>
-          <div className="-mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-2">
+          <ul className="-mx-1 flex snap-x gap-3 overflow-x-auto px-1 py-1">
             {data.fresh.map((p) => (
-              <Link key={p.id} href={brandProductHref(p.shop.id, p.id)} className="w-40 shrink-0 snap-start overflow-hidden rounded-2xl border bg-white shadow-sm hover:border-brand-300">
-                <ShopImage src={p.imageUrl} fallback={generatedBrandProductArtwork(p.shop.name, p)?.cover ?? brandArtworkFor(p.category)} className="aspect-square w-full object-cover" />
-                <div className="p-2.5">
-                  <p className="truncate text-[11px] text-slate-500">{p.shop.name}</p>
-                  <p className="line-clamp-2 min-h-[2.5rem] text-sm font-bold leading-5 text-navy">{p.name}</p>
-                  <p className="mt-1 text-sm font-extrabold text-brand-700">공급가 {formatKRW(p.supplyPrice)}</p>
-                  {p.consumerPrice > 0 && <p className="text-[11px] text-slate-400">소비자가 {formatKRW(p.consumerPrice)}</p>}
-                  {p.sampleStock > 0 && <span className="mt-1 inline-block rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-700">{p.samplePrice ? "유료 샘플" : "무료 샘플"}</span>}
-                </div>
-              </Link>
+              <li key={p.id} className="w-40 shrink-0 snap-start sm:w-44"><BrandCatalogProductCard product={p} /></li>
             ))}
-          </div>
+          </ul>
         </section>
       )}
 
@@ -152,20 +146,23 @@ export default async function BrandDirectory({ searchParams }: { searchParams: S
       <div className="grid gap-4 sm:grid-cols-2">
         {data.shops.map((shop) => (
           <Link key={shop.id} href={`/brands/${shop.id}${category ? `?category=${encodeURIComponent(category)}` : ""}`}
-            className="group overflow-hidden rounded-2xl border bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md">
+            aria-label={`${shop.name} 브랜드샵 보기`} className={cardLinkClassName}>
             <div className="relative">
               <ShopImage src={shop.bannerUrl} fallback={BRAND_ARTWORK[0].url} className="aspect-[16/9] w-full object-cover" />
-                <ShopImage src={shop.logoUrl} fallback={defaultProfileImage(`brand:${shop.id}`)} className="absolute -bottom-6 left-4 h-12 w-12 rounded-full border-2 border-white bg-white object-cover shadow" />
-              {Date.now() - shop.createdAt.getTime() < 14 * 86400000 && <span className="absolute right-3 top-3 rounded-full bg-brand-500 px-2 py-0.5 text-[11px] font-extrabold text-navy">NEW</span>}
+              <ShopImage src={shop.logoUrl} fallback={defaultProfileImage(`brand:${shop.id}`)} className="absolute -bottom-6 left-4 h-12 w-12 rounded-xl border-2 border-white bg-white object-cover shadow-sm" />
+              {Date.now() - shop.createdAt.getTime() < 14 * 86400000 && <span className="absolute right-3 top-3 rounded-md bg-brand-200 px-2 py-0.5 text-[11px] font-bold text-navy">신규</span>}
             </div>
-            <div className="p-4 pt-8">
-              <div className="flex items-start justify-between gap-2"><h3 className="text-lg font-black text-navy">{shop.name}</h3><ArrowUpRight className="h-4 w-4 shrink-0 text-brand-700" /></div>
+            <div className="flex flex-1 flex-col p-4 pt-8">
+              <h3 className="break-words text-lg font-black tracking-tight text-navy">{shop.name}</h3>
               {shop.tagline && <p className="mt-1 line-clamp-2 text-sm text-slate-600">{shop.tagline}</p>}
-              {shop.categories.length > 0 && <div className="mt-2 flex flex-wrap gap-1">{shop.categories.slice(0, 5).map((c) => <span key={c} className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-navy">{c}</span>)}</div>}
-              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
-                <span>상품 {shop._count.products.toLocaleString("ko-KR")}개</span>
-                {shop.minPrice !== null && <span>공급가 {formatKRW(shop.minPrice)}~</span>}
-                {shop.samples > 0 && <span className="font-bold text-blue-700">샘플 가능 {shop.samples}개</span>}
+              {shop.categories.length > 0 && <div className="mt-2 flex flex-wrap gap-1">{shop.categories.slice(0, 5).map((c) => <span key={c} className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">{c}</span>)}</div>}
+              <div className="mt-auto pt-3">
+                <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-slate-100 pt-3 text-xs text-slate-600">
+                  <span>상품 {shop._count.products.toLocaleString("ko-KR")}개</span>
+                  {shop.minPrice !== null && <span>공급가 {formatKRW(shop.minPrice)}~</span>}
+                  {shop.samples > 0 && <span className="font-bold text-brand-800">샘플 가능 {shop.samples}개</span>}
+                </div>
+                <span className={cardActionClassName}>브랜드샵 보기</span>
               </div>
             </div>
           </Link>
@@ -177,7 +174,7 @@ export default async function BrandDirectory({ searchParams }: { searchParams: S
         </div>
       )}
       <Pagination base="/brands" params={searchParams} page={page} size={size} total={data.total} />
-      {user?.role !== "BRAND_ADMIN" && <Link href="/signup/brand" className="inline-flex min-h-11 items-center text-sm font-bold text-brand-800 hover:underline">브랜드사 입점 신청 <ArrowUpRight className="ml-1 h-4 w-4" /></Link>}
+      {user?.role !== "BRAND_ADMIN" && <Link href="/signup/brand" className={buttonVariants({ variant: "secondary", className: "rounded-xl" })}>브랜드사 입점 신청</Link>}
     </div>
   );
 }

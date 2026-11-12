@@ -51,7 +51,7 @@ export function LiveShippingForm({ sessionId, shippingFee, freeShippingOver, dis
       )}
       <p className="flex items-center gap-1 text-xs text-slate-500"><Truck className="h-3.5 w-3.5" />
         {mode === "FREE" ? "구매자에게 무료배송으로 표시됩니다." : mode === "PAID" ? `주문마다 ${formatKRW(num(fee))}이 추가됩니다.` : `${formatKRW(num(over))} 미만 주문에 ${formatKRW(num(fee))}이 추가됩니다.`}
-        {" "}받은 배송비는 셀러 정산에 포함됩니다.
+        {" "}받은 배송비는 택배를 보내는 쪽 정산에 포함됩니다. (창고(스튜디오)가 출고하면 창고, 브랜드 직배송 · 내 공간 방송은 셀러)
       </p>
       <Button size="sm" onClick={save} disabled={busy || disabled}>{busy ? "저장 중..." : "배송비 저장"}</Button>
       {msg && <p className="text-xs text-slate-600">{msg}</p>}

@@ -25,7 +25,7 @@ export default async function FacilityLiveSessions() {
         <Table headers={["제목", "셀러", "상태", "상품수", ""]}>
           {sessions.map((s) => { const st = LIVE_STATUS[s.status]; return (
             <tr key={s.id}><Td className="font-medium max-w-[180px] truncate">{s.title}</Td><Td>{s.seller.profile?.name}</Td><Td><Badge tone={st.tone}>{st.label}</Badge></Td><Td>{s._count.products}</Td>
-              <Td><Link href={`/seller/live-sessions/${s.id}/numbering`}><Button size="sm" variant="outline">상품 추가/번호</Button></Link></Td></tr>
+              <Td><Link href={`/facility/live-sessions/${s.id}`}><Button size="sm" variant="outline">상품 추가/번호</Button></Link></Td></tr>
           ); })}
         </Table>
       )}

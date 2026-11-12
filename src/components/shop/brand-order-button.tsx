@@ -10,21 +10,21 @@ import { BRAND_REQUEST_KIND } from "@/lib/brands";
 import { formatKRW } from "@/lib/utils";
 import { submitBrandCommand } from "./brand-command";
 
-export function BrandOrderButton({ productId, name, kind, unitPrice, stock, maxQuantity = 20, facilityProductId, defaults, limitNote }: {
+export function BrandOrderButton({ productId, name, kind, unitPrice, stock, maxQuantity = 20, minQuantity = 1, facilityProductId, defaults, limitNote }: {
   productId: string; name: string; kind: BrandRequestKind; unitPrice: number; stock: number;
-  maxQuantity?: number; facilityProductId?: string; limitNote?: string;
+  maxQuantity?: number; minQuantity?: number; facilityProductId?: string; limitNote?: string;
   defaults?: { recipient?: string; phone?: string; address?: string };
 }) {
   const router = useRouter();
   const dialog = useRef<HTMLDialogElement>(null);
   const requestKey = useRef<string>();
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState(Math.max(1, minQuantity));
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [method, setMethod] = useState("CARD");
   const sample = kind === "SAMPLE";
   const free = sample && unitPrice === 0;
-  const label = free ? "무료 샘플 신청" : BRAND_REQUEST_KIND[kind];
+  const label = free ? "무료 샘플 신청" : sample ? "샘플 구매" : BRAND_REQUEST_KIND[kind];
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -64,8 +64,9 @@ export function BrandOrderButton({ productId, name, kind, unitPrice, stock, maxQ
         </div>
         <form className="space-y-3" onSubmit={submit}>
           <Label className="block">수량
-            <Input type="number" min={1} max={Math.min(stock, sample ? maxQuantity : 10000)} required value={quantity || ""}
+            <Input type="number" min={Math.max(1, minQuantity)} max={Math.min(stock, sample ? maxQuantity : 10000)} required value={quantity || ""}
               onChange={(event) => setQuantity(Number(event.target.value))} />
+            {minQuantity > 1 && <span className="mt-1 block text-xs font-normal text-slate-600">최소 {minQuantity.toLocaleString("ko-KR")}개부터 요청할 수 있습니다.</span>}
           </Label>
           <Label className="block">받는 분<Input name="recipient" required minLength={2} maxLength={60} autoComplete="shipping name" defaultValue={defaults?.recipient} /></Label>
           <Label className="block">연락처<Input name="phone" type="tel" required minLength={8} maxLength={30} autoComplete="shipping tel" defaultValue={defaults?.phone} /></Label>
@@ -86,7 +87,7 @@ export function BrandOrderButton({ productId, name, kind, unitPrice, stock, maxQ
             </Label>
           )}
           {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-          <Button className="w-full" disabled={busy}>{busy ? "접수 중…" : sample && !free ? `${formatKRW(unitPrice * quantity)} 결제하고 신청` : label}</Button>
+          <Button className="w-full" disabled={busy}>{busy ? "접수 중…" : sample && !free ? `${formatKRW(unitPrice * quantity)} 결제하고 구매` : label}</Button>
         </form>
       </dialog>
     </>

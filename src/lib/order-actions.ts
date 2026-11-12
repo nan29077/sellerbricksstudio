@@ -16,13 +16,13 @@ export const PRE_SHIP: OrderStatus[] = ["PAID", "PREPARING"];
 export const POST_SHIP: OrderStatus[] = ["SHIPPED", "DELIVERED"];
 
 // 이미 판매 정산에 들어간 주문이 환불·취소되면, 그만큼을 다음 판매 정산에서 자동 차감할 조정 항목으로 남긴다.
-// includeShipping: 주문 전체가 닫힐 때만 배송비(셀러 몫)도 차감한다.
+// includeShipping: 주문 전체가 닫힐 때만 배송비(받은 쪽 몫)도 차감한다.
 async function salesAdjustmentInTx(tx: Tx, orderId: string, itemIds: string[] | null, reason: string, includeShipping: boolean) {
   const order = await tx.order.findUnique({ where: { id: orderId }, include: SETTLEMENT_ORDER_INCLUDE });
   if (!order?.settlementId) return;
   const items = order.items.filter((i) => (itemIds ? itemIds.includes(i.id) : !i.cancelledAt));
   if (!items.length && !(includeShipping && order.shippingFee > 0)) return;
-  const r = splitOrder({ shippingFee: order.shippingFee, items: items.map((i) => ({ ...i, cancelledAt: null })) }, await getPolicy(), { includeShipping });
+  const r = splitOrder({ shippingFee: order.shippingFee, facilityId: order.facilityId, items: items.map((i) => ({ ...i, cancelledAt: null })) }, await getPolicy(), { includeShipping });
   await tx.salesAdjustment.create({
     data: {
       sellerId: order.sellerId, facilityId: order.facilityId, orderId: order.id, reason: `${order.orderNo} ${reason}`.slice(0, 300),

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { reportDbError, type DbIssue } from "@/lib/db-error";
 import { requireRole } from "@/lib/auth";
 import { managerFacilityIds } from "@/lib/rbac";
-import { calcManagerCommission } from "@/lib/manager-commission";
+import { calcManagerCommission, managerFeeRows } from "@/lib/manager-commission";
 import { formatKRW } from "@/lib/utils";
 import { addDays, addMonths, hhmm, kstParts, kstStartOfDay, kstStartOfMonth, WEEKDAYS } from "@/lib/kst";
 import {
@@ -41,6 +41,7 @@ async function load(userId: string) {
   const inFac = { facilityId: { in: facIds } };
   const bookingSelect = { id: true, status: true, startAt: true, endAt: true, createdAt: true, facility: { select: { name: true } }, seller: { select: { email: true, profile: { select: { name: true } } } } } as const;
 
+  const monthFee = (await managerFeeRows(facIds, monthStart).catch(() => [])).filter((f) => f.at < nextMonth).reduce((s, f) => s + f.fee, 0);
   const [facilities, bookings, orders, ratings, upcoming, recent, stalePending] = await Promise.all([
     prisma.facility.findMany({ where: { id: { in: facIds } }, select: { id: true, name: true, region: true, type: true, status: true, rating: true, openTime: true, closeTime: true } }),
     prisma.booking.findMany({ where: { ...inFac, OR: [{ startAt: { gte: sixStart } }, { createdAt: { gte: sixStart } }] }, select: { facilityId: true, sellerId: true, status: true, startAt: true, endAt: true, createdAt: true } }),
@@ -82,8 +83,8 @@ async function load(userId: string) {
     sellers: new Set(used.filter((b) => b.startAt >= addDays(today, -90)).map((b) => b.sellerId)).size,
     util: cap ? Math.min(100, Math.round((totalHours / cap) * 100)) : 0, totalHours,
     completedThisMonth, approvedThisMonth,
-    commission: calcManagerCommission(rule, 0, completedThisMonth),
-    commissionForecast: calcManagerCommission(rule, 0, completedThisMonth + approvedThisMonth),
+    commission: calcManagerCommission(rule, monthFee, completedThisMonth),
+    commissionForecast: calcManagerCommission(rule, monthFee, completedThisMonth + approvedThisMonth),
     spark: dailySeries(orders.filter((o) => o.createdAt >= addDays(today, -29)), 30, (o) => o.createdAt, (o) => (o.totalAmount - o.refundedAmount)).map((x) => x.value),
     trend: zipSeries(
       monthlySeries(orders, 6, (o) => o.createdAt, (o) => (o.totalAmount - o.refundedAmount)),
@@ -102,7 +103,7 @@ export default async function ManagerDashboard() {
 
   if (!d) return <div className="space-y-6"><DashHero eyebrow={`MANAGER · ${todayLabel()}`} title={hello} /><DataNotice issue={issue} /></div>;
 
-  const ruleText = d.rule ? (d.rule.commissionType === "PERCENT" ? `이용료의 ${d.rule.commissionValue}%` : `이용 완료 1건당 ${formatKRW(d.rule.commissionValue)}`) : "커미션 규칙 미설정";
+  const ruleText = d.rule ? (d.rule.commissionType === "PERCENT" ? `판매 수수료의 ${d.rule.commissionValue}%` : `이용 완료 1건당 ${formatKRW(d.rule.commissionValue)}`) : "커미션 규칙 미설정";
 
   if (d.empty) {
     return (
@@ -163,24 +164,24 @@ export default async function ManagerDashboard() {
 
       <Panel eyebrow="PERFORMANCE" title="창고(스튜디오)별 이번 달 성과" action={{ href: "/manager/facilities", label: "전체 관리" }}>
         <div className="-mx-1 overflow-x-auto">
-          <table className="w-full min-w-[640px] text-sm">
+          <table className="w-full min-w-[640px] text-sm rtable">
             <thead><tr className="text-left text-[11px] font-bold text-slate-400">
               <th className="px-1 pb-2">창고(스튜디오)</th><th className="px-1 pb-2">가동률</th><th className="px-1 pb-2 text-right">예약</th><th className="px-1 pb-2 text-right">대기</th><th className="px-1 pb-2 text-right">판매액</th><th className="px-1 pb-2 text-right">평점</th>
             </tr></thead>
             <tbody className="divide-y divide-[#F0ECE6]">
               {d.perFac.map((f) => (
                 <tr key={f.id}>
-                  <td className="max-w-0 px-1 py-3">
+                  <td data-label="창고(스튜디오)" className="max-w-0 px-1 py-3">
                     <span className="flex items-center gap-1.5"><span className="truncate font-bold text-navy">{f.name}</span>{f.status !== "APPROVED" && <Pill tone={f.status === "PENDING" ? "amber" : "red"}>{f.status === "PENDING" ? "심사 중" : "정지"}</Pill>}</span>
                     <span className="block text-[11px] text-slate-500">{f.region} · {f.type === "WAREHOUSE" ? "창고" : "스튜디오"} · {hoursText(f.hours)}</span>
                   </td>
-                  <td className="w-40 px-1 py-3">
+                  <td data-label="가동률" className="w-40 px-1 py-3">
                     <div className="flex items-center gap-2"><div className="h-2 flex-1 overflow-hidden rounded-full bg-[#F1EEE8]"><div className={`h-full rounded-full ${f.util >= 80 ? "bg-rose-400" : f.util >= 40 ? "bg-brand-500" : "bg-emerald-400"}`} style={{ width: `${f.util}%` }} /></div><span className="w-9 text-right text-xs font-bold text-navy">{f.util}%</span></div>
                   </td>
-                  <td className="px-1 py-3 text-right font-semibold text-navy">{f.monthCount}</td>
-                  <td className="px-1 py-3 text-right">{f.pending ? <Pill tone="amber">{f.pending}</Pill> : <span className="text-slate-300">0</span>}</td>
-                  <td className="px-1 py-3 text-right font-extrabold text-navy">{compactKRW(f.gmv)}</td>
-                  <td className="px-1 py-3 text-right text-slate-600">{f.avgRating ? <span className={f.avgRating < 3.5 ? "font-bold text-rose-600" : ""}>★ {f.avgRating.toFixed(1)} <span className="text-[11px] text-slate-400">({f.reviews})</span></span> : "—"}</td>
+                  <td data-label="예약" className="px-1 py-3 text-right font-semibold text-navy">{f.monthCount}</td>
+                  <td data-label="대기" className="px-1 py-3 text-right">{f.pending ? <Pill tone="amber">{f.pending}</Pill> : <span className="text-slate-300">0</span>}</td>
+                  <td data-label="판매액" className="px-1 py-3 text-right font-extrabold text-navy">{compactKRW(f.gmv)}</td>
+                  <td data-label="평점" className="px-1 py-3 text-right text-slate-600">{f.avgRating ? <span className={f.avgRating < 3.5 ? "font-bold text-rose-600" : ""}>★ {f.avgRating.toFixed(1)} <span className="text-[11px] text-slate-400">({f.reviews})</span></span> : "—"}</td>
                 </tr>
               ))}
             </tbody>

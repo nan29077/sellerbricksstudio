@@ -3,10 +3,12 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, Camera, ChevronDown, LayoutGrid, MapPin, Search, Warehouse } from "lucide-react";
+import { Camera, ChevronDown, LayoutGrid, MapPin, Search, Warehouse } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { cardActionClassName, cardLinkClassName } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
 import { SPACE_TYPE_LABELS, type SpaceCard } from "@/lib/showcase";
-import { cn, formatKRW } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 const pageSize = 6;
 const spaceTypes = [
@@ -41,11 +43,10 @@ export function SpaceMarketplace({ spaces, registeredAvailable }: { spaces: Spac
 
   return (
     <section id="spaces" className="scroll-mt-20 px-4 pb-12 pt-10 sm:px-6 sm:pt-12">
-      <p className="text-[11px] font-extrabold tracking-[0.22em] text-brand-700">EXPLORE SPACES</p>
-      <h2 className="mt-2 break-keep text-[1.85rem] font-black leading-tight tracking-[-0.04em] text-navy sm:text-[2.35rem]">내 방송에 맞는 공간을 찾아보세요</h2>
-      <p className="mt-3 text-sm leading-6 text-slate-600">지역별 스튜디오와 물류 창고를 둘러보고, 필요한 시설을 찾아보세요.</p>
+      <h2 className="break-keep text-2xl font-black tracking-tight text-navy sm:text-3xl">창고와 스튜디오 찾기</h2>
+      <p className="mt-2 text-sm leading-6 text-slate-600">지역과 공간 유형으로 검색하고, 방송에 필요한 시설을 확인하세요.</p>
 
-      <div className="mt-6 rounded-2xl border border-[#EBE6DA] bg-white p-3 shadow-sm sm:p-4">
+      <div className="mt-5 rounded-[20px] border border-slate-200 bg-white p-3 sm:p-4">
         <div className="grid grid-cols-3 gap-2" role="group" aria-label="공간 유형">
           {spaceTypes.map(({ value, label, icon: Icon }) => (
             <button key={value} type="button" aria-pressed={type === value} onClick={() => { setType(value); setLimit(pageSize); }} className={cn("flex items-center justify-center gap-1.5 rounded-xl border px-2 text-xs font-bold transition sm:text-sm", type === value ? "border-navy bg-navy text-white" : "border-slate-200 bg-[#F8F9FA] text-navy hover:bg-brand-50")}>
@@ -75,29 +76,28 @@ export function SpaceMarketplace({ spaces, registeredAvailable }: { spaces: Spac
           <p role="status" className="text-xs font-semibold text-slate-600">공간 <strong className="text-navy">{filtered.length}</strong>곳</p>
           <p className="text-[11px] text-slate-500">썸네일은 생성형 연출 이미지입니다</p>
         </div>
-        <Link href="/facilities" className="inline-flex min-h-11 items-center gap-1 text-xs font-bold text-brand-700 hover:text-navy">전체 등록 공간<ArrowRight className="h-4 w-4" /></Link>
+        <Link href="/facilities" className={buttonVariants({ variant: "outline", className: "rounded-xl px-3 text-xs" })}>전체 등록 공간</Link>
       </div>
       {!registeredAvailable && source !== "demo" && <p className="mb-3 rounded-xl bg-brand-50 p-3 text-xs leading-5 text-navy">등록 공간을 불러오지 못했습니다. 등록 공간 페이지에서 다시 확인할 수 있습니다.</p>}
       {filtered.length ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
           {filtered.slice(0, limit).map((space) => (
-            <Link key={`${space.demo}-${space.id}`} href={space.demo ? `/showcase/${space.id}` : `/facilities/${space.id}`} className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-[#E6E3DA] bg-white shadow-sm transition hover:border-brand-400 hover:shadow-md">
+            <Link key={`${space.demo}-${space.id}`} href={space.demo ? `/showcase/${space.id}` : `/facilities/${space.id}`}
+              aria-label={`${space.name} ${space.demo ? "예시 보기" : "공간 보기"}`} className={cardLinkClassName}>
               <div className="relative aspect-[4/3] overflow-hidden bg-brand-100">
-                <Image src={space.image} alt="" fill unoptimized className="object-cover transition duration-500 group-hover:scale-105 motion-reduce:transition-none" />
-                <span className={cn("absolute left-2 top-2 rounded-full px-2 py-1 text-[11px] font-extrabold shadow-sm", space.demo ? "bg-white/95 text-navy" : "bg-navy text-white")}>{space.demo ? "예시 공간" : "등록 공간"}</span>
+                <Image src={space.image} alt="" fill unoptimized className="object-cover transition-transform duration-300 group-hover:scale-[1.03] motion-reduce:transition-none" />
+                <span className={cn("absolute left-2 top-2 rounded-md px-2 py-1 text-[11px] font-bold shadow-sm", space.demo ? "bg-white/95 text-navy" : "bg-navy text-white")}>{space.demo ? "예시 공간" : "등록 공간"}</span>
               </div>
-              <div className="flex flex-1 flex-col p-3">
-                <p className="flex items-center gap-1 text-[11px] font-bold text-brand-700"><MapPin className="h-3 w-3 shrink-0" />{space.location} · {SPACE_TYPE_LABELS[space.type]}</p>
-                <h3 className="mt-1.5 break-keep text-sm font-extrabold leading-snug tracking-tight text-navy sm:text-base">{space.name}</h3>
-                <div className="my-2 flex flex-wrap gap-1">
-                  {space.tags.map((tag) => <span key={tag} className="rounded bg-[#F3F1EB] px-1.5 py-0.5 text-[11px] font-medium text-slate-700">{tag}</span>)}
-                </div>
-                <div className="mt-auto flex items-center justify-between gap-1 border-t border-[#F0ECE4] pt-2.5">
-                  <p className="text-xs font-extrabold text-navy">
-                    {space.price ? formatKRW(space.price) : "요금 문의"}
-                    {!!space.price && <span className="ml-1 text-[11px] font-medium text-slate-500">{space.demo ? "예시" : "부터"}</span>}
-                  </p>
-                  <ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0 text-brand-700" />
+              <div className="flex flex-1 flex-col p-3 sm:p-4">
+                <p className="flex items-start gap-1 text-xs font-medium text-slate-600"><MapPin aria-hidden="true" className="mt-0.5 h-3 w-3 shrink-0" />{space.location} · {SPACE_TYPE_LABELS[space.type]}</p>
+                <h3 className="mb-2.5 mt-1.5 break-keep text-sm font-extrabold leading-snug tracking-tight text-navy [overflow-wrap:anywhere] sm:text-base">{space.name}</h3>
+                {space.tags.length > 0 && <div className="mb-3 flex flex-wrap gap-1">
+                  {space.tags.map((tag) => <span key={tag} className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-700">{tag}</span>)}
+                </div>}
+                <div className="mt-auto space-y-2.5 border-t border-slate-100 pt-2.5">
+                  {/* 공간 이용료는 기존에 저장된 요금과 관계없이 무료로 표시한다. */}
+                  <p className="text-xs font-bold text-slate-600">이용료 <strong className="text-sm font-extrabold text-emerald-800">무료</strong></p>
+                  <span className={cardActionClassName}>{space.demo ? "예시 보기" : "공간 보기"}</span>
                 </div>
               </div>
             </Link>

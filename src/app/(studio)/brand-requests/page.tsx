@@ -6,12 +6,14 @@ import { getSettings } from "@/lib/settings";
 import { ROLE_HOME } from "@/lib/rbac";
 import type { SP } from "@/lib/list";
 import { BrandRequestList } from "@/components/shop/brand-request-list";
+import { runBrandRequestMaintenance } from "@/lib/brand-request-automation";
 
 export default async function BuyerBrandRequests({ searchParams }: { searchParams: SP }) {
   const user = await getSessionUser();
   if (!user) redirect("/login?callbackUrl=/brand-requests");
   if (!BRAND_BUYER_ROLES.includes(user.role)) redirect(ROLE_HOME[user.role]);
   if (user.role === "FACILITY_ADMIN" && (await getSettings()).facilityDisabled) redirect("/");
+  if (!user.id.startsWith("demo-")) await runBrandRequestMaintenance(); // 응대 기한 처리(1분에 한 번만 실제로 돈다)
   return (
     <div className="space-y-5 px-4 py-7 sm:px-6">
       <div className="flex flex-wrap items-baseline justify-between gap-3">

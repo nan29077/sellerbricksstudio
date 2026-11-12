@@ -35,7 +35,7 @@ export function OrderStatusActions({ orderId, status, items = [], cancelRequests
   const next = actions.statuses;
   const open = items.filter((i) => !i.cancelledAt);
   const canPartial = (actions.canCancel || actions.canRefund) && open.length > 1;
-  const viewOnly = !actions.isShipper && ["PAID", "PREPARING", "SHIPPED"].includes(status)
+  const viewOnly = !actions.isShipper && ["PAID", "PREPARING", "SHIPPED", "DELIVERED"].includes(status)
     ? (actions.localShipper === "FACILITY" ? "배송은 창고(스튜디오)가 처리 · 확인만 가능" : actions.localShipper === null ? "브랜드가 배송 처리 · 확인만 가능" : "")
     : "";
   if (next.length === 0 && !canPartial) return <span className="text-xs text-muted-foreground">{refundedAmount > 0 ? `환불 ${formatKRW(refundedAmount)}` : viewOnly || "-"}</span>;

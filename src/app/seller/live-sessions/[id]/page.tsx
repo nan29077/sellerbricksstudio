@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/layout/dashboard-widgets";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { LiveSessionControls } from "@/components/live-session-controls";
+import { LiveSessionAlimtalk, LiveSessionControls } from "@/components/live-session-controls";
 import { LiveShippingForm } from "@/components/live-shipping-form";
 import { LIVE_STATUS } from "@/lib/status";
 import { formatDateTime, shippingLabel } from "@/lib/utils";
@@ -66,8 +66,8 @@ export default async function LiveSessionDetail({ params }: { params: { id: stri
         </div>
       )}
 
-      <div className="grid lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2 space-y-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="min-w-0 lg:col-span-2 space-y-5">
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2"><Radio className="h-5 w-5 text-brand-500" />방송 상태 <Badge tone={st.tone}>{st.label}</Badge></CardTitle></CardHeader>
             <CardContent>
@@ -123,7 +123,7 @@ export default async function LiveSessionDetail({ params }: { params: { id: stri
             <CardContent>
               {isDemo
                 ? <p className="text-sm text-muted-foreground">데모 세션에서는 알림톡을 발송할 수 없습니다.</p>
-                : <LiveSessionControls.Alimtalk sessionId={session.id}
+                : <LiveSessionAlimtalk sessionId={session.id}
                     channels={channels.map((c) => ({ id: c.id, name: c.channelName, count: c._count.subscribers }))} />}
             </CardContent>
           </Card>

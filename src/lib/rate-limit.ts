@@ -50,7 +50,7 @@ export async function isLimited(key: string, max: number): Promise<boolean> {
 
 export async function clearLimit(key: string) {
   memory.delete(key);
-  await prisma.rateLimit.delete({ where: { key } }).catch(() => {});
+  await prisma.rateLimit.deleteMany({ where: { key } }).catch(() => {}); // 없는 키여도 오류 로그가 남지 않게
 }
 
 /** 횟수를 올리고, 허용 범위 안이면 true */

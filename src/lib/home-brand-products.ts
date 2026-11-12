@@ -11,7 +11,9 @@ const productSelect = {
   shop: { select: { id: true, name: true } },
 } satisfies Prisma.BrandProductSelect;
 
-export type HomeBrandProduct = Prisma.BrandProductGetPayload<{ select: typeof productSelect }>;
+type HomeBrandProductRow = Prisma.BrandProductGetPayload<{ select: typeof productSelect }>;
+/** 메인 화면용 상품. 공급가는 거래 파트너에게만 채워지고 그 외에는 null */
+export type HomeBrandProduct = Omit<HomeBrandProductRow, "supplyPrice" | "stock"> & { supplyPrice: number | null; stock: number };
 export type HomeBrandProducts = {
   weekly: HomeBrandProduct[];
   popular: HomeBrandProduct[];
@@ -46,11 +48,11 @@ async function rankedProductIds(from: Date, through: Date, take: number, inStock
   return ranked.map((row) => row.brandProductId);
 }
 
-function completeShelf(first: HomeBrandProduct[], candidates: HomeBrandProduct[]) {
+function completeShelf(first: HomeBrandProductRow[], candidates: HomeBrandProductRow[]) {
   const seenProducts = new Set(first.map((product) => product.id));
   const seenShops = new Set(first.map((product) => product.shop.id));
   const shelf = [...first];
-  const sameShop: HomeBrandProduct[] = [];
+  const sameShop: HomeBrandProductRow[] = [];
   for (const product of candidates) {
     if (shelf.length >= SHELF_SIZE) break;
     if (seenProducts.has(product.id)) continue;
@@ -65,7 +67,12 @@ function completeShelf(first: HomeBrandProduct[], candidates: HomeBrandProduct[]
   return [...shelf, ...sameShop.slice(0, SHELF_SIZE - shelf.length)];
 }
 
-export async function getHomeBrandProducts(now = new Date()): Promise<HomeBrandProducts | null> {
+/** 공급가를 볼 수 없는 방문자에게는 공급가를 빼고, 재고는 품절 여부(0/1)만 남긴다 */
+function toView(product: HomeBrandProductRow, showSupply: boolean): HomeBrandProduct {
+  return showSupply ? product : { ...product, supplyPrice: null, stock: product.stock > 0 ? 1 : 0 };
+}
+
+export async function getHomeBrandProducts(now = new Date(), showSupply = false): Promise<HomeBrandProducts | null> {
   const monday = addDays(kstStartOfDay(now), -((kstParts(now).weekday + 6) % 7));
   try {
     const [weeklyIds, popularIds, latest, latestInStock, recommendedSamples, quickDispatch, samples] = await Promise.all([
@@ -84,12 +91,13 @@ export async function getHomeBrandProducts(now = new Date()): Promise<HomeBrandP
     const byId = new Map(rankedProducts.map((product) => [product.id, product]));
     const inRankOrder = (ids: string[]) => ids.flatMap((id) => byId.get(id) ?? []);
 
+    const view = (rows: HomeBrandProductRow[]) => rows.map((product) => toView(product, showSupply));
     return {
-      weekly: completeShelf(inRankOrder(weeklyIds).filter((product) => product.stock > 0), latestInStock),
-      popular: inRankOrder(popularIds),
-      recommended: completeShelf([], [...recommendedSamples, ...quickDispatch]),
-      latest,
-      samples,
+      weekly: view(completeShelf(inRankOrder(weeklyIds).filter((product) => product.stock > 0), latestInStock)),
+      popular: view(inRankOrder(popularIds)),
+      recommended: view(completeShelf([], [...recommendedSamples, ...quickDispatch])),
+      latest: view(latest),
+      samples: view(samples),
     };
   } catch (error) {
     reportDbError("home-brand-products", error);

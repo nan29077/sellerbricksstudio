@@ -6,6 +6,8 @@ import { requireRole } from "@/lib/auth";
 import { addDays, addMonths, kstParts, kstStartOfDay, kstStartOfMonth } from "@/lib/kst";
 import { formatKRW } from "@/lib/utils";
 import { PAYMENT_METHOD } from "@/lib/status";
+import { getSettings } from "@/lib/settings";
+import { endOverdueLiveSessions } from "@/lib/live-automation";
 import {
   SOLD_ORDER_STATUSES, compactKRW, dailySeries, deltaPct, greeting, ratio, relativeTime, todayLabel, zipSeries,
 } from "@/lib/dashboard";
@@ -136,6 +138,8 @@ export default async function AdminDashboard() {
   const me = await requireRole(["SUPER_ADMIN"]);
   let d: Awaited<ReturnType<typeof load>> | null = null;
   let issue: DbIssue = "unknown";
+  await endOverdueLiveSessions(); // 예정 시간이 지난 방송은 먼저 종료 (1분에 한 번)
+  const { liveEnabled } = await getSettings();
   try { d = await load(); } catch (e) { issue = reportDbError("admin-dashboard", e); }
 
   if (!d) {
@@ -264,6 +268,7 @@ export default async function AdminDashboard() {
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
         <Panel eyebrow="LIVE" title="라이브 방송 현황" action={{ href: "/admin/live-settings", label: "라이브 설정" }}>
+          {!liveEnabled && <p className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">라이브 기능이 꺼져 있습니다. 셀러 · 창고(스튜디오)는 새 방송을 만들거나 시작할 수 없습니다. (진행 중인 방송은 예정 시간이 지나면 자동 종료)</p>}
           {d.liveNow.length + d.upcomingLives.length === 0 ? <Empty icon={Radio} text="진행 중이거나 예정된 방송이 없습니다" /> : (
             <ul className="space-y-2">
               {d.liveNow.map((l) => (

@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { CategoryPicker } from "@/components/category-picker";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
+import { visibleSignupRoles } from "@/lib/signup-roles";
 
 const ROLE_LABEL = { SELLER: "셀러", FACILITY_ADMIN: "창고(스튜디오) 관리자", BRAND_ADMIN: "브랜드사" };
 const CATEGORY_HINT = {
@@ -14,7 +16,7 @@ const CATEGORY_HINT = {
   BRAND_ADMIN: "브랜드가 취급하는 상품 카테고리를 1개 이상 골라 주세요. 브랜드샵과 상품 검색에 사용됩니다. (필수)",
 };
 
-export function SignupForm({ role }: { role: keyof typeof ROLE_LABEL }) {
+export function SignupForm({ role, facilityDisabled = false }: { role: keyof typeof ROLE_LABEL; facilityDisabled?: boolean }) {
   const router = useRouter();
   const brand = role === "BRAND_ADMIN";
   const [form, setForm] = useState({ email: "", password: "", name: "", phone: "", companyName: "", businessNumber: "" });
@@ -43,7 +45,17 @@ export function SignupForm({ role }: { role: keyof typeof ROLE_LABEL }) {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-navy">{ROLE_LABEL[role]} 회원가입</h1>
+      {/* 가입 유형 전환 */}
+      <nav aria-label="가입 유형" className="mb-5 grid auto-cols-fr grid-flow-col gap-1 rounded-xl bg-slate-100 p-1">
+        {visibleSignupRoles(facilityDisabled).map((r) => (
+          <Link key={r.role} href={r.href} replace aria-current={r.role === role ? "page" : undefined}
+            className={cn("flex min-h-11 items-center justify-center gap-1 rounded-lg px-1 text-center text-xs font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-800 sm:text-sm",
+              r.role === role ? "bg-navy text-white shadow-sm" : "text-slate-600 hover:bg-white hover:text-navy")}>
+            <r.icon aria-hidden="true" className="hidden h-4 w-4 shrink-0 sm:block" />{r.label}
+          </Link>
+        ))}
+      </nav>
+      <h1 className="break-keep text-2xl font-black tracking-tight text-navy">{ROLE_LABEL[role]} 회원가입</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         {brand ? "가입하면 브랜드샵이 만들어지고, 최고관리자 승인 후 셀러·창고(스튜디오)에 공개됩니다." : "스토리지마켓에 오신 것을 환영합니다."}
       </p>
@@ -76,7 +88,7 @@ export function SignupForm({ role }: { role: keyof typeof ROLE_LABEL }) {
           </label>
         </div>
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-        <Button className="w-full" size="lg" disabled={loading}>{loading ? "가입 중..." : "가입하기"}</Button>
+        <Button className="w-full rounded-xl font-bold" size="lg" variant="secondary" disabled={loading}>{loading ? "가입 중..." : "가입하기"}</Button>
       </form>
     </div>
   );

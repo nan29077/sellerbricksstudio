@@ -84,7 +84,7 @@ export function StudioNavigation({ account }: { account: Account }) {
   const pathname = usePathname();
   return (
     <>
-      <div className="row-start-2 max-h-[calc(100svh-102px)] w-full overflow-y-auto rounded-[24px] border border-white/90 bg-[#F8F9FA]/95 p-2 text-navy shadow-[0_12px_35px_#1A1A2E30] backdrop-blur-md [scrollbar-width:thin] [@media(max-height:740px)]:row-start-1">
+      <div className="row-start-2 max-h-[calc(100svh-102px)] w-full overflow-y-auto rounded-[24px] border border-white/90 bg-[#F8F9FA]/95 p-2 text-navy shadow-[0_12px_35px_#1A1A2E30] backdrop-blur-md [@media(max-height:740px)]:row-start-1">
         <MenuItems account={account} desktop />
         <p aria-hidden="true" className="pb-1 pt-2 text-center text-[11px] font-black tracking-[0.13em] text-slate-500">STORAGE MARKET</p>
       </div>

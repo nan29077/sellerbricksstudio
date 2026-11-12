@@ -18,7 +18,7 @@ export default async function FacilityBrandProducts() {
       where: { facility: { ownerId: user.id }, brandProductId: { not: null } }, orderBy: { createdAt: "desc" },
       include: {
         facility: { select: { name: true, address: true, contactPhone: true } }, product: { select: { name: true } },
-        brandProduct: { select: { id: true, name: true, supplyPrice: true, stock: true, isActive: true, allowWarehouse: true, shop: { select: { id: true, name: true, status: true } } } },
+        brandProduct: { select: { id: true, name: true, supplyPrice: true, stock: true, isActive: true, allowWarehouse: true, minOrderQty: true, shop: { select: { id: true, name: true, status: true } } } },
       },
     }),
     prisma.profile.findUnique({ where: { userId: user.id }, select: { name: true, phone: true } }),
@@ -53,7 +53,7 @@ export default async function FacilityBrandProducts() {
                 <div className="flex flex-wrap items-center gap-2">
                   <Link href="/facility/products" className={buttonVariants({ variant: "outline", size: "sm" })}>가격 · 수수료 수정</Link>
                   {warehouse && bp.isActive && bp.allowWarehouse && bp.shop.status === "APPROVED" && (
-                    <BrandOrderButton productId={bp.id} name={bp.name} kind="SUPPLY" unitPrice={bp.supplyPrice} stock={bp.stock} facilityProductId={fp.id}
+                    <BrandOrderButton productId={bp.id} name={bp.name} kind="SUPPLY" unitPrice={bp.supplyPrice} stock={bp.stock} minQuantity={bp.minOrderQty} facilityProductId={fp.id}
                       defaults={{ recipient: fp.facility.name, phone: fp.facility.contactPhone ?? profile?.phone ?? "", address: fp.facility.address }} />
                   )}
                 </div>

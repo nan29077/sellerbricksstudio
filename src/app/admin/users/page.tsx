@@ -89,28 +89,28 @@ export default async function AdminUsers({ searchParams }: { searchParams: SP })
       {rows.length === 0 ? <EmptyState icon={<Users className="h-10 w-10" />} title="조건에 맞는 회원이 없습니다" /> : (
         <Card>
           <CardContent className="overflow-x-auto p-0">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm rtable">
               <thead><tr className="border-b border-[#EEEAE2] bg-[#F9F7F2] text-left text-xs font-bold text-slate-500">
                 {["회원", "역할", "활동", "가입 · 최근 로그인", "상태", "관리"].map((h) => <th key={h} className="whitespace-nowrap px-4 py-3">{h}</th>)}
               </tr></thead>
               <tbody>
                 {rows.map((u) => (
                   <tr key={u.id} className="border-b border-[#F0ECE6] align-top last:border-0 hover:bg-brand-50/40">
-                    <td className="px-4 py-3">
+                    <td data-label="회원" className="px-4 py-3">
                       <p className="font-semibold text-navy">{u.profile?.name ?? "-"}</p>
                       <p className="text-xs text-slate-500">{u.email}</p>
                       {(u.profile?.phone || u.profile?.companyName) && <p className="text-[11px] text-slate-400">{[u.profile?.companyName, u.profile?.phone].filter(Boolean).join(" · ")}</p>}
                       {u.adminMemo && <p className="mt-1 max-w-xs truncate rounded bg-amber-50 px-2 py-0.5 text-[11px] text-amber-800" title={u.adminMemo}>📝 {u.adminMemo}</p>}
                     </td>
-                    <td className="px-4 py-3"><Badge tone={ROLE_TONE[u.role] ?? "gray"}>{ROLE_LABELS[u.role]}</Badge></td>
-                    <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-600">
+                    <td data-label="역할" className="px-4 py-3"><Badge tone={ROLE_TONE[u.role] ?? "gray"}>{ROLE_LABELS[u.role]}</Badge></td>
+                    <td data-label="활동" className="whitespace-nowrap px-4 py-3 text-xs text-slate-600">
                       {u.role === "SELLER" && `예약 ${u._count.bookings}건`}
                       {u.role === "FACILITY_ADMIN" && `창고(스튜디오) ${u._count.ownedFacilities}곳`}
                       {u.role === "MANAGER" && `담당 ${u._count.managedFacilities}곳`}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-600">{formatDate(u.createdAt)}<br /><span className="text-slate-400">{u.lastLoginAt ? formatDateTime(u.lastLoginAt) : "로그인 기록 없음"}</span></td>
-                    <td className="px-4 py-3"><Badge tone={u.isActive ? "green" : "gray"}>{u.isActive ? "활성" : "정지"}</Badge></td>
-                    <td className="whitespace-nowrap px-4 py-3">
+                    <td data-label="가입 · 최근 로그인" className="whitespace-nowrap px-4 py-3 text-xs text-slate-600">{formatDate(u.createdAt)}<br /><span className="text-slate-400">{u.lastLoginAt ? formatDateTime(u.lastLoginAt) : "로그인 기록 없음"}</span></td>
+                    <td data-label="상태" className="px-4 py-3"><Badge tone={u.isActive ? "green" : "gray"}>{u.isActive ? "활성" : "정지"}</Badge></td>
+                    <td data-label="관리" className="whitespace-nowrap px-4 py-3">
                       {u.role === "SUPER_ADMIN" ? <span className="text-xs text-muted-foreground">-</span> : (
                         <div className="flex gap-1">
                           <ResourceForm url="/api/admin/users" id={u.id} fields={editFields} title="회원 정보 수정" iconOnly triggerVariant="ghost"

@@ -29,7 +29,8 @@ export function LiveSessionControls({ sessionId, status }: { sessionId: string; 
   );
 }
 
-function Alimtalk({ sessionId, channels }: { sessionId: string; channels: { id: string; name: string; count: number }[] }) {
+// 서버 화면에서 쓰는 클라이언트 컴포넌트는 따로 내보내야 한다. (LiveSessionControls.Alimtalk 처럼 점으로 붙이면 서버 화면에서 찾지 못해 화면이 깨진다)
+export function LiveSessionAlimtalk({ sessionId, channels }: { sessionId: string; channels: { id: string; name: string; count: number }[] }) {
   const router = useRouter();
   const [channelId, setChannelId] = useState(channels[0]?.id ?? "");
   const [busy, setBusy] = useState(false);
@@ -60,4 +61,3 @@ function Alimtalk({ sessionId, channels }: { sessionId: string; channels: { id: 
   );
 }
 
-LiveSessionControls.Alimtalk = Alimtalk;

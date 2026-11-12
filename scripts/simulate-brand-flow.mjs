@@ -34,6 +34,18 @@ class Client {
 }
 const key = () => [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, "0")).join("");
 
+// 구매 확정 유예(배송 완료 후 n일 뒤 정산)가 켜져 있으면 방금 배송 완료한 주문은 정산 대상이 아니다.
+// 정산 검증을 위해 실행 중에만 0일로 두고, 끝나면(중간에 멈춰도) 원래 값으로 되돌린다.
+let prevSettleDays = null;
+// 라이브 기능이 꺼져 있으면 방송을 만들 수 없으므로, 실행 중에만 켜고 끝나면(중간에 멈춰도) 원래 값으로 되돌린다.
+let liveRestore = null;
+async function restoreSettleDays() {
+  if (liveRestore) { await liveRestore().catch(() => null); liveRestore = null; }
+  if (prevSettleDays == null) return;
+  await db.platformPolicy.update({ where: { id: "default" }, data: { settleAfterDays: prevSettleDays } }).catch(() => null);
+  prevSettleDays = null;
+}
+
 async function main() {
   const admin = new Client("admin"), seller = new Client("seller"), fac = new Client("facility"), brand = new Client("brand"), guest = new Client("guest");
   await db.rateLimit.deleteMany({}).catch(() => {}); // 반복 실행 시 요청 횟수 제한에 걸리지 않게
@@ -41,6 +53,11 @@ async function main() {
   ok((await admin.login("admin@sellerbricks.kr")).data?.user?.role === "SUPER_ADMIN", "최고관리자 로그인");
   ok((await seller.login("seller@sellerbricks.kr")).data?.user?.role === "SELLER", "셀러 로그인");
   ok((await fac.login("facility@sellerbricks.kr")).data?.user?.role === "FACILITY_ADMIN", "창고 관리자 로그인");
+  if ((await admin.req("GET", "/api/admin/settings")).data?.liveEnabled === false) {
+    await admin.req("PATCH", "/api/admin/settings", { liveEnabled: true });
+    liveRestore = () => admin.req("PATCH", "/api/admin/settings", { liveEnabled: false });
+    console.log("  (라이브 기능이 꺼져 있어 시험 동안만 켭니다)");
+  }
 
   console.log("\n[1] 브랜드 회원가입 (카테고리 선택) → 브랜드샵 자동 생성");
   const email = `newbrand${Date.now()}@test.kr`;
@@ -153,6 +170,8 @@ async function main() {
   r = await seller.req("POST", "/api/live-sessions", { bookingId, facilityId: F.id, title: "하루 코스메틱 라이브" });
   ok(r.status === 201 || r.ok, "라이브 세션 생성", r);
   const session = await db.liveSession.findFirst({ where: { bookingId }, include: { products: true } });
+  const goLive = (id) => seller.req("PATCH", `/api/live-sessions/${id}/status`, { status: "LIVE" }); // 주문은 방송 중에만 받는다
+  await goLive(session.id);
   const lspW = session.products.find((p) => p.facilityProductId === fpW);
   ok(lspW?.brandProductId === p1.id && lspW.fulfillment === "WAREHOUSE" && lspW.supplyPriceSnapshot === 10000 && !!lspW.optionSnapshot, "예약 상품이 브랜드 정보·옵션과 함께 방송에 등록", lspW);
   r = await seller.req("POST", `/api/live-sessions/${session.id}/products`, { sellerBrandProductId: listing });
@@ -161,6 +180,9 @@ async function main() {
   r = await seller.req("POST", "/api/live-sessions", { title: `셀러 공간 라이브 ${Date.now()}` });
   const own = r.data;
   ok(r.status === 201 && own?.facilityId === null && !own.bookingId, "예약 없이 셀러 공간 방송 생성", r);
+  r = await seller.req("POST", `/api/live-sessions/${own.id}/products`, { name: "셀러 임시 상품", price: 1000, stock: 1 });
+  ok(r.status === 403, "셀러는 임시 상품 추가 불가 (셀러 공간 방송)", r);
+  await goLive(own.id);
   r = await seller.req("POST", `/api/live-sessions/${own.id}/products`, { sellerBrandProductId: listing });
   ok(r.status === 201 && r.data.fulfillment === "DROPSHIP", "셀러 공간 방송에 브랜드 직배송 상품 추가", r);
   const lspS = r.data;
@@ -251,7 +273,8 @@ async function main() {
   ok(r.status === 404, "다른 브랜드의 발주서 접근 차단", r);
 
   console.log("\n[10] 최고관리자 — 정책 · 판매 정산 · 브랜드 정산");
-  r = await admin.req("PUT", "/api/admin/policy", { salesFeeRate: 5, brandFeeRate: 5, sampleFeeRate: 10, sellerShareRate: 70, autoCompleteBookings: true });
+  prevSettleDays = (await db.platformPolicy.findUnique({ where: { id: "default" } }))?.settleAfterDays ?? 7; // 정책을 저장한 적이 없으면 기본값(7일)으로 되돌린다
+  r = await admin.req("PUT", "/api/admin/policy", { salesFeeRate: 5, brandFeeRate: 5, sampleFeeRate: 10, sellerShareRate: 70, autoCompleteBookings: true, settleAfterDays: 0 });
   ok(r.ok, "수수료 정책 저장", r);
   r = await seller.req("PUT", "/api/admin/policy", { salesFeeRate: 0 });
   ok(r.status === 403, "셀러는 정책 수정 불가", r);
@@ -313,16 +336,27 @@ async function main() {
   console.log("\n[11-b] 회귀 점검 — 브랜드와 무관한 기존 판매 흐름");
   const plain = await db.facilityProduct.findFirst({ where: { facilityId: F.id, brandProductId: null, isSellable: true } });
   // 예약 → 승인 → 방송 생성 (방송은 승인된 예약으로만 만들 수 있다). 반복 실행에 대비해 빈 시간을 찾아 예약한다.
-  let slotSeq = Math.floor(Math.random() * 180);
+  // 예약 가능한 시간대 후보: 창고(스튜디오)에 운영 시간대(요일별 슬롯)가 설정돼 있으면 그 안에서, 없으면 9~21시 2시간 단위
+  const openSlots = await db.facilityAvailableSlot.findMany({ where: { facilityId: F.id, isActive: true } });
+  const pad2 = (n) => String(n).padStart(2, "0");
+  const candidates = [];
+  for (let add = 10; add < 40; add++) {
+    const d = new Date(Date.now() + 9 * 3600000); d.setUTCDate(d.getUTCDate() + add);
+    const dd = d.toISOString().slice(0, 10);
+    const day = openSlots.length
+      ? openSlots.filter((x) => x.weekday === d.getUTCDay()).map((x) => [x.startTime, x.endTime])
+      : [9, 11, 13, 15, 17, 19].map((h) => [`${pad2(h)}:00`, `${pad2(h + 2)}:00`]);
+    for (const [st, en] of day) candidates.push({ dd, st, en });
+  }
+  let slotSeq = Math.floor(Math.random() * Math.max(1, candidates.length));
   const bookedSession = async (title) => {
-    for (let tries = 0; tries < 15; tries++, slotSeq++) {
-      const d = new Date(Date.now() + 9 * 3600000); d.setUTCDate(d.getUTCDate() + 10 + (slotSeq % 30));
-      const dd = d.toISOString().slice(0, 10); const h = 9 + (Math.floor(slotSeq / 30) % 6) * 2;
-      const b = await seller.req("POST", "/api/bookings", { facilityId: F.id, startAt: `${dd}T${String(h).padStart(2, "0")}:00`, endAt: `${dd}T${String(h + 2).padStart(2, "0")}:00`, purpose: title });
+    for (let tries = 0; tries < 40 && candidates.length; tries++, slotSeq++) {
+      const c = candidates[slotSeq % candidates.length];
+      const b = await seller.req("POST", "/api/bookings", { facilityId: F.id, startAt: `${c.dd}T${c.st}`, endAt: `${c.dd}T${c.en}`, purpose: title });
       const bk = b.data?.bookings?.[0]; if (!bk) continue;
       if (bk.status !== "APPROVED") await fac.req("PATCH", `/api/bookings/${bk.id}`, { status: "APPROVED" });
       const res = await seller.req("POST", "/api/live-sessions", { bookingId: bk.id, facilityId: F.id, title });
-      if (res.ok) { slotSeq++; return res; }
+      if (res.ok) { slotSeq++; await goLive(res.data.id); return res; }
     }
     return { ok: false };
   };
@@ -336,7 +370,9 @@ async function main() {
   const lp = r.data;
   ok(r.status === 201 && !lp.brandProductId, "일반 창고 상품 추가 (브랜드 정보 없음)", r);
   r = await seller.req("POST", `/api/live-sessions/${s2.id}/products`, { name: "임시 상품", price: 5000, stock: 3 });
-  const la = r.data; ok(r.status === 201, "임시 상품 추가", r);
+  ok(r.status === 403, "셀러는 임시 상품 추가 불가 (창고 방송 — 창고(스튜디오)만 추가)", r);
+  r = await fac.req("POST", `/api/live-sessions/${s2.id}/products`, { name: "임시 상품", price: 5000, stock: 3 });
+  const la = r.data; ok(r.status === 201, "창고(스튜디오)가 임시 상품 추가", r);
   r = await guest.req("POST", "/api/orders", { sessionSlug: s2.slug, buyerName: "일반구매자", buyerPhone: "010-1111-2222", method: "EASY_PAY", agreePrivacy: true, items: [{ liveSessionProductId: lp.id, quantity: 1 }] });
   ok(r.status === 400 && /배송지/.test(r.error ?? ""), "배송지 없는 주문 거절 (창고 출고 상품 포함)", r);
   const plainStock = (await db.facilityProduct.findUnique({ where: { id: plain.id } })).stock;
@@ -405,7 +441,7 @@ async function main() {
   ok(home.headers.get("x-frame-options") === "SAMEORIGIN" && home.headers.get("x-content-type-options") === "nosniff", "보안 헤더 적용", [home.headers.get("x-frame-options")]);
   r = await bookedSession("상태 규칙 검증 라이브");
   const s3 = await db.liveSession.findFirst({ where: { title: "상태 규칙 검증 라이브" }, orderBy: { createdAt: "desc" } });
-  const lp3 = (await seller.req("POST", `/api/live-sessions/${s3.id}/products`, { name: "상태 검증 상품", price: 1000, stock: 5 })).data;
+  const lp3 = (await fac.req("POST", `/api/live-sessions/${s3.id}/products`, { name: "상태 검증 상품", price: 1000, stock: 5 })).data;
   await seller.req("PATCH", `/api/live-sessions/${s3.id}/status`, { status: "LIVE" });
   r = await seller.req("PATCH", `/api/live-sessions/${s3.id}/status`, { status: "ENDED" });
   ok(r.ok && !!(await db.liveSession.findUnique({ where: { id: s3.id } })).endedAt, "방송 종료 시각 기록", r);
@@ -422,6 +458,9 @@ async function main() {
   const lspA = (await seller.req("POST", `/api/live-sessions/${own.id}/products`, { sellerBrandProductId: lst3 })).data;
   const lspB = (await seller.req("POST", `/api/live-sessions/${own2.id}/products`, { sellerBrandProductId: lst3 })).data;
   ok(lspA?.stockSnapshot === 3 && lspB?.stockSnapshot === 3, "두 방송에 같은 브랜드 상품(재고 3) 등록", [lspA?.stockSnapshot, lspB?.stockSnapshot]);
+  r = await guest.req("POST", "/api/orders", { ...buy("010-7000-0099"), sessionSlug: own2.slug, items: [{ liveSessionProductId: lspB.id, quantity: 1 }] });
+  ok(r.status === 409 && /시작 전/.test(r.error ?? ""), "방송 시작 전 주문 거절", r);
+  await goLive(own2.id);
   r = await guest.req("POST", "/api/orders", { ...buy("010-7000-0003"), sessionSlug: own.slug, items: [{ liveSessionProductId: lspA.id, quantity: 2 }] });
   ok(r.status === 201 && (await db.brandProduct.findUnique({ where: { id: p3 } })).stock === 1, "방송 A 2개 판매 → 브랜드 재고 1", r);
   ok((await db.liveSessionProduct.findUnique({ where: { id: lspB.id } })).stockSnapshot === 1, "방송 B 화면 재고도 1로 맞춰짐");
@@ -534,11 +573,11 @@ async function main() {
 
   console.log("\n[20] 브랜드샵 공개 중지 → 판매 즉시 중단");
   r = await seller.req("POST", "/api/brand-imports", { action: "seller-update", listingId: listing, salePrice: 27000, isActive: true });
-  const lspS2 = (await seller.req("POST", `/api/live-sessions/${s2.id}/products`, { sellerBrandProductId: listing })).data;
+  const lspS2 = (await seller.req("POST", `/api/live-sessions/${own.id}/products`, { sellerBrandProductId: listing })).data; // 셀러가 가져온 브랜드 상품은 셀러 공간 방송에서만 판다
   ok(r.ok && lspS2?.isActive, "판매 재개 후 방송 등록", r);
   r = await admin.req("POST", "/api/brands", { action: "moderate", shopId: nb.brandShop.id, status: "SUSPENDED", moderationNote: "서류 확인 필요" });
   ok(r.ok && !(await db.liveSessionProduct.findUnique({ where: { id: lspS2.id } })).isActive && !(await db.facilityProduct.findUnique({ where: { id: fpW } })).isSellable, "공개 중지 → 방송 상품 · 창고 상품 판매 중단", r);
-  r = await guest.req("POST", "/api/orders", { ...buy("010-7000-0011"), sessionSlug: s2.slug, items: [{ liveSessionProductId: lspS2.id, quantity: 1, optionLabel: "용량:30ml" }] });
+  r = await guest.req("POST", "/api/orders", { ...buy("010-7000-0011"), sessionSlug: own.slug, items: [{ liveSessionProductId: lspS2.id, quantity: 1, optionLabel: "용량:30ml" }] });
   ok(r.status === 400, "공개 중지된 브랜드 상품 주문 거절", r);
   await admin.req("POST", "/api/brands", { action: "moderate", shopId: nb.brandShop.id, status: "APPROVED", moderationNote: "" });
 
@@ -569,8 +608,8 @@ async function main() {
   r = await brand.req("POST", "/api/brand-team", { action: "remove", userId: memberId });
   ok(r.ok && (await member.req("GET", "/api/me")).data?.user === null, "팀원 내보내기 → 기존 로그인 즉시 끊김", r);
   await seller.req("POST", "/api/brand-imports", { action: "seller-update", listingId: listing, salePrice: 27000, isActive: true });
-  const lspS3 = (await seller.req("POST", `/api/live-sessions/${s2.id}/products`, { sellerBrandProductId: listing, displayNumber: 90 + Math.floor(Math.random() * 9) })).data;
-  r = await guest.req("POST", "/api/orders", { ...buy("010-7000-0012"), sessionSlug: s2.slug, items: [{ liveSessionProductId: lspS3?.id, quantity: 1, optionLabel: "용량:30ml" }] });
+  const lspS3 = (await seller.req("POST", `/api/live-sessions/${own.id}/products`, { sellerBrandProductId: listing, displayNumber: 90 + Math.floor(Math.random() * 9) })).data;
+  r = await guest.req("POST", "/api/orders", { ...buy("010-7000-0012"), sessionSlug: own.slug, items: [{ liveSessionProductId: lspS3?.id, quantity: 1, optionLabel: "용량:30ml" }] });
   const poBulk = await db.purchaseOrder.findFirst({ where: { orderId: r.data?.orderId } });
   r = await brand.req("POST", "/api/purchase-orders/bulk-ship", { rows: [{ poNo: poBulk?.poNo ?? "PO-X", carrier: "CJ대한통운", trackingNumber: "BULK-1" }, { poNo: "PO-000000-NONE00", carrier: "", trackingNumber: "x" }] });
   ok(r.ok && r.data.results[0].ok && !r.data.results[1].ok && (await db.purchaseOrder.findUnique({ where: { id: poBulk.id } })).status === "SHIPPED", "운송장 일괄 입력 (성공 1 · 없는 발주 1 실패)", r);
@@ -603,6 +642,35 @@ async function main() {
   ok((await brand.login(email, "newpass5678")).data?.user?.role === "BRAND_ADMIN", "새 비밀번호로 로그인");
   await db.user.update({ where: { email }, data: { passwordHash: (await db.user.findUnique({ where: { email: "brand@sellerbricks.kr" } })).passwordHash } }); // 다음 실행을 위해 원래 비밀번호(password1234)로 되돌림
 
+  console.log("\n[23] 라이브 기능 스위치 · 방송 자동 종료 · 주문 현황 카드");
+  const draftLive = (await seller.req("POST", "/api/live-sessions", { title: `대기 방송 ${Date.now()}` })).data; // 켜짐 상태에서 만든 준비 중 방송
+  await admin.req("PATCH", "/api/admin/settings", { liveEnabled: false });
+  r = await seller.req("POST", "/api/live-sessions", { title: `꺼짐 시험 ${Date.now()}` });
+  ok(r.status === 403 && /라이브 기능/.test(r.error ?? ""), "라이브 기능 꺼짐 → 셀러 방송 만들기 거절", r);
+  r = await seller.req("PATCH", `/api/live-sessions/${draftLive.id}/status`, { status: "LIVE" });
+  ok(r.status === 403, "라이브 기능 꺼짐 → 방송 시작 거절", r);
+  r = await seller.req("PATCH", `/api/live-sessions/${draftLive.id}/status`, { status: "CANCELLED" });
+  ok(r.ok, "라이브 기능 꺼짐이어도 준비 중 방송 취소는 가능", r);
+  await admin.req("PATCH", "/api/admin/settings", { liveEnabled: true });
+  r = await seller.req("POST", "/api/live-sessions", { title: `자동 종료 시험 ${Date.now()}` });
+  const autoLive = r.data;
+  ok(r.status === 201, "라이브 기능 켜짐 → 방송 만들기", r);
+  await seller.req("PATCH", `/api/live-sessions/${autoLive.id}/status`, { status: "LIVE" });
+  await db.liveSession.update({ where: { id: autoLive.id }, data: { scheduledEnd: new Date(Date.now() - 3 * 3600000) } }); // 예정 종료 3시간 지남
+  r = await admin.req("POST", "/api/cron/bookings");
+  const autoRow = await db.liveSession.findUnique({ where: { id: autoLive.id } });
+  ok(r.ok && autoRow.status === "ENDED" && !!autoRow.endedAt && r.data.liveEnded >= 1, "예정 종료 2시간이 지난 방송 자동 종료", r.data);
+  const keepLive = (await seller.req("POST", "/api/live-sessions", { title: `진행 중 방송 ${Date.now()}` })).data;
+  await seller.req("PATCH", `/api/live-sessions/${keepLive.id}/status`, { status: "LIVE" });
+  await db.liveSession.update({ where: { id: keepLive.id }, data: { scheduledEnd: new Date(Date.now() + 3600000) } });
+  await admin.req("POST", "/api/cron/bookings");
+  ok((await db.liveSession.findUnique({ where: { id: keepLive.id } })).status === "LIVE", "예정 시간 안의 방송은 그대로 진행");
+  await seller.req("PATCH", `/api/live-sessions/${keepLive.id}/status`, { status: "ENDED" });
+  for (const [c, p] of [[fac, "/facility/orders"], [seller, "/seller/orders"], [admin, "/admin/orders"]]) {
+    const res = await c.page(p);
+    ok(res.status === 200 && !/<td[^>]*>\s*<td/.test(res.text) && /배송지 보기|주문이 없습니다/.test(res.text), `주문 현황 카드 (${p}) · 표 칸 중첩 없음`);
+  }
+
   console.log("\n[12] 화면 렌더링 (역할별 주요 페이지)");
   const pages = [
     [admin, ["/admin/dashboard", "/admin/purchase-orders", "/admin/payouts", "/admin/payouts?tab=brand", "/admin/policy", "/admin/bookings", `/admin/brands/${nb.brandShop.id}`, "/admin/brands/requests", "/admin/orders", "/admin/settlements"]],
@@ -620,6 +688,7 @@ async function main() {
 
   console.log(`\n결과: 통과 ${pass} · 실패 ${failN}`);
   if (fails.length) console.log("실패 항목:", fails);
+  await restoreSettleDays();
   await db.$disconnect();
 }
-main().catch(async (e) => { console.error("SIM CRASH", e); await db.$disconnect(); process.exit(1); });
+main().catch(async (e) => { console.error("SIM CRASH", e); await restoreSettleDays(); await db.$disconnect(); process.exit(1); });

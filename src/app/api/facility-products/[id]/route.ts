@@ -49,6 +49,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       if (bp && nextSupply != null && nextSupply < bp.supplyPrice) return fail(`셀러 공급가는 브랜드 공급가(${bp.supplyPrice.toLocaleString()}원)보다 낮을 수 없습니다.`);
       if (bp && fpData.isSellable && bp.shop.status !== "APPROVED") return fail("브랜드샵이 공개 중지되어 판매할 수 없는 상품입니다.");
       if (bp && fp.fulfillment === "DROPSHIP" && fpData.stock !== undefined && fpData.stock > bp.stock) return fail(`직배송 판매 한도는 브랜드 재고(${bp.stock.toLocaleString()}개)를 넘을 수 없습니다.`);
+      // 창고 입고(위탁) 상품 재고는 브랜드가 보낸 수량만큼 '입고 확인'으로만 늘어난다. (직접 올리면 받지 않은 수량까지 팔려 브랜드 발주가 생긴다) 줄이는 것은 가능
+      if (fp.fulfillment === "WAREHOUSE" && fpData.stock !== undefined && fpData.stock > fp.stock && user.role !== "SUPER_ADMIN") {
+        return fail("창고 입고(위탁) 상품의 재고는 직접 늘릴 수 없습니다. 브랜드에 입고를 요청하고, 상품을 받은 뒤 '입고 확인'을 하면 재고가 늘어납니다.");
+      }
       if (bp && fp.fulfillment === "DROPSHIP" && fpData.isSellable && (!bp.isActive || !bp.allowDropship)) return fail("브랜드가 직배송 판매를 중단한 상품입니다.");
     }
     const productData = Object.fromEntries(Object.entries({ name, category, sku, description, thumbnailUrl }).filter(([, v]) => v !== undefined).map(([k, v]) => [k, k === "name" || k === "category" ? v : (v || null)]));

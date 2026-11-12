@@ -6,8 +6,9 @@ export const POLICY_DEFAULTS = {
   salesFeeRate: 5, brandFeeRate: 5, sampleFeeRate: 0, sellerShareRate: 70,
   pendingExpireHours: 48, noShowGraceMinutes: 30, autoCompleteBookings: true as boolean, reminderHoursBefore: 24,
   poConfirmHours: 24, sampleMaxPerOrder: 20,
-  orderAfterEndHours: 0, settleAfterDays: 0, piiRetentionDays: 90,
+  orderAfterEndHours: 0, liveAutoEndHours: 2, settleAfterDays: 7, piiRetentionDays: 90,
   requireEmailVerify: false as boolean, maxPendingBookings: 10,
+  requestReplyHours: 72, requestAutoRejectHours: 72,
 } satisfies Omit<PlatformPolicy, "id" | "updatedBy" | "updatedAt">;
 
 export type Policy = typeof POLICY_DEFAULTS;

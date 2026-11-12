@@ -55,7 +55,7 @@ export default async function AdminMarketing({ searchParams }: { searchParams: S
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[1fr_340px]">
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           <StatusTabs base={BASE} params={searchParams} tabs={[{ value: "", label: "전체", count: all }, ...Object.entries(APPLICATION_STATUS).map(([k, v]) => ({ value: k, label: v.label, count: c[k] ?? 0 }))]} />
           <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
             <FilterBar className="flex-1" fields={[

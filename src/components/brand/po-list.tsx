@@ -83,12 +83,12 @@ export async function PurchaseOrderList({ scope, actor, base, params }: {
               {po.brandSettlement && <Badge tone="green">정산서 포함</Badge>}
             </div>
           </div>
-          <table className="mt-3 w-full text-sm">
+          <table className="mt-3 w-full text-sm rtable">
             <thead><tr className="text-left text-xs text-slate-500"><th className="py-1">상품</th><th>옵션</th><th className="text-right">수량</th><th className="text-right">공급가</th><th className="text-right">합계</th></tr></thead>
             <tbody>
               {po.items.map((it) => (
-                <tr key={it.id} className="border-t"><td className="py-1.5">{it.productName}</td><td className="text-xs text-slate-600">{it.optionLabel ?? "-"}</td>
-                  <td className="text-right">{it.quantity}</td><td className="text-right">{formatKRW(it.supplyPrice)}</td><td className="text-right font-semibold">{formatKRW(it.supplyPrice * it.quantity)}</td></tr>
+                <tr key={it.id} className="border-t"><td data-label="상품" className="py-1.5">{it.productName}</td><td data-label="옵션" className="text-xs text-slate-600">{it.optionLabel ?? "-"}</td>
+                  <td data-label="수량" className="text-right">{it.quantity}</td><td data-label="공급가" className="text-right">{formatKRW(it.supplyPrice)}</td><td data-label="합계" className="text-right font-semibold">{formatKRW(it.supplyPrice * it.quantity)}</td></tr>
               ))}
             </tbody>
           </table>

@@ -80,7 +80,9 @@ export default async function FacilityDetail({ params }: { params: { id: string 
       },
     }).catch(() => []) : Promise.resolve([]),
   ]);
-  return <FacilityStorefront facility={f} pageConfig={pageConfig} user={user} favorited={!!fav} products={products}
+  return <FacilityStorefront facility={f} pageConfig={pageConfig} user={user} favorited={!!fav}
+    // 셀러 공급가는 셀러·창고 본인·최고관리자에게만 내려보낸다(화면에서 가려도 데이터가 함께 전달되지 않도록)
+    products={user?.role === "SELLER" || user?.role === "SUPER_ADMIN" || f.ownerId === user?.id ? products : products.map((p) => ({ ...p, supplyPrice: null }))}
     reviews={reviews.map((r) => ({ id: r.id, rating: r.rating, content: r.content, reply: r.reply, createdAt: r.createdAt.toISOString(), author: maskName(r.seller.profile?.name) }))} />;
 }
 

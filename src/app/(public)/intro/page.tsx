@@ -5,10 +5,11 @@ import Link from "next/link";
 import {
   LayoutDashboard, CreditCard, MessageSquare, ShoppingCart, Users, Package, Radio,
   TrendingUp, Star, Camera, Wifi, MapPin, Award, CheckCircle2, ArrowRight,
-  FileText, Download, Loader2, Zap, Building2, Leaf, HeartHandshake,
+  FileText, Download, Loader2, Building2, Leaf, HeartHandshake,
   Receipt, Calculator, Headphones,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { generateStorageMarketPdf } from "./pdfGenerator";
 
 /* ────────────────────────────────
@@ -104,27 +105,19 @@ export default function IntroPage() {
         <div className="absolute inset-0 opacity-10"
           style={{ backgroundImage: "radial-gradient(circle at 20% 50%, #F5A623 0%, transparent 50%), radial-gradient(circle at 80% 20%, #FFC107 0%, transparent 40%)" }} />
         <div className="container relative z-10 text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/20 px-4 py-1.5 text-white text-sm font-semibold mb-6" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}>
-            <Zap className="h-4 w-4" />
-            스토리지마켓 공식 소개서
-          </div>
-          <h1 className="text-3xl md:text-5xl font-extrabold text-white leading-tight mb-5">
-            셀러에게 필요한 모든 것,<br />
-            <span className="text-brand-400">스토리지마켓</span>가 지원합니다
+          <h1 className="mb-5 break-keep text-3xl font-black leading-tight tracking-tight text-white md:text-5xl">
+            셀러·창고·브랜드가 함께하는<br />
+            <span className="text-brand-300">라이브 커머스</span>
           </h1>
-          <p className="text-white/70 text-lg md:text-xl max-w-2xl mx-auto mb-8 leading-relaxed">
-            오직 방송에만 집중하세요 — 나머지는 우리가 합니다
+          <p className="mx-auto mb-8 max-w-2xl break-keep text-base leading-relaxed text-white/85 md:text-lg">
+            방송할 사람과 공간, 판매할 상품을 연결합니다. 스토리지마켓에서 예약부터 상품 공급, 주문과 정산까지 관리하세요.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/signup/seller">
-              <Button size="lg" className="bg-brand-500 hover:bg-brand-600 text-white font-bold px-8 h-12">
-                <Zap className="h-5 w-5 mr-2" />무료로 시작하기
-              </Button>
-            </Link>
+            <Link href="/signup" className={cn(buttonVariants({ size: "lg" }), "rounded-xl bg-brand-300 font-bold text-navy hover:bg-brand-200")}>가입 유형 보기</Link>
             <Button
               size="lg"
               variant="outline"
-              className="border-white/30 text-white bg-white/10 hover:bg-white/20 gap-2 h-12"
+              className="rounded-xl border-white/35 bg-white/10 text-white hover:bg-white/20"
               disabled={pdfLoading}
               onClick={() => generateStorageMarketPdf(setPdfLoading)}
             >
@@ -397,24 +390,19 @@ export default function IntroPage() {
       <section className="py-20 bg-gradient-to-r from-brand-500 to-brand-600 relative overflow-hidden">
         <div className="absolute inset-0 opacity-15"
           style={{ backgroundImage: "radial-gradient(circle at 10% 90%, #1A1A2E 0%, transparent 50%)" }} />
-        <div className="container relative z-10 text-center text-white">
+        <div className="container relative z-10 text-center text-navy">
           <h2 className="text-3xl md:text-5xl font-extrabold mb-4">
             지금 바로 시작하세요
           </h2>
-          <p className="text-white/80 max-w-xl mx-auto mb-8 text-lg leading-relaxed">
-            방송에만 집중하세요.<br />
-            나머지는 스토리지마켓이 모두 합니다.
+          <p className="mx-auto mb-8 max-w-xl break-keep text-lg leading-relaxed text-navy">
+            셀러, 창고·스튜디오 운영자, 브랜드 중 내게 맞는 유형으로 시작하세요.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/signup/seller">
-              <Button size="lg" className="bg-white text-brand-600 hover:bg-brand-50 font-bold px-10 h-12 shadow-xl">
-                <Zap className="h-5 w-5 mr-2" />무료로 시작하기
-              </Button>
-            </Link>
+            <Link href="/signup" className={buttonVariants({ size: "lg", variant: "secondary", className: "rounded-xl font-bold" })}>가입 유형 보기</Link>
             <Button
               size="lg"
               variant="outline"
-              className="border-white/40 text-white bg-white/10 hover:bg-white/20 h-12 gap-2"
+              className="rounded-xl border-white/50 bg-white text-navy hover:bg-brand-50"
               onClick={() => window.print()}
             >
               <Download className="h-4 w-4" />소개서 저장

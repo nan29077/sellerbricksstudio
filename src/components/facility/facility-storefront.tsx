@@ -6,16 +6,27 @@ import { ShopShell } from "@/components/shop/shop-shell";
 import { ShopImage } from "@/components/shop/shop-image";
 import { FacilityInquiryButton } from "@/components/facility/facility-inquiry-button";
 import { FavoriteButton } from "@/components/booking/favorite-button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   ArrowRight, BadgeCheck, Boxes, CalendarDays, Camera,
-  CheckCircle2, ChevronLeft, Clock3, Home, LayoutTemplate, MapPin,
-  MessageSquare, ShieldCheck, Store, Tag, UserRound,
-  Warehouse, Wifi, Star,
+  CheckCircle2, ChevronLeft, Clock3, MapPin,
+  MessageSquare, ShieldCheck, Store, Tag,
+  Warehouse, Wifi, Star, House, LayoutGrid, Info, MessageCircle,
 } from "lucide-react";
 
 type PublicReview = { id: string; rating: number; content: string; reply: string | null; createdAt: string; author: string };
 
 const WEEK = ["일", "월", "화", "수", "목", "금", "토"];
+
+// 요일 슬롯(예: 월 14:00)의 가장 가까운 예약 가능 날짜 (KST 기준, 오늘 시간이 지났으면 다음 주)
+function nextDateForWeekday(weekday: number, start: string) {
+  const now = new Date(Date.now() + 9 * 3600000);
+  const nowMin = now.getUTCHours() * 60 + now.getUTCMinutes();
+  const startMin = Number(start.slice(0, 2)) * 60 + Number(start.slice(3, 5));
+  let add = (weekday - now.getUTCDay() + 7) % 7;
+  if (add === 0 && startMin <= nowMin) add = 7;
+  return new Date(now.getTime() + add * 86400000).toISOString().slice(0, 10);
+}
 
 // 주요 카테고리 아이콘/색상 매핑
 const SPECIALTY_META: Record<string, { color: string; bg: string }> = {
@@ -63,16 +74,15 @@ export function FacilityStorefront({
     : `/login?callbackUrl=${encodeURIComponent(directBookingHref)}`;
   const bookingLabel = isSeller ? pageConfig.ctaLabel : "로그인하고 예약하기";
   const bookingHrefForSlot = (slot: any) => isSeller
-    ? `${directBookingHref}&start=${encodeURIComponent(slot.startTime)}&end=${encodeURIComponent(slot.endTime)}`
+    ? `${directBookingHref}&date=${nextDateForWeekday(slot.weekday, slot.startTime)}&start=${encodeURIComponent(slot.startTime)}&end=${encodeURIComponent(slot.endTime)}`
     : bookingHref;
   const management = user?.role === "SUPER_ADMIN" && f.ownerId ? `/admin/facilities/${f.id}/shop` : user?.id && user.id === f.ownerId ? `/facility/pages/${f.id}` : null;
   const shopLinks = [
-    { href: "#store-home", label: "샵 홈", icon: Home },
-    ...(pageConfig.showProducts ? [{ href: "#store-products", label: "상품", icon: Boxes }] : []),
+    { href: "#store-home", label: "홈", icon: House },
+    ...(pageConfig.showProducts ? [{ href: "#store-products", label: "상품", icon: LayoutGrid }] : []),
     ...(bookable ? [{ href: "#store-booking", label: "예약", icon: CalendarDays }] : []),
-    { href: "#store-info", label: "공간 정보", icon: UserRound },
-    { href: "#store-inquiry", label: "문의", icon: MessageSquare },
-    ...(management ? [{ href: management, label: "샵 관리", icon: LayoutTemplate }] : []),
+    { href: "#store-info", label: "공간 정보", icon: Info },
+    { href: "#store-inquiry", label: "문의", icon: MessageCircle },
   ];
 
   return (
@@ -90,6 +100,7 @@ export function FacilityStorefront({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {management && <Link href={management} className="whitespace-nowrap text-xs font-bold text-slate-600 hover:text-navy">샵 관리</Link>}
             {user?.role === "SELLER" && <FavoriteButton facilityId={f.id} initial={favorited} className="h-10 rounded-xl border-2 border-navy px-3 shadow-[2px_2px_0_#1A1A2E]" />}
             <a href="#store-inquiry" aria-label="창고(스튜디오) 문의" className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-navy bg-white text-navy shadow-[2px_2px_0_#1A1A2E] transition hover:-translate-y-0.5">
               <MessageSquare className="h-5 w-5" />
@@ -141,7 +152,7 @@ export function FacilityStorefront({
           {/* 통계 */}
           <div className="mt-7 grid grid-cols-3 divide-x divide-[#E8E8EC] rounded-2xl bg-[#F8F9FB] px-2 py-5 sm:mt-8">
             {[
-              { value: (f.rating ?? 0).toFixed(1), label: "창고(스튜디오) 평점" },
+              { value: reviews.length ? (f.rating ?? 0).toFixed(1) : "신규", label: "셀러 평점" },
               { value: specialties.length > 0 ? `${specialties.length}개` : "-", label: "전문 분야" },
               { value: slotCount.toLocaleString(), label: "예약 일정" },
             ].map((stat) => (
@@ -199,19 +210,19 @@ export function FacilityStorefront({
           <h2 className="text-xl font-black text-navy">예약과 함께 고르는 판매 상품</h2>
           {products.length === 0 ? <p className="mt-3 text-sm text-slate-600">공개된 판매 상품이 없습니다.</p> : <>
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {products.map(({ id, stock, salePrice, supplyPrice, product }) => <article key={id} className="overflow-hidden rounded-xl border">
+              {products.map(({ id, stock, salePrice, supplyPrice, product }) => <article key={id} className="flex min-w-0 flex-col overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-sm">
                 <ShopImage src={product.thumbnailUrl} fallback={artwork} className="aspect-[4/3] w-full object-cover" />
-                <div className="space-y-1 p-2.5">
+                <div className="flex flex-1 flex-col gap-1.5 p-3">
                   <p className="text-xs text-slate-600">{product.category}</p>
                   <h3 className="break-words text-sm font-bold">{product.name}</h3>
-                  <p className="text-xs font-semibold">판매가 {formatKRW(salePrice)} · {stock > 0 ? `재고 ${stock}개` : "품절"}</p>
+                  <p className="mt-auto border-t border-slate-100 pt-2 text-xs font-semibold">판매가 {formatKRW(salePrice)} · {stock > 0 ? `재고 ${stock}개` : "품절"}</p>
                   {isSeller && supplyPrice != null && <p className="text-[11px] font-semibold text-purple-700">셀러 공급가 {formatKRW(supplyPrice)} · 마진 {formatKRW(Math.max(0, salePrice - supplyPrice))}</p>}
                   {bookable && isSeller && stock > 0 && <Link href={`${directBookingHref}&products=${encodeURIComponent(`${id}:1`)}`}
-                    className="mt-1 inline-flex min-h-9 items-center text-xs font-bold text-brand-800 hover:underline">예약에 담기 <ArrowRight className="ml-1 h-3 w-3" /></Link>}
+                    className={buttonVariants({ variant: "outline", className: "mt-1 w-full rounded-xl bg-slate-50 px-2 text-xs" })}>예약에 담기</Link>}
                 </div>
               </article>)}
             </div>
-            {bookable && isSeller && <Link href={directBookingHref} className="mt-3 inline-flex min-h-10 items-center text-sm font-bold text-brand-800 hover:underline">예약 화면에서 전체 상품 선택 <ArrowRight className="ml-1 h-4 w-4" /></Link>}
+            {bookable && isSeller && <Link href={directBookingHref} className={buttonVariants({ variant: "outline", className: "mt-4 rounded-xl px-3" })}>예약 화면에서 전체 상품 선택</Link>}
           </>}
         </section>}
 
@@ -417,7 +428,7 @@ export function FacilityStorefront({
                 <p className="mt-1 text-xs text-slate-400">실제로 이용을 마친 셀러만 남길 수 있는 리뷰입니다</p>
               </div>
               <div className="text-right">
-                <p className="flex items-center gap-1 text-2xl font-black text-navy"><Star className="h-6 w-6 fill-brand-500 text-brand-500" />{Number(f.rating ?? 0).toFixed(1)}</p>
+                <p className="flex items-center gap-1 text-2xl font-black text-navy"><Star className="h-6 w-6 fill-brand-500 text-brand-500" />{reviews.length ? Number(f.rating ?? 0).toFixed(1) : "-"}</p>
               </div>
             </div>
             {reviews.length === 0 ? (

@@ -63,13 +63,14 @@ export function DashHero({ eyebrow, title, description, chips, actions, aside }:
   );
 }
 
-export function HeroButton({ href, children, primary }: { href: string; children: React.ReactNode; primary?: boolean }) {
-  return (
-    <Link href={href} className={cn(
-      "inline-flex min-h-10 items-center gap-1.5 rounded-full px-4 text-sm font-bold transition",
-      primary ? "bg-brand-500 text-navy hover:bg-brand-400" : "border border-white/25 bg-white/10 text-white hover:bg-white/20",
-    )}>{children}</Link>
+export function HeroButton({ href, children, primary, newTab }: { href: string; children: React.ReactNode; primary?: boolean; newTab?: boolean }) {
+  const className = cn(
+    "inline-flex min-h-10 items-center gap-1.5 rounded-full px-4 text-sm font-bold transition",
+    primary ? "bg-brand-500 text-navy hover:bg-brand-400" : "border border-white/25 bg-white/10 text-white hover:bg-white/20",
   );
+  // 새 창으로 열기 (예: 브랜드사의 샵 바로가기)
+  if (newTab) return <a href={href} target="_blank" rel="noopener noreferrer" className={className}>{children}<ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5 opacity-70" /><span className="sr-only">(새 창)</span></a>;
+  return <Link href={href} className={className}>{children}</Link>;
 }
 
 /** 히어로 오른쪽에 들어가는 반투명 정보 카드 */
@@ -346,7 +347,7 @@ export function Heatmap({ rows, cols, values, unit = "건" }: { rows: string[]; 
   const max = Math.max(1, ...values.flat());
   return (
     <div className="overflow-x-auto">
-      <div className="grid min-w-[340px] gap-1" style={{ gridTemplateColumns: `28px repeat(${cols.length}, minmax(0,1fr))` }}>
+      <div className="grid min-w-[280px] gap-0.5 sm:gap-1" style={{ gridTemplateColumns: `24px repeat(${cols.length}, minmax(0,1fr))` }}>
         <span />
         {cols.map((c) => <span key={c} className="pb-1 text-center text-[11px] font-semibold text-slate-400">{c}</span>)}
         {rows.map((r, ri) => (
@@ -513,8 +514,44 @@ export function DayTimeline({ rows, from = 8, to = 24, now }: {
   const span = to - from;
   const ticks = Array.from({ length: Math.floor(span / 2) + 1 }, (_, i) => from + i * 2);
   const pos = (h: number) => `${((Math.min(Math.max(h, from), to) - from) / span) * 100}%`;
+  const hm = (h: number) => `${String(Math.floor(h)).padStart(2, "0")}:${String(Math.round((h % 1) * 60)).padStart(2, "0")}`;
   return (
-    <div className="overflow-x-auto">
+    <>
+    {/* 모바일: 시간축 대신 창고별 일정 목록 (좌우 스크롤 없이) */}
+    <ul className="space-y-3 sm:hidden">
+      {rows.map((r) => {
+        const blocks = [...r.blocks].sort((a, b) => a.start - b.start);
+        return (
+          <li key={r.key} className="rounded-xl bg-[#F6F4EF] p-3">
+            <p className="truncate text-xs font-bold text-navy">{r.label}</p>
+            {blocks.length === 0 ? <p className="mt-1 text-[11px] text-slate-400">오늘 일정 없음</p> : (
+              <ul className="mt-2 space-y-1.5">
+                {blocks.map((b) => {
+                  const t = TONES[b.tone ?? "brand"];
+                  const live = now !== undefined && now >= b.start && now < b.end;
+                  const inner = (
+                    <>
+                      <span className="w-[86px] shrink-0 font-mono text-[11px] font-bold text-slate-600">{hm(b.start)}–{hm(b.end)}</span>
+                      <span className="min-w-0 flex-1"><span className="block truncate text-xs font-bold">{b.title}</span>{b.sub && b.sub.replace(/\s/g, "") !== `${hm(b.start)}–${hm(b.end)}` && <span className="block truncate text-[11px] opacity-75">{b.sub}</span>}</span>
+                      {live && <span className="shrink-0 rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">진행 중</span>}
+                    </>
+                  );
+                  const cls = cn("flex items-center gap-2 rounded-lg border-l-[3px] bg-white/70 px-2 py-1.5", t.text);
+                  return (
+                    <li key={b.key}>
+                      {b.href
+                        ? <Link href={b.href} className={cn(cls, "hover:bg-white")} style={{ borderColor: t.hex }}>{inner}</Link>
+                        : <div className={cls} style={{ borderColor: t.hex }}>{inner}</div>}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+    <div className="hidden overflow-x-auto sm:block">
       <div className="min-w-[560px]">
         <div className="relative ml-28 h-5">
           {ticks.map((t) => <span key={t} className="absolute -translate-x-1/2 text-[11px] font-semibold text-slate-400" style={{ left: pos(t) }}>{t}시</span>)}
@@ -550,6 +587,7 @@ export function DayTimeline({ rows, from = 8, to = 24, now }: {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

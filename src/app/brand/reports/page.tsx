@@ -62,17 +62,17 @@ export default async function BrandReportsPage({ searchParams }: { searchParams:
         <div className="grid gap-5 xl:grid-cols-2">
           <Panel eyebrow="PRODUCTS" title="상품별">
             {!r.products.length ? <Empty text="기간 내 판매된 상품이 없습니다" /> : (
-              <div className="overflow-x-auto"><table className="w-full min-w-[420px] text-sm">
+              <div className="overflow-x-auto"><table className="w-full min-w-[420px] text-sm rtable">
                 <thead><tr className="border-b text-left text-xs text-slate-500"><th className="py-2">상품</th><th className="text-right">수량</th><th className="text-right">공급가 합계</th><th className="text-right">판매 금액</th></tr></thead>
-                <tbody>{r.products.map((p) => <tr key={p.name} className="border-b last:border-0"><td className="py-2 font-semibold text-navy">{p.name}</td><td className="text-right">{p.qty.toLocaleString()}</td><td className="text-right">{formatKRW(p.supply)}</td><td className="text-right text-slate-600">{formatKRW(p.sale)}</td></tr>)}</tbody>
+                <tbody>{r.products.map((p) => <tr key={p.name} className="border-b last:border-0"><td data-label="상품" className="py-2 font-semibold text-navy">{p.name}</td><td data-label="수량" className="text-right">{p.qty.toLocaleString()}</td><td data-label="공급가 합계" className="text-right">{formatKRW(p.supply)}</td><td data-label="판매 금액" className="text-right text-slate-600">{formatKRW(p.sale)}</td></tr>)}</tbody>
               </table></div>
             )}
           </Panel>
           <Panel eyebrow="PARTNERS" title="판매처별">
             {!r.partners.length ? <Empty text="기간 내 발주한 판매처가 없습니다" /> : (
-              <div className="overflow-x-auto"><table className="w-full min-w-[380px] text-sm">
+              <div className="overflow-x-auto"><table className="w-full min-w-[380px] text-sm rtable">
                 <thead><tr className="border-b text-left text-xs text-slate-500"><th className="py-2">판매처</th><th>방식</th><th className="text-right">발주</th><th className="text-right">공급가 합계</th></tr></thead>
-                <tbody>{r.partners.map((p, i) => <tr key={i} className="border-b last:border-0"><td className="py-2 font-semibold text-navy">{p.name}</td><td className="text-xs text-slate-600">{p.kind}</td><td className="text-right">{p.orders}건</td><td className="text-right">{formatKRW(p.supply)}</td></tr>)}</tbody>
+                <tbody>{r.partners.map((p, i) => <tr key={i} className="border-b last:border-0"><td data-label="판매처" className="py-2 font-semibold text-navy">{p.name}</td><td data-label="방식" className="text-xs text-slate-600">{p.kind}</td><td data-label="발주" className="text-right">{p.orders}건</td><td data-label="공급가 합계" className="text-right">{formatKRW(p.supply)}</td></tr>)}</tbody>
               </table></div>
             )}
           </Panel>

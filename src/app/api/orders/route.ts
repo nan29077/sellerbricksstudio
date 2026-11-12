@@ -9,12 +9,14 @@ import { getPolicy } from "@/lib/policy";
 import { clientIp, consume, MINUTE } from "@/lib/rate-limit";
 import { checkLowStock, createPurchaseOrdersInTx, notifyNewPurchaseOrders, reserveOrderStockInTx, StockError } from "@/lib/purchase-orders";
 import { cleanupStalePendingOrders, failPendingOrder } from "@/lib/order-actions";
+import { endOverdueLiveSessions } from "@/lib/live-automation";
 import { lineInputOf, splitLine } from "@/lib/settlement";
 import { Prisma } from "@prisma/client";
 
-// 방송 상태별 주문 가능 여부 (종료 후에는 정책의 '종료 후 주문 허용 시간' 안에서만)
+// 방송 상태별 주문 가능 여부: 방송 중에만 주문을 받는다. (종료 후에는 정책의 '종료 후 주문 허용 시간' 안에서만)
 async function orderClosedReason(session: { status: string; endedAt: Date | null }) {
   if (session.status === "CANCELLED") return "취소된 방송입니다.";
+  if (session.status === "DRAFT" || session.status === "READY") return "방송 시작 전입니다. 방송이 시작되면 주문할 수 있습니다.";
   if (session.status !== "ENDED") return null;
   const { orderAfterEndHours } = await getPolicy();
   const endedAt = session.endedAt?.getTime() ?? 0;
@@ -31,6 +33,7 @@ export async function POST(req: NextRequest) {
     const blocked = paymentBlockedReason();
     if (blocked) return fail(blocked, 503);
     await cleanupStalePendingOrders().catch(() => 0); // 1분에 한 번만 실제로 돈다
+    await endOverdueLiveSessions(); // 예정 시간이 지난 방송은 먼저 종료 처리 (1분에 한 번)
 
     // 같은 접속(통신사 공유 IP 고려해 넉넉하게)과 같은 연락처의 과도한 주문을 막는다.
     const ip = clientIp(req);

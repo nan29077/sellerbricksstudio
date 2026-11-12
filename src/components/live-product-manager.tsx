@@ -16,8 +16,8 @@ type Catalog = { id: string; name: string; salePrice: number; stock: number; cat
 type BrandCatalog = { id: string; brandProductId: string; name: string; salePrice: number; supplyPrice: number; stock: number; thumbnailUrl: string | null; shopName: string };
 
 export function LiveProductManager({
-  sessionId, initial, catalog, brandCatalog = [],
-}: { sessionId: string; initial: LSP[]; catalog: Catalog[]; brandCatalog?: BrandCatalog[] }) {
+  sessionId, initial, catalog, brandCatalog = [], canAdHoc = false,
+}: { sessionId: string; initial: LSP[]; catalog: Catalog[]; brandCatalog?: BrandCatalog[]; canAdHoc?: boolean }) {
   const [items, setItems] = useState<LSP[]>(initial);
   const [version, setVersion] = useState(0);
   const [editing, setEditing] = useState<string | null>(null);
@@ -126,7 +126,7 @@ export function LiveProductManager({
         <button onClick={() => setTab("board")} className={`rounded-lg px-3 py-2 text-sm font-medium ${tab === "board" ? "bg-navy text-white" : "bg-white border"}`}>판매 보드 ({items.length})</button>
         <button onClick={() => setTab("catalog")} className={`rounded-lg px-3 py-2 text-sm font-medium ${tab === "catalog" ? "bg-navy text-white" : "bg-white border"}`}>상품 추가</button>
         <button onClick={() => setTab("brand")} className={`rounded-lg px-3 py-2 text-sm font-medium ${tab === "brand" ? "bg-navy text-white" : "bg-white border"}`}>브랜드 상품 ({brandCatalog.length})</button>
-        <button onClick={() => setTab("adhoc")} className={`rounded-lg px-3 py-2 text-sm font-medium ${tab === "adhoc" ? "bg-navy text-white" : "bg-white border"}`}>임시상품</button>
+        {canAdHoc && <button onClick={() => setTab("adhoc")} className={`rounded-lg px-3 py-2 text-sm font-medium ${tab === "adhoc" ? "bg-navy text-white" : "bg-white border"}`}>임시상품</button>}
         <div className="ml-auto flex gap-2">
           <Button variant="outline" size="sm" onClick={autoRenumber} disabled={busy || items.length === 0}><Hash className="h-4 w-4" />자동번호</Button>
           <Button aria-label="새로고침" variant="ghost" size="sm" onClick={refresh}><RefreshCw className="h-4 w-4" /></Button>
@@ -214,7 +214,7 @@ export function LiveProductManager({
         </div>
       )}
 
-      {tab === "adhoc" && <AdHocForm sessionId={sessionId} onAdded={() => { refresh(); setTab("board"); }} />}
+      {tab === "adhoc" && canAdHoc && <AdHocForm sessionId={sessionId} onAdded={() => { refresh(); setTab("board"); }} />}
     </div>
   );
 }
@@ -236,7 +236,7 @@ function AdHocForm({ sessionId, onAdded }: { sessionId: string; onAdded: () => v
   return (
     <div className="rounded-xl border border-border bg-white p-4 max-w-lg">
       <p className="flex items-center gap-2 font-semibold text-navy mb-3"><PackagePlus className="h-5 w-5 text-brand-500" />방송 중 임시상품 추가</p>
-      <p className="text-xs text-muted-foreground mb-3">등록되지 않은 상품도 즉시 추가됩니다. 방송 후 정식 상품으로 전환할 수 있습니다.</p>
+      <p className="text-xs text-muted-foreground mb-3">등록되지 않은 상품도 즉시 추가됩니다. 임시 상품은 창고(스튜디오)가 출고하고 판매금도 창고(스튜디오) 정산에 들어갑니다.</p>
       <div className="space-y-3">
         <div><Label>상품명</Label><Input aria-label="상품명" value={name} onChange={(e) => setName(e.target.value)} /></div>
         <div className="grid grid-cols-2 gap-3">

@@ -3,45 +3,41 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowRight, ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const slides = [
   {
-    image: "/images/home/hero-studio.webp",
-    mobileImage: "/images/home/hero-studio-mobile.webp",
-    eyebrow: "LIVE COMMERCE, BETTER TOGETHER",
-    title: "방송에만 집중하세요.",
-    highlight: "나머지는 우리가 합니다.",
-    description: "공간을 찾는 순간부터 라이브 준비, 주문과 정산 확인까지. 셀러의 아이디어가 고객에게 닿는 모든 장면을 함께 설계합니다.",
-    primary: { label: "셀러로 시작하기", href: "/signup/seller" },
-    secondary: { label: "브랜드 상품 보기", href: "/#brand-products" },
-    caption: "라이브 스튜디오 · 연출 이미지",
+    image: "/images/home/hero-market-partners.webp",
+    mobileImage: "/images/home/hero-market-partners-mobile.webp",
+    title: "셀러·창고·브랜드를",
+    highlight: "한곳에서 연결합니다",
+    description: "셀러는 방송 공간과 상품을 찾고, 창고·스튜디오는 공간을 열고, 브랜드는 새로운 판매 파트너를 만납니다.",
+    primary: { label: "서비스 둘러보기", href: "/intro" },
+    secondary: { label: "공간 찾아보기", href: "#spaces" },
   },
   {
     image: "/images/home/hero-fulfillment.webp",
     mobileImage: "/images/home/hero-fulfillment-mobile.webp",
-    eyebrow: "SPACE TO SALES",
-    title: "준비가 쉬워지면,",
-    highlight: "라이브가 달라집니다.",
-    description: "스튜디오와 창고를 탐색하고, 상품과 방송 일정을 한 흐름으로 연결하세요. 복잡한 준비를 덜고 판매에 집중할 수 있습니다.",
-    primary: { label: "공간 둘러보기", href: "/facilities" },
-    secondary: { label: "운영 방식 보기", href: "/intro" },
-    caption: "공간과 운영 · 연출 이미지",
+    title: "창고와 스튜디오에서",
+    highlight: "새로운 방송이 시작됩니다",
+    description: "공간 운영자는 셀러를 맞이하고, 셀러는 방송에 맞는 공간과 일정을 찾아 예약할 수 있습니다.",
+    primary: { label: "공간 둘러보기", href: "#spaces" },
+    secondary: { label: "등록 공간 보기", href: "/facilities" },
   },
   {
     image: "/images/home/hero-farm.webp",
     mobileImage: "/images/home/hero-farm-mobile.webp",
-    eyebrow: "STORIES FROM THE SOURCE",
-    title: "현장의 생생함을",
-    highlight: "구매 경험으로.",
-    description: "산지와 생산 현장의 이야기를 라이브로 전해보세요. 상품이 만들어진 곳의 매력을 화면 너머 고객에게 전달합니다.",
-    primary: { label: "서비스 소개 보기", href: "/intro" },
-    secondary: { label: "셀러 가입하기", href: "/signup/seller" },
-    caption: "현장 라이브 · 연출 이미지",
+    title: "브랜드 상품이",
+    highlight: "새로운 판매처를 만납니다",
+    description: "브랜드는 상품과 샘플을 소개하고, 셀러와 공간 운영자는 라이브에서 판매할 상품을 찾을 수 있습니다.",
+    primary: { label: "브랜드샵 보기", href: "/brands" },
+    secondary: { label: "브랜드 상품 보기", href: "#brand-products" },
   },
 ];
 
-export function HeroSlider() {
+export function HeroSlider({ showSignup }: { showSignup: boolean }) {
   const [current, setCurrent] = useState(0);
   const [playing, setPlaying] = useState(false);
 
@@ -56,23 +52,30 @@ export function HeroSlider() {
   }, [playing]);
 
   const slide = slides[current];
+  const primary = current === 0 && showSignup ? { label: "가입 유형 보기", href: "#signup-roles" } : slide.primary;
+  const secondary = current === 0 && showSignup ? slide.primary : slide.secondary;
   const select = (index: number) => {
     setPlaying(false);
     setCurrent((index + slides.length) % slides.length);
   };
 
   return (
-    <section className="relative isolate mx-3 mt-4 flex min-h-[min(550px,calc(100svh-112px))] flex-col justify-end overflow-hidden rounded-[24px] bg-navy text-white shadow-[0_20px_48px_#1A1A2E30] sm:mx-6 sm:mt-7 sm:min-h-[458px] sm:rounded-[30px]" aria-label="스토리지마켓 주요 서비스">
-      <div className="absolute inset-x-0 top-0 -z-10 h-[67%] overflow-hidden sm:inset-0 sm:h-full" aria-hidden="true">
+    <section className="relative isolate mx-4 mt-4 flex flex-col justify-end overflow-hidden rounded-[24px] bg-navy text-white shadow-[0_12px_34px_#1A1A2E20] sm:mx-6 sm:mt-6 sm:min-h-[390px] sm:rounded-[28px]" aria-label="스토리지마켓 주요 서비스">
+      <div className="relative -z-10 aspect-[1.7] max-h-[280px] overflow-hidden sm:absolute sm:inset-0 sm:h-full sm:max-h-none sm:aspect-auto" aria-hidden="true">
         {slides.map((item, index) => (
-          <div key={item.image} className={`absolute inset-0 transition-opacity duration-700 motion-reduce:transition-none ${index === current ? "opacity-100" : "opacity-0"}`}>
+          <div key={item.image} className={cn(
+            "absolute inset-0 transition-opacity duration-700 motion-reduce:transition-none",
+            index === 0 && "min-[720px]:left-12",
+            index === current ? "opacity-100" : "opacity-0",
+          )}>
             <picture>
               <source media="(max-width: 639px)" srcSet={item.mobileImage} type="image/webp" />
-              <Image src={item.image} alt="" fill priority={index === 0} loading={index === 0 ? undefined : "eager"} sizes="(min-width: 1040px) 668px, 100vw" unoptimized className="object-cover object-[60%_center]" />
+              <Image src={item.image} alt="" fill priority={index === 0} loading={index === 0 ? undefined : "eager"} sizes="(min-width: 1040px) 668px, 100vw" unoptimized
+                className={cn("object-cover object-center sm:object-[58%_center]", index === 0 && "min-[720px]:object-left")} />
             </picture>
           </div>
         ))}
-        <div className="absolute inset-0 bg-gradient-to-t from-navy from-[4%] via-navy/35 via-[38%] to-transparent sm:bg-gradient-to-r sm:from-[#17172B] sm:from-0% sm:via-[#17172B]/80 sm:via-50% sm:to-[#17172B]/20" />
+        <div className="absolute inset-0 bg-gradient-to-t from-navy via-transparent via-[40%] to-transparent sm:bg-gradient-to-r sm:from-navy sm:via-navy/85 sm:via-[38%] sm:to-navy/10" />
       </div>
 
       <div className="absolute right-4 top-4 hidden gap-1 sm:flex">
@@ -80,29 +83,26 @@ export function HeroSlider() {
         <button type="button" onClick={() => select(current + 1)} aria-label="다음 배너" className="grid w-11 place-items-center rounded-full bg-navy/55 text-white backdrop-blur-sm hover:bg-navy/80"><ChevronRight className="h-5 w-5" /></button>
       </div>
 
-      <div className="px-5 pb-3 pt-20 sm:px-9 sm:pb-5">
-        <p className="text-[11px] font-extrabold tracking-[0.18em] text-brand-200 sm:text-xs">{slide.eyebrow}</p>
-        <h1 className="mt-3 break-keep text-[clamp(1.65rem,7vw,2.45rem)] font-black leading-[1.14] tracking-[-0.055em] sm:text-[2.6rem]">
-          {slide.title}<br /><span className="text-[#FFD05A]">{slide.highlight}</span>
-        </h1>
-        <p className="mt-4 max-w-[395px] break-keep text-sm leading-6 text-white/85">{slide.description}</p>
-        <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1">
-          <Link href={slide.primary.href} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand-500 px-4 text-xs font-extrabold text-navy hover:bg-brand-400 sm:px-5 sm:text-sm">
-            {slide.primary.label}<ArrowRight className="h-4 w-4" />
-          </Link>
-          <Link href={slide.secondary.href} className="inline-flex min-h-11 items-center text-xs font-semibold text-white underline decoration-white/55 underline-offset-4 hover:text-brand-200 sm:text-sm">{slide.secondary.label}</Link>
+      <div className="px-5 pb-2 pt-2 sm:px-8 sm:pb-4 sm:pt-12">
+        <div aria-live={playing ? "off" : "polite"}>
+          <h1 className="break-keep text-[clamp(1.5rem,6.6vw,2.25rem)] font-black leading-tight tracking-[-0.055em] sm:text-[2.4rem]">
+            {slide.title}<br /><span className="text-brand-300">{slide.highlight}</span>
+          </h1>
+          <p className="mt-3 max-w-[320px] break-keep text-sm leading-6 text-white/90">{slide.description}</p>
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            <Link href={primary.href} className={cn(buttonVariants(), "rounded-xl bg-brand-300 px-3 text-xs font-bold text-navy hover:bg-brand-200 min-[390px]:text-sm sm:px-5")}>{primary.label}</Link>
+            <Link href={secondary.href} className={cn(buttonVariants({ variant: "outline" }), "rounded-xl border-white/45 bg-navy/65 px-3 text-xs font-bold text-white hover:border-brand-200 hover:bg-navy-700 min-[390px]:text-sm sm:px-5")}>{secondary.label}</Link>
+          </div>
         </div>
-        <div className="mt-2 flex items-center gap-2">
+        <div className="mt-2 flex items-center gap-0.5">
           {slides.map((item, index) => (
-            <button key={item.image} type="button" onClick={() => select(index)} aria-label={`${index + 1}번 배너`} aria-current={index === current ? "true" : undefined} className="grid w-6 place-items-center">
+            <button key={item.image} type="button" onClick={() => select(index)} aria-label={`${index + 1}번 배너`} aria-current={index === current ? "true" : undefined} className="grid w-9 place-items-center rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-300">
               <span className={`h-1.5 rounded-full transition-all ${index === current ? "w-6 bg-brand-300" : "w-2 bg-white/45"}`} />
             </button>
           ))}
-          <span className="text-[11px] font-bold tabular-nums text-white/75">0{current + 1} / 0{slides.length}</span>
-          <button type="button" onClick={() => setPlaying(!playing)} aria-label={playing ? "자동 재생 일시정지" : "자동 재생 시작"} className="grid w-9 place-items-center text-white/85 hover:text-brand-200">
+          <button type="button" onClick={() => setPlaying(!playing)} aria-label={playing ? "자동 재생 일시정지" : "자동 재생 시작"} className="grid w-10 place-items-center rounded-lg text-white/85 hover:text-brand-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-300">
             {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           </button>
-          <span className="ml-auto hidden text-[11px] text-white/70 sm:inline">{slide.caption}</span>
         </div>
       </div>
     </section>

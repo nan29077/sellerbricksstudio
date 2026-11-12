@@ -15,7 +15,11 @@ type ProductFields = {
   subCategory: string; sku: string; consumerPrice: number; images: string[]; options: string;
   allowDropship: boolean; allowWarehouse: boolean; shippingFee: number; leadDays: number; sampleLimitPerBuyer: number;
   minSalePrice?: number | null;
+  minOrderQty?: number; volume?: string; expiryInfo?: string; ingredients?: string; certification?: string;
 };
+
+// 상품 정보 고시 항목을 기본으로 펼쳐 보여 줄 카테고리
+const NOTICE_CATEGORIES = ["코스메틱", "식품", "건강식품", "농수산물", "유아동"];
 
 export function BrandProductEditor({ shopId, product }: { shopId: string; product?: ProductFields }) {
   const router = useRouter();
@@ -28,7 +32,7 @@ export function BrandProductEditor({ shopId, product }: { shopId: string; produc
     event.preventDefault();
     const form = event.currentTarget;
     const { samplePrice, supplyPrice, stock, sampleStock, isActive, consumerPrice, shippingFee, leadDays, sampleLimitPerBuyer,
-      allowDropship, allowWarehouse, images, minSalePrice, ...fields } = Object.fromEntries(new FormData(form));
+      allowDropship, allowWarehouse, images, minSalePrice, minOrderQty, ...fields } = Object.fromEntries(new FormData(form));
     setBusy(true);
     setStatus(undefined);
     try {
@@ -39,6 +43,7 @@ export function BrandProductEditor({ shopId, product }: { shopId: string; produc
         consumerPrice: Number(consumerPrice || 0), shippingFee: Number(shippingFee || 0), leadDays: Number(leadDays || 0),
         sampleLimitPerBuyer: Number(sampleLimitPerBuyer || 0),
         minSalePrice: minSalePrice === "" || minSalePrice == null ? null : Number(minSalePrice),
+        minOrderQty: Math.max(1, Number(minOrderQty || 1)),
         allowDropship: allowDropship === "on", allowWarehouse: allowWarehouse === "on",
         images: String(images ?? "").split(/\s*\n\s*/).map((v) => v.trim()).filter(Boolean),
       });
@@ -81,7 +86,8 @@ export function BrandProductEditor({ shopId, product }: { shopId: string; produc
         <legend className="px-1 text-sm font-bold text-navy">판매 방식</legend>
         <Label className="flex items-center gap-2"><input type="checkbox" name="allowDropship" defaultChecked={product?.allowDropship ?? true} />브랜드 직배송 허용 (판매 시 발주서 → 브랜드가 구매자에게 발송)</Label>
         <Label className="flex items-center gap-2"><input type="checkbox" name="allowWarehouse" defaultChecked={product?.allowWarehouse ?? true} />창고 입고(위탁) 허용 (창고에 미리 입고 → 창고가 출고)</Label>
-        <Label className="block">직배송 배송비 안내 (원)<Input type="number" name="shippingFee" min={0} max={1_000_000} defaultValue={product?.shippingFee ?? 0} /></Label>
+        <Label className="block">창고 입고 최소 수량 (MOQ)<Input type="number" name="minOrderQty" min={1} max={10000} defaultValue={product?.minOrderQty ?? 1} /></Label>
+        <Label className="block">직배송 배송비 안내 (원) — 참고용, 택배비는 공급가에 포함해 주세요<Input type="number" name="shippingFee" min={0} max={1_000_000} defaultValue={product?.shippingFee ?? 0} /></Label>
       </fieldset>
       <fieldset className="grid gap-3 rounded-xl border p-3 sm:grid-cols-3">
         <legend className="px-1 text-sm font-bold text-navy">샘플</legend>
@@ -95,6 +101,15 @@ export function BrandProductEditor({ shopId, product }: { shopId: string; produc
         <Label className="block sm:col-span-2">추가 이미지 주소 (한 줄에 하나, 최대 8개)<Textarea name="images" rows={2} defaultValue={product?.images.join("\n")} placeholder="https://…" /></Label>
         <Label className="block sm:col-span-2">상품 설명<Textarea name="description" rows={3} maxLength={2000} defaultValue={product?.description} /></Label>
       </div>
+      <details className="rounded-xl border p-3" open={NOTICE_CATEGORIES.includes(category) || !!(product?.volume || product?.expiryInfo || product?.ingredients || product?.certification)}>
+        <summary className="cursor-pointer text-sm font-bold text-navy">상품 정보 고시 <span className="font-normal text-slate-500">(화장품·식품은 입력 권장)</span></summary>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <Label className="block">용량·중량<Input name="volume" maxLength={60} defaultValue={product?.volume ?? ""} placeholder="예: 50ml / 500g" /></Label>
+          <Label className="block">유통기한·사용기한<Input name="expiryInfo" maxLength={60} defaultValue={product?.expiryInfo ?? ""} placeholder="예: 제조일로부터 24개월" /></Label>
+          <Label className="block sm:col-span-2">전성분·원재료명<Textarea name="ingredients" rows={2} maxLength={3000} defaultValue={product?.ingredients ?? ""} /></Label>
+          <Label className="block sm:col-span-2">인증·신고 사항<Input name="certification" maxLength={200} defaultValue={product?.certification ?? ""} placeholder="예: 기능성화장품 심사, KC 인증번호" /></Label>
+        </div>
+      </details>
       <Label className="flex items-center gap-2"><input type="checkbox" name="isActive" defaultChecked={product?.isActive ?? true} />샵에 상품 공개</Label>
       {status && <p role={status.error ? "alert" : "status"} className={status.error ? "text-sm text-red-700" : "text-sm text-emerald-700"}>{status.text}</p>}
       <Button disabled={busy}>{busy ? "저장 중…" : product ? "상품 저장" : "상품 등록"}</Button>

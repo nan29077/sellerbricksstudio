@@ -255,6 +255,11 @@ model BrandProduct {
   leadDays            Int                  @default(2) // 발주 후 출고 소요일
   sampleLimitPerBuyer Int                  @default(1) // 계정당 샘플 신청 한도(0 = 무제한)
   minSalePrice        Int? // 최저 판매가(비우면 공급가)
+  minOrderQty         Int                  @default(1) // 창고 입고(위탁) 요청 최소 수량(MOQ). 샘플·직배송 가져오기에는 적용 안 함
+  volume              String               @default("") // 용량·중량 (상품 정보 고시)
+  expiryInfo          String               @default("") // 유통기한 또는 사용기한 (예: 제조일로부터 24개월)
+  ingredients         String               @default("") @db.Text // 전성분·원재료명
+  certification       String               @default("") // 인증·신고 사항 (예: 기능성 화장품 심사, KC 인증번호)
   lowStockNotifiedAt  DateTime? // 재고 부족 알림을 보낸 시각(재입고되면 비움)
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
@@ -294,6 +299,7 @@ model BrandRequest {
   pgTransactionId     String?
   paidAt              DateTime?
   receivedAt          DateTime? // 창고 입고 완료 시각
+  remindedAt          DateTime? // 응대 기한이 지나 브랜드에 다시 알린 시각
   brandSettlementId   String?
   brandSettlement     BrandSettlement?   @relation(fields: [brandSettlementId], references: [id])
   createdAt           DateTime           @default(now())
@@ -1276,10 +1282,13 @@ model PlatformPolicy {
   poConfirmHours       Int      @default(24) // 브랜드 발주 확인 권장 시간(지연 표시 기준)
   sampleMaxPerOrder    Int      @default(20) // 샘플 주문당 최대 수량
   orderAfterEndHours   Int      @default(0) // 방송 종료 후 주문을 받는 시간(0 = 종료 즉시 마감)
-  settleAfterDays      Int      @default(0) // 배송 완료 후 n일이 지나야 정산 대상(구매 확정 유예, 보통 7)
+  liveAutoEndHours     Int      @default(2) // 예약(방송 예정) 종료 시각이 지나고 n시간 뒤에도 방송 중이면 자동 종료 (0 = 끄기)
+  settleAfterDays      Int      @default(7) // 배송 완료 후 n일이 지나야 정산 대상(구매 확정 유예, 보통 7)
   piiRetentionDays     Int      @default(90) // 배송 완료 n일 후 브랜드 화면에서 구매자 연락처·주소 가림
   requireEmailVerify   Boolean  @default(false) // 이메일 인증한 계정만 예약·방송·브랜드 거래 가능
   maxPendingBookings   Int      @default(10) // 셀러 한 명이 동시에 가질 수 있는 승인 대기 예약 수
+  requestReplyHours    Int      @default(72) // 샘플·입고 요청 응대 기한(시간). 지나면 브랜드에 다시 알림 (0 = 끄기)
+  requestAutoRejectHours Int    @default(72) // 응대 기한 후 이 시간이 더 지나도 응답이 없으면 자동 반려·유료 샘플 환불 (0 = 끄기)
   updatedBy            String?
   updatedAt            DateTime @updatedAt
 }
@@ -1360,6 +1369,7 @@ model BrandMessage {
   senderId  String
   sender    User        @relation(fields: [senderId], references: [id], onDelete: Cascade)
   body      String      @db.Text
+  flagged   Boolean     @default(false) // 전화번호·계좌번호 등 직거래 의심 내용 포함
   createdAt DateTime    @default(now())
 
   @@index([threadId, createdAt])
@@ -1412,4 +1422,20 @@ model BrandProductFavorite {
 
   @@unique([userId, brandProductId])
   @@index([brandProductId])
+}
+
+// 사이트 공지 (최고관리자 작성, 메인·대시보드에 노출)
+model SiteNotice {
+  id          String   @id @default(cuid())
+  title       String
+  body        String   @default("") @db.Text
+  link        String   @default("") // 자세히 보기 링크(선택)
+  audience    String   @default("ALL") // ALL | SELLER | FACILITY_ADMIN | BRAND_ADMIN
+  isPublished Boolean  @default(true)
+  pinned      Boolean  @default(false)
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isPublished, createdAt])
 }

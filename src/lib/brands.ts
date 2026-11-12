@@ -17,6 +17,16 @@ export const BRAND_REQUEST_KIND: Record<BrandRequestKind, string> = {
 };
 export const BRAND_BUYER_ROLES: Role[] = ["SELLER", "FACILITY_ADMIN"];
 
+/**
+ * 브랜드 공급가·재고·최저 판매가를 볼 수 있는 계정인지.
+ * 공급가는 거래 파트너(셀러·창고)와 최고관리자에게만 공개하고, 비로그인·구매자·다른 브랜드에는 숨긴다.
+ * (자기 브랜드샵은 각 화면에서 isMine 으로 따로 허용)
+ */
+export function canSeeSupplyPrice(role?: Role | null) {
+  return !!role && (BRAND_BUYER_ROLES.includes(role) || role === "SUPER_ADMIN");
+}
+export const SUPPLY_PRICE_HIDDEN_NOTE = "공급가는 셀러·창고(스튜디오) 계정으로 로그인하면 볼 수 있습니다";
+
 export function brandProductHref(shopId: string, productId: string) {
   return `/brands/${shopId}?product=${encodeURIComponent(productId)}#shop-products`;
 }

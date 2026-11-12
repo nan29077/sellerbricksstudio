@@ -8,6 +8,7 @@ import { slugify, parseKST } from "@/lib/utils";
 import { getCatenoidAdapter } from "@/lib/adapters/catenoid";
 import { audit } from "@/lib/audit";
 import { emailVerifyBlock } from "@/lib/account-guards";
+import { getSettings } from "@/lib/settings";
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,6 +17,8 @@ export async function POST(req: NextRequest) {
     const data = liveSessionSchema.parse(body);
     const blocked = await emailVerifyBlock(user);
     if (blocked) return fail(blocked, 403);
+    // 최고관리자가 '메뉴 권한 설정'에서 라이브 기능을 끄면 화면뿐 아니라 새 방송 만들기도 막는다.
+    if (!(await getSettings()).liveEnabled) return fail("지금은 라이브 기능이 꺼져 있어 방송을 만들 수 없습니다. 최고관리자에게 문의해 주세요.", 403);
 
     // 방송 장소
     //  - 창고(스튜디오) 방송: 승인된 예약으로만 만든다. (예약 시간 · 장소와 방송이 항상 연결되게) 창고 상품을 판다.

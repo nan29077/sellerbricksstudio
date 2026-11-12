@@ -11,6 +11,8 @@ import { applyOrderStatusInTx, cancelOrderItems, OrderActionError, shipLocalPart
 import { FULFILLMENT_ITEM_SELECT, orderActions, orderParts } from "@/lib/order-fulfillment";
 import { clearLimit, consume } from "@/lib/rate-limit";
 
+const REFUND_DENIED = "출고된 주문의 환불은 상품을 출고한 창고(스튜디오) 또는 최고관리자만 할 수 있습니다. 브랜드가 보낸 상품의 환불은 고객지원 1:1 문의로 요청해 주세요.";
+
 // PATCH /api/orders/[id]
 //  body: { status, reason?, carrier?, trackingNumber? }
 //    - 준비중 · 발송(운송장) · 배송완료: 직접 출고분의 배송 담당만 (창고(스튜디오) 방송 → 창고, 셀러 공간 방송의 임시 상품 → 셀러)
@@ -44,7 +46,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       if (body.action === "cancel-items") {
         const preShip = !orderParts(order).anyShipped && (order.status === "PAID" || order.status === "PREPARING");
         if (preShip ? !can.canCancel : !can.canRefund) {
-          return fail(preShip ? "이 주문을 취소할 권한이 없습니다." : "출고된 주문의 환불은 주문을 처리하는 창고(스튜디오) 또는 최고관리자만 할 수 있습니다.", 403);
+          return fail(preShip ? "이 주문을 취소할 권한이 없습니다." : REFUND_DENIED, 403);
         }
         const itemIds = Array.isArray(body.itemIds) ? body.itemIds.filter((v): v is string => typeof v === "string").slice(0, 200) : undefined;
         const purchaseOrderId = typeof body.purchaseOrderId === "string" ? body.purchaseOrderId : undefined;
@@ -60,7 +62,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
             ? "브랜드 직배송 상품은 브랜드가 발주서에서 출고 · 배송 완료를 처리합니다. 여기서는 배송 상태를 확인만 할 수 있습니다."
             : can.localShipper === "FACILITY" ? "배송 상태는 상품을 출고하는 창고(스튜디오)가 바꿉니다. 셀러는 확인만 할 수 있습니다." : "배송 상태는 셀러가 바꿉니다.", 403);
         }
-        if (status === "REFUNDED" && !can.canRefund) return fail("출고된 주문의 환불은 주문을 처리하는 창고(스튜디오) 또는 최고관리자만 할 수 있습니다.", 403);
+        if (status === "REFUNDED" && !can.canRefund) return fail(REFUND_DENIED, 403);
         return fail("현재 주문 상태에서는 이 처리를 할 수 없습니다.", 409);
       }
       const note = typeof body.reason === "string" ? body.reason.trim().slice(0, 300) : "";
