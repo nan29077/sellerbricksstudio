@@ -40,7 +40,7 @@ export default async function SiteManagementPage({ searchParams }: { searchParam
       {tab === "basic" && <SiteSettingsForm initial={settings} />}
       {tab === "background" && (
         <div className="space-y-3">
-          <p className="text-sm text-slate-600">메인페이지 양옆(PC)의 배경을 골라 저장합니다. 인물이 있는 실사형 이미지와 따뜻한 일러스트를 준비했습니다.</p>
+          <p className="text-sm text-slate-600">메인페이지 양옆(PC)의 배경을 골라 저장합니다. 미니어처 일러스트와 인물, 공간 배경을 고르고 플레이어와 메뉴 옆에 어떻게 보이는지 확인하세요.</p>
           <HomeBackgroundForm initial={settings.homeBackground} />
         </div>
       )}
