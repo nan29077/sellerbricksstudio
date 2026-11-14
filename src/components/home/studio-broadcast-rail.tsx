@@ -4,12 +4,15 @@ import { getHomeVideos, type HomeVideoCategory, type HomeVideoItem } from "@/lib
 import styles from "@/app/(studio)/studio.module.css";
 import rail from "./studio-broadcast-rail.module.css";
 
-// videos를 주면 그 영상(예: 브랜드샵의 라이브 커머스 영상)을, 없으면 메인 영상을 보여 준다
-export async function StudioBroadcastRail({ videos: own, title }: { videos?: Record<HomeVideoCategory, HomeVideoItem[]> | null; title?: string }) {
-  const videos = own ?? await getHomeVideos().catch(() => null);
+// own: 이 화면 전용 영상(예: 브랜드샵 — 그 브랜드의 라이브 커머스 영상). 주지 않으면 메인 영상.
+//  브랜드샵처럼 그 화면 영상만 보여 줘야 할 때는 own={{...}} + emptyText (영상이 없으면 안내만)
+export async function StudioBroadcastRail({ own, title, emptyText, logo }: {
+  own?: Record<HomeVideoCategory, HomeVideoItem[]> | null; title?: string; emptyText?: string; logo?: string | null;
+}) {
+  const videos = own !== undefined ? own : await getHomeVideos().catch(() => null);
   return (
     <div className={`${styles.broadcast} ${rail.railOnly}`}>
-      <HomeBroadcastPlayer videos={videos} title={own ? title : undefined} />
+      <HomeBroadcastPlayer videos={videos} title={own !== undefined ? title : undefined} emptyText={own !== undefined ? emptyText : undefined} logo={own !== undefined ? logo : undefined} />
     </div>
   );
 }

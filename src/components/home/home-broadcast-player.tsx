@@ -26,15 +26,25 @@ const toSlide = (v: HomeVideoItem): Slide => ({
   id: v.id, title: v.title, caption: v.caption, poster: v.poster || DEFAULT_POSTER, duration: v.duration, url: v.url, source: v.source,
 });
 
-export function HomeBroadcastPlayer({ videos, title = "라이브 커머스" }: { videos: Record<HomeVideoCategory, HomeVideoItem[]> | null; title?: string }) {
-  const slides = videos?.LIVE_COMMERCE.length ? videos.LIVE_COMMERCE.map(toSlide) : SAMPLE_SLIDES;
+// emptyText: 영상이 없을 때 샘플 대신 보여 줄 안내 (예: 브랜드샵 — 그 브랜드가 아직 영상을 안 넣었을 때)
+export function HomeBroadcastPlayer({ videos, title = "라이브 커머스", emptyText, logo }: { videos: Record<HomeVideoCategory, HomeVideoItem[]> | null; title?: string; emptyText?: string; logo?: string | null }) {
+  const own = videos?.LIVE_COMMERCE.length ? videos.LIVE_COMMERCE.map(toSlide) : null;
+  const slides = own ?? (emptyText ? null : SAMPLE_SLIDES);
   return (
     <section className={styles.player} aria-labelledby="home-broadcast-heading">
       <div className={styles.heading}>
-        <span className={styles.headingIcon}><Video aria-hidden="true" size={19} /></span>
+        <span className={styles.headingIcon}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {logo ? <img src={logo} alt="" className="h-full w-full rounded-[10px] object-cover" /> : <Video aria-hidden="true" size={19} />}
+        </span>
         <h2 id="home-broadcast-heading">{title}</h2>
       </div>
-      <VideoCarousel items={slides} label={`${title} 영상`} />
+      {slides ? <VideoCarousel items={slides} label={`${title} 영상`} /> : (
+        <div className={styles.empty}>
+          <Video aria-hidden="true" size={30} />
+          <p>{emptyText}</p>
+        </div>
+      )}
     </section>
   );
 }

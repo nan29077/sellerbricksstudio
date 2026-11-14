@@ -19,7 +19,7 @@ export default async function StudioLayout({ children }: { children: React.React
 
   return (
     <div className={styles.shell}>
-      <div className={styles.background}><HomeBackgroundArtwork id={settings.homeBackground} /></div>
+      <div className={styles.background} data-studio-background><HomeBackgroundArtwork id={settings.homeBackground} /></div>
       <div className={styles.column}>
         <StudioTopBar account={account} />
         <main id="studio-content">{children}</main>

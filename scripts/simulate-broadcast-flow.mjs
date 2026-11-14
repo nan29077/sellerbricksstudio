@@ -67,10 +67,12 @@ async function main() {
   ok(pg.status === 200 && pg.text.includes(myShop.name) && pg.text.includes(`/seller/brands/${myShop.id}?product=`), "셀러 대시보드 안 브랜드샵 (상품 링크도 대시보드 안)");
   pg = await brand.page("/brand/dashboard");
   ok(pg.status === 200 && !pg.text.includes("/brand/explore") && !pg.text.includes(">브랜드샵 둘러보기<"), "브랜드 메뉴: 브랜드샵 둘러보기 없음");
-  ok(["① 내 브랜드샵", "② 셀러 요청", "③ 발주 · 출고", "④ 정산 · 분석", "내 샵 미리보기", "방송 시연품 요청"].every((t) => pg.text.includes(t)), "브랜드 메뉴: 샵 → 셀러 요청 → 발주 · 출고 → 정산");
+  ok(["① 내 브랜드샵", "② 셀러 요청", "③ 발주 · 출고", "④ 정산 · 분석", "방송 시연품 요청"].every((t) => pg.text.includes(t)), "브랜드 메뉴: 샵 → 셀러 요청 → 발주 · 출고 → 정산");
   ok((await brand.page("/brand/explore")).status === 404, "브랜드: 예전 브랜드샵 둘러보기 주소 없음");
   pg = await brand.page("/brand/preview");
-  ok(redirectTo(pg, new RegExp(`/brands/${myShop.id}`)), "브랜드: 내 샵 미리보기 → 내 브랜드샵", { status: pg.status, loc: pg.location });
+  ok(redirectTo(pg, new RegExp(`/brands/${myShop.id}`)), "브랜드: 샵 미리보기 주소 → 내 브랜드샵 (메뉴에서는 뺌)", { status: pg.status, loc: pg.location });
+  pg = await guest.page("/login");
+  ok(pg.status === 200 && pg.text.includes("테스트 계정으로 바로 로그인") && pg.text.includes("셀러로 로그인"), "로그인: 테스트 계정 버튼이 처음부터 함께 그려짐 (늦게 뜨지 않음)");
   for (const p of ["/facilities", "/intro", "/notices", "/terms", "/privacy", `/brands/${myShop.id}`]) {
     pg = await guest.page(p);
     ok(pg.status === 200 && pg.text.includes("studio-content"), `공개 화면 ${p}: 메인과 같은 화면 틀`, { status: pg.status });
@@ -108,8 +110,15 @@ async function main() {
   ok(pg.status === 200 && pg.text.includes("브랜드샵 라이브 커머스 영상"), "최고관리자 브랜드 관리 화면에서도 영상 관리");
   if (PLAYER) {
     pg = await guest.page(`/brands/${myShop.id}`);
-    ok(pg.text.includes(`시뮬 브랜드 라이브 다시보기 ${stamp}`) && pg.text.includes(`${myShop.name} 라이브`), "브랜드샵 왼쪽 플레이어: 그 브랜드의 영상");
+    ok(pg.text.includes(`시뮬 브랜드 라이브 다시보기 ${stamp}`) && pg.text.includes(`${myShop.name} 라이브 커머스`), "브랜드샵 왼쪽 플레이어: 그 브랜드의 영상");
+    ok(pg.text.includes("data-studio-background") && /\[data-studio-background\]\{background:/.test(pg.text), "브랜드샵: 양옆 여백을 샵 꾸미기 배경으로");
+    ok(pg.text.includes(`"name":"${myShop.name}"`) || pg.text.includes(myShop.name), "브랜드샵: 위쪽 머리글에 브랜드 로고 · 이름");
     ok(!pg.text.includes(`시뮬 브랜드 숨김 ${stamp}`), "숨긴 영상은 안 보임");
+  }
+  const other = await db.brandShop.findFirst({ where: { status: "APPROVED", id: { not: myShop.id }, videos: { none: {} } } });
+  if (PLAYER && other) {
+    pg = await guest.page(`/brands/${other.id}`);
+    ok(pg.text.includes("라이브 커머스 영상이 곧 올라와요") && !pg.text.includes(`시뮬 브랜드 라이브 다시보기 ${stamp}`), "영상이 없는 브랜드샵: 메인 영상 대신 안내 (다른 브랜드 영상 안 섞임)");
   }
   r = await brand.req("PATCH", V, { id: v2, isVisible: true });
   ok(r.ok && r.data.isVisible, "숨김 해제", r);

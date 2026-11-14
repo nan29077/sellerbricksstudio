@@ -154,7 +154,6 @@ const ROLE_NAV: Record<string, NavSection[]> = {
     { title: "① 내 브랜드샵", items: [
       { href: "/brand/shop", label: "샵 꾸미기 · 라이브 영상", icon: LayoutTemplate },
       { href: "/brand/products", label: "상품 · 재고 관리", icon: Package },
-      { href: "/brand/preview", label: "내 샵 미리보기", icon: Globe },
     ]},
     { title: "② 셀러 요청", items: [
       { href: "/brand/requests?kind=DISPLAY", label: "방송 시연품 요청", icon: CalendarDays },

@@ -22,9 +22,10 @@ import { BrandOrderButton } from "@/components/shop/brand-order-button";
 import { ShopImage } from "@/components/shop/shop-image";
 import { ShopShell } from "@/components/shop/shop-shell";
 import { buyerHome } from "@/components/shop/buyer-brand-pages";
+import { StudioBrandMark } from "@/components/home/studio-brand";
 
 // 브랜드샵 화면 — 메인(/brands/[id])과 각 대시보드 안(셀러 /seller/brands/[id] 등)에서 같은 내용을 보여 준다 (2026-11-14)
-export async function BrandStorefront({ id, searchParams, base = "/brands", frame = "shop" }: { id: string; searchParams: SP; base?: string; frame?: "shop" | "inline" }) {
+export async function BrandStorefront({ id, searchParams, base = "/brands", frame = "shop", studio = false }: { id: string; searchParams: SP; base?: string; frame?: "shop" | "inline"; studio?: boolean }) {
   const [shop, user] = await Promise.all([
     prisma.brandShop.findUnique({
       where: { id },
@@ -94,11 +95,13 @@ export async function BrandStorefront({ id, searchParams, base = "/brands", fram
 
   return (
     <ShopShell background={shop.backgroundUrl} fallback={BRAND_ARTWORK[4].url} links={links} frame={frame}>
-      <header id="shop-home" className="flex min-h-16 items-center justify-between gap-4 border-b bg-white px-4 sm:px-6">
-        <div className="flex min-w-0 items-center gap-2">
-          <ShopImage src={shop.logoUrl} fallback={shopAvatar} className="h-9 w-9 shrink-0 rounded-full border bg-white object-cover" />
-          <span className="truncate text-sm font-black text-navy">{shop.name}</span>
-        </div>
+      <header id="shop-home" className={studio ? "flex min-h-11 items-center justify-end gap-4 border-b bg-white px-4 sm:px-6" : "flex min-h-16 items-center justify-between gap-4 border-b bg-white px-4 sm:px-6"}>
+        {studio ? <StudioBrandMark id={shop.id} name={shop.name} logo={shop.logoUrl} /> : (
+          <div className="flex min-w-0 items-center gap-2">
+            <ShopImage src={shop.logoUrl} fallback={shopAvatar} className="h-9 w-9 shrink-0 rounded-full border bg-white object-cover" />
+            <span className="truncate text-sm font-black text-navy">{shop.name}</span>
+          </div>
+        )}
         <div className="flex shrink-0 items-center gap-3">
           {management && <Link href={management} className="text-xs font-bold text-slate-600 hover:text-navy">샵 관리</Link>}
           <Link href={base} className="inline-flex items-center gap-1 text-xs font-bold text-slate-600 hover:text-navy"><ArrowLeft className="h-4 w-4" /> 브랜드 목록</Link>

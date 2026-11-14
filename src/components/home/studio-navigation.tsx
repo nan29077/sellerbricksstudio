@@ -2,6 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useStudioBrand } from "@/components/home/studio-brand";
+import { defaultProfileImage } from "@/lib/profile";
 import { SupportButton } from "@/components/support/support-center";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
@@ -30,13 +32,32 @@ const settingsHref: Record<Role, string> = {
 export function StudioTopBar({ account }: { account: Account }) {
   const menu = useRef<HTMLDialogElement>(null);
   const pathname = usePathname();
+  const shopId = /^\/brands\/([^/]+)$/.exec(pathname ?? "")?.[1] ?? null;
+  const mark = useStudioBrand();
+  const brand = mark && mark.id === shopId ? mark : null;
 
   return (
     <>
       <header className="sticky top-0 z-40 flex h-[62px] items-center justify-between border-b border-[#E4E8EC] bg-[#F8F9FA]/95 px-4 backdrop-blur-md sm:h-[66px] sm:px-6">
-        <Link href="/" className="flex min-h-11 items-center">
-          <SiteLogo className="w-[min(215px,calc(100vw-144px))] sm:w-[250px]" priority />
-        </Link>
+        {shopId ? (
+          // 브랜드샵 화면: 스토리지마켓 로고 대신 그 브랜드의 로고 · 이름 (불러오는 동안은 빈 자리)
+          <Link href={`/brands/${shopId}`} className="flex min-h-11 min-w-0 items-center gap-2.5" aria-label={brand ? `${brand.name} 브랜드샵 홈` : "브랜드샵 홈"}>
+            {brand && (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={brand.logo || defaultProfileImage(`brand:${brand.id}`)} alt="" className="h-10 w-10 shrink-0 rounded-xl border border-slate-200 bg-white object-cover sm:h-11 sm:w-11" />
+                <span className="min-w-0">
+                  <span className="block truncate text-base font-black text-navy sm:text-lg">{brand.name}</span>
+                  <span className="block text-[10.5px] font-bold tracking-wide text-slate-500">BRAND SHOP · 스토리지마켓</span>
+                </span>
+              </>
+            )}
+          </Link>
+        ) : (
+          <Link href="/" className="flex min-h-11 items-center">
+            <SiteLogo className="w-[min(215px,calc(100vw-144px))] sm:w-[250px]" priority />
+          </Link>
+        )}
         <div className="flex items-center gap-2">
           {account ? <NotificationBell /> : (
             <Link href="/login" aria-label="로그인" className="grid h-10 w-10 place-items-center rounded-full border border-slate-200 bg-white text-navy hover:bg-brand-50">
