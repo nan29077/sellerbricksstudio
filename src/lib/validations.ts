@@ -10,7 +10,7 @@ export const signupSchema = z.object({
   companyName: z.string().trim().max(60).optional(),
   businessNumber: z.string().trim().max(20).regex(/^[0-9-]*$/, "사업자등록번호는 숫자와 - 만 입력하세요.").optional(),
   categories: z.array(z.string().refine(isCategory, "알 수 없는 카테고리입니다.")).max(17).optional(),
-  // 직접 가입은 셀러 · 브랜드사만. 창고(스튜디오)는 본사가 운영하고, 창고 운영 매니저는 최고관리자가 만든다.
+  // 직접 가입은 셀러 · 브랜드사만. 공간은 본사가 운영하고, 창고 운영 매니저는 최고관리자가 만든다.
   role: z.enum(["SELLER", "BRAND_ADMIN"], { errorMap: () => ({ message: "가입할 수 없는 회원 유형입니다." }) }),
   livePlatforms: z.array(z.string().refine(isLivePlatform, "알 수 없는 플랫폼입니다.")).max(40).optional(),
   livePlatformEtc: z.string().trim().max(60).optional(),
@@ -36,7 +36,7 @@ export const bookingSchema = z.object({
   expectedProducts: z.string().max(500).optional(),
   headcount: z.coerce.number().int().min(1).max(500).optional(),
   requestNote: z.string().max(1000).optional(),
-  // 방송에서 판매할 창고(스튜디오) 상품과 수량
+  // 방송에서 판매할 공간 상품과 수량
   products: z.array(z.object({
     facilityProductId: z.string().min(1),
     quantity: z.coerce.number().int().min(1, "수량은 1개 이상입니다.").max(100000),
@@ -60,7 +60,7 @@ export const facilityProductSchema = z.object({
   thumbnailUrl: z.string().optional(),
   salePrice: z.coerce.number().int().min(0),
   consumerPrice: z.coerce.number().int().min(0),
-  // 셀러 공급가: 판매되면 창고(스튜디오)가 받는 금액. 비우면 셀러 수수료 방식
+  // 셀러 공급가: 판매되면 공간이 받는 금액. 비우면 셀러 수수료 방식
   supplyPrice: z.preprocess((v) => (v === "" || v === null || v === undefined ? null : v), z.union([z.coerce.number().int().min(0, "공급가는 0원 이상입니다.").max(100_000_000), z.null()])).optional(),
   stock: z.coerce.number().int().min(0),
   shippingInfo: z.string().optional(),

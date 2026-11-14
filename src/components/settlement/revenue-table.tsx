@@ -8,10 +8,10 @@ import type { revenueLines } from "@/lib/settlement";
 
 type Rows = Awaited<ReturnType<typeof revenueLines>>;
 
-// 판매별 내 수익 (셀러 · 창고(스튜디오) 화면). 금액은 주문할 때 확정된 분배 기준이다.
+// 판매별 내 수익 (셀러 · 스토리지마켓 화면). 금액은 주문할 때 확정된 분배 기준이다.
 export function RevenueTable({ rows, perspective }: { rows: Rows; perspective: "SELLER" | "FACILITY" }) {
   const mine = (r: Rows[number]) => (perspective === "SELLER" ? r.seller : r.facility);
-  const other = perspective === "SELLER" ? "창고(스튜디오)" : "셀러";
+  const other = perspective === "SELLER" ? "공간" : "셀러";
   const total = rows.reduce((s, r) => s + mine(r), 0);
   return (
     <Card>
@@ -19,7 +19,7 @@ export function RevenueTable({ rows, perspective }: { rows: Rows; perspective: "
         <div>
           <CardTitle className="text-base">판매별 내 수익 (최근 {rows.length}건)</CardTitle>
           <p className="text-xs text-muted-foreground">
-            주문할 때 확정된 금액입니다. 판매가 = 플랫폼 수수료 + 브랜드 공급대금 + 창고(스튜디오) 몫 + 셀러 몫 · 배송비는 택배를 보내는 쪽 몫(창고가 출고하면 창고, 브랜드 직배송 · 셀러 공간 방송은 셀러)에 포함.
+            주문할 때 확정된 금액입니다. 판매가 = 플랫폼 수수료 + 브랜드 공급대금 + 공간 몫 + 셀러 몫 · 배송비는 택배를 보내는 쪽 몫(창고가 출고하면 창고, 브랜드 직배송 · 셀러 공간 방송은 셀러)에 포함.
             배송 완료 후 정산서에 들어갑니다.
           </p>
         </div>

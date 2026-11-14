@@ -43,9 +43,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (nextSupply != null && nextSupply > nextSale) return fail("셀러 공급가는 판매가보다 클 수 없습니다.");
     // 브랜드에서 가져온 상품: 공급가 아래로 팔 수 없고, 직배송 판매 한도는 브랜드 재고를 넘을 수 없다.
     if (fp.brandProductId) {
-      const bp = await prisma.brandProduct.findUnique({ where: { id: fp.brandProductId }, select: { supplyPrice: true, minSalePrice: true, stock: true, isActive: true, allowDropship: true, shop: { select: { status: true } } } });
+      const bp = await prisma.brandProduct.findUnique({ where: { id: fp.brandProductId }, select: { supplyPrice: true, minSalePrice: true, salePrice: true, priceRule: true, stock: true, isActive: true, allowDropship: true, shop: { select: { status: true } } } });
       if (bp && fpData.salePrice !== undefined && fpData.salePrice < bp.supplyPrice) return fail(`판매가는 브랜드 공급가(${bp.supplyPrice.toLocaleString()}원)보다 낮을 수 없습니다.`);
       if (bp?.minSalePrice != null && fpData.salePrice !== undefined && fpData.salePrice < bp.minSalePrice) return fail(`판매가는 브랜드 최저 판매가(${bp.minSalePrice.toLocaleString()}원)보다 낮을 수 없습니다.`);
+      if (bp && bp.priceRule === "FIXED" && bp.salePrice > 0 && fpData.salePrice !== undefined && fpData.salePrice !== bp.salePrice) return fail(`브랜드가 판매가를 ${bp.salePrice.toLocaleString()}원으로 고정한 상품입니다.`);
       if (bp && nextSupply != null && nextSupply < bp.supplyPrice) return fail(`셀러 공급가는 브랜드 공급가(${bp.supplyPrice.toLocaleString()}원)보다 낮을 수 없습니다.`);
       if (bp && fpData.isSellable && bp.shop.status !== "APPROVED") return fail("브랜드샵이 공개 중지되어 판매할 수 없는 상품입니다.");
       if (bp && fp.fulfillment === "DROPSHIP" && fpData.stock !== undefined && fpData.stock > bp.stock) return fail(`직배송 판매 한도는 브랜드 재고(${bp.stock.toLocaleString()}개)를 넘을 수 없습니다.`);

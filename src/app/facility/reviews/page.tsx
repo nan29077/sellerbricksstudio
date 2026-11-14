@@ -43,7 +43,7 @@ export default async function FacilityReviews({ searchParams }: { searchParams: 
 
   return (
     <div className="space-y-5 pb-24 md:pb-0">
-      <PageHeader title="리뷰 관리" description="이용을 마친 셀러의 리뷰를 확인하고 답글로 소통하세요. 답글이 달린 창고(스튜디오)는 재예약률이 높아집니다." />
+      <PageHeader title="리뷰 관리" description="이용을 마친 셀러의 리뷰를 확인하고 답글로 소통하세요. 답글이 달린 공간은 재예약률이 높아집니다." />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="평균 평점" value={`★ ${(agg._avg.rating ?? 0).toFixed(1)}`} sub={`공개 리뷰 ${agg._count}개`} icon={Star} tone="brand" />
         <Kpi label="답글 대기" value={`${unreplied}개`} icon={MessageSquareReply} tone={unreplied ? "red" : "green"} />

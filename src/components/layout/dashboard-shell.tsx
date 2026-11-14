@@ -28,7 +28,7 @@ const ROLE_NAV: Record<string, NavSection[]> = {
     ]},
     { title: "창고 운영", items: [
       { href: "/facility/dashboard", label: "창고 운영 콘솔", icon: Warehouse },
-      { href: "/admin/facilities", label: "창고(스튜디오) 목록 · 공개", icon: Building2 },
+      { href: "/admin/facilities", label: "공간 목록 · 공개", icon: Building2 },
       { href: "/admin/managers",   label: "창고 운영 매니저", icon: UserCog },
     ]},
     { title: "회원 · 브랜드", items: [
@@ -40,7 +40,8 @@ const ROLE_NAV: Record<string, NavSection[]> = {
     ]},
     { title: "예약 관리", items: [
       { href: "/admin/bookings",          label: "예약 현황", icon: CalendarDays },
-      { href: "/admin/farm-reservations", label: "창고(스튜디오) 예약", icon: Building2 },
+      { href: "/admin/displays",          label: "방송 시연품 현황", icon: PackagePlus },
+      { href: "/admin/farm-reservations", label: "공간 예약", icon: Building2 },
     ]},
     { title: "정산 · 마케팅", items: [
       { href: "/admin/payouts",     label: "판매 · 브랜드 정산", icon: Banknote },
@@ -93,13 +94,13 @@ const ROLE_NAV: Record<string, NavSection[]> = {
       { href: "/seller/settings", label: "설정", icon: Settings },
     ]},
   ],
-  // 창고 운영 콘솔 (/facility) — 창고(스튜디오) 계정은 없고 본사가 운영한다. 최고관리자용
+  // 창고 운영 콘솔 (/facility) — 공간 계정은 없고 본사가 운영한다. 최고관리자용
   FACILITY_OPS: [
     { title: "창고 운영", items: [
       { href: "/facility/dashboard", label: "대시보드",  icon: LayoutDashboard },
-      { href: "/facility/profile",   label: "창고(스튜디오) 정보 · 편집", icon: Warehouse },
-      { href: "/facility/register",  label: "창고(스튜디오) 등록", icon: SquarePlus },
-      { href: "/facility/pages",     label: "창고(스튜디오)샵 관리", icon: LayoutTemplate },
+      { href: "/facility/profile",   label: "공간 정보 · 편집", icon: Warehouse },
+      { href: "/facility/register",  label: "공간 등록", icon: SquarePlus },
+      { href: "/facility/pages",     label: "공간 페이지 관리", icon: LayoutTemplate },
       { href: "/facility/products",  label: "상품 · 재고", icon: Package },
     ]},
     { title: "브랜드", items: [
@@ -127,8 +128,8 @@ const ROLE_NAV: Record<string, NavSection[]> = {
   FACILITY_OPS_MANAGER: [
     { title: "담당 창고 운영", items: [
       { href: "/facility/dashboard", label: "대시보드",  icon: LayoutDashboard },
-      { href: "/facility/profile",   label: "창고(스튜디오) 정보 · 편집", icon: Warehouse },
-      { href: "/facility/pages",     label: "창고(스튜디오)샵 관리", icon: LayoutTemplate },
+      { href: "/facility/profile",   label: "공간 정보 · 편집", icon: Warehouse },
+      { href: "/facility/pages",     label: "공간 페이지 관리", icon: LayoutTemplate },
       { href: "/facility/products",  label: "상품 · 재고", icon: Package },
     ]},
     { title: "예약 관리", items: [
@@ -179,7 +180,7 @@ ROLE_NAV.MANAGER = [
   ]},
   { title: "현황", items: [
     { href: "/manager/dashboard",  label: "대시보드", icon: LayoutDashboard },
-    { href: "/manager/facilities", label: "담당 창고(스튜디오)", icon: Building2 },
+    { href: "/manager/facilities", label: "담당 공간", icon: Building2 },
     { href: "/manager/bookings",   label: "예약 현황", icon: CalendarDays },
   ]},
   { title: "매출 · 수수료", items: [

@@ -71,7 +71,7 @@ export const authOptions: NextAuthOptions = {
             return null;
           }
           if (!user.isActive) { await recordLoginFail(email); return null; }
-          // 창고(스튜디오) 관리자 계정은 없어졌다 (창고는 본사가 직접 운영). 예전 계정은 로그인할 수 없다.
+          // 공간 관리자 계정은 없어졌다 (창고는 본사가 직접 운영). 예전 계정은 로그인할 수 없다.
           if (user.role === "FACILITY_ADMIN") { await recordLoginFail(email); return null; }
           const ok = await bcrypt.compare(credentials.password, user.passwordHash);
           if (!ok) { await recordLoginFail(email); return null; }

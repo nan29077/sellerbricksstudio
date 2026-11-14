@@ -10,7 +10,7 @@ import { emailVerifyBlock } from "@/lib/account-guards";
 // POST /api/bookings — 셀러 예약 신청
 // body: { facilityId, startAt, endAt, purpose?, headcount?, requestNote?, products?: [{facilityProductId, quantity}],
 //         repeatWeeks?: 1~12, skipConflicts?: boolean, dryRun?: boolean }
-// - 창고(스튜디오) 이용료는 무료입니다.
+// - 공간 이용료는 무료입니다.
 // - dryRun=true 이면 저장하지 않고 날짜별 예약 가능 여부만 돌려줍니다. (반복 예약 미리보기)
 export async function POST(req: NextRequest) {
   try {

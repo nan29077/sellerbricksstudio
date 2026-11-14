@@ -16,7 +16,7 @@ import { ScrollText } from "lucide-react";
 export const dynamic = "force-dynamic";
 const BASE = "/admin/audit-logs";
 const ENTITY: Record<string, string> = {
-  Booking: "예약", Facility: "창고(스튜디오)", User: "회원", FacilityReview: "리뷰", FacilitySettlement: "정산", MarketingApplication: "마케팅",
+  Booking: "예약", Facility: "공간", User: "회원", FacilityReview: "리뷰", FacilitySettlement: "정산", MarketingApplication: "마케팅",
   ManagerCommissionRule: "매니저 수수료", CommissionRule: "수수료", Order: "주문", LiveSession: "라이브", Payment: "결제",
 };
 function tone(action: string): "red" | "green" | "yellow" | "blue" | "gray" {

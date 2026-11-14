@@ -5,6 +5,7 @@ import { Truck, PackageCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/client-api";
 import { cn } from "@/lib/utils";
+import { variantKeyOf } from "@/lib/brand-pricing";
 
 // 예약에 담은 브랜드 상품(방송 시연품) 준비 현황 — 공간 운영자는 '도착 확인'을 누른다
 export type BrandItemView = {
@@ -36,7 +37,7 @@ export function BrandItemList({ items, canConfirm }: { items: BrandItemView[]; c
         {items.map((i) => (
           <li key={i.id} className="flex flex-wrap items-center gap-1.5 text-xs">
             <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-bold", TONE[i.state])}>{i.stateLabel}</span>
-            <span className="min-w-0 font-semibold text-navy">{i.name}{i.optionLabel ? ` · ${i.optionLabel.split(":").pop()}` : ""} ×{i.quantity}</span>
+            <span className="min-w-0 font-semibold text-navy">{i.name}{i.optionLabel ? ` · ${variantKeyOf(i.optionLabel)}` : ""} ×{i.quantity}</span>
             <span className="text-slate-500">{i.brandName}{i.due && i.state !== "ARRIVED" && i.state !== "UNAVAILABLE" ? ` · ${i.due}까지 도착` : ""}{i.trackingNumber ? ` · ${i.carrier ?? ""} ${i.trackingNumber}` : ""}{i.reason ? ` · ${i.reason}` : ""}</span>
             {canConfirm && (i.state === "PREPARING" || i.state === "SHIPPING") && (
               <Button size="sm" variant="outline" className="ml-auto h-8" disabled={busy === i.id} onClick={() => confirm(i.id)}><PackageCheck className="h-3.5 w-3.5" />{busy === i.id ? "확인 중…" : "도착 확인"}</Button>

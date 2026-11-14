@@ -38,7 +38,7 @@ export function BrandImportButton({ product, target, facilities = [] }: {
 
   if (!modes.length) return null;
   if (target === "FACILITY" && !facilities.length) {
-    return <Link href="/facility/register" className="text-xs font-semibold text-brand-800 underline">창고(스튜디오) 등록 후 가져오기</Link>;
+    return <Link href="/facility/register" className="text-xs font-semibold text-brand-800 underline">공간 등록 후 가져오기</Link>;
   }
   const price = Number(salePrice) || 0;
   const margin = price - product.supplyPrice;
@@ -84,7 +84,7 @@ export function BrandImportButton({ product, target, facilities = [] }: {
             <p className="rounded-xl bg-emerald-50 p-3 font-semibold text-emerald-800">
               {done.kind === "SELLER" ? "내 브랜드 판매 상품에 담았습니다. 외부 라이브 플랫폼에서 팔고 '주문서 작성'에 이 상품을 담으면, 공급가를 결제하는 즉시 발주서가 브랜드로 전달되고 브랜드가 받는 분에게 바로 배송합니다."
                 : done.needsStock ? "창고 입고 방식으로 등록했습니다. 브랜드사에 입고를 요청하고, 입고 확인 후 판매가 시작됩니다."
-                : "창고(스튜디오) 판매 상품으로 등록했습니다. 셀러가 예약할 때 이 상품을 고를 수 있습니다."}
+                : "공간 판매 상품으로 등록했습니다. 셀러가 예약할 때 이 상품을 고를 수 있습니다."}
             </p>
             <div className="flex flex-wrap gap-2">
               <Link href={done.kind === "SELLER" ? "/seller/brand-products" : "/facility/brand-products"} className="font-bold text-brand-800 underline">
@@ -95,7 +95,7 @@ export function BrandImportButton({ product, target, facilities = [] }: {
         ) : (
           <form className="space-y-3" onSubmit={submit}>
             {target === "FACILITY" && facilities.length > 1 && (
-              <Label className="block">등록할 창고(스튜디오)
+              <Label className="block">등록할 공간
                 <Select value={facilityId} onChange={(e) => setFacilityId(e.target.value)}>
                   {facilities.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
                 </Select>
@@ -125,7 +125,7 @@ export function BrandImportButton({ product, target, facilities = [] }: {
                 </Label>
                 <p className="text-[11px] text-slate-600">
                   {supplyToSeller != null
-                    ? <>판매 1개당 · 브랜드 {formatKRW(product.supplyPrice)} · 창고(스튜디오) {formatKRW(Math.max(0, supplyToSeller - product.supplyPrice))} · 셀러 {formatKRW(Math.max(0, price - supplyToSeller))} (판매 수수료 차감 전)</>
+                    ? <>판매 1개당 · 브랜드 {formatKRW(product.supplyPrice)} · 공간 {formatKRW(Math.max(0, supplyToSeller - product.supplyPrice))} · 셀러 {formatKRW(Math.max(0, price - supplyToSeller))} (판매 수수료 차감 전)</>
                     : "비워 두면 아래 셀러 수수료 방식으로 정산합니다."}
                 </p>
                 {supplyError && <p className="text-[11px] font-semibold text-red-600">셀러 공급가는 브랜드 공급가 이상, 판매가 이하로 정하세요.</p>}

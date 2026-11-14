@@ -4,24 +4,24 @@ import { calcSellerCommission } from "@/lib/utils";
 import { getPolicy, pct, type Policy } from "@/lib/policy";
 
 // ---------------------------------------------------------------------------
-// 판매 금액 나누기 (구매자 결제금 = 플랫폼 수수료 + 브랜드 공급대금 + 창고(스튜디오) 몫 + 셀러 몫 + 배송비)
-//  - 창고(스튜디오) 상품 · 공급가 방식: 창고는 "셀러 공급가 × 수량"(브랜드 위탁 상품이면 그중 브랜드 공급대금을 뺀 나머지),
+// 판매 금액 나누기 (구매자 결제금 = 플랫폼 수수료 + 브랜드 공급대금 + 공간 몫 + 셀러 몫 + 배송비)
+//  - 공간 상품 · 공급가 방식: 창고는 "셀러 공급가 × 수량"(브랜드 위탁 상품이면 그중 브랜드 공급대금을 뺀 나머지),
 //    셀러는 판매가 − 판매 수수료 − 공급가
-//  - 창고(스튜디오) 상품 · 수수료 방식(예전 방식): 셀러는 상품에 정한 셀러 수수료, 나머지는 창고(스튜디오)
+//  - 공간 상품 · 수수료 방식(예전 방식): 셀러는 상품에 정한 셀러 수수료, 나머지는 공간
 //  - 셀러가 가져온 브랜드 직배송 상품: (판매가 − 공급가 − 판매 수수료) 중 셀러 몫 비율만큼 셀러, 나머지는 방송 장소
 //  - 임시 상품: 셀러 수수료 없음 (기존 규칙)
 //  - 배송비: 셀러가 방송마다 정하고, 실제로 택배를 보내는 쪽이 받는다 (판매 수수료 없음)
-//      · 창고(스튜디오) 방송에서 창고가 출고하는 상품(창고 상품 · 위탁 상품 · 임시 상품)이 있으면 → 창고(스튜디오) 몫
+//      · 공간 방송에서 창고가 출고하는 상품(창고 상품 · 위탁 상품 · 임시 상품)이 있으면 → 공간 몫
 //      · 그 밖(브랜드 직배송 상품만 있는 주문 · 셀러 공간 방송) → 셀러 몫. 브랜드 직배송 택배비는 브랜드 공급가에 포함된 것으로 본다
 // 주문할 때 줄마다 계산해 OrderItem 에 저장한다. 이후 수수료율 · 공급가 · 셀러 수수료가 바뀌어도 이미 팔린 주문은 그대로다.
 // ---------------------------------------------------------------------------
 export type LineInput = {
   lineTotal: number; unitPrice: number; quantity: number;
   supplyPrice: number | null;        // 브랜드 상품이면 브랜드 공급가
-  facilitySupply?: number | null;    // 창고(스튜디오)가 정한 셀러 공급가 (공급가 방식)
+  facilitySupply?: number | null;    // 공간이 정한 셀러 공급가 (공급가 방식)
   facilityCommission: { type: CommissionType; value: number } | null;
   sellerBrand: boolean;
-  ownSpace?: boolean;                // 셀러 본인 공간 방송 (창고(스튜디오) 없음) → 창고 몫도 셀러
+  ownSpace?: boolean;                // 셀러 본인 공간 방송 (공간 없음) → 창고 몫도 셀러
 };
 
 export type LineSplit = { gross: number; platformFee: number; brand: number; facility: number; seller: number };
@@ -80,7 +80,7 @@ type ItemForSplit = {
 };
 type OrderForSplit = { shippingFee?: number | null; facilityId?: string | null; items: ItemForSplit[] };
 
-/** 이 주문의 배송비를 받는 쪽: 창고(스튜디오) 방송에서 창고가 직접 출고하는 상품이 있으면 창고, 아니면 셀러 */
+/** 이 주문의 배송비를 받는 쪽: 공간 방송에서 창고가 직접 출고하는 상품이 있으면 창고, 아니면 셀러 */
 export function shippingRecipient(order: OrderForSplit): "FACILITY" | "SELLER" {
   if (!order.facilityId) return "SELLER";
   const facilityShips = order.items.some((it) => {
@@ -116,7 +116,7 @@ export function splitOrder(order: OrderForSplit, policy: Policy, opts: { include
   return sum;
 }
 
-// 주문 기반 정산 요약 (셀러 수익 · 창고(스튜디오) 정산 · 플랫폼 수수료 · 브랜드 공급대금)
+// 주문 기반 정산 요약 (셀러 수익 · 공간 정산 · 플랫폼 수수료 · 브랜드 공급대금)
 export async function computeSettlement(where: { sellerId?: string; facilityId?: string; facilityIds?: string[] }) {
   const policy = await getPolicy();
   const orders = await prisma.order.findMany({
@@ -136,7 +136,7 @@ export async function computeSettlement(where: { sellerId?: string; facilityId?:
   return { orderCount: orders.length, gross: total.gross, sellerProfit: total.seller, facilityAmount: total.facility, platformFee: total.platformFee, brandAmount: total.brand };
 }
 
-// 계정별 판매 수익 내역 (셀러 · 창고(스튜디오) 화면): 주문 줄마다 내 몫을 보여 준다.
+// 계정별 판매 수익 내역 (셀러 · 스토리지마켓 화면): 주문 줄마다 내 몫을 보여 준다.
 export async function revenueLines(where: { sellerId?: string; facilityIds?: string[] }, take = 50) {
   const policy = await getPolicy();
   const orders = await prisma.order.findMany({

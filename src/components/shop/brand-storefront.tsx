@@ -131,7 +131,7 @@ export async function BrandStorefront({ id, searchParams, base = "/brands", fram
           {!user && <Link href={login} className={`${buttonVariants({ size: "sm" })} mt-4 w-full sm:w-auto`}>로그인하고 샘플 신청하기</Link>}
           {buyer && published && blocked && <p className="mt-4 rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">이 브랜드와의 거래가 중지된 계정입니다. 샘플 신청과 상품 가져오기를 할 수 없습니다.</p>}
           {buyer && published && !blocked && !canImport && <PartnerApply shopId={shop.id} status={partner?.status === "PENDING" ? "PENDING" : "NONE"} />}
-          {user && !buyer && published && <p className="mt-4 flex items-start gap-1.5 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500"><Info aria-hidden="true" className="mt-px h-3.5 w-3.5 shrink-0" />찜 · 샘플 신청 · 판매 상품 가져오기는 셀러와 창고(스튜디오) 계정에서 이용할 수 있습니다.</p>}
+          {user && !buyer && published && <p className="mt-4 flex items-start gap-1.5 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500"><Info aria-hidden="true" className="mt-px h-3.5 w-3.5 shrink-0" />찜 · 샘플 신청 · 판매 상품 가져오기는 셀러와 공간 계정에서 이용할 수 있습니다.</p>}
         </section>
 
         <section id="shop-products" className="mt-7 scroll-mt-4 space-y-4">
@@ -197,7 +197,21 @@ export async function BrandStorefront({ id, searchParams, base = "/brands", fram
                           </p>
                         ) : product.consumerPrice > 0 ? <p className="text-xs text-slate-600">권장 소비자가 {formatKRW(product.consumerPrice)} · 차액 {formatKRW(product.consumerPrice - product.supplyPrice)}</p> : null;
                       })()}
-                      {(() => { const vs = readVariants(product.optionVariants, parseOptions(product.options)); return vs.length ? <p className="text-[11px] text-slate-600">옵션별 {vs.filter((v) => v.extra).map((v) => `${v.key} +${formatKRW(v.extra)}`).concat(vs.filter((v) => v.soldOut).map((v) => `${v.key} 품절`)).slice(0, 4).join(" · ")}</p> : null; })()}
+                      {(() => {
+                        const vs = readVariants(product.optionVariants, parseOptions(product.options));
+                        if (!vs.length) return null;
+                        const shown = selectedProduct ? vs : vs.slice(0, 3);
+                        return (
+                          <ul className="flex flex-wrap gap-1 text-[10.5px]">
+                            {shown.map((v) => (
+                              <li key={v.key} className={cn("rounded-full px-2 py-0.5 font-semibold", v.soldOut ? "bg-slate-100 text-slate-400 line-through" : "bg-violet-50 text-violet-800")}>
+                                {v.key}{v.soldOut ? " 품절" : `${v.extra ? ` · 공급 ${v.extra > 0 ? "+" : ""}${formatKRW(v.extra)}` : ""}${v.saleExtra && product.salePrice > 0 ? ` · 판매 ${formatKRW(product.salePrice + v.saleExtra)}` : ""}`}
+                              </li>
+                            ))}
+                            {shown.length < vs.length && <li className="px-1 text-slate-500">외 {vs.length - shown.length}개</li>}
+                          </ul>
+                        );
+                      })()}
                     </> : <>
                       <p className="mt-auto text-xs font-bold text-slate-600">{product.stock <= 0 && <span className="mr-1 text-rose-700">품절 ·</span>}{SUPPLY_PRICE_HIDDEN_NOTE}</p>
                       {product.salePrice > 0 ? <p className="text-xs text-slate-600">판매가 {formatKRW(product.salePrice)}{product.consumerPrice > product.salePrice && <s className="ml-1 text-slate-400">{formatKRW(product.consumerPrice)}</s>}</p>
@@ -218,7 +232,7 @@ export async function BrandStorefront({ id, searchParams, base = "/brands", fram
                       {/* 상품마다 샘플 신청(무료)·샘플 구매(유료)를 바로 할 수 있게 */}
                       {buyer && !blocked && <BrandFavoriteButton productId={product.id} initial={favorites.has(product.id)} className="rounded-xl px-3 text-xs" />}
                       {!user && <Link href={`/login?callbackUrl=${encodeURIComponent(brandProductHref(shop.id, product.id, base))}`} className={buttonVariants({ variant: "outline", className: "rounded-xl px-3 text-xs" })}><Heart aria-hidden="true" className="h-3.5 w-3.5" />찜하기</Link>}
-                      {user && !buyer && <span title="셀러·창고(스튜디오) 계정 전용" aria-disabled="true" className="inline-flex min-h-11 cursor-not-allowed items-center gap-2 rounded-xl border bg-slate-50 px-3 text-xs font-bold text-slate-500"><Heart aria-hidden="true" className="h-3.5 w-3.5" />찜하기</span>}
+                      {user && !buyer && <span title="셀러 계정 전용" aria-disabled="true" className="inline-flex min-h-11 cursor-not-allowed items-center gap-2 rounded-xl border bg-slate-50 px-3 text-xs font-bold text-slate-500"><Heart aria-hidden="true" className="h-3.5 w-3.5" />찜하기</span>}
                       {buyer && !blocked && imported.has(product.id) ? <span className="rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-bold text-emerald-700">판매 목록에 있음</span> : null}
                       {buyer && !blocked && user && canImport && <BrandImportButton target={user.role === "SELLER" ? "SELLER" : "FACILITY"} facilities={facilities}
                         product={{ id: product.id, name: product.name, supplyPrice: product.supplyPrice, consumerPrice: product.consumerPrice, stock: product.stock, allowDropship: product.allowDropship, allowWarehouse: product.allowWarehouse, salePrice: product.salePrice, priceRule: product.priceRule, minSalePrice: product.minSalePrice }} />}
@@ -235,7 +249,7 @@ export async function BrandStorefront({ id, searchParams, base = "/brands", fram
                               limitNote={Number.isFinite(left) ? `이 상품 샘플은 ${left}회 더 신청할 수 있습니다.` : undefined} />
                           : <span className="text-[11px] font-semibold text-slate-500">샘플 신청 한도 사용</span>;
                       })() : user && !buyer ? (
-                        <span title="셀러·창고(스튜디오) 계정 전용" aria-disabled="true" className={buttonVariants({ variant: "outline", className: "pointer-events-none rounded-xl px-3 text-xs opacity-50" })}>
+                        <span title="셀러 계정 전용" aria-disabled="true" className={buttonVariants({ variant: "outline", className: "pointer-events-none rounded-xl px-3 text-xs opacity-50" })}>
                           {product.samplePrice === 0 ? "무료 샘플 신청" : "샘플 구매"}
                         </span>
                       ) : null}

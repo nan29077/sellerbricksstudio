@@ -49,7 +49,7 @@ export default async function FacilityOrders({ searchParams }: { searchParams: S
 
   return (
     <div className="pb-24 md:pb-0">
-      <PageHeader title="주문 현황" description="창고(스튜디오) 방송의 주문입니다. '상품 · 배송지 보기'에서 보낼 상품과 배송지를 확인하고 발송(운송장 입력)해 주세요. 브랜드 직배송 상품은 브랜드가 보냅니다." />
+      <PageHeader title="주문 현황" description="공간 방송의 주문입니다. '상품 · 배송지 보기'에서 보낼 상품과 배송지를 확인하고 발송(운송장 입력)해 주세요. 브랜드 직배송 상품은 브랜드가 보냅니다." />
       <OrderFilterTabs base={BASE} params={searchParams} current={status} q={q} exportHref="/api/orders/export" />
 
       {orders.length === 0 ? (

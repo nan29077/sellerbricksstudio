@@ -46,7 +46,7 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
   try {
     const user = await requireRole(FACILITY_OPERATOR_ROLES);
     const facility = await editableFacility(params.id, user);
-    if (!facility) return fail("운영하는 창고(스튜디오)만 편집할 수 있습니다.", 403);
+    if (!facility) return fail("운영하는 공간만 편집할 수 있습니다.", 403);
     const setting = await prisma.setting.findUnique({ where: { key: facilityPageSettingKey(params.id) } });
     return ok(parseFacilityPageConfig(facility, setting?.value));
   } catch (error) {
@@ -58,7 +58,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   try {
     const user = await requireRole(FACILITY_OPERATOR_ROLES);
     const facility = await editableFacility(params.id, user);
-    if (!facility) return fail("운영하는 창고(스튜디오)만 편집할 수 있습니다.", 403);
+    if (!facility) return fail("운영하는 공간만 편집할 수 있습니다.", 403);
     const input = pageSchema.parse(await req.json());
     const setting = input.backgroundUrl ? null : await prisma.setting.findUnique({ where: { key: facilityPageSettingKey(params.id) } });
     const data = {

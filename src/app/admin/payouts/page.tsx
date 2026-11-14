@@ -42,7 +42,7 @@ export default async function AdminPayouts({ searchParams }: { searchParams: SP 
 
   return (
     <div className="space-y-5">
-      <PageHeader title="판매 · 브랜드 정산" description="구매자 결제는 플랫폼이 받고, 배송 완료된 주문을 기준으로 셀러 · 창고(스튜디오) · 브랜드에 정산합니다. 수수료는 수수료 · 운영 정책에서 바꿀 수 있습니다."
+      <PageHeader title="판매 · 브랜드 정산" description="구매자 결제는 플랫폼이 받고, 배송 완료된 주문을 기준으로 셀러 · 스토리지마켓 · 브랜드에 정산합니다. 수수료는 수수료 · 운영 정책에서 바꿀 수 있습니다."
         action={<div className="flex flex-wrap gap-2">
           <Link href="/admin/policy" className="inline-flex h-9 items-center rounded-lg border px-3 text-sm font-semibold">수수료 정책</Link>
           {tab === "sales"
@@ -60,7 +60,7 @@ export default async function AdminPayouts({ searchParams }: { searchParams: SP 
       </div>
 
       <div className="flex flex-wrap gap-1.5">
-        {[{ k: "sales", label: "셀러 · 창고(스튜디오) 판매 정산" }, { k: "brand", label: "브랜드 정산" }].map((t) => (
+        {[{ k: "sales", label: "셀러 · 스토리지마켓 판매 정산" }, { k: "brand", label: "브랜드 정산" }].map((t) => (
           <Link key={t.k} href={withParams(BASE, {}, { tab: t.k === "sales" ? undefined : t.k })}
             className={cn("rounded-full border px-4 py-2 text-sm font-semibold", tab === t.k ? "border-navy bg-navy text-white" : "bg-white text-slate-600")}>{t.label}</Link>
         ))}
@@ -72,10 +72,10 @@ export default async function AdminPayouts({ searchParams }: { searchParams: SP 
       </div>
 
       {tab === "sales" ? (
-        sales.length === 0 ? <EmptyState icon={<Banknote className="h-10 w-10" />} title="판매 정산서가 없습니다" description="'판매 정산서 생성'으로 기간 내 배송 완료 주문을 셀러 × 창고(스튜디오)별로 묶으세요." /> : (
+        sales.length === 0 ? <EmptyState icon={<Banknote className="h-10 w-10" />} title="판매 정산서가 없습니다" description="'판매 정산서 생성'으로 기간 내 배송 완료 주문을 셀러 × 공간별로 묶으세요." /> : (
           <div className="space-y-3">
             <div className="flex justify-end">
-              <CsvButton label="이체용 CSV" filename="판매정산" headers={["셀러", "창고(스튜디오)", "기간", "주문수", "매출", "플랫폼수수료", "브랜드대금", "셀러정산", "창고정산", "셀러 계좌", "창고 계좌", "상태"]}
+              <CsvButton label="이체용 CSV" filename="판매정산" headers={["셀러", "공간", "기간", "주문수", "매출", "플랫폼수수료", "브랜드대금", "셀러정산", "창고정산", "셀러 계좌", "창고 계좌", "상태"]}
                 rows={sales.map((s) => [s.seller.profile?.name ?? s.seller.email, (s.facility?.name ?? "셀러 공간"), `${formatDate(s.periodStart)}~${formatDate(s.periodEnd)}`, s.orderCount, s.grossAmount, s.platformFee, s.brandAmount, s.commissionAmount, s.facilityAmount, `${s.seller.profile?.bankName ?? ""} ${s.seller.profile?.bankAccount ?? ""} ${s.seller.profile?.accountHolder ?? ""}`, (s.facility ? `${s.facility.bankName ?? ""} ${s.facility.bankAccount ?? ""} ${s.facility.accountHolder ?? ""}` : "-"), SETTLEMENT_STATUS[s.status]?.label])} />
             </div>
             {sales.map((s) => (

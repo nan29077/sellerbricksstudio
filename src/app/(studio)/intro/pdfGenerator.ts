@@ -230,7 +230,7 @@ export async function generateStorageMarketPdf(
             '<div>' +
               '<div style="color:#F5A623;font-size:13px;font-weight:700;margin-bottom:4px;">하나의 플랫폼, 세 가지 역할</div>' +
               '<div style="color:rgba(255,255,255,0.55);font-size:12px;">' +
-                '셀러 · 브랜드사 · 스토리지마켓 직영 창고(스튜디오)가 유기적으로 연결되는 통합 관리 시스템' +
+                '셀러 · 브랜드사 · 스토리지마켓 직영 공간이 유기적으로 연결되는 통합 관리 시스템' +
               '</div>' +
             '</div>' +
           '</div>' +

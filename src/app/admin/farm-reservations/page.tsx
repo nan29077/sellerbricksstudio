@@ -60,13 +60,13 @@ export default async function AdminFacilityOccupancy({ searchParams }: { searchP
 
   return (
     <div className="space-y-5">
-      <PageHeader title="창고(스튜디오)별 예약 현황" description={`${p.year}년 ${p.month}월 창고(스튜디오)별 가동률 · 매출 · 대기 건을 비교합니다.`}
+      <PageHeader title="공간별 예약 현황" description={`${p.year}년 ${p.month}월 공간별 가동률 · 매출 · 대기 건을 비교합니다.`}
         action={<div className="flex items-center gap-2">
           <Link href={withParams(BASE, searchParams, { month: monthKey(addMonths(month, -1)) })} className="rounded-lg border border-border bg-white px-3 py-2 text-sm">◀ 이전 달</Link>
           <Link href={withParams(BASE, searchParams, { month: monthKey(addMonths(month, 1)) })} className="rounded-lg border border-border bg-white px-3 py-2 text-sm">다음 달 ▶</Link>
         </div>} />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi label="운영 중 창고(스튜디오)" value={`${facilities.length}곳`} icon={Building2} tone="navy" />
+        <Kpi label="운영 중 공간" value={`${facilities.length}곳`} icon={Building2} tone="navy" />
         <Kpi label="평균 가동률" value={`${totalOpen ? Math.round((totalBooked / totalOpen) * 100) : 0}%`} sub={`${Math.round(totalBooked)}h / ${Math.round(totalOpen)}h`} icon={Gauge} tone="brand" />
         <Kpi label="월 거래액" value={formatKRW(stats.reduce((s, x) => s + x.revenue, 0))} sub={`${stats.reduce((s, x) => s + x.count, 0)}건`} icon={Wallet} tone="green" />
         <Kpi label="처리 대기" value={`${stats.reduce((s, x) => s + x.pending, 0)}건`} icon={AlertCircle} tone="red" />
@@ -74,22 +74,22 @@ export default async function AdminFacilityOccupancy({ searchParams }: { searchP
 
       <Card>
         <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0">
-          <CardTitle className="text-base">창고(스튜디오) 비교</CardTitle>
+          <CardTitle className="text-base">공간 비교</CardTitle>
           <div className="flex flex-wrap items-center gap-1.5">
             {[["util", "가동률순"], ["revenue", "매출순"], ["pending", "대기순"]].map(([k, l]) => (
               <Link key={k} href={withParams(BASE, searchParams, { sort: k })} className={cn("hit rounded-full border px-3 py-1 text-xs font-semibold", sort === k ? "border-navy bg-navy text-white" : "border-border bg-white")}>{l}</Link>
             ))}
-            <CsvButton label="CSV" filename={`창고별현황_${monthKey(month)}`} headers={["창고(스튜디오)", "확정건", "대기", "이용시간", "운영시간", "가동률(%)", "매출", "취소·거절률(%)"]}
+            <CsvButton label="CSV" filename={`창고별현황_${monthKey(month)}`} headers={["공간", "확정건", "대기", "이용시간", "운영시간", "가동률(%)", "매출", "취소·거절률(%)"]}
               rows={stats.map((s) => [s.f.name, s.count, s.pending, Math.round(s.bookedH), Math.round(s.openH), s.util, s.revenue, s.cancelRate])} />
           </div>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm rtable">
-            <thead><tr className="border-b text-left text-xs text-slate-500">{["창고(스튜디오)", "가동률", "확정", "대기", "매출", "취소·거절", ""].map((h) => <th key={h} className="px-2 py-2 font-bold">{h}</th>)}</tr></thead>
+            <thead><tr className="border-b text-left text-xs text-slate-500">{["공간", "가동률", "확정", "대기", "매출", "취소·거절", ""].map((h) => <th key={h} className="px-2 py-2 font-bold">{h}</th>)}</tr></thead>
             <tbody>
               {stats.map((s) => (
                 <tr key={s.f.id} className={cn("border-b border-[#F0ECE6] last:border-0", fid === s.f.id && "bg-brand-50/60")}>
-                  <td data-label="창고(스튜디오)" className="px-2 py-2.5"><p className="font-semibold text-navy">{s.f.name}</p><p className="text-[11px] text-slate-400">{s.f.region} · {formatKRW(s.f.basePrice)}/h</p></td>
+                  <td data-label="공간" className="px-2 py-2.5"><p className="font-semibold text-navy">{s.f.name}</p><p className="text-[11px] text-slate-400">{s.f.region} · {formatKRW(s.f.basePrice)}/h</p></td>
                   <td data-label="가동률" className="w-48 px-2 py-2.5">
                     <div className="flex items-center gap-2"><div className="h-2 flex-1 rounded-full bg-slate-100"><div className={cn("h-full rounded-full", s.util >= 70 ? "bg-emerald-500" : s.util >= 30 ? "bg-brand-500" : "bg-red-400")} style={{ width: `${s.util}%` }} /></div><span className="w-10 text-right text-xs font-bold">{s.util}%</span></div>
                   </td>

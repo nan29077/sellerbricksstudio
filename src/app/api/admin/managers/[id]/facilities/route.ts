@@ -5,12 +5,12 @@ import { ok, fail, handleError } from "@/lib/http";
 import { audit } from "@/lib/audit";
 import { notify } from "@/lib/notify";
 
-// PUT { facilityIds: string[] } — 담당 창고(스튜디오) 전체 교체
+// PUT { facilityIds: string[] } — 담당 공간 전체 교체
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const admin = await requireRole(["SUPER_ADMIN"]);
     const { facilityIds } = await req.json().catch(() => ({}));
-    if (!Array.isArray(facilityIds)) return fail("창고(스튜디오) 목록이 올바르지 않습니다.");
+    if (!Array.isArray(facilityIds)) return fail("공간 목록이 올바르지 않습니다.");
     const manager = await prisma.user.findUnique({ where: { id: params.id }, select: { role: true } });
     if (!manager || manager.role !== "MANAGER") return fail("창고 운영 매니저를 찾을 수 없습니다.", 404);
     const ids = Array.from(new Set(facilityIds.map(String)));
@@ -22,7 +22,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     ]);
     const added = valid.filter((v) => !before.some((b) => b.facilityId === v.id)).length;
     await audit({ actorId: admin.id, action: "MANAGER_FACILITIES_SET", entity: "User", entityId: params.id, meta: { count: valid.length } });
-    if (added) await notify({ userId: params.id, type: "SYSTEM", title: `담당 창고(스튜디오) ${added}곳이 배정되었습니다`, link: "/manager/facilities" });
+    if (added) await notify({ userId: params.id, type: "SYSTEM", title: `담당 공간 ${added}곳이 배정되었습니다`, link: "/manager/facilities" });
     return ok({ count: valid.length });
   } catch (e) { return handleError(e); }
 }

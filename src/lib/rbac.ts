@@ -23,7 +23,7 @@ export function can(role: Role | undefined, allowed: Role[]): boolean {
   return !!role && allowed.includes(role);
 }
 
-// 중간관리자가 접근 가능한 창고(스튜디오) id 목록
+// 중간관리자가 접근 가능한 공간 id 목록
 export async function managerFacilityIds(managerId: string): Promise<string[]> {
   const rows = await prisma.managerFacility.findMany({
     where: { managerId }, select: { facilityId: true },

@@ -8,7 +8,7 @@ import { Input, Label, Textarea, Select } from "@/components/ui/input";
 import { formatKRW, sellerUnitProfit } from "@/lib/utils";
 import { PRODUCT_CATEGORIES } from "@/lib/product-categories";
 
-// 창고(스튜디오) 상품 등록 — 등록한 상품은 셀러의 '판매 상품 둘러보기'와 예약 화면에 노출된다.
+// 공간 상품 등록 — 등록한 상품은 셀러의 '판매 상품 둘러보기'와 예약 화면에 노출된다.
 export function ProductForm({ facilities, returnHref = "/facility/products" }: { facilities: { id: string; name: string }[]; returnHref?: string }) {
   const router = useRouter();
   const [f, setF] = useState({
@@ -49,7 +49,7 @@ export function ProductForm({ facilities, returnHref = "/facility/products" }: {
     <div className="grid max-w-5xl gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
       <Card><CardContent className="pt-6">
         <form onSubmit={onSubmit} className="space-y-4">
-          {facilities.length > 1 && <div><Label>창고(스튜디오)</Label><Select aria-label="창고(스튜디오)" value={f.facilityId} onChange={set("facilityId")}>{facilities.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</Select></div>}
+          {facilities.length > 1 && <div><Label>공간</Label><Select aria-label="공간" value={f.facilityId} onChange={set("facilityId")}>{facilities.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</Select></div>}
           <div><Label>상품명</Label><Input aria-label="상품명" value={f.name} onChange={set("name")} maxLength={120} required placeholder="예: 제주 노지 감귤 5kg (로얄과)" /></div>
           <div className="grid grid-cols-2 gap-3">
             <div><Label>카테고리</Label><Select aria-label="카테고리" value={f.category} onChange={set("category")}>{PRODUCT_CATEGORIES.map((c) => <option key={c}>{c}</option>)}</Select></div>
@@ -65,7 +65,7 @@ export function ProductForm({ facilities, returnHref = "/facility/products" }: {
           <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-3">
             <Label>셀러 공급가(원) — 권장</Label>
             <Input aria-label="셀러 공급가(원)" value={f.supplyPrice} onChange={set("supplyPrice")} inputMode="numeric" placeholder="예: 판매가 30,000원이면 22,000" />
-            <p className="mt-1 text-[11px] text-slate-600">판매되면 창고(스튜디오)는 <b>공급가</b>를 받고, 셀러는 <b>판매가 − 판매 수수료 − 공급가</b>를 받습니다. 셀러는 공급가 이상에서 판매가를 조정할 수 있습니다. 비워 두면 아래 셀러 수수료 방식으로 계산합니다.</p>
+            <p className="mt-1 text-[11px] text-slate-600">판매되면 공간은 <b>공급가</b>를 받고, 셀러는 <b>판매가 − 판매 수수료 − 공급가</b>를 받습니다. 셀러는 공급가 이상에서 판매가를 조정할 수 있습니다. 비워 두면 아래 셀러 수수료 방식으로 계산합니다.</p>
           </div>
           <div className={`grid grid-cols-2 gap-3 ${supply != null ? "opacity-50" : ""}`}>
             <div><Label>셀러 수수료 방식</Label><Select aria-label="셀러 수수료 방식" value={f.commissionType} onChange={set("commissionType")}><option value="PERCENT">정률 (%)</option><option value="FIXED">정액 (원)</option></Select></div>

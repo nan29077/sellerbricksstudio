@@ -36,6 +36,8 @@ const nextConfig = (phase) => ({
       { source: "/seller/kakao", destination: "/seller/orders", permanent: false },
       { source: "/seller/marketing/coupons", destination: "/seller/orders", permanent: false },
       { source: "/facility/live-sessions/:path*", destination: "/facility/orders", permanent: false },
+      // 예시 공간 화면은 없어졌다 (2026-11-14) — 직영 · 직접 관리 공간만 보여 준다
+      { source: "/showcase/:path*", destination: "/facilities", permanent: false },
     ];
   },
   async headers() {

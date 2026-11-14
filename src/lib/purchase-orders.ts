@@ -54,7 +54,7 @@ export async function capDropshipLiveStockInTx(tx: Tx, brandProductId: string, s
 // ---------------------------------------------------------------------------
 export async function reserveOrderStockInTx(tx: Tx, orderId: string) {
   const all = await brandLinesOf(tx, orderId);
-  // 창고(스튜디오)가 직접 등록한 상품: 창고 실재고를 조건부로 차감 (여러 방송에 같은 재고가 올라가도 초과 판매되지 않게)
+  // 공간이 직접 등록한 상품: 창고 실재고를 조건부로 차감 (여러 방송에 같은 재고가 올라가도 초과 판매되지 않게)
   for (const l of all.filter((x) => !x.brandProductId && x.facilityProductId)) {
     const dec = await tx.facilityProduct.updateMany({ where: { id: l.facilityProductId!, stock: { gte: l.item.quantity } }, data: { stock: { decrement: l.item.quantity } } });
     if (dec.count !== 1) throw new StockError(`${l.item.productName}: 창고 재고가 부족합니다. 수량을 줄여 다시 주문해 주세요.`);
@@ -154,7 +154,7 @@ export async function createPurchaseOrdersInTx(tx: Tx, orderId: string) {
           data: {
             poNo: makePoNo(), brandShopId: group.shopId, orderId: order.id, facilityId: order.facilityId, sellerId: order.sellerId,
             fulfillment: group.fulfillment, status: dropship ? "NEW" : "CONFIRMED", confirmedAt: dropship ? null : new Date(),
-            // 창고 위탁분은 창고 재고에서 나가므로 받는 곳은 창고(스튜디오), 직배송은 구매자
+            // 창고 위탁분은 창고 재고에서 나가므로 받는 곳은 공간, 직배송은 구매자
             recipient: dropship || !order.facility ? order.buyerName : order.facility.name,
             phone: dropship || !order.facility ? order.buyerPhone : order.facility.contactPhone ?? "",
             address: dropship || !order.facility ? order.buyerAddress ?? "" : order.facility.address,
@@ -204,7 +204,7 @@ export async function checkLowStock(productIds: string[]) {
   } catch { /* 알림 실패는 주문을 막지 않는다 */ }
 }
 
-// 출고 전 취소: 창고(스튜디오)가 직접 등록한 상품(발주서 없음)의 창고 재고를 되돌린다.
+// 출고 전 취소: 공간이 직접 등록한 상품(발주서 없음)의 창고 재고를 되돌린다.
 // (브랜드 상품은 발주 취소 때 restorePoStockInTx 가 되돌린다)
 export async function restoreOwnFacilityStockInTx(tx: Tx, orderId: string, itemIds: string[]) {
   if (!itemIds.length) return;
@@ -316,7 +316,7 @@ export async function notifyPoPartners(po: { sellerId: string; facilityId: strin
 
 // ---------------------------------------------------------------------------
 // 브랜드가 직배송 발주를 출고·배송완료 처리하면 주문 전체 상태를 다시 맞춘다.
-// (창고(스튜디오) 직접 출고분이 섞여 있으면 그쪽도 출고·배송 완료되어야 주문 상태가 바뀐다)
+// (공간 직접 출고분이 섞여 있으면 그쪽도 출고·배송 완료되어야 주문 상태가 바뀐다)
 // ---------------------------------------------------------------------------
 export async function syncOrderFromPurchaseOrders(tx: Tx, orderId: string) {
   return refreshOrderStatusInTx(tx, orderId);

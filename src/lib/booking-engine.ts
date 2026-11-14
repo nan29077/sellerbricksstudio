@@ -92,7 +92,7 @@ const overlaps = (a: Interval, b: Interval) => a.start < b.end && a.end > b.star
 
 // 새 예약 [s,e]가 기존 예약과 준비시간(buffer)을 포함해 겹치는지
 export function findClash(s: number, e: number, busy: BusyBlock[], buffer: number): BusyBlock | undefined {
-  // 창고(스튜디오)가 막아 둔 시간(BLOCKED)에는 준비시간을 더하지 않는다.
+  // 공간이 막아 둔 시간(BLOCKED)에는 준비시간을 더하지 않는다.
   return busy.find((b) => overlaps({ start: s, end: e }, b.status === "BLOCKED" ? b : { start: b.start - buffer, end: b.end + buffer }));
 }
 
@@ -171,7 +171,7 @@ export function validateRequest(params: {
   const clash = findClash(startMin, endMin, busy, policy.buffer);
   if (clash) {
     const t = `${toHm(clash.start)}~${toHm(clash.end)}`;
-    if (clash.status === "BLOCKED") return `${t}은(는) 창고(스튜디오) 사정으로 예약을 받지 않는 시간입니다${clash.reason ? ` (${clash.reason})` : ""}. 다른 시간을 선택하세요.`;
+    if (clash.status === "BLOCKED") return `${t}은(는) 공간 사정으로 예약을 받지 않는 시간입니다${clash.reason ? ` (${clash.reason})` : ""}. 다른 시간을 선택하세요.`;
     return policy.buffer > 0
       ? `기존 예약(${t})과 겹치거나 준비시간 ${policy.buffer}분이 부족합니다. 다른 시간을 선택하세요.`
       : `해당 시간대(${t})에 이미 예약이 있습니다. 다른 시간을 선택하세요.`;
@@ -184,7 +184,7 @@ export function sellerCanModify(status: string, startAt: Date, deadlineHours: nu
   if (!["PENDING", "APPROVED"].includes(status)) return { ok: false, reason: "진행 중인 예약만 변경할 수 있습니다." };
   if (startAt <= now) return { ok: false, reason: "이미 시작된 예약입니다." };
   if (status === "APPROVED" && startAt.getTime() - now.getTime() < deadlineHours * 3600000) {
-    return { ok: false, reason: `이용 시작 ${deadlineHours}시간 전부터는 직접 취소·변경할 수 없습니다. 창고(스튜디오)에 문의하세요.` };
+    return { ok: false, reason: `이용 시작 ${deadlineHours}시간 전부터는 직접 취소·변경할 수 없습니다. 공간에 문의하세요.` };
   }
   return { ok: true };
 }

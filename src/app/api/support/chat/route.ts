@@ -1,3 +1,4 @@
+import { linkAllowed } from "@/lib/support";
 import { z } from "zod";
 import { getSessionUser } from "@/lib/auth";
 import { fail, ok } from "@/lib/http";
@@ -25,6 +26,7 @@ export async function POST(req: Request) {
     catch { reply.text = "지금은 내 정보를 불러오지 못했어요. 잠시 후 다시 물어봐 주세요."; }
     reply.personal = undefined;
   }
+  if (reply.links) reply.links = reply.links.filter((l) => linkAllowed(l.href, user?.role));
   return ok(reply);
 }
 

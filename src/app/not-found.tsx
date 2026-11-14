@@ -14,7 +14,7 @@ export default function NotFound() {
       </p>
       <div className="mt-8 flex gap-2">
         <Link href="/" className="inline-flex h-11 items-center rounded-full bg-navy px-6 text-sm font-semibold text-white hover:bg-navy-700">홈으로</Link>
-        <Link href="/facilities" className="inline-flex h-11 items-center rounded-full border border-brand-300 bg-white px-6 text-sm font-semibold text-brand-700 hover:bg-brand-50">창고(스튜디오) 찾기</Link>
+        <Link href="/facilities" className="inline-flex h-11 items-center rounded-full border border-brand-300 bg-white px-6 text-sm font-semibold text-brand-700 hover:bg-brand-50">공간 찾기</Link>
       </div>
     </main>
   );

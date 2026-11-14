@@ -240,7 +240,7 @@ export default async function SellerDashboard() {
         </Panel>
       </div>
 
-      <ProductMixPanel scope={{ sellerId: user.id }} />
+      <ProductMixPanel scope={{ sellerId: user.id }} requestsHref="/seller/brand-requests" />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <Panel eyebrow="ORDER SHEETS" title="최근 주문서" action={{ href: "/seller/orders", label: "주문서 · 배송 현황" }}>

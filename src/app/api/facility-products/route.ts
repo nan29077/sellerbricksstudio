@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     const { facilityId, ...data } = facilityProductSchema.extend({ facilityId: z.string().min(1).max(64) }).parse(body);
 
     const facility = (await canOperateFacility(user, facilityId)) ? await prisma.facility.findUnique({ where: { id: facilityId }, select: { id: true } }) : null;
-    if (!facility) return fail("상품을 등록할 수 있는 창고(스튜디오)를 찾지 못했습니다.", 403);
+    if (!facility) return fail("상품을 등록할 수 있는 공간을 찾지 못했습니다.", 403);
     if (data.supplyPrice != null && data.supplyPrice > data.salePrice) return fail("셀러 공급가는 판매가보다 클 수 없습니다.");
 
     const product = await prisma.product.create({

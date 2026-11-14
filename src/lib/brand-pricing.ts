@@ -89,3 +89,25 @@ export function defaultSellerPrice(p: { supplyPrice: number; salePrice: number; 
   const floor = Math.max(p.supplyPrice, p.minSalePrice ?? 0);
   return Math.max(floor, p.salePrice || p.consumerPrice || floor);
 }
+
+/** 옵션 표기 정리: "블랙 / S" · "색상:블랙 / 사이즈:S" 모두 → "색상:블랙 / 사이즈:S" (틀리면 null) */
+export function normalizeOptionLabel(groups: OptionGroupLike[], label: string | null | undefined): string | null {
+  if (!groups.length) return null;
+  const parts = (label ?? "").trim().split(/\s*[/,]\s*/).filter(Boolean);
+  if (!parts.length) return null;
+  const chosen: string[] = [];
+  for (let i = 0; i < groups.length; i++) {
+    const g = groups[i];
+    const named = parts.find((p) => p.includes(":") && p.split(":")[0].trim() === g.name)?.split(":").slice(1).join(":").trim();
+    const value = named ?? (parts[i]?.includes(":") ? undefined : parts[i]?.trim());
+    if (!value || !g.values.includes(value)) return null;
+    chosen.push(`${g.name}:${value}`);
+  }
+  return chosen.join(" / ");
+}
+
+/** 방송 시연품을 받을 수 있는 가장 이른 방송 시작 시각: 지금 + 출고 소요일(최소 1일) + 도착 기한 2일 */
+export const DISPLAY_DUE_HOURS = 48;
+export function earliestDisplayStart(leadDays: number, now = new Date()) {
+  return new Date(now.getTime() + (DISPLAY_DUE_HOURS + Math.max(1, leadDays || 0) * 24) * 3600000);
+}

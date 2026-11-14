@@ -37,12 +37,12 @@ export async function runBookingMaintenance(scope: { facilityIds?: string[]; sel
     for (const b of stale) {
       const r = await prisma.booking.updateMany({
         where: { id: b.id, status: "PENDING" },
-        data: { status: "REJECTED", rejectReason: b.startAt < nowDate ? "이용 시간이 지나 자동 만료되었습니다." : `창고(스튜디오)가 ${policy.pendingExpireHours}시간 안에 응답하지 않아 자동 만료되었습니다.` },
+        data: { status: "REJECTED", rejectReason: b.startAt < nowDate ? "이용 시간이 지나 자동 만료되었습니다." : `공간이 ${policy.pendingExpireHours}시간 안에 응답하지 않아 자동 만료되었습니다.` },
       });
       if (!r.count) continue;
       expired += 1;
       await prisma.liveSession.updateMany({ where: { bookingId: b.id, status: { in: ["DRAFT", "READY"] } }, data: { status: "CANCELLED" } }).catch(() => undefined);
-      await notify({ userId: b.sellerId, type: "BOOKING", title: "예약 요청이 자동 만료되었습니다", body: `${b.facility.name} · ${formatDateTime(b.startAt)} · 다른 시간이나 창고(스튜디오)로 다시 신청해 주세요.`, link: "/seller/bookings/new" });
+      await notify({ userId: b.sellerId, type: "BOOKING", title: "예약 요청이 자동 만료되었습니다", body: `${b.facility.name} · ${formatDateTime(b.startAt)} · 다른 시간이나 공간으로 다시 신청해 주세요.`, link: "/seller/bookings/new" });
       await notifyFacility(b.facilityId, { type: "BOOKING", title: `응답하지 않은 예약 요청이 만료되었습니다 · ${b.facility.name}`, body: `${formatDateTime(b.startAt)}${b.code ? ` · ${b.code}` : ""}`, link: "/facility/bookings?status=REJECTED" });
       if (b.startAt > nowDate) await notifyWaitlist(b.facilityId, b.startAt, b.endAt);
     }
@@ -67,7 +67,7 @@ export async function runBookingMaintenance(scope: { facilityIds?: string[]; sel
         const r = await prisma.booking.updateMany({ where: { id: b.id, reminderSentAt: null }, data: { reminderSentAt: nowDate } });
         if (!r.count) continue;
         reminded += 1;
-        await notify({ userId: b.sellerId, type: "BOOKING", title: "곧 창고(스튜디오) 이용 시간입니다", body: `${b.facility.name} · ${formatDateTime(b.startAt)}${b.code ? ` · 예약번호 ${b.code}` : ""} · ${b.facility.address}`, link: "/seller/bookings" });
+        await notify({ userId: b.sellerId, type: "BOOKING", title: "곧 공간 이용 시간입니다", body: `${b.facility.name} · ${formatDateTime(b.startAt)}${b.code ? ` · 예약번호 ${b.code}` : ""} · ${b.facility.address}`, link: "/seller/bookings" });
         await notifyFacility(b.facilityId, { type: "BOOKING", partnerEmail: true, title: `곧 방문 예정인 예약이 있습니다 · ${b.facility.name}`, body: `${formatDateTime(b.startAt)}${b.code ? ` · ${b.code}` : ""}`, link: "/facility/bookings?status=APPROVED" });
       }
     }
@@ -78,7 +78,7 @@ export async function runBookingMaintenance(scope: { facilityIds?: string[]; sel
   }
 }
 
-// 셀러 신뢰 지표 (창고(스튜디오)가 예약을 승인할 때 참고)
+// 셀러 신뢰 지표 (공간이 예약을 승인할 때 참고)
 export async function sellerReliability(sellerIds: string[]) {
   if (!sellerIds.length) return new Map<string, { completed: number; noShow: number; cancelled: number }>();
   const rows = await prisma.booking.groupBy({ by: ["sellerId", "status"], where: { sellerId: { in: sellerIds }, status: { in: ["COMPLETED", "NO_SHOW", "CANCELLED"] } }, _count: true });

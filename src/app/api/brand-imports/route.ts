@@ -21,7 +21,7 @@ const schema = z.discriminatedUnion("action", [
     salePrice: price, consumerPrice: price.optional(),
     commissionType: z.enum(["PERCENT", "FIXED"]).default("PERCENT"), commissionValue: z.number().min(0).max(100_000_000).default(10),
     stock: z.number().int().min(0).max(1_000_000).optional(), // 직배송 판매 한도(비우면 브랜드 재고)
-    sellerSupplyPrice: price.nullable().optional(), // 창고(스튜디오)가 셀러에게 보여 줄 공급가 (비우면 셀러 수수료 방식)
+    sellerSupplyPrice: price.nullable().optional(), // 공간이 셀러에게 보여 줄 공급가 (비우면 셀러 수수료 방식)
   }),
   z.object({ action: z.literal("seller-update"), listingId: id, salePrice: price, isActive: z.boolean() }),
   z.object({ action: z.literal("seller-remove"), listingId: id }),
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     }
 
     if (cmd.action === "apply") {
-      if (user.role === "SUPER_ADMIN") return fail("판매처 신청은 셀러·창고(스튜디오) 계정으로 해 주세요.", 403);
+      if (user.role === "SUPER_ADMIN") return fail("판매처 신청은 셀러 · 스토리지마켓 계정으로 해 주세요.", 403);
       const shop = await prisma.brandShop.findFirst({ where: { id: cmd.shopId, status: "APPROVED" }, select: { id: true, name: true } });
       if (!shop) return fail("브랜드샵을 찾지 못했습니다.", 404);
       const existing = await prisma.brandPartner.findUnique({ where: { shopId_userId: { shopId: shop.id, userId: user.id } } });
@@ -91,11 +91,11 @@ export async function POST(req: Request) {
     if (cmd.fulfillment === "WAREHOUSE" && !bp.allowWarehouse) return fail("이 상품은 창고 입고(위탁)를 지원하지 않습니다.");
     if (cmd.salePrice < bp.supplyPrice) return fail(`판매가는 공급가(${bp.supplyPrice.toLocaleString()}원)보다 낮을 수 없습니다.`);
     if (bp.minSalePrice != null && cmd.salePrice < bp.minSalePrice) return fail(`판매가는 브랜드 최저 판매가(${bp.minSalePrice.toLocaleString()}원)보다 낮을 수 없습니다.`);
-    if (cmd.target === "SELLER") { const fixed = checkSellerPrice(bp, cmd.salePrice); if (fixed) return fail(fixed); }
+    { const fixed = checkSellerPrice(bp, cmd.salePrice); if (fixed) return fail(fixed); } // 판매가 고정은 셀러 · 스토리지마켓 입고 판매 모두 적용
 
     if (cmd.target === "SELLER") {
       if (user.role !== "SELLER") return fail("셀러 계정만 내 판매 상품으로 가져올 수 있습니다.", 403);
-      if (cmd.fulfillment !== "DROPSHIP") return fail("셀러는 브랜드 직배송 방식으로만 가져올 수 있습니다. 창고 입고는 창고(스튜디오)가 진행합니다.");
+      if (cmd.fulfillment !== "DROPSHIP") return fail("셀러는 브랜드 직배송 방식으로만 가져올 수 있습니다. 창고 입고는 공간이 진행합니다.");
       const listing = await prisma.sellerBrandProduct.upsert({
         where: { sellerId_brandProductId: { sellerId: user.id, brandProductId: bp.id } },
         update: { salePrice: cmd.salePrice, isActive: true },
@@ -106,13 +106,13 @@ export async function POST(req: Request) {
       return ok({ id: listing.id, kind: "SELLER" }, 201);
     }
 
-    // 창고(스튜디오) 판매 상품으로 가져오기
-    if (user.role !== "SUPER_ADMIN") return fail("창고(스튜디오) 판매 상품은 최고관리자가 가져옵니다.", 403);
-    if (!cmd.facilityId) return fail("상품을 등록할 창고(스튜디오)를 선택하세요.");
+    // 공간 판매 상품으로 가져오기
+    if (user.role !== "SUPER_ADMIN") return fail("공간 판매 상품은 최고관리자가 가져옵니다.", 403);
+    if (!cmd.facilityId) return fail("상품을 등록할 공간을 선택하세요.");
     const facility = await prisma.facility.findFirst({
       where: { id: cmd.facilityId }, select: { id: true, name: true },
     });
-    if (!facility) return fail("상품을 등록할 수 있는 창고(스튜디오)를 찾지 못했습니다.", 403);
+    if (!facility) return fail("상품을 등록할 수 있는 공간을 찾지 못했습니다.", 403);
     const dup = await prisma.facilityProduct.findFirst({ where: { facilityId: facility.id, brandProductId: bp.id, fulfillment: cmd.fulfillment }, select: { id: true } });
     if (dup) return fail("이미 같은 방식으로 가져온 상품입니다. 상품 관리에서 수정하세요.", 409);
     if (cmd.sellerSupplyPrice != null) {
@@ -138,7 +138,7 @@ export async function POST(req: Request) {
     });
     const fpId = product.facilityProducts[0].id;
     await audit({ actorId: user.id, action: "FACILITY_BRAND_IMPORT", entity: "FacilityProduct", entityId: fpId, meta: { brandProductId: bp.id, fulfillment: cmd.fulfillment } });
-    await notify({ userId: await brandRecipients(bp.shopId), type: "SYSTEM", title: "창고(스튜디오)가 상품을 판매 목록에 담았습니다", body: `${bp.name} · ${facility.name} · ${FULFILLMENT_LABEL[cmd.fulfillment]}`, link: "/brand/channels" });
+    await notify({ userId: await brandRecipients(bp.shopId), type: "SYSTEM", title: "공간이 상품을 판매 목록에 담았습니다", body: `${bp.name} · ${facility.name} · ${FULFILLMENT_LABEL[cmd.fulfillment]}`, link: "/brand/channels" });
     return ok({ id: fpId, kind: "FACILITY", needsStock: !dropship }, 201);
   } catch (e) { return handleError(e); }
 }

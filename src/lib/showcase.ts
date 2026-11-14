@@ -15,9 +15,9 @@ export type SpaceCard = {
   operation?: "DIRECT" | "PARTNER"; // 직영 · 직접 관리 제휴 (등록 공간만)
 };
 
-type ShowcaseSpace = SpaceCard & { description: string };
 type ShowcaseInput = [id: string, name: string, region: string, district: string, price: number, tags: string[], description: string];
 
+// 등록 공간 썸네일용 기본 이미지 목록 (예시 공간 화면은 2026-11-14에 없앴다)
 const studios: ShowcaseInput[] = [
   ["s01", "성수 데이라이트 스튜디오", "서울", "성동구", 85000, ["자연광", "제품 촬영"], "넓은 창과 아이보리 배경, 낮은 원목 진열대를 활용한 자연광 촬영 공간입니다."],
   ["s02", "강남 뷰티 라이브룸", "서울", "강남구", 110000, ["뷰티", "메이크업 존"], "파스텔 톤 세트와 메이크업 테이블을 갖춘 뷰티 시연용 라이브 공간입니다."],
@@ -57,14 +57,3 @@ export function registeredSpaceThumbnail(id: string, type: SpaceType): string {
   }
   return showcaseImage(spaces[hash % spaces.length][0]);
 }
-
-function toShowcaseSpace(type: SpaceType, [id, name, region, district, price, tags, description]: ShowcaseInput): ShowcaseSpace {
-  return { id, name, type, region, location: `${region} ${district}`, image: showcaseImage(id), price, demo: true, tags, description };
-}
-
-export const SHOWCASE_SPACES: ShowcaseSpace[] = [
-  ...studios.flatMap((studio, index) => [
-    toShowcaseSpace("STUDIO", studio),
-    ...(warehouses[index] ? [toShowcaseSpace("WAREHOUSE", warehouses[index])] : []),
-  ]),
-];

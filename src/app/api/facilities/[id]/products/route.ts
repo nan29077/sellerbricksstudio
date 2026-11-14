@@ -3,11 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { ok, handleError } from "@/lib/http";
 import { getSessionUser } from "@/lib/auth";
 
-// GET /api/facilities/[id]/products — 예약 시 고를 수 있는 이 창고(스튜디오)의 판매 상품
+// GET /api/facilities/[id]/products — 예약 시 고를 수 있는 이 공간의 판매 상품
 // (예전에는 상품이 없으면 예시 상품을 돌려줬지만, 실제 예약에 연결되므로 실제 등록 상품만 돌려준다)
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    // 셀러 공급가 · 셀러 수수료는 로그인한 셀러 · 창고(스튜디오) · 관리자에게만 돌려준다 (비로그인 공개 화면에는 판매가 · 재고만)
+    // 셀러 공급가 · 셀러 수수료는 로그인한 셀러 · 스토리지마켓 · 관리자에게만 돌려준다 (비로그인 공개 화면에는 판매가 · 재고만)
     const viewer = await getSessionUser().catch(() => null);
     const trade = !!viewer && ["SELLER", "MANAGER", "SUPER_ADMIN"].includes(viewer.role);
     const fps = await prisma.facilityProduct.findMany({

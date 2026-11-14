@@ -43,7 +43,7 @@ export default async function SupportPage({ searchParams }: { searchParams: SP }
           {user && <a href="#my-inquiries" className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-white/25 px-3 text-xs font-bold hover:bg-white/10"><ListChecks className="h-4 w-4" />내 문의</a>}
         </nav>
       </section>
-      <SupportFaq />
+      <SupportFaq role={user?.role ?? null} />
       <section id="new-inquiry" className="scroll-mt-20 rounded-[24px] border bg-white p-4 sm:p-6">
         <h2 className="text-xl font-extrabold text-navy">1:1 문의하기</h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">접수 내역과 운영팀의 답변은 내 문의에서 확인할 수 있습니다.</p>

@@ -30,7 +30,7 @@ export default function FacilityInquiriesPage() {
   const [tab, setTab] = useState<"ALL" | "UNANSWERED" | "ANSWERED" | "UNREAD">("ALL");
   const [search, setSearch] = useState("");
 
-  // 창고(스튜디오) 목록 로드 (본인 소유 창고(스튜디오)만)
+  // 공간 목록 로드 (본인 소유 공간만)
   useEffect(() => {
     fetch("/api/facility/facilities")
       .then((r) => r.json())
@@ -115,7 +115,7 @@ export default function FacilityInquiriesPage() {
         description="셀러가 보낸 문의를 확인하고 답변하세요"
       />
 
-      {/* 창고(스튜디오) 탭 */}
+      {/* 공간 탭 */}
       {facilities.length > 1 && (
         <div className="flex gap-2 overflow-x-auto pb-1">
           {facilities.map((f) => (
@@ -180,7 +180,7 @@ export default function FacilityInquiriesPage() {
           <CardContent className="py-16 text-center text-muted-foreground">
             <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-25" />
             <p className="text-sm font-semibold">아직 문의가 없습니다</p>
-            <p className="text-xs mt-1">셀러가 창고(스튜디오) 페이지에서 문의를 보내면 여기에 표시됩니다</p>
+            <p className="text-xs mt-1">셀러가 공간 페이지에서 문의를 보내면 여기에 표시됩니다</p>
           </CardContent>
         </Card>
       ) : (

@@ -4,7 +4,7 @@ import { Download, Search } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
-  SUPPORT_CATEGORIES, SUPPORT_PRIORITY, SUPPORT_SLA_HOURS, SUPPORT_SOURCE, SUPPORT_STATUS, effectiveStatus, isSupportCategory, isSupportPriority, supportThread,
+  SUPPORT_CATEGORIES, SUPPORT_PRIORITY, SUPPORT_SLA_HOURS, SUPPORT_SOURCE, SUPPORT_STATUS, effectiveStatus, hasUnreadForAdmin, isSupportCategory, isSupportPriority, supportThread,
 } from "@/lib/support";
 import { formatDateTime } from "@/lib/utils";
 import { pageOf, sp, type SP } from "@/lib/list";
@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { SupportThread } from "@/components/support/support-thread";
 import { SupportAdminPanel } from "@/components/support/support-admin-panel";
+import { SupportLive, SupportReadMarker } from "@/components/support/support-live";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,7 @@ export const dynamic = "force-dynamic";
 //  상태(새 문의 · 처리 중 · 답변 완료 · 종료) · 우선순위 · 담당자 · 내부 메모 · 답변 템플릿 · 대화(추가 문의) · 챗봇 대화 기록 · 비회원 문의 · CSV
 const TABS = [
   { key: "", label: "전체" }, { key: "OPEN", label: "새 문의" }, { key: "IN_PROGRESS", label: "처리 중" },
-  { key: "ANSWERED", label: "답변 완료" }, { key: "CLOSED", label: "종료" }, { key: "overdue", label: `답변 지연(${SUPPORT_SLA_HOURS}시간+)` }, { key: "mine", label: "내 담당" },
+  { key: "ANSWERED", label: "답변 완료" }, { key: "CLOSED", label: "종료" }, { key: "overdue", label: `답변 지연(${SUPPORT_SLA_HOURS}시간+)` }, { key: "mine", label: "내 담당" }, { key: "rated", label: "만족도 평가" },
 ] as const;
 
 export default async function AdminSupportPage({ searchParams }: { searchParams: SP }) {
@@ -44,6 +45,7 @@ export default async function AdminSupportPage({ searchParams }: { searchParams:
       : tab === "IN_PROGRESS" || tab === "CLOSED" ? { status: tab }
       : tab === "overdue" ? { ...open, answeredAt: null, createdAt: { lt: slaCut } }
       : tab === "mine" ? { assigneeId: admin.id, NOT: { status: "CLOSED" } }
+      : tab === "rated" ? { rating: { not: null } }
       : {};
   const where: Prisma.SupportInquiryWhereInput = {
     AND: [
@@ -63,13 +65,14 @@ export default async function AdminSupportPage({ searchParams }: { searchParams:
 
   const data = await (async () => {
     try {
-      const [total, counts, overdue, admins, templates, answeredRows] = await Promise.all([
+      const [total, counts, overdue, admins, templates, answeredRows, ratingAgg] = await Promise.all([
         prisma.supportInquiry.count({ where }),
         prisma.supportInquiry.groupBy({ by: ["status"], _count: { id: true } }),
         prisma.supportInquiry.count({ where: { ...open, answeredAt: null, createdAt: { lt: slaCut } } }),
         prisma.user.findMany({ where: { role: "SUPER_ADMIN", isActive: true }, select: { id: true, email: true, profile: { select: { name: true } } } }),
         prisma.supportTemplate.findMany({ orderBy: { title: "asc" }, take: 100 }),
         prisma.supportInquiry.findMany({ where: { answeredAt: { not: null }, createdAt: { gte: new Date(Date.now() - 30 * 86400000) } }, select: { createdAt: true, answeredAt: true }, take: 1000 }),
+        prisma.supportInquiry.aggregate({ where: { rating: { not: null }, createdAt: { gte: new Date(Date.now() - 30 * 86400000) } }, _avg: { rating: true }, _count: { rating: true } }),
       ]);
       const current = Math.min(page, Math.max(1, Math.ceil(total / size)));
       const items = await prisma.supportInquiry.findMany({
@@ -77,7 +80,7 @@ export default async function AdminSupportPage({ searchParams }: { searchParams:
         include: { user: { select: { email: true, role: true, profile: { select: { name: true, phone: true } } } }, messages: { orderBy: { createdAt: "asc" } } },
       });
       const avg = answeredRows.length ? answeredRows.reduce((s, r) => s + (r.answeredAt!.getTime() - r.createdAt.getTime()), 0) / answeredRows.length / 3600000 : null;
-      return { total, current, items, counts: Object.fromEntries(counts.map((c) => [c.status, c._count.id])), overdue, admins, templates, avg };
+      return { total, current, items, counts: Object.fromEntries(counts.map((c) => [c.status, c._count.id])), overdue, admins, templates, avg, rating: ratingAgg._avg.rating, ratingCount: ratingAgg._count.rating };
     } catch { return null; }
   })();
 
@@ -89,15 +92,17 @@ export default async function AdminSupportPage({ searchParams }: { searchParams:
 
   return (
     <div className="space-y-5">
-      <PageHeader title="고객 문의 관리" description="문의하기 팝업 · 챗봇 · 고객센터로 들어온 1:1 문의를 처리합니다. 담당자를 정하고, 템플릿으로 빠르게 답하고, 추가 문의까지 대화로 이어서 관리하세요."
+      <PageHeader title="고객 문의 관리" description="문의하기 팝업의 1:1 상담 · 챗봇 · 고객센터로 들어온 문의를 채팅처럼 이어서 처리합니다. 새 메시지는 빨간 점으로 보이고 화면은 20초마다 자동으로 새로 고쳐져요."
         action={<a href="/api/admin/support/export" className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border bg-white px-3 text-sm font-bold text-navy hover:bg-brand-50"><Download className="h-4 w-4" />CSV</a>} />
       {data ? (
         <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <SupportLive />
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
             <Kpi label="새 문의" value={data.counts.OPEN ?? 0} href={qs({ status: "OPEN", page: "" })} tone="amber" />
             <Kpi label="처리 중" value={data.counts.IN_PROGRESS ?? 0} href={qs({ status: "IN_PROGRESS" })} tone="blue" />
             <Kpi label={`답변 지연 (${SUPPORT_SLA_HOURS}시간+)`} value={data.overdue} href={qs({ status: "overdue" })} tone="red" />
             <Kpi label="평균 첫 답변 (30일)" value={data.avg == null ? "-" : `${data.avg.toFixed(1)}시간`} tone="green" />
+            <Kpi label="상담 만족도 (30일)" value={data.rating == null ? "-" : `★ ${data.rating.toFixed(1)} · ${data.ratingCount}건`} href={qs({ status: "rated" })} tone="amber" />
           </div>
           <nav aria-label="문의 상태" className="-mx-1 flex gap-1 overflow-x-auto px-1">
             {TABS.map((t) => (
@@ -125,14 +130,18 @@ export default async function AdminSupportPage({ searchParams }: { searchParams:
             const st = effectiveStatus(item);
             const late = !item.answeredAt && st !== "CLOSED" && item.createdAt < slaCut;
             const who = item.user ? `${item.user.profile?.name ?? item.user.email}` : `${item.guestName ?? "비회원"} (비회원)`;
+            const unread = st !== "CLOSED" && hasUnreadForAdmin(item);
             return (
               <details key={item.id} open={data.items.length === 1 || undefined} className={cn("group rounded-2xl border bg-white p-4 sm:p-5", late && "border-red-200")}>
                 <summary className="cursor-pointer list-none rounded-lg text-sm text-navy marker:hidden">
                   <span className="flex flex-wrap items-center gap-1.5">
+                    <SupportReadMarker id={item.id} unread={unread} />
+                    {unread && <span className="h-2.5 w-2.5 rounded-full bg-rose-500" title="새 메시지"><span className="sr-only">새 메시지</span></span>}
                     <StatusChip status={st} />
                     {item.priority !== "NORMAL" && <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-bold", item.priority === "URGENT" ? "bg-red-600 text-white" : item.priority === "HIGH" ? "bg-red-50 text-red-700" : "bg-slate-100 text-slate-600")}>{SUPPORT_PRIORITY[item.priority as keyof typeof SUPPORT_PRIORITY] ?? item.priority}</span>}
                     {late && <span className="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-700">답변 지연</span>}
                     {item.lastUserReplyAt && st === "OPEN" && item.answeredAt && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-800">추가 문의</span>}
+                    {item.rating && <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-bold text-brand-800">만족도 ★{item.rating}</span>}
                     {item.source !== "PAGE" && <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-bold text-violet-700">{SUPPORT_SOURCE[item.source as keyof typeof SUPPORT_SOURCE] ?? item.source}</span>}
                     <span className="ml-1 font-extrabold">{item.subject}</span>
                   </span>

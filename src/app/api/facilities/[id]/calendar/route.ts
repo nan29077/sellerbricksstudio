@@ -9,7 +9,7 @@ import { policyOf } from "@/lib/booking-engine";
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const f = await getFacilityWithPolicy(params.id);
-    if (!f || f.status !== "APPROVED") return fail("창고(스튜디오)를 찾을 수 없습니다.", 404);
+    if (!f || f.status !== "APPROVED") return fail("공간을 찾을 수 없습니다.", 404);
     const from = parseDateKey(req.nextUrl.searchParams.get("from")) ?? kstStartOfDay(new Date());
     const days = Number(req.nextUrl.searchParams.get("days")) || 35;
     const summary = await getRangeSummary(f, from, days);

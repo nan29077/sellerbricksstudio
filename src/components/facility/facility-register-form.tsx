@@ -64,7 +64,7 @@ export function FacilityRegisterForm() {
             {published ? "셀러에게 공개되어 바로 예약을 받을 수 있습니다." : "비공개(준비 중)로 저장했습니다. 사진 · 일정 · 상품을 준비한 뒤 창고 목록에서 공개하세요."}
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-2">
-            <Button variant="outline" onClick={() => router.push("/facility/profile")}>창고(스튜디오) 정보 보기</Button>
+            <Button variant="outline" onClick={() => router.push("/facility/profile")}>공간 정보 보기</Button>
             <Button onClick={() => { setDone(null); setF((p) => ({ ...p, name: "", address: "", description: "" })); }}>하나 더 등록</Button>
           </div>
         </CardContent>
@@ -128,7 +128,7 @@ export function FacilityRegisterForm() {
             </div>
           )}
           <div>
-            <Label htmlFor="fr-name">창고(스튜디오) 이름 *</Label>
+            <Label htmlFor="fr-name">공간 이름 *</Label>
             <Input id="fr-name" value={f.name} onChange={(e) => set("name", e.target.value)} placeholder="예: 성수 라이브 스튜디오 A" maxLength={60} required />
           </div>
           <div className="grid gap-4 sm:grid-cols-3">

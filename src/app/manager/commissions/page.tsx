@@ -45,7 +45,7 @@ export default async function ManagerCommissions() {
 
   return (
     <div className="space-y-5 pb-24 md:pb-0">
-      <PageHeader title="내 수수료" description="정률은 담당 창고(스튜디오) 방송의 배송 완료 주문에서 발생한 플랫폼 판매 수수료, 정액은 '이용 완료' 예약 건수를 기준으로 계산한 영업 수수료입니다." />
+      <PageHeader title="내 수수료" description="정률은 담당 공간 방송의 배송 완료 주문에서 발생한 플랫폼 판매 수수료, 정액은 '이용 완료' 예약 건수를 기준으로 계산한 영업 수수료입니다." />
       {!rule && <p className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"><Info className="h-4 w-4" />아직 수수료율이 설정되지 않았습니다. 최고관리자에게 문의하세요.</p>}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="이번 달 수수료" value={formatKRW(cur.value)} delta={growth(cur.value, prev.value)} sub={`완료 ${cur.n}건`} icon={Coins} tone="green" />
@@ -59,10 +59,10 @@ export default async function ManagerCommissions() {
         <CardContent><BarChart data={monthly} format={(n) => formatKRW(n)} /></CardContent>
       </Card>
       <Card>
-        <CardHeader><CardTitle className="text-base">이번 달 창고(스튜디오)별 기여</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">이번 달 공간별 기여</CardTitle></CardHeader>
         <CardContent>
           {byFac.size === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">이번 달 이용 완료된 예약이 없습니다.</p> : (
-            <Table headers={["창고(스튜디오)", "이용 완료", "플랫폼 판매 수수료", "수수료"]}
+            <Table headers={["공간", "이용 완료", "플랫폼 판매 수수료", "수수료"]}
               rows={Array.from(byFac.values()).sort((a, b) => b.rev - a.rev).map((f) => [<b key="n">{f.name}</b>, `${f.n}건`, formatKRW(f.rev), <span key="c" className="font-bold text-emerald-700">{formatKRW(calcManagerCommission(rule, f.rev, f.n))}</span>])} />
           )}
         </CardContent>

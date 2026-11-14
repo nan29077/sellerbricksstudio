@@ -237,7 +237,8 @@ export async function POST(req: Request) {
           // 공급가·최저가 아래로 팔고 있던 판매 목록은 판매 중단 (판매처가 새 가격으로 다시 켜야 함)
           // 판매가 고정 상품은 모든 셀러 판매가를 브랜드 판매가로 맞춘다
           const fixedSync = pricing.priceRule === "FIXED" && pricing.salePrice > 0
-            ? (await tx.sellerBrandProduct.updateMany({ where: { brandProductId: productId, salePrice: { not: pricing.salePrice } }, data: { salePrice: pricing.salePrice } })).count : 0;
+            ? (await tx.sellerBrandProduct.updateMany({ where: { brandProductId: productId, salePrice: { not: pricing.salePrice } }, data: { salePrice: pricing.salePrice } })).count
+              + (await tx.facilityProduct.updateMany({ where: { brandProductId: productId, salePrice: { not: pricing.salePrice } }, data: { salePrice: pricing.salePrice } })).count : 0;
           const underSeller = await tx.sellerBrandProduct.updateMany({ where: { brandProductId: productId, isActive: true, salePrice: { lt: floor } }, data: { isActive: false } });
           const underFacility = await tx.facilityProduct.updateMany({ where: { brandProductId: productId, isSellable: true, salePrice: { lt: floor } }, data: { isSellable: false } });
           if (data.stock !== before.stock) await capDropshipLiveStockInTx(tx, productId, data.stock);
@@ -400,6 +401,12 @@ export async function POST(req: Request) {
         const left = await tx.brandProduct.update({ where: { id: request.productId }, data: { stock: { decrement: request.quantity } }, select: { stock: true } });
         await capDropshipLiveStockInTx(tx, request.productId, left.stock);
       }
+      // 방송 시연품: 브랜드가 실제로 보낼 때(발송) 재고에서 뺀다. 발송 전 반려 · 취소는 재고 변화 없음 (2026-11-14)
+      if (request.kind === "DISPLAY" && shipping) {
+        if (request.product.stock < request.quantity) throw new BrandConflict(`재고가 부족합니다. (재고 ${request.product.stock}개 · 시연품 ${request.quantity}개) 재고를 먼저 수정해 주세요.`);
+        const left = await tx.brandProduct.update({ where: { id: request.productId }, data: { stock: { decrement: request.quantity } }, select: { stock: true } });
+        await capDropshipLiveStockInTx(tx, request.productId, left.stock);
+      }
       const release = command.status === "REJECTED" || command.status === "CANCELLED" || command.status === "REFUNDED";
       if (release && request.kind !== "DISPLAY" && (request.kind === "SAMPLE" || request.status === "APPROVED")) {
         const change = { increment: request.quantity };
@@ -430,7 +437,7 @@ export async function POST(req: Request) {
       };
     });
     if (!saved) return fail("신청 내역을 찾지 못했습니다.", 404);
-    if (command.status === "APPROVED") await checkLowStock([await prisma.brandRequest.findUnique({ where: { id: saved.id }, select: { productId: true } }).then((r) => r?.productId ?? "")].filter(Boolean));
+    if (command.status === "APPROVED" || (saved.kind === "DISPLAY" && command.status === "SHIPPED")) await checkLowStock([await prisma.brandRequest.findUnique({ where: { id: saved.id }, select: { productId: true } }).then((r) => r?.productId ?? "")].filter(Boolean));
     // 유료 샘플 반려·취소 → 플랫폼 결제 환불
     if (saved.refund) {
       const adapter = getPaymentAdapter();
@@ -445,7 +452,7 @@ export async function POST(req: Request) {
     await notify({
       userId: manager ? saved.buyerId : await brandRecipients(saved.shopId), type: "SYSTEM",
       title: `브랜드 신청 · ${BRAND_REQUEST_STATUS[command.status]}${saved.refund ? " (결제 환불)" : ""}`, body: command.reason ? `${saved.productName} · ${command.reason}` : saved.productName,
-      link: `${manager ? "/brand-requests" : "/brand/requests"}?request=${saved.id}`,
+      link: `${manager ? (saved.kind === "DISPLAY" ? "/seller/bookings" : "/brand-requests") : "/brand/requests"}?request=${saved.id}`,
     });
     // 방송 시연품: 받는 공간(창고 · 스튜디오 · 쇼룸) 운영자에게도 알린다
     if (saved.kind === "DISPLAY") {

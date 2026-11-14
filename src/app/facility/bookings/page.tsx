@@ -93,7 +93,7 @@ export default async function FacilityBookings({ searchParams }: { searchParams:
       <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
         <FilterBar className="flex-1" fields={[
           { type: "search", key: "q", placeholder: "셀러 이름 · 이메일 · 회사 · 목적 · 예약번호" },
-          ...(facilities.length > 1 ? [{ type: "select" as const, key: "facility", label: "창고(스튜디오)", options: facilities.map((f) => ({ value: f.id, label: f.name })) }] : []),
+          ...(facilities.length > 1 ? [{ type: "select" as const, key: "facility", label: "공간", options: facilities.map((f) => ({ value: f.id, label: f.name })) }] : []),
           { type: "select", key: "sort", label: "정렬", options: [{ value: "upcoming", label: "이용일 빠른 순" }] },
           { type: "date", key: "from", label: "이용일 시작" },
           { type: "date", key: "to", label: "이용일 끝" },
@@ -101,7 +101,7 @@ export default async function FacilityBookings({ searchParams }: { searchParams:
         <div className="flex gap-2">
           <Link href={withParams(BASE, searchParams, { view: undefined })}><Button size="sm" variant={view === "list" ? "secondary" : "outline"}><List className="h-4 w-4" />목록</Button></Link>
           <Link href={withParams(BASE, searchParams, { view: "calendar", page: undefined })}><Button size="sm" variant={view === "calendar" ? "secondary" : "outline"}><CalendarDays className="h-4 w-4" />달력</Button></Link>
-          {view === "list" && <CsvButton label="CSV" filename="예약목록" headers={["예약번호", "상태", "창고(스튜디오)", "셀러", "이메일", "연락처", "시작", "이용시간", "인원", "목적", "판매 예정 상품", "요청사항"]}
+          {view === "list" && <CsvButton label="CSV" filename="예약목록" headers={["예약번호", "상태", "공간", "셀러", "이메일", "연락처", "시작", "이용시간", "인원", "목적", "판매 예정 상품", "요청사항"]}
             rows={rows.map((b) => [b.code, BOOKING_STATUS[b.status]?.label, b.facility.name, b.seller.profile?.name, b.seller.email, b.seller.profile?.phone, formatDateTime(b.startAt), hoursBetween(b.startAt, b.endAt), b.headcount, b.purpose, b.products.map((p) => `${p.nameSnapshot}×${p.quantity}`).join(" / "), b.requestNote])} />}
         </div>
       </div>
@@ -111,7 +111,7 @@ export default async function FacilityBookings({ searchParams }: { searchParams:
           events={calRows.map((b) => ({ id: b.id, start: b.startAt, end: b.endAt, label: b.seller.profile?.name ?? b.seller.email, tone: BOOKING_STATUS[b.status]?.tone }))} />
       ) : rows.length === 0 ? (
         <EmptyState icon={<CalendarDays className="h-10 w-10" />} title={status || q ? "조건에 맞는 예약이 없습니다" : "아직 예약 요청이 없습니다"}
-          description="창고(스튜디오) 페이지를 꾸미고 운영 시간대를 등록하면 셀러가 더 쉽게 예약할 수 있어요."
+          description="공간 페이지를 꾸미고 운영 시간대를 등록하면 셀러가 더 쉽게 예약할 수 있어요."
           action={<Link href="/facility/schedule"><Button variant="outline">운영 시간대 설정</Button></Link>} />
       ) : (
         <>

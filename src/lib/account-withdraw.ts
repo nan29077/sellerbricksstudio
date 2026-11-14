@@ -25,7 +25,7 @@ export async function withdrawBlockers(userId: string): Promise<string[]> {
   if (unpaid) out.push(`지급이 끝나지 않은 정산 ${unpaid}건이 있습니다.`);
   if (bookings) out.push(`대기 중이거나 승인된 예약 ${bookings}건이 있습니다. 먼저 취소해 주세요.`);
   if (live) out.push("진행 중인 라이브 방송이 있습니다.");
-  if (facilities) out.push(`운영 중인 창고(스튜디오) ${facilities}곳이 있습니다. 고객지원으로 운영 종료를 먼저 요청해 주세요.`);
+  if (facilities) out.push(`운영 중인 공간 ${facilities}곳이 있습니다. 고객지원으로 운영 종료를 먼저 요청해 주세요.`);
   if (shop) {
     const [pos, bs] = await Promise.all([
       prisma.purchaseOrder.count({ where: { brandShopId: shop.id, status: { in: ["NEW", "CONFIRMED", "SHIPPED"] } } }),

@@ -58,7 +58,7 @@ export default async function SiteManagementPage({ searchParams }: { searchParam
         <div className="space-y-3">
           <RoleAccessToggles managerDisabled={settings.managerDisabled} />
           <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm leading-relaxed text-muted-foreground">
-            창고(스튜디오)는 스토리지마켓 본사가 직접 운영하거나 직접 관리하는 곳만 쓰므로 창고 관리자 회원은 없습니다. 창고 운영 매니저 계정은 매니저 관리에서 만들고 담당 창고를 지정합니다.
+            공간은 스토리지마켓 본사가 직접 운영하거나 직접 관리하는 곳만 쓰므로 창고 관리자 회원은 없습니다. 창고 운영 매니저 계정은 매니저 관리에서 만들고 담당 창고를 지정합니다.
             판매는 셀러가 외부 라이브 플랫폼에서 하고, 스토리지마켓에는 주문서로 들어옵니다.
           </div>
         </div>

@@ -89,7 +89,7 @@ export function BrandShopEditor({ shop, name, isOwner = true }: { shop?: ShopFie
         <fieldset className="grid gap-4 rounded-xl border p-4 lg:grid-cols-2">
           <legend className="px-1 text-sm font-bold text-navy">판매처 · 재고 운영</legend>
           <Label className="flex items-start gap-2 lg:col-span-2"><input type="checkbox" name="requireSellerApproval" defaultChecked={shop.requireSellerApproval} className="mt-0.5 h-5 w-5" />
-            <span>승인한 판매처만 상품을 가져갈 수 있게 하기<span className="block text-xs font-normal text-slate-500">켜면 셀러·창고(스튜디오)가 판매처 신청을 하고, 판매처 현황에서 승인해야 판매 목록에 담을 수 있습니다. 샘플 신청은 그대로 받을 수 있습니다.</span></span>
+            <span>승인한 판매처만 상품을 가져갈 수 있게 하기<span className="block text-xs font-normal text-slate-500">켜면 셀러 · 스토리지마켓가 판매처 신청을 하고, 판매처 현황에서 승인해야 판매 목록에 담을 수 있습니다. 샘플 신청은 그대로 받을 수 있습니다.</span></span>
           </Label>
           <Label className="block">재고 부족 알림 기준 (개)<Input type="number" name="lowStockThreshold" min={0} max={100000} defaultValue={shop.lowStockThreshold ?? 10} /></Label>
         </fieldset>

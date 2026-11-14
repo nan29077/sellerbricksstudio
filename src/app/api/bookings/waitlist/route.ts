@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     if (isNaN(startAt.getTime()) || isNaN(endAt.getTime()) || endAt <= startAt) return fail("시간이 올바르지 않습니다.");
     if (startAt < new Date()) return fail("지난 시간은 대기 신청할 수 없습니다.");
     const f = await prisma.facility.findUnique({ where: { id: body.facilityId }, select: { id: true, status: true } });
-    if (!f || f.status !== "APPROVED") return fail("창고(스튜디오)를 찾을 수 없습니다.", 404);
+    if (!f || f.status !== "APPROVED") return fail("공간을 찾을 수 없습니다.", 404);
     const dup = await prisma.bookingWaitlist.findFirst({ where: { sellerId: user.id, facilityId: f.id, status: "WAITING", startAt, endAt } });
     if (dup) return fail("이미 대기 신청한 시간입니다.", 409);
     const active = await prisma.bookingWaitlist.count({ where: { sellerId: user.id, status: "WAITING" } });

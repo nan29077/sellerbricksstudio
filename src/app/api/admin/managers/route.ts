@@ -15,7 +15,7 @@ const schema = z.object({
 });
 
 // POST /api/admin/managers — 최고관리자가 중간관리자 계정을 직접 만든다.
-// 담당 창고(스튜디오) 이름을 넣으면 이름이 정확히 하나와 일치할 때 바로 연결한다.
+// 담당 공간 이름을 넣으면 이름이 정확히 하나와 일치할 때 바로 연결한다.
 export async function POST(req: NextRequest) {
   try {
     const admin = await requireRole(["SUPER_ADMIN"]);
@@ -35,8 +35,8 @@ export async function POST(req: NextRequest) {
       });
       if (matches.length === 1) facility = matches[0];
       else facilityNote = matches.length === 0
-        ? `'${d.facility}'와 일치하는 창고(스튜디오)가 없어 담당 연결은 하지 않았습니다.`
-        : `'${d.facility}'와 일치하는 창고(스튜디오)가 여러 개라 담당 연결은 하지 않았습니다.`;
+        ? `'${d.facility}'와 일치하는 공간이 없어 담당 연결은 하지 않았습니다.`
+        : `'${d.facility}'와 일치하는 공간이 여러 개라 담당 연결은 하지 않았습니다.`;
     }
 
     const user = await prisma.user.create({

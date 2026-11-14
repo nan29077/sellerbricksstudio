@@ -19,7 +19,7 @@ import { CalendarDays } from "lucide-react";
 export const dynamic = "force-dynamic";
 const BASE = "/manager/bookings";
 
-// 창고 운영 매니저: 담당 창고(스튜디오) 예약 한눈에 보기. 승인 · 거절 · 체크인은 창고 운영 콘솔(/facility/bookings)에서 한다.
+// 창고 운영 매니저: 담당 공간 예약 한눈에 보기. 승인 · 거절 · 체크인은 창고 운영 콘솔(/facility/bookings)에서 한다.
 export default async function ManagerBookings({ searchParams }: { searchParams: SP }) {
   const user = await requireRole(["MANAGER"]);
   const ids = await managerFacilityIds(user.id);
@@ -43,16 +43,16 @@ export default async function ManagerBookings({ searchParams }: { searchParams: 
 
   return (
     <div className="space-y-5 pb-24 md:pb-0">
-      <PageHeader title="예약 현황" description="담당 창고(스튜디오)의 예약 흐름입니다. 승인 · 거절 · 체크인은 창고 운영 콘솔에서 처리하세요."
+      <PageHeader title="예약 현황" description="담당 공간의 예약 흐름입니다. 승인 · 거절 · 체크인은 창고 운영 콘솔에서 처리하세요."
         action={<a href="/facility/bookings?status=PENDING" className="inline-flex h-10 items-center rounded-lg bg-navy px-4 text-sm font-semibold text-white">예약 처리하기</a>} />
       <StatusTabs base={BASE} params={searchParams} tabs={[{ value: "", label: "전체", count: all }, ...Object.entries(BOOKING_STATUS).map(([k, v]) => ({ value: k, label: v.label, count: c[k] ?? 0 }))]} />
       <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
         <FilterBar className="flex-1" fields={[
           { type: "search", key: "q", placeholder: "셀러 · 목적" },
-          { type: "select", key: "facility", label: "창고(스튜디오)", options: facilities.map((f) => ({ value: f.id, label: f.name })) },
+          { type: "select", key: "facility", label: "공간", options: facilities.map((f) => ({ value: f.id, label: f.name })) },
           { type: "date", key: "from", label: "이용일 시작" }, { type: "date", key: "to", label: "이용일 끝" },
         ]} />
-        <CsvButton label="CSV" filename="담당예약" headers={["상태", "창고(스튜디오)", "셀러", "시작", "이용시간", "예약번호"]}
+        <CsvButton label="CSV" filename="담당예약" headers={["상태", "공간", "셀러", "시작", "이용시간", "예약번호"]}
           rows={rows.map((b) => [BOOKING_STATUS[b.status]?.label, b.facility.name, b.seller.profile?.name ?? b.seller.email, formatDateTime(b.startAt), hoursBetween(b.startAt, b.endAt), b.code ?? ""])} />
       </div>
       {rows.length === 0 ? <EmptyState icon={<CalendarDays className="h-10 w-10" />} title="예약이 없습니다" /> : (

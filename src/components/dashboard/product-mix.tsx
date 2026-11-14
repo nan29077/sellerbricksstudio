@@ -13,7 +13,7 @@ import { ShoppingBag } from "lucide-react";
  *  - 방송 임시 상품  : 방송 중 바로 추가한 상품
  * 데이터 로딩에 실패해도 대시보드 전체가 멈추지 않도록 자체적으로 오류를 처리한다.
  */
-export async function ProductMixPanel({ scope }: { scope: { sellerId: string } | { facilityIds: string[] } }) {
+export async function ProductMixPanel({ scope, requestsHref }: { scope: { sellerId: string } | { facilityIds: string[] }; requestsHref?: string | null }) {
   const seller = "sellerId" in scope;
   try {
     const monthStart = kstStartOfMonth(new Date());
@@ -41,7 +41,7 @@ export async function ProductMixPanel({ scope }: { scope: { sellerId: string } |
     const brandLink = seller ? "/seller/brand-products" : "/facility/brand-products";
     return (
       <Panel eyebrow="PRODUCT MIX" title="상품 구분별 이번 달 판매" action={{ href: brandLink, label: "브랜드 상품" }}>
-        {total === 0 ? <Empty icon={ShoppingBag} text="이번 달 판매가 생기면 브랜드샵 상품과 공간 상품 판매를 나눠 보여 드립니다" action={{ href: "/brands", label: "브랜드샵 둘러보기" }} /> : (
+        {total === 0 ? <Empty icon={ShoppingBag} text="이번 달 판매가 생기면 브랜드샵 상품과 공간 상품 판매를 나눠 보여 드립니다" action={{ href: seller ? "/seller/brands" : "/facility/brands", label: "브랜드샵 둘러보기" }} /> : (
           <Donut centerValue={compactKRW(total)} centerLabel="이번 달 판매" segments={[
             { label: "브랜드샵 상품", value: brand, tone: "violet" as const },
             { label: "공간 상품", value: own, tone: "brand" as const },
@@ -55,7 +55,7 @@ export async function ProductMixPanel({ scope }: { scope: { sellerId: string } |
           { label: "판매 목록의 브랜드 상품", value: `${listed}개` },
           { label: "직접 등록한 상품", value: `${samples}개` },
         ]} />
-        <p className="mt-3 text-[11px] text-slate-400">브랜드샵 상품은 판매되면 발주서가 브랜드사로 자동 전달됩니다. <Link href="/brand-requests" className="underline">샘플 · 입고 신청 내역</Link></p>
+        <p className="mt-3 text-[11px] text-slate-400">브랜드샵 상품은 판매되면 발주서가 브랜드사로 자동 전달됩니다.{requestsHref && <> <Link href={requestsHref} className="underline">샘플 · 입고 신청 내역</Link></>}</p>
       </Panel>
     );
   } catch (e) {

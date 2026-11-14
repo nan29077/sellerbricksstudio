@@ -158,7 +158,7 @@ async function main() {
   pg = await admin.page("/facility/settlements");
   ok(pg.status === 200 && pg.text.includes("창고 매출") && pg.text.includes("직영"), "창고 매출: 직영 · 제휴 구분 표시", { status: pg.status });
   pg = await admin.page("/admin/facilities");
-  ok(pg.status === 200 && pg.text.includes("창고(스튜디오) 등록") && pg.text.includes("제휴") && !pg.text.includes("수수료율 설정"), "관리자 창고 목록: 등록 버튼 · 운영 형태 · 이용료 수수료 버튼 없음", { status: pg.status });
+  ok(pg.status === 200 && pg.text.includes("공간 등록") && pg.text.includes("제휴") && !pg.text.includes("수수료율 설정"), "관리자 창고 목록: 등록 버튼 · 운영 형태 · 이용료 수수료 버튼 없음", { status: pg.status });
   pg = await admin.page("/admin/settlements");
   ok(redirected(pg), "예전 창고 이용료 정산 화면은 판매 · 브랜드 정산으로 이동", { status: pg.status });
   pg = await seller.page("/seller/settlements");

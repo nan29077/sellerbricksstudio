@@ -1,6 +1,8 @@
+from argparse import ArgumentParser
 from functools import lru_cache
 from io import BytesIO
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from PIL import Image, ImageOps
 from reportlab.lib.colors import HexColor
@@ -28,6 +30,7 @@ NAVY, SOFT_NAVY, GOLD = '#1A1A2E', '#292940', '#F5A623'
 INK, MUTED, LIGHT = '#242439', '#47495B', '#E4E1EB'
 PAPER, WHITE, TINT, LINE, BRONZE = '#FAF7F0', '#FFFFFF', '#FFF1D7', '#E4DCCF', '#774B15'
 REG, BOLD, EN = 'KR', 'KR-Bold', 'EN-Bold'
+PHONE = '070-4158-2540'
 for family, name in [(REG, 'malgun.ttf'), (BOLD, 'malgunbd.ttf'), (EN, 'arialbd.ttf')]:
     pdfmetrics.registerFont(TTFont(family, 'C:/Windows/Fonts/' + name))
 
@@ -65,10 +68,11 @@ def fitted(path, w, h, cy):
 
 
 class Brochure:
-    def __init__(self, spec):
+    def __init__(self, spec, out_dir, site_url):
         self.spec = spec
+        self.site_url = site_url
         self.count = len(spec['sections'])+1
-        self.c = canvas.Canvas(str(HERE/spec['file']), pagesize=A4, pageCompression=1)
+        self.c = canvas.Canvas(str(out_dir/spec['file']), pagesize=A4, pageCompression=1)
         self.c.setTitle('스토리지마켓 ' + spec['audience'] + ' 서비스 소개서')
         self.c.setAuthor('스토리지마켓')
         self.c.setSubject('브랜드 상품과 방송 공간을 잇는 라이브 커머스')
@@ -123,6 +127,32 @@ class Brochure:
         self.txt('스토리지마켓  /  '+self.spec['audience'], M, 809, 8.8, BOLD, LIGHT if dark else MUTED)
         value = f'{index:02d}   /   {self.count:02d}'
         self.txt(value, W-M-width(value, 9, EN), 809, 9, EN, GOLD if dark else BRONZE)
+
+    def contact_links(self):
+        self.rule(709, True)
+        phone_label = '문의하기  ' + PHONE
+        phone_uri = 'tel:' + PHONE.replace('-', '')
+        self.txt(phone_label, M, 723, 16, BOLD, WHITE)
+        self.c.linkURL(phone_uri, (M, H-745, M+width(phone_label, 16, BOLD), H-719), thickness=0)
+        if not self.site_url:
+            self.txt('누르면 전화 앱에서 문의할 수 있습니다.', M, 752, 10.8, REG, LIGHT)
+            return
+        buttons = [
+            ('스토리지마켓 바로가기', '/'),
+            ('회원가입하기', '/signup/' + self.spec['key']),
+            ('온라인 문의하기', '/support'),
+        ]
+        gap = 10
+        button_width = (CW-2*gap)/3
+        for i, (label, path) in enumerate(buttons):
+            x = M + i*(button_width+gap)
+            primary = i == 0
+            self.rect(x, 751, button_width, 35, GOLD if primary else SOFT_NAVY,
+                      None if primary else '#625D73', 6)
+            size = 10.8
+            self.txt(label, x+(button_width-width(label, size, BOLD))/2, 763,
+                     size, BOLD, NAVY if primary else WHITE)
+            self.c.linkURL(self.site_url+path, (x, H-786, x+button_width, H-751), thickness=0)
 
     def cover(self):
         p = self.spec['cover']
@@ -254,11 +284,27 @@ class Brochure:
             y = self.header(label,title,intro,number,dark)
             for kind, data in blocks:
                 y = self.render_block(kind,data,y,dark)
-            assert y <= 800, (self.spec['key'],number,y)
+            assert y <= (705 if dark else 800), (self.spec['key'],number,y)
+            if dark:
+                self.contact_links()
             print(self.spec['key'],number,round(y))
             self.c.showPage()
         self.c.save()
 
 
-for book in BOOKS:
-    Brochure(book).render()
+def parse_site_url(value):
+    url = urlsplit(value)
+    if (url.scheme not in {'http', 'https'} or not url.hostname
+            or url.username or url.password or url.query or url.fragment):
+        raise ValueError('Enter the public base URL for Storage Market.')
+    return value.rstrip('/')
+
+
+if __name__ == '__main__':
+    parser = ArgumentParser(description='Build the Storage Market PDF brochures.')
+    parser.add_argument('--out-dir', type=Path, default=HERE)
+    parser.add_argument('--site-url', type=parse_site_url)
+    args = parser.parse_args()
+    args.out_dir.mkdir(parents=True, exist_ok=True)
+    for book in BOOKS:
+        Brochure(book, args.out_dir, args.site_url).render()

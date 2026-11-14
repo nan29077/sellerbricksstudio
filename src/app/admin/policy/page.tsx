@@ -25,10 +25,10 @@ export default async function AdminPolicy() {
     ["창고 상품 판매 수수료", `${policy.salesFeeRate}%`, "스토리지마켓 창고 상품 주문서: (셀러 결제 공급가 − 브랜드 공급가) 기준 플랫폼 몫. 나머지는 창고 몫입니다."],
     ["브랜드 수수료 (기본)", `${policy.brandFeeRate}%`, "브랜드 공급대금 기준. 브랜드 정산에서 뺍니다. 브랜드샵 관리에서 브랜드별로 따로 정할 수 있습니다."],
     ["유료 샘플 수수료", `${policy.sampleFeeRate}%`, "유료 샘플 결제금액 기준."],
-    ["승인 대기 예약 자동 만료", policy.pendingExpireHours ? `${policy.pendingExpireHours}시간` : "끔", "창고(스튜디오)가 이 시간 안에 승인하지 않으면 자동 거절되고 셀러에게 알립니다."],
-    ["노쇼 처리 가능 시점", `시작 ${policy.noShowGraceMinutes}분 후`, "체크인 없이 이 시간이 지나면 창고(스튜디오)가 노쇼로 처리할 수 있습니다."],
+    ["승인 대기 예약 자동 만료", policy.pendingExpireHours ? `${policy.pendingExpireHours}시간` : "끔", "공간이 이 시간 안에 승인하지 않으면 자동 거절되고 셀러에게 알립니다."],
+    ["노쇼 처리 가능 시점", `시작 ${policy.noShowGraceMinutes}분 후`, "체크인 없이 이 시간이 지나면 공간이 노쇼로 처리할 수 있습니다."],
     ["이용 완료 자동 처리", policy.autoCompleteBookings ? "켬" : "끔", "종료 시간이 지난 승인 예약을 이용 완료로 바꿉니다."],
-    ["이용 전 알림", policy.reminderHoursBefore ? `${policy.reminderHoursBefore}시간 전` : "끔", "셀러와 창고(스튜디오)에게 앱 알림을 보냅니다."],
+    ["이용 전 알림", policy.reminderHoursBefore ? `${policy.reminderHoursBefore}시간 전` : "끔", "셀러와 공간에게 앱 알림을 보냅니다."],
     ["발주 확인 권장 시간", `${policy.poConfirmHours}시간`, "이 시간이 지나도 확인하지 않은 위탁배송 발주는 '확인 지연'으로 표시됩니다."],
     ["샘플·입고 요청 응대 기한", policy.requestReplyHours ? `${policy.requestReplyHours}시간` : "끔", "브랜드가 이 시간 안에 샘플·스토리지마켓 입고 요청을 처리하지 않으면 브랜드에 다시 알립니다."],
     ["응대 기한 후 자동 반려", policy.requestReplyHours && policy.requestAutoRejectHours ? `재알림 ${policy.requestAutoRejectHours}시간 후` : "끔", "재알림 후에도 처리하지 않으면 자동 반려하고 샘플 재고를 되돌리며, 유료 샘플은 환불합니다."],
@@ -93,7 +93,7 @@ export default async function AdminPolicy() {
         <p className="mb-2 font-extrabold text-navy">브랜드별 수수료 예외</p>
         {overrides.length === 0 ? <p className="text-sm text-slate-500">모든 브랜드가 기본 수수료를 사용합니다. 브랜드샵 관리 → 브랜드 선택 → 공개 관리에서 브랜드별 수수료를 정할 수 있습니다.</p>
           : <ul className="space-y-1 text-sm">{overrides.map((o) => <li key={o.id}><Link href={`/admin/brands/${o.id}`} className="font-semibold text-brand-800 underline">{o.name}</Link> · {o.feeRate}%</li>)}</ul>}
-        <p className="mt-3 text-xs text-slate-500">창고(스튜디오) 상품별 셀러 수수료는 각 상품에서, 기존 창고(스튜디오) 이용료 수수료는 <Link href="/admin/settlements" className="underline">정산 관리</Link>에서 관리합니다.</p>
+        <p className="mt-3 text-xs text-slate-500">공간 상품별 셀러 수수료는 각 상품에서, 기존 공간 이용료 수수료는 <Link href="/admin/settlements" className="underline">정산 관리</Link>에서 관리합니다.</p>
       </CardContent></Card>
     </div>
   );

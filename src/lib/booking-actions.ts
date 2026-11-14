@@ -11,7 +11,7 @@ import { formatDateTime } from "./utils";
 import { getPolicy } from "./policy";
 import type { SessionUser } from "./auth";
 import { canOperateFacility, notifyFacility } from "./facility-owner";
-import { cancelDisplayItems, requestDisplayItems, rescheduleDisplayItems, resolveBrandItems, type BrandItemInput } from "./booking-brand-items";
+import { cancelDisplayItems, displayRescheduleError, requestDisplayItems, rescheduleDisplayItems, resolveBrandItems, type BrandItemInput } from "./booking-brand-items";
 
 const LABEL: Record<string, string> = { APPROVED: "승인", REJECTED: "거절", CANCELLED: "취소", COMPLETED: "이용 완료", NO_SHOW: "노쇼 처리" };
 
@@ -32,7 +32,7 @@ export type OccurrenceResult = { date: string; start: string; end: string; ok: b
 
 export async function createBookings(user: SessionUser, input: CreateBookingInput) {
   const facility = await getFacilityWithPolicy(input.facilityId);
-  if (!facility || facility.status !== "APPROVED") throw new Error("예약할 수 없는 창고(스튜디오)입니다.");
+  if (!facility || facility.status !== "APPROVED") throw new Error("예약할 수 없는 공간입니다.");
   const policy = policyOf(facility);
   if (policy.capacity && input.headcount && input.headcount > policy.capacity) throw new Error(`최대 수용 인원은 ${policy.capacity}명입니다.`);
 
@@ -48,7 +48,7 @@ export async function createBookings(user: SessionUser, input: CreateBookingInpu
   }) : [];
   for (const id of wanted.keys()) {
     const fp = fps.find((x) => x.id === id);
-    if (!fp || fp.facilityId !== facility.id) throw new Error("이 창고(스튜디오)의 상품만 선택할 수 있습니다.");
+    if (!fp || fp.facilityId !== facility.id) throw new Error("이 공간의 상품만 선택할 수 있습니다.");
     if (!fp.isSellable) throw new Error(`판매 중단된 상품입니다: ${fp.product.name}`);
     if (wanted.get(id)! > fp.stock) throw new Error(`재고보다 많이 선택했습니다: ${fp.product.name} (재고 ${fp.stock}개)`);
   }
@@ -58,7 +58,7 @@ export async function createBookings(user: SessionUser, input: CreateBookingInpu
   }));
 
   // 브랜드 상품 (반복 예약이면 첫 회차에만 담는다 — 시연품은 한 번 보내 두고 이어서 쓴다)
-  const brandRows = await resolveBrandItems(user.id, input.brandItems);
+  const brandRows = await resolveBrandItems(user.id, input.brandItems, input.startAt);
 
   // 반복 일정 펼치기
   const weeks = Math.max(1, Math.min(12, Math.round(input.repeatWeeks ?? 1)));
@@ -258,6 +258,8 @@ export async function rescheduleBooking(user: SessionUser, bookingId: string, st
   } else if (!["PENDING", "APPROVED"].includes(booking.status)) throw new Error("진행 중인 예약만 변경할 수 있습니다.");
   if (booking.liveSession && ["LIVE", "ENDED"].includes(booking.liveSession.status)) throw new Error("이미 방송이 진행된 예약은 변경할 수 없습니다.");
   if (booking.startAt.getTime() === startAt.getTime() && booking.endAt.getTime() === endAt.getTime()) throw new Error("기존 일정과 같습니다.");
+  const displayIssue = await displayRescheduleError(booking.id, startAt);
+  if (displayIssue) throw new Error(displayIssue);
 
   const backToPending = isSeller && !isOwner && !isAdmin && booking.status === "APPROVED" && !booking.facility.autoApprove;
   const oldStart = booking.startAt, oldEnd = booking.endAt;

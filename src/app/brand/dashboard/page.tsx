@@ -9,6 +9,7 @@ import { BRAND_SHOP_STATUS, FULFILLMENT_LABEL, PO_STATUS } from "@/lib/brands";
 import { addDays, addMonths, kstStartOfMonth } from "@/lib/kst";
 import { compactKRW, dailySeries, deltaPct, greeting, monthlySeries, relativeTime, todayLabel, zipSeries } from "@/lib/dashboard";
 import { LOW_STOCK, shopChecklist } from "@/components/shop/brand-workspace";
+import { DisplayRequestsPanel } from "@/components/dashboard/display-requests-panel";
 import {
   DashHero, DataNotice, Donut, Empty, Feed, HeroButton, HeroPanel, KpiTile, Panel, RankList, ShortcutGrid, TodoList, TrendChart,
 } from "@/components/dashboard/kit";
@@ -165,9 +166,11 @@ export default async function BrandDashboard() {
         <KpiTile label="신규 발주" value={String(d.todo.newPos)} unit="건" sub={d.todo.latePos ? `확인 지연 ${d.todo.latePos}건` : `${d.policy.poConfirmHours}시간 안에 확인`} icon={ClipboardList} tone={d.todo.latePos ? "red" : "amber"} href="/brand/orders?status=NEW" />
         <KpiTile label="출고 대기 (위탁배송)" value={String(d.todo.toShip)} unit="건" sub="운송장 입력 필요" icon={Truck} tone="blue" href="/brand/orders?status=CONFIRMED" />
         <KpiTile label="샘플 · 입고 신청" value={String(d.todo.samplePending + d.todo.supplyPending)} unit="건" sub={`샘플 ${d.todo.samplePending} · 입고 ${d.todo.supplyPending}`} icon={Gift} tone="violet" href="/brand/requests?status=PENDING" />
-        <KpiTile label="판매처" value={String(d.channels.sellers + d.channels.facilities)} unit="곳" sub={`셀러 ${d.channels.sellers} · 창고 ${d.channels.facilities}`} icon={Users} tone="green" href="/brand/channels" />
+        <KpiTile label="판매처" value={String(d.channels.sellers + d.channels.facilities)} unit="곳" sub={`셀러 ${d.channels.sellers} · 스토리지마켓 ${d.channels.facilities}`} icon={Users} tone="green" href="/brand/channels" />
         <KpiTile label="공개 상품" value={String(d.products.active)} unit="개" sub={`전체 ${d.products.total} · 샘플 가능 ${d.products.sampleReady}`} icon={Boxes} tone="sky" href="/brand/products" />
       </div>
+
+      <DisplayRequestsPanel shopId={shop.id} />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <Panel eyebrow="6 MONTHS" title="월별 발주 금액 · 건수" action={{ href: "/brand/orders", label: "발주서" }}>

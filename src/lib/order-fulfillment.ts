@@ -5,9 +5,9 @@ type Tx = Prisma.TransactionClient;
 // ---------------------------------------------------------------------------
 // 주문 배송 담당 나누기
 //  - 브랜드 직배송 상품 → 브랜드 (발주서에서 출고 · 운송장 · 배송 완료)
-//  - 창고(스튜디오) 방송의 창고 상품 · 창고 위탁 상품 · 임시 상품 → 창고(스튜디오) (주문에서 직접 출고)
+//  - 공간 방송의 창고 상품 · 창고 위탁 상품 · 임시 상품 → 공간 (주문에서 직접 출고)
 //  - 셀러 공간 방송의 임시 상품 → 셀러 (주문에서 직접 출고)
-// 셀러는 창고(스튜디오) 방송 주문의 배송 상태를 바꾸지 못하고 확인만 한다. (출고 전 취소만 가능)
+// 셀러는 공간 방송 주문의 배송 상태를 바꾸지 못하고 확인만 한다. (출고 전 취소만 가능)
 // ---------------------------------------------------------------------------
 export type Shipper = "BRAND" | "FACILITY" | "SELLER";
 
@@ -42,7 +42,7 @@ export function orderParts(order: OrderForFulfillment) {
   return {
     hasLocal: !!localShipper, localShipper, hasBrand: shippers.has("BRAND"),
     anyShipped: !!order.localShippedAt || brandShipped,
-    // 주문 운영자: 창고(스튜디오) 방송이면 창고, 셀러 공간 방송이면 셀러 (출고 후 환불 담당)
+    // 주문 운영자: 공간 방송이면 창고, 셀러 공간 방송이면 셀러 (출고 후 환불 담당)
     operator: (order.facilityId ? "FACILITY" : "SELLER") as "FACILITY" | "SELLER",
   };
 }
@@ -69,7 +69,7 @@ export function orderActions(order: OrderForFulfillment, actor: OrderActor): Ord
     if (order.localShippedAt && !order.localDeliveredAt) statuses.push("DELIVERED");
   }
   const canCancel = open && !p.anyShipped && ["PAID", "PREPARING"].includes(order.status as string) && (isOperator || actor.isSeller);
-  // 출고 후 환불: 창고(스튜디오) 방송은 창고. 셀러 공간 방송은 셀러가 직접 출고한 주문만 셀러가 하고,
+  // 출고 후 환불: 공간 방송은 창고. 셀러 공간 방송은 셀러가 직접 출고한 주문만 셀러가 하고,
   // 브랜드가 이미 보낸 상품이 있으면 (반품 확인 · 브랜드 정산 차감이 걸리므로) 최고관리자가 처리한다.
   const sellerOwnShip = p.operator === "SELLER" && actor.isSeller && !p.hasBrand && !order.purchaseOrders.length;
   const canRefund = open && p.anyShipped && (actor.isAdmin || (p.operator === "FACILITY" ? actor.isFacilityOwner : sellerOwnShip));

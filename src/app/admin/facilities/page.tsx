@@ -65,8 +65,8 @@ export default async function AdminFacilities({ searchParams }: { searchParams: 
 
   return (
     <div className="space-y-5">
-      <PageHeader title="창고(스튜디오) 목록 · 공개" description="스토리지마켓이 직접 운영하는 창고 · 스튜디오 · 쇼룸과 제휴 창고입니다. 창고 계정은 없고, 운영은 창고 운영 콘솔에서 합니다."
-        action={<div className="flex flex-wrap gap-2"><Link href="/facility/register" className="inline-flex h-10 items-center rounded-lg bg-navy px-4 text-sm font-semibold text-white">+ 창고(스튜디오) 등록</Link><Link href="/facility/dashboard" className="inline-flex h-10 items-center rounded-lg border px-4 text-sm font-semibold text-navy">창고 운영 콘솔</Link></div>} />
+      <PageHeader title="공간 목록 · 공개" description="스토리지마켓이 직접 운영하는 창고 · 스튜디오 · 쇼룸과 제휴 창고입니다. 창고 계정은 없고, 운영은 창고 운영 콘솔에서 합니다."
+        action={<div className="flex flex-wrap gap-2"><Link href="/facility/register" className="inline-flex h-10 items-center rounded-lg bg-navy px-4 text-sm font-semibold text-white">+ 공간 등록</Link><Link href="/facility/dashboard" className="inline-flex h-10 items-center rounded-lg border px-4 text-sm font-semibold text-navy">창고 운영 콘솔</Link></div>} />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="전체" value={`${all}곳`} sub={`공개 ${c.APPROVED ?? 0}곳`} icon={Building2} tone="navy" />
         <Kpi label="비공개(준비 중)" value={`${c.PENDING ?? 0}곳`} icon={Clock} tone="brand" />
@@ -84,7 +84,7 @@ export default async function AdminFacilities({ searchParams }: { searchParams: 
         <CsvButton label="CSV" filename="창고목록" headers={["이름", "유형", "운영 형태", "상태", "지역", "제휴 업체", "제휴 담당자", "담당 매니저", "평점", "리뷰", "누적예약", "이번달 주문", "이번달 판매액"]}
           rows={rows.map((f) => [f.name, facilityTypeLabel(f.type), FACILITY_OPERATION_LABEL[f.operationType], STATUS[f.status]?.label, f.region, f.partnerName ?? "", [f.partnerContactName, f.partnerContactPhone].filter(Boolean).join(" "), f.managers.map((m) => m.manager.profile?.name ?? m.manager.email).join(", "), f.rating, f._count.reviews, f._count.bookings, rev.get(f.id)?._count ?? 0, rev.get(f.id)?._sum.totalAmount ?? 0])} />
       </div>
-      {rows.length === 0 ? <EmptyState icon={<Building2 className="h-10 w-10" />} title="조건에 맞는 창고(스튜디오)가 없습니다" /> : (
+      {rows.length === 0 ? <EmptyState icon={<Building2 className="h-10 w-10" />} title="조건에 맞는 공간이 없습니다" /> : (
         <div className="space-y-3">
           {rows.map((f) => {
             const st = STATUS[f.status];

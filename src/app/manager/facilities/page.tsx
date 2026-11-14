@@ -23,7 +23,7 @@ export default async function ManagerFacilities() {
   const user = await requireRole(["MANAGER"]);
   const ids = await managerFacilityIds(user.id);
   if (ids.length === 0) return (
-    <div><PageHeader title="담당 창고(스튜디오)" /><EmptyState icon={<Building2 className="h-10 w-10" />} title="배정된 창고(스튜디오)가 없습니다" description="최고관리자가 담당 창고(스튜디오)를 배정하면 여기에 표시됩니다." /></div>
+    <div><PageHeader title="담당 공간" /><EmptyState icon={<Building2 className="h-10 w-10" />} title="배정된 공간이 없습니다" description="최고관리자가 담당 공간을 배정하면 여기에 표시됩니다." /></div>
   );
   const m = kstStartOfMonth(new Date()), pm = addMonths(m, -1);
   const [facilities, thisM, lastM, pending, recentLast] = await Promise.all([
@@ -51,7 +51,7 @@ export default async function ManagerFacilities() {
 
   return (
     <div className="space-y-5 pb-24 md:pb-0">
-      <PageHeader title="담당 창고(스튜디오)" description="운영을 맡은 창고(스튜디오)의 상태와 이번 달 판매 실적, 챙겨야 할 점입니다. 예약 승인 · 일정 · 상품 · 출고는 창고 운영 콘솔에서 합니다."
+      <PageHeader title="담당 공간" description="운영을 맡은 공간의 상태와 이번 달 판매 실적, 챙겨야 할 점입니다. 예약 승인 · 일정 · 상품 · 출고는 창고 운영 콘솔에서 합니다."
         action={<Link href="/facility/dashboard" className="inline-flex h-10 items-center rounded-lg bg-navy px-4 text-sm font-semibold text-white">창고 운영 콘솔</Link>} />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="담당" value={`${rows.length}곳`} sub={`운영중 ${rows.filter((r) => r.f.status === "APPROVED").length}곳`} icon={Building2} tone="navy" />

@@ -24,7 +24,7 @@ export function FacilityAssign({ managerId, managerName, all, assigned }: {
   return (
     <>
       <Button size="sm" variant="outline" onClick={() => { setSel(new Set(assigned)); setOpen(true); }}><Building2 className="h-4 w-4" />담당 배정</Button>
-      <Dialog open={open} onClose={() => setOpen(false)} title={`${managerName} · 담당 창고(스튜디오)`}
+      <Dialog open={open} onClose={() => setOpen(false)} title={`${managerName} · 담당 공간`}
         footer={<><span className="mr-auto text-xs text-muted-foreground">{sel.size}곳 선택</span><Button size="sm" variant="outline" onClick={() => setOpen(false)}>취소</Button><Button size="sm" disabled={busy} onClick={save}>{busy ? "저장중..." : "저장"}</Button></>}>
         <input value={kw} onChange={(e) => setKw(e.target.value)} placeholder="이름 · 지역 검색" className="mb-3 h-10 w-full rounded-lg border border-border px-3 text-sm" />
         <div className="space-y-1">

@@ -46,7 +46,7 @@ const BANK_FIELDS: Field[] = [
 ];
 // 운영 형태 · 제휴 정보 (최고관리자만)
 const OPERATION_FIELDS: Field[] = [
-  { name: "name", label: "창고(스튜디오) 이름", half: true },
+  { name: "name", label: "공간 이름", half: true },
   { name: "type", label: "공간 유형", type: "select", half: true, options: [{ value: "STUDIO", label: "스튜디오" }, { value: "WAREHOUSE", label: "창고" }, { value: "SHOWROOM", label: "쇼룸" }] },
   { name: "operationType", label: "운영 형태", type: "select", options: [{ value: "DIRECT", label: "직영 (판매 몫은 본사 수입)" }, { value: "PARTNER", label: "제휴 (판매 몫을 계좌로 지급)" }] },
   { name: "partnerName", label: "제휴 업체명", half: true },
@@ -82,12 +82,12 @@ export default async function FacilityProfile() {
   if (facilities.length === 0) {
     return (
       <div>
-        <PageHeader title="창고(스튜디오) 정보 · 편집" description="운영하는 창고(스튜디오)의 정보와 예약 정책을 관리합니다." />
+        <PageHeader title="공간 정보 · 편집" description="운영하는 공간의 정보와 예약 정책을 관리합니다." />
         <EmptyState
           icon={<Building2 className="h-10 w-10" />}
-          title={admin ? "등록된 창고(스튜디오)가 없습니다" : "담당 창고(스튜디오)가 없습니다"}
-          description={admin ? "직영 · 제휴 창고(스튜디오)를 등록하세요." : "최고관리자가 담당 창고(스튜디오)를 지정하면 여기서 관리할 수 있습니다."}
-          action={admin ? <Link href="/facility/register" className="inline-flex h-10 items-center rounded-lg bg-brand-500 px-4 text-sm font-semibold text-navy hover:bg-brand-600">창고(스튜디오) 등록하기</Link> : undefined}
+          title={admin ? "등록된 공간이 없습니다" : "담당 공간이 없습니다"}
+          description={admin ? "직영 · 제휴 공간을 등록하세요." : "최고관리자가 담당 공간을 지정하면 여기서 관리할 수 있습니다."}
+          action={admin ? <Link href="/facility/register" className="inline-flex h-10 items-center rounded-lg bg-brand-500 px-4 text-sm font-semibold text-navy hover:bg-brand-600">공간 등록하기</Link> : undefined}
         />
       </div>
     );
@@ -96,9 +96,9 @@ export default async function FacilityProfile() {
   return (
     <div className="space-y-6 pb-24 md:pb-0">
       <PageHeader
-        title="창고(스튜디오) 정보 · 편집"
-        description="운영하는 창고(스튜디오)의 정보와 예약 정책을 관리합니다."
-        action={admin ? <Link href="/facility/register" className="inline-flex h-10 items-center rounded-lg border border-brand-300 bg-white px-4 text-sm font-semibold text-brand-700 hover:bg-brand-50">+ 창고(스튜디오) 등록</Link> : undefined}
+        title="공간 정보 · 편집"
+        description="운영하는 공간의 정보와 예약 정책을 관리합니다."
+        action={admin ? <Link href="/facility/register" className="inline-flex h-10 items-center rounded-lg border border-brand-300 bg-white px-4 text-sm font-semibold text-brand-700 hover:bg-brand-50">+ 공간 등록</Link> : undefined}
       />
 
       {facilities.map((f: any) => {
@@ -148,7 +148,7 @@ export default async function FacilityProfile() {
                         target="_blank"
                         className="hit flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline"
                       >
-                        창고(스튜디오) 페이지 보기 <ExternalLink className="h-3 w-3" />
+                        공간 페이지 보기 <ExternalLink className="h-3 w-3" />
                       </Link>
                     )}
                   </div>
@@ -237,12 +237,12 @@ export default async function FacilityProfile() {
               initialDescription={f.description ?? ""}
             />
 
-            {/* 창고(스튜디오) 페이지 편집 링크 */}
+            {/* 공간 페이지 편집 링크 */}
             <Card className="border-dashed">
               <CardContent className="pt-5 pb-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-extrabold text-navy">창고(스튜디오) 페이지 꾸미기</p>
+                    <p className="text-sm font-extrabold text-navy">공간 페이지 꾸미기</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       배너, 테마, 소개 문구, 장비 목록 등을 꾸밀 수 있습니다
                     </p>

@@ -1,5 +1,5 @@
 // 주문 알림
-//  - 판매 쪽: 새 주문이 들어오면 셀러와 (창고 방송이면) 창고(스튜디오) 관리자에게 앱 알림 + 메일을 보낸다.
+//  - 판매 쪽: 새 주문이 들어오면 셀러와 (창고 방송이면) 공간 관리자에게 앱 알림 + 메일을 보낸다.
 //    브랜드는 발주서 알림(notifyNewPurchaseOrders)을 따로 받는다.
 //  - 구매자 알림톡은 없앴다 (2026-11-14 · 구매자는 스토리지마켓에서 사지 않는다). 운송장은 셀러가 받아 판매한 플랫폼에 입력한다.
 // 알림이 실패해도 주문 처리는 그대로 진행한다.
@@ -24,7 +24,7 @@ export async function notifyNewOrder(orderId: string) {
     const parts = orderParts(o);
     const qty = o.items.reduce((s, i) => s + i.quantity, 0);
     const base = `${o.liveSession.title} · ${formatKRW(o.totalAmount)} · 상품 ${qty}개`;
-    const sellerNote = parts.localShipper === "SELLER" ? " · 셀러 출고 상품이 있습니다" : parts.localShipper === "FACILITY" ? " · 창고(스튜디오)가 출고합니다" : parts.hasBrand ? " · 브랜드가 직배송합니다" : "";
+    const sellerNote = parts.localShipper === "SELLER" ? " · 셀러 출고 상품이 있습니다" : parts.localShipper === "FACILITY" ? " · 공간이 출고합니다" : parts.hasBrand ? " · 브랜드가 직배송합니다" : "";
     await notify({
       userId: o.sellerId, type: "ORDER", email: true,
       title: `새 주문이 들어왔습니다 · ${o.orderNo}`, body: base + sellerNote, link: "/seller/orders",

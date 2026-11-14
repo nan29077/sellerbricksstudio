@@ -109,8 +109,8 @@ export default async function ManagerDashboard() {
   if (d.empty) {
     return (
       <div className="space-y-6">
-        <DashHero eyebrow={`MANAGER · ${todayLabel()}`} title={hello} description="최고관리자가 담당 창고(스튜디오)를 배정하면 예약·판매·커미션 현황이 이곳에 표시됩니다." chips={[{ label: ruleText }]} />
-        <Empty icon={Building2} text="아직 배정된 담당 창고(스튜디오)가 없습니다" />
+        <DashHero eyebrow={`MANAGER · ${todayLabel()}`} title={hello} description="최고관리자가 담당 공간을 배정하면 예약·판매·커미션 현황이 이곳에 표시됩니다." chips={[{ label: ruleText }]} />
+        <Empty icon={Building2} text="아직 배정된 담당 공간이 없습니다" />
       </div>
     );
   }
@@ -123,7 +123,7 @@ export default async function ManagerDashboard() {
       <DashHero
         eyebrow={`MANAGER · ${todayLabel()}`}
         title={hello}
-        description="담당 창고(스튜디오)의 예약 응답, 가동률, 판매 성과를 살피고 관리가 필요한 곳을 먼저 챙기세요."
+        description="담당 공간의 예약 응답, 가동률, 판매 성과를 살피고 관리가 필요한 곳을 먼저 챙기세요."
         chips={[
           ...(d.stalePending ? [{ label: `24시간+ 대기 ${d.stalePending}건`, tone: "warn" as const }] : []),
           { label: `담당 ${d.perFac.length}곳` },
@@ -140,7 +140,7 @@ export default async function ManagerDashboard() {
       />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-6">
-        <KpiTile label="담당 창고(스튜디오)" value={String(d.perFac.length)} unit="곳" sub={`운영 ${d.perFac.filter((f) => f.status === "APPROVED").length}곳`} icon={Building2} tone="sky" href="/manager/facilities" />
+        <KpiTile label="담당 공간" value={String(d.perFac.length)} unit="곳" sub={`운영 ${d.perFac.filter((f) => f.status === "APPROVED").length}곳`} icon={Building2} tone="sky" href="/manager/facilities" />
         <KpiTile label="이번 달 예약 신청" value={String(d.monthReq)} unit="건" delta={d.reqDelta} sub="전월 동기 대비" icon={CalendarDays} tone="violet" href="/manager/bookings" />
         <KpiTile emphasis label="담당 공간 판매액" value={compactKRW(d.gmv)} delta={d.gmvDelta} sub={`주문 ${d.orderCount}건`} icon={CircleDollarSign} tone="brand" spark={d.spark} href="/manager/sales" />
         <KpiTile label="평균 가동률" value={`${d.util}%`} sub={`이용 ${hoursText(d.totalHours)}`} icon={GaugeIcon} tone="green" />
@@ -149,30 +149,30 @@ export default async function ManagerDashboard() {
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-        <Panel eyebrow="6 MONTHS" title="월별 판매액 · 이용 예약" action={{ href: "/manager/sales", label: "매출 보기" }}>
+        <Panel eyebrow="6 MONTHS" title="월별 판매액 · 이용 예약" action={{ href: "/facility/settlements", label: "매출 보기" }}>
           <TrendChart data={d.trend} a={{ name: "판매액", format: compactKRW }} b={{ name: "이용 예약", format: (n) => `${n}건` }} />
         </Panel>
         <Panel eyebrow="ATTENTION" title="관리가 필요한 곳">
           <TodoList items={[
-            { label: "24시간 넘게 응답 없는 예약", desc: "창고(스튜디오)에 응답을 요청하세요", n: d.stalePending, href: "/manager/bookings?status=PENDING", icon: BadgeAlert, tone: "red", urgent: true },
+            { label: "24시간 넘게 응답 없는 예약", desc: "공간에 응답을 요청하세요", n: d.stalePending, href: "/manager/bookings?status=PENDING", icon: BadgeAlert, tone: "red", urgent: true },
             { label: "승인 대기 예약", n: d.pending - d.stalePending, href: "/manager/bookings?status=PENDING", icon: ClipboardCheck, tone: "amber" },
-            { label: "이번 달 예약이 없는 창고(스튜디오)", desc: "상품·운영시간 점검이 필요해요", n: weak, href: "/manager/facilities", icon: TrendingDown, tone: "violet" },
+            { label: "이번 달 예약이 없는 공간", desc: "상품·운영시간 점검이 필요해요", n: weak, href: "/manager/facilities", icon: TrendingDown, tone: "violet" },
             { label: "평균 평점 3.5 미만", desc: "리뷰를 확인하고 개선을 도와주세요", n: lowRated, href: "/manager/facilities", icon: Star, tone: "amber" },
             { label: "승인 심사 중인 담당 공간", n: d.perFac.filter((f) => f.status === "PENDING").length, href: "/manager/facilities", icon: Building2, tone: "sky" },
           ]} emptyText="담당 공간 모두 잘 운영되고 있어요" />
         </Panel>
       </div>
 
-      <Panel eyebrow="PERFORMANCE" title="창고(스튜디오)별 이번 달 성과" action={{ href: "/manager/facilities", label: "전체 관리" }}>
+      <Panel eyebrow="PERFORMANCE" title="공간별 이번 달 성과" action={{ href: "/manager/facilities", label: "전체 관리" }}>
         <div className="-mx-1 overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm rtable">
             <thead><tr className="text-left text-[11px] font-bold text-slate-400">
-              <th className="px-1 pb-2">창고(스튜디오)</th><th className="px-1 pb-2">가동률</th><th className="px-1 pb-2 text-right">예약</th><th className="px-1 pb-2 text-right">대기</th><th className="px-1 pb-2 text-right">판매액</th><th className="px-1 pb-2 text-right">평점</th>
+              <th className="px-1 pb-2">공간</th><th className="px-1 pb-2">가동률</th><th className="px-1 pb-2 text-right">예약</th><th className="px-1 pb-2 text-right">대기</th><th className="px-1 pb-2 text-right">판매액</th><th className="px-1 pb-2 text-right">평점</th>
             </tr></thead>
             <tbody className="divide-y divide-[#F0ECE6]">
               {d.perFac.map((f) => (
                 <tr key={f.id}>
-                  <td data-label="창고(스튜디오)" className="max-w-0 px-1 py-3">
+                  <td data-label="공간" className="max-w-0 px-1 py-3">
                     <span className="flex items-center gap-1.5"><span className="truncate font-bold text-navy">{f.name}</span>{f.status !== "APPROVED" && <Pill tone={f.status === "PENDING" ? "amber" : "red"}>{f.status === "PENDING" ? "심사 중" : "정지"}</Pill>}</span>
                     <span className="block text-[11px] text-slate-500">{f.region} · {facilityTypeLabel(f.type)} · {hoursText(f.hours)}</span>
                   </td>
@@ -218,8 +218,8 @@ export default async function ManagerDashboard() {
       <Panel eyebrow="SHORTCUTS" title="바로가기">
         <ShortcutGrid cols="sm:grid-cols-2 xl:grid-cols-5" items={[
           { title: "예약 관리", desc: "담당 공간 예약", href: "/manager/bookings", icon: CalendarDays, tone: "violet", badge: d.pending },
-          { title: "담당 창고(스튜디오)", desc: "공간 정보·상태", href: "/manager/facilities", icon: Building2, tone: "sky" },
-          { title: "매출 리포트", desc: "판매·주문 분석", href: "/manager/sales", icon: ShoppingBag, tone: "brand" },
+          { title: "담당 공간", desc: "공간 정보·상태", href: "/manager/facilities", icon: Building2, tone: "sky" },
+          { title: "매출 리포트", desc: "판매·주문 분석", href: "/facility/settlements", icon: ShoppingBag, tone: "brand" },
           { title: "커미션", desc: "월별 수수료 내역", href: "/manager/commissions", icon: Coins, tone: "green" },
           { title: "설정", desc: "내 정보·알림", href: "/manager/settings", icon: Settings, tone: "slate" },
         ]} />

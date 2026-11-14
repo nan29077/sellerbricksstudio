@@ -7,7 +7,7 @@ import { notify } from "@/lib/notify";
 import { audit } from "@/lib/audit";
 import { canOperateFacility } from "@/lib/facility-owner";
 
-// 셀러: { rating, content } 수정 / 창고(스튜디오): { reply } 답글 / 최고관리자: { isHidden } 숨김
+// 셀러: { rating, content } 수정 / 공간: { reply } 답글 / 최고관리자: { isHidden } 숨김
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await requireUser();

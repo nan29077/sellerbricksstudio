@@ -27,7 +27,7 @@ const schema = z.object({
   contactPhone: opt(30), cancelPolicy: opt(2000), thumbnailUrl: opt(1000),
   bankName: opt(40), bankAccount: opt(40), accountHolder: opt(40),
   // 아래는 최고관리자만 바꿀 수 있다 (운영 형태 · 제휴 정보 · 이름 · 유형)
-  name: z.string().trim().min(2, "창고(스튜디오) 이름을 2자 이상 입력하세요.").max(60).optional(),
+  name: z.string().trim().min(2, "공간 이름을 2자 이상 입력하세요.").max(60).optional(),
   type: z.enum(["WAREHOUSE", "STUDIO", "SHOWROOM"]).optional(),
   operationType: z.enum(["DIRECT", "PARTNER"]).optional(),
   partnerName: opt(60), partnerContactName: opt(40), partnerContactPhone: opt(30),
@@ -35,7 +35,7 @@ const schema = z.object({
 });
 const ADMIN_ONLY = ["name", "type", "operationType", "partnerName", "partnerContactName", "partnerContactPhone", "partnerContactEmail", "bankName", "bankAccount", "accountHolder"] as const;
 
-// PATCH /api/facility/profile — 창고 운영자(최고관리자 · 담당 매니저)가 창고(스튜디오)의 소개 · 운영 정보를 수정
+// PATCH /api/facility/profile — 창고 운영자(최고관리자 · 담당 매니저)가 공간의 소개 · 운영 정보를 수정
 // 운영 형태 · 제휴 담당자 · 정산 계좌 · 이름 · 유형은 최고관리자만 바꾼다.
 export async function PATCH(req: NextRequest) {
   try {
@@ -45,8 +45,8 @@ export async function PATCH(req: NextRequest) {
     catch (e) { return fail(e instanceof ZodError ? e.issues[0]?.message ?? "입력값을 확인하세요." : "입력값을 확인하세요."); }
 
     const facility = await prisma.facility.findUnique({ where: { id: data.facilityId }, select: { id: true, ownerId: true } });
-    if (!facility) return fail("창고(스튜디오)를 찾을 수 없습니다.", 404);
-    if (!(await canOperateFacility(user, facility.id))) return fail("운영하는 창고(스튜디오)만 수정할 수 있습니다.", 403);
+    if (!facility) return fail("공간을 찾을 수 없습니다.", 404);
+    if (!(await canOperateFacility(user, facility.id))) return fail("운영하는 공간만 수정할 수 있습니다.", 403);
     if (user.role !== "SUPER_ADMIN" && ADMIN_ONLY.some((k) => data[k] !== undefined)) return fail("운영 형태 · 제휴 정보 · 정산 계좌 · 이름은 최고관리자만 바꿀 수 있습니다.", 403);
     if (data.openTime && data.closeTime && data.openTime >= data.closeTime) return fail("마감 시간은 오픈 시간보다 뒤여야 합니다.");
     if (data.minHours && data.maxHours && data.maxHours < data.minHours) return fail("최대 이용 시간은 최소 예약 시간보다 길어야 합니다.");

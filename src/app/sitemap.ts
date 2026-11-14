@@ -5,7 +5,7 @@ const SITE = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3007").replac
 
 export const revalidate = 3600;
 
-// 공개 페이지와 승인된 창고(스튜디오) · 브랜드샵 상세 페이지를 검색엔진에 알린다.
+// 공개 페이지와 승인된 공간 · 브랜드샵 상세 페이지를 검색엔진에 알린다.
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const pages: MetadataRoute.Sitemap = [
     { url: `${SITE}/`, changeFrequency: "weekly", priority: 1 },

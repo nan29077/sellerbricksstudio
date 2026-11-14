@@ -19,7 +19,7 @@ import { Banknote, Building2, CheckCircle2, TrendingUp, Info, Landmark } from "l
 
 export const dynamic = "force-dynamic";
 
-// 창고 매출 — 창고 이용료는 없다(무료). 창고(스튜디오) 방송에서 팔린 상품의 '창고 몫'을 보여 준다.
+// 창고 매출 — 창고 이용료는 없다(무료). 공간 방송에서 팔린 상품의 '창고 몫'을 보여 준다.
 //  - 직영: 창고 몫 = 본사 수입 (지급 없음)
 //  - 제휴: 창고 몫을 판매 정산서로 제휴 창고 계좌에 지급
 export default async function FacilityRevenue() {
@@ -65,7 +65,7 @@ export default async function FacilityRevenue() {
 
   return (
     <div className="space-y-5 pb-24 md:pb-0">
-      <PageHeader title="창고 매출" description="창고(스튜디오) 방송에서 팔린 상품의 창고 몫입니다. 창고 이용료는 없습니다. 직영 창고의 몫은 본사 수입, 제휴 창고의 몫은 판매 정산으로 지급합니다." />
+      <PageHeader title="창고 매출" description="공간 방송에서 팔린 상품의 창고 몫입니다. 창고 이용료는 없습니다. 직영 창고의 몫은 본사 수입, 제휴 창고의 몫은 판매 정산으로 지급합니다." />
 
       {noBank.length > 0 && (
         <Link href="/facility/profile" className="flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
@@ -88,12 +88,12 @@ export default async function FacilityRevenue() {
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">창고별 매출 (12개월)</CardTitle>
-          <CsvButton label="CSV" filename="창고매출" headers={["창고(스튜디오)", "운영 형태", "판매 매출", "창고 몫", "이번 달 창고 몫"]}
+          <CsvButton label="CSV" filename="창고매출" headers={["공간", "운영 형태", "판매 매출", "창고 몫", "이번 달 창고 몫"]}
             rows={facilities.map((f) => { const v = byFacility.get(f.id); return [f.name, FACILITY_OPERATION_LABEL[f.operationType], v?.gross ?? 0, v?.facility ?? 0, v?.month ?? 0]; })} />
         </CardHeader>
         <CardContent>
-          {facilities.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">운영하는 창고(스튜디오)가 없습니다.</p> : (
-            <Table headers={["창고(스튜디오)", "운영 형태", "판매 매출", "창고 몫", "이번 달"]}
+          {facilities.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">운영하는 공간이 없습니다.</p> : (
+            <Table headers={["공간", "운영 형태", "판매 매출", "창고 몫", "이번 달"]}
               rows={facilities.map((f) => {
                 const v = byFacility.get(f.id);
                 return [f.name, <Badge key="o" tone={f.operationType === "PARTNER" ? "purple" : "navy"}>{FACILITY_OPERATION_LABEL[f.operationType]}{f.partnerName ? ` · ${f.partnerName}` : ""}</Badge>, formatKRW(v?.gross ?? 0), <b key="f">{formatKRW(v?.facility ?? 0)}</b>, formatKRW(v?.month ?? 0)];
@@ -109,7 +109,7 @@ export default async function FacilityRevenue() {
           <p className="text-xs text-muted-foreground">배송 완료된 주문을 기준으로 최고관리자가 만든 정산서입니다. 제휴 창고는 &lsquo;창고 몫&rsquo;이 지급액입니다.</p></CardHeader>
         <CardContent>
           {settlements.length === 0 ? <p className="py-3 text-center text-sm text-muted-foreground">아직 판매 정산서가 없습니다.</p> : (
-            <Table headers={["정산 기간", "창고(스튜디오)", "셀러", "주문", "매출", "창고 몫", "상태"]}
+            <Table headers={["정산 기간", "공간", "셀러", "주문", "매출", "창고 몫", "상태"]}
               rows={settlements.map((s) => [
                 `${formatDate(s.periodStart)} ~ ${formatDate(s.periodEnd)}`,
                 `${s.facility?.name ?? "셀러 공간"}${s.facility ? ` (${FACILITY_OPERATION_LABEL[s.facility.operationType]})` : ""}`,

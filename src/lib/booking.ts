@@ -10,7 +10,7 @@ import {
 
 type Db = Prisma.TransactionClient | typeof prisma;
 
-// 창고(스튜디오) 이용료는 무료. (과거 호환용으로 함수만 남겨둔다)
+// 공간 이용료는 무료. (과거 호환용으로 함수만 남겨둔다)
 export function calcBookingPrice(_basePrice?: number, _startAt?: Date, _endAt?: Date): number {
   return 0;
 }
@@ -26,7 +26,7 @@ export type FacilityWithPolicy = Prisma.FacilityGetPayload<{ select: typeof FACI
 
 const minutesFrom = (day: Date, d: Date) => Math.round((d.getTime() - day.getTime()) / 60000);
 
-// 같은 창고(스튜디오)의 예약 생성·변경을 한 줄로 세워 동시에 같은 시간을 잡는 것을 막는다. (트랜잭션 안에서만 호출)
+// 같은 공간의 예약 생성·변경을 한 줄로 세워 동시에 같은 시간을 잡는 것을 막는다. (트랜잭션 안에서만 호출)
 export async function lockFacility(tx: Prisma.TransactionClient, facilityId: string) {
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${facilityId}))`;
 }
@@ -138,7 +138,7 @@ export async function checkBookingAvailability(params: {
 }): Promise<string | null> {
   const db = params.db ?? prisma;
   const facility = params.facility ?? await getFacilityWithPolicy(params.facilityId, db);
-  if (!facility) return "창고(스튜디오)를 찾을 수 없습니다.";
+  if (!facility) return "공간을 찾을 수 없습니다.";
   const { startAt, endAt } = params;
   if (!(startAt instanceof Date) || isNaN(startAt.getTime()) || isNaN(endAt.getTime())) return "예약 시간이 올바르지 않습니다.";
   const day = kstStartOfDay(startAt);
@@ -172,7 +172,7 @@ export async function notifyWaitlist(facilityId: string, startAt: Date, endAt: D
   } catch { /* 알림 실패는 무시 */ }
 }
 
-// 플랫폼 수수료율(%) — CommissionRule(scope=PLATFORM) 최신값, 창고(스튜디오)별 값이 있으면 우선
+// 플랫폼 수수료율(%) — CommissionRule(scope=PLATFORM) 최신값, 공간별 값이 있으면 우선
 export async function getPlatformFeeRate(facilityId?: string): Promise<number> {
   try {
     if (facilityId) {
@@ -193,7 +193,7 @@ export function splitFee(gross: number, rate: number) {
   return { platformFee, payoutAmount: gross - platformFee };
 }
 
-// 리뷰 작성/숨김 후 창고(스튜디오) 평점 재계산
+// 리뷰 작성/숨김 후 공간 평점 재계산
 export async function refreshFacilityRating(facilityId: string) {
   const agg = await prisma.facilityReview.aggregate({
     where: { facilityId, isHidden: false }, _avg: { rating: true },

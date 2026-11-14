@@ -8,7 +8,7 @@ import { changeBookingStatus, checkInBooking, rescheduleBooking, updateBookingPr
 import { canOperateFacility } from "@/lib/facility-owner";
 
 // PATCH /api/bookings/[id]
-// - { status, reason? }               상태 변경: 창고(스튜디오) 관리자(승인/거절/완료/취소), 셀러(취소, 마감 전), 최고관리자(전체)
+// - { status, reason? }               상태 변경: 공간 관리자(승인/거절/완료/취소), 셀러(취소, 마감 전), 최고관리자(전체)
 // - { action: "reschedule", startAt, endAt }  일정 변경 (셀러는 취소 마감 전까지, 승인된 예약은 재승인 필요)
 // - { products: [{ id, status, note? }] }     예약 상품 준비 가능 여부 표시 (창고 관리자)
 // - { facilityMemo }                  내부 메모 (창고 관리자 · 최고관리자 전용, 셀러 비공개)

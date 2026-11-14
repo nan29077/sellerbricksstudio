@@ -9,7 +9,7 @@ import { getPolicy } from "@/lib/policy";
 import { SETTLEMENT_ORDER_INCLUDE, splitOrder } from "@/lib/settlement";
 import { notifyFacility } from "@/lib/facility-owner";
 
-// POST { from, to } — 기간 내 배송 완료 · 미정산 주문을 셀러 × 창고(스튜디오)별 판매 정산서로 묶는다.
+// POST { from, to } — 기간 내 배송 완료 · 미정산 주문을 셀러 × 공간별 판매 정산서로 묶는다.
 //  - 기간은 배송 완료일 기준(예전 주문은 주문일). 정책의 '구매 확정 유예'가 지나지 않은 주문은 다음 정산으로.
 //  - 부분 취소된 상품 줄은 빼고 계산한다.
 //  - 이미 정산된 주문이 환불·부분 취소되어 생긴 차감 항목은 같은 셀러 × 창고의 이번 정산서에서 자동으로 뺀다.
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
       const waiting = policy.settleAfterDays ? await prisma.order.count({ where: { status: "DELIVERED", settlementId: null, deliveredAt: { gte: from, lt: end } } }) : 0;
       return fail(waiting ? `배송 완료 후 ${policy.settleAfterDays}일(구매 확정 유예)이 지나지 않은 주문 ${waiting}건은 다음 정산에 포함됩니다.` : "해당 기간에 정산할 배송 완료 주문이 없습니다.", 404);
     }
-    // 셀러 × 창고(스튜디오)별. 셀러 공간 방송(창고 없음)은 셀러 단독 정산서
+    // 셀러 × 공간별. 셀러 공간 방송(창고 없음)은 셀러 단독 정산서
     type Group = { sellerId: string; facilityId: string | null; orders: typeof orders; adjustments: typeof adjustments };
     const groups = new Map<string, Group>();
     const groupOf = (sellerId: string, facilityId: string | null) => {

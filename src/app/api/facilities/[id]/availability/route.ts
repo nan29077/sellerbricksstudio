@@ -12,7 +12,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const date = req.nextUrl.searchParams.get("date");
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail("날짜 형식이 올바르지 않습니다.");
     const f = await getFacilityWithPolicy(params.id);
-    if (!f || f.status !== "APPROVED") return fail("창고(스튜디오)를 찾을 수 없습니다.", 404);
+    if (!f || f.status !== "APPROVED") return fail("공간을 찾을 수 없습니다.", 404);
     const hours = Number(req.nextUrl.searchParams.get("hours"));
     // 일정 변경 시 본인 예약은 점유에서 제외 (본인 예약일 때만)
     let exclude: string | undefined;

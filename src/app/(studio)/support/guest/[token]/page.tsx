@@ -5,6 +5,7 @@ import { SUPPORT_CATEGORIES, SUPPORT_STATUS, effectiveStatus, supportThread } fr
 import { formatDateTime } from "@/lib/utils";
 import { SupportThread } from "@/components/support/support-thread";
 import { SupportFollowUp } from "@/components/support/support-follow-up";
+import { GuestThreadRemember } from "@/components/support/support-center";
 
 export const metadata = { title: "문의 확인 | 스토리지마켓", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -15,6 +16,7 @@ export default async function GuestInquiry({ params }: { params: { token: string
   const item = await prisma.supportInquiry.findUnique({ where: { guestToken: params.token }, include: { messages: { orderBy: { createdAt: "asc" } } } }).catch(() => null);
   if (!item || item.userId) notFound();
   const status = effectiveStatus(item);
+  await prisma.supportInquiry.update({ where: { id: item.id }, data: { userReadAt: new Date(), updatedAt: item.updatedAt } }).catch(() => undefined);
   return (
     <article className="space-y-4 px-4 pb-12 pt-4 sm:px-6">
       <section className="rounded-[24px] border bg-white p-5 sm:p-7">
@@ -23,6 +25,7 @@ export default async function GuestInquiry({ params }: { params: { token: string
           <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-navy">{SUPPORT_STATUS[status].label}</span>
         </div>
         <h1 className="mt-3 break-words text-2xl font-black text-navy">{item.subject}</h1>
+        <div className="mt-3"><GuestThreadRemember id={item.id} token={params.token} /></div>
         <p className="mt-2 text-xs text-slate-600">접수 {formatDateTime(item.createdAt)} · 답변은 {item.guestEmail}(으)로도 보내 드려요. 이 페이지 주소는 다른 사람과 나누지 마세요.</p>
       </section>
       <section className="space-y-4 rounded-[24px] border bg-[#FBFAF7] p-4 sm:p-6">

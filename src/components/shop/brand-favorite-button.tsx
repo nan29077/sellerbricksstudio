@@ -5,7 +5,7 @@ import { Heart } from "lucide-react";
 import { appAlert } from "@/components/ui/app-dialog";
 import { cn } from "@/lib/utils";
 
-// 브랜드 상품 찜 (셀러 · 창고(스튜디오) 관리자)
+// 브랜드 상품 찜 (셀러 · 스토리지마켓 관리자)
 export function BrandFavoriteButton({ productId, initial, className }: { productId: string; initial: boolean; className?: string }) {
   const router = useRouter();
   const [on, setOn] = useState(initial);

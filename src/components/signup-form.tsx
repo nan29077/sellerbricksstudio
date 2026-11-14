@@ -12,7 +12,7 @@ import { SIGNUP_ROLES } from "@/lib/signup-roles";
 
 const ROLE_LABEL = { SELLER: "셀러", BRAND_ADMIN: "브랜드사" };
 const CATEGORY_HINT = {
-  SELLER: "주로 판매하는 카테고리를 고르면 맞춤 브랜드 상품과 창고(스튜디오)를 먼저 보여드립니다. (선택)",
+  SELLER: "주로 판매하는 카테고리를 고르면 맞춤 브랜드 상품과 공간을 먼저 보여드립니다. (선택)",
   BRAND_ADMIN: "브랜드가 취급하는 상품 카테고리를 1개 이상 골라 주세요. 브랜드샵과 상품 검색에 사용됩니다. (필수)",
 };
 
@@ -61,7 +61,7 @@ export function SignupForm({ role }: { role: keyof typeof ROLE_LABEL }) {
       </nav>
       <h1 className="break-keep text-2xl font-black tracking-tight text-navy">{ROLE_LABEL[role]} 회원가입</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        {brand ? "가입하면 브랜드샵이 만들어지고, 최고관리자 승인 후 셀러·창고(스튜디오)에 공개됩니다." : "스토리지마켓에 오신 것을 환영합니다."}
+        {brand ? "가입하면 브랜드샵이 만들어지고, 최고관리자 승인 후 셀러에게 공개됩니다." : "스토리지마켓에 오신 것을 환영합니다."}
       </p>
       <form onSubmit={onSubmit} className="mt-6 space-y-4">
         <div><Label htmlFor="su-name">{brand ? "담당자명" : "이름 / 담당자명"}</Label><Input id="su-name" autoComplete="name" value={form.name} onChange={set("name")} required maxLength={40} /></div>

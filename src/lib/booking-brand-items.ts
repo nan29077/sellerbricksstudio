@@ -16,7 +16,8 @@ import type { SessionUser } from "./auth";
 //  시연품은 브랜드 무료 제공이 원칙이다 (공급가 결제 없음). 방송 뒤 처리(반송 · 보관 등)는 브랜드가 요청 메시지로 정한다.
 // ---------------------------------------------------------------------------
 
-export const DISPLAY_DUE_HOURS = 48; // 도착 기한: 방송 시작 2일 전
+import { DISPLAY_DUE_HOURS, earliestDisplayStart, normalizeOptionLabel, readVariants, variantOf } from "./brand-pricing";
+export { DISPLAY_DUE_HOURS }; // 도착 기한: 방송 시작 2일 전
 export const MAX_BRAND_ITEMS = 20;
 export const MAX_DISPLAY_QTY = 5;
 
@@ -25,7 +26,7 @@ export type BrandItemInput = { brandProductId: string; quantity?: number; option
 export { displayState } from "./booking-brand-items-view";
 
 /** 셀러가 담은 브랜드 상품을 확인하고 저장할 값으로 바꾼다 (셀러가 고른 위탁배송 상품만) */
-export async function resolveBrandItems(sellerId: string, input: BrandItemInput[] | undefined) {
+export async function resolveBrandItems(sellerId: string, input: BrandItemInput[] | undefined, startAt?: Date) {
   const wanted = new Map<string, { quantity: number; optionLabel: string | null }>();
   for (const it of input ?? []) {
     if (!it?.brandProductId) continue;
@@ -45,8 +46,19 @@ export async function resolveBrandItems(sellerId: string, input: BrandItemInput[
       throw new Error(`지금 판매할 수 없는 브랜드 상품입니다: ${bp.name}`);
     }
     const opts = parseOptions(bp.options);
-    if (w.optionLabel && opts.length && !opts.some((g) => g.values.some((v) => w.optionLabel!.includes(v)))) throw new Error(`${bp.name}: 옵션을 확인하세요.`);
-    return { brandProductId: bp.id, sellerBrandProductId: l.id, nameSnapshot: bp.name, supplyPriceSnapshot: bp.supplyPrice, optionLabel: w.optionLabel, quantity: w.quantity };
+    let optionLabel: string | null = null;
+    if (opts.length) {
+      optionLabel = normalizeOptionLabel(opts, w.optionLabel);
+      if (!optionLabel) throw new Error(`${bp.name}: 옵션을 골라 주세요 (${opts.map((g) => `${g.name}: ${g.values.join("/")}`).join(", ")}).`);
+      if (variantOf(readVariants(bp.optionVariants, opts), optionLabel)?.soldOut) throw new Error(`${bp.name}: 고른 옵션은 품절입니다. 다른 옵션을 골라 주세요.`);
+    }
+    if (bp.stock <= 0) throw new Error(`${bp.name}: 브랜드 재고가 없어 시연품을 받을 수 없습니다.`);
+    // 브랜드가 보내고 공간에 방송 2일 전까지 도착하려면 시간이 필요하다
+    if (startAt) {
+      const earliest = earliestDisplayStart(bp.leadDays);
+      if (startAt < earliest) throw new Error(`${bp.name}: 시연품을 받으려면 ${formatDateTime(earliest)} 이후 방송으로 예약해 주세요. (브랜드 출고 ${Math.max(1, bp.leadDays)}일 + 방송 2일 전 도착) 상품을 빼고 공간만 예약할 수도 있어요.`);
+    }
+    return { brandProductId: bp.id, sellerBrandProductId: l.id, nameSnapshot: bp.name, supplyPriceSnapshot: bp.supplyPrice, optionLabel, quantity: w.quantity };
   });
 }
 
@@ -108,6 +120,21 @@ export async function cancelDisplayItems(bookingId: string, reason: string) {
 }
 
 /** 일정 변경: 도착 기한을 새 일정에 맞추고, 진행 중인 요청이면 브랜드에 알린다 */
+/** 일정 변경 전에: 아직 보내지 않은 시연품이 새 일정에 맞출 수 있는지 (안 되면 안내 문구) */
+export async function displayRescheduleError(bookingId: string, startAt: Date): Promise<string | null> {
+  const items = await prisma.bookingBrandItem.findMany({
+    where: { bookingId },
+    select: { nameSnapshot: true, brandRequest: { select: { status: true } }, brandProduct: { select: { leadDays: true } } },
+  });
+  for (const it of items) {
+    const status = it.brandRequest?.status;
+    if (status && !["PENDING", "APPROVED"].includes(status)) continue; // 이미 발송 · 도착 · 취소된 것은 상관없다
+    const earliest = earliestDisplayStart(it.brandProduct.leadDays);
+    if (startAt < earliest) return `${it.nameSnapshot} 시연품이 도착할 시간이 부족합니다. ${formatDateTime(earliest)} 이후로 바꿔 주세요.`;
+  }
+  return null;
+}
+
 export async function rescheduleDisplayItems(bookingId: string, startAt: Date) {
   const due = new Date(startAt.getTime() - DISPLAY_DUE_HOURS * 3600000);
   const items = await prisma.bookingBrandItem.findMany({ where: { bookingId }, include: { brandRequest: { select: { id: true, status: true, productName: true } }, brandProduct: { select: { shopId: true } } } });

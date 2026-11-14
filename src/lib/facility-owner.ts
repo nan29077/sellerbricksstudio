@@ -7,9 +7,9 @@ import { getSettings } from "./settings";
 import type { SessionUser } from "./auth";
 
 // ---------------------------------------------------------------------------
-// 창고(스튜디오) 운영 주체 (2026-11-14~)
+// 공간 운영 주체 (2026-11-14~)
 //  외부 업체가 가입해서 여는 창고 계정은 없다. 창고는 본사가 직접 운영한다.
-//   - 최고관리자: 모든 창고(스튜디오)를 운영
+//   - 최고관리자: 모든 공간을 운영
 //   - 창고 운영 매니저(MANAGER): 최고관리자가 담당으로 지정한 창고만 운영
 //  Facility.ownerId 는 "본사 운영 계정"(최고관리자)이며 브랜드 거래(판매처 · 샘플 · 입고)의 주체로만 쓴다.
 // ---------------------------------------------------------------------------
@@ -49,7 +49,7 @@ export async function canOperateFacility(user: Operator | null | undefined, faci
 /** 창고 운영 권한 확인 (없으면 FORBIDDEN) */
 export async function assertFacilityAccess(user: Operator, facilityId: string) {
   const f = await prisma.facility.findUnique({ where: { id: facilityId }, select: { id: true, ownerId: true, name: true } });
-  if (!f) throw new Error("창고(스튜디오)를 찾을 수 없습니다.");
+  if (!f) throw new Error("공간을 찾을 수 없습니다.");
   if (!(await canOperateFacility(user, f.id))) throw new Error("FORBIDDEN");
   return f;
 }

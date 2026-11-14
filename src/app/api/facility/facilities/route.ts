@@ -6,7 +6,7 @@ import { getSessionUser } from "@/lib/auth";
 import { isFacilityOperatorRole, operableFacilityIds, primaryAdminId } from "@/lib/facility-owner";
 
 // GET /api/facility/facilities
-// 창고 운영자: 운영할 수 있는 창고(스튜디오) 목록 (최고관리자 전체 · 매니저 담당 창고)
+// 창고 운영자: 운영할 수 있는 공간 목록 (최고관리자 전체 · 매니저 담당 창고)
 export async function GET() {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "로그인이 필요합니다" }, { status: 401 });
@@ -29,7 +29,7 @@ export async function GET() {
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 const opt = (max: number) => z.string().trim().max(max).optional();
 const createSchema = z.object({
-  name: z.string().trim().min(2, "창고(스튜디오) 이름을 2자 이상 입력하세요.").max(60),
+  name: z.string().trim().min(2, "공간 이름을 2자 이상 입력하세요.").max(60),
   type: z.enum(["WAREHOUSE", "STUDIO", "SHOWROOM"]),
   region: z.string().trim().min(2, "지역을 입력하세요.").max(40),
   address: z.string().trim().min(5, "주소를 입력하세요.").max(200),
@@ -49,12 +49,12 @@ const createSchema = z.object({
 }).refine((d) => d.closeTime > d.openTime, { message: "운영 종료 시간은 시작 시간보다 뒤여야 합니다.", path: ["closeTime"] });
 
 // POST /api/facility/facilities
-// 최고관리자: 창고(스튜디오) 등록. 외부 업체의 가입 · 등록 신청은 없다 — 본사 직영 또는 제휴 창고를 본사가 직접 등록한다.
+// 최고관리자: 공간 등록. 외부 업체의 가입 · 등록 신청은 없다 — 본사 직영 또는 제휴 창고를 본사가 직접 등록한다.
 // ownerId 는 본사 운영 계정(가장 먼저 만든 최고관리자) — 브랜드 거래의 주체로 쓴다.
 export async function POST(req: NextRequest) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ ok: false, error: "로그인이 필요합니다" }, { status: 401 });
-  if (user.role !== "SUPER_ADMIN") return NextResponse.json({ ok: false, error: "창고(스튜디오)는 최고관리자만 등록할 수 있습니다" }, { status: 403 });
+  if (user.role !== "SUPER_ADMIN") return NextResponse.json({ ok: false, error: "공간은 최고관리자만 등록할 수 있습니다" }, { status: 403 });
 
   const parsed = createSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) {

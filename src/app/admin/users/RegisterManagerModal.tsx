@@ -40,7 +40,7 @@ export function RegisterManagerButton() {
         setError(json.error ?? "등록에 실패했습니다.");
         return;
       }
-      const linked = json.data?.facility ? `\n담당 창고(스튜디오): ${json.data.facility}` : "";
+      const linked = json.data?.facility ? `\n담당 공간: ${json.data.facility}` : "";
       const note = json.data?.note ? `\n${json.data.note}` : "";
       void appAlert(`창고 운영 매니저가 등록되었습니다.${linked}${note}\n임시 비밀번호를 본인에게 안전하게 전달하세요.`);
       handleClose();
@@ -86,8 +86,8 @@ export function RegisterManagerButton() {
                 <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="8자 이상" required minLength={8} />
               </div>
               <div>
-                <Label>담당 창고(스튜디오) (선택)</Label>
-                <Input aria-label="담당 창고(스튜디오) (선택)" value={facility} onChange={(e) => setFacility(e.target.value)} placeholder="강남 프리미엄 스튜디오" />
+                <Label>담당 공간 (선택)</Label>
+                <Input aria-label="담당 공간 (선택)" value={facility} onChange={(e) => setFacility(e.target.value)} placeholder="강남 프리미엄 스튜디오" />
               </div>
               {error && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
               <div className="flex gap-2 pt-2">

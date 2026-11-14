@@ -24,7 +24,7 @@ const EDIT_FIELDS: Field[] = [
   { name: "sku", label: "SKU", half: true },
   { name: "salePrice", label: "판매가(원)", type: "number", min: 0, half: true, required: true },
   { name: "consumerPrice", label: "소비자가(원)", type: "number", min: 0, half: true },
-  { name: "supplyPrice", label: "셀러 공급가(원)", type: "number", min: 0, half: true, help: "판매되면 창고(스튜디오)가 받는 금액입니다. 셀러는 판매가 − 판매 수수료 − 공급가를 받고, 공급가 이상으로 판매가를 바꿀 수 있습니다. 비우면 아래 셀러 수수료 방식으로 계산합니다." },
+  { name: "supplyPrice", label: "셀러 공급가(원)", type: "number", min: 0, half: true, help: "판매되면 공간이 받는 금액입니다. 셀러는 판매가 − 판매 수수료 − 공급가를 받고, 공급가 이상으로 판매가를 바꿀 수 있습니다. 비우면 아래 셀러 수수료 방식으로 계산합니다." },
   { name: "stock", label: "재고", type: "number", min: 0, half: true, required: true },
   { name: "shippingInfo", label: "배송 정보", half: true, placeholder: "3,000원 (5만원 이상 무료)" },
   { name: "commissionType", label: "셀러 수수료 방식", type: "select", options: [{ value: "PERCENT", label: "정률 (%)" }, { value: "FIXED", label: "정액 (원)" }], half: true },
@@ -89,11 +89,11 @@ export async function FacilityProductsManager({ searchParams, admin = false }: {
       <FilterBar fields={[
         { type: "search", key: "q", placeholder: "상품명 · SKU" },
         { type: "select", key: "state", label: "상태", options: [{ value: "on", label: "판매중" }, { value: "off", label: "판매 중단" }, { value: "low", label: "재고 10개 이하" }] },
-        ...(facilities.length > 1 ? [{ type: "select" as const, key: "facility", label: "창고(스튜디오)", options: facilities.map((f) => ({ value: f.id, label: f.name })) }] : []),
+        ...(facilities.length > 1 ? [{ type: "select" as const, key: "facility", label: "공간", options: facilities.map((f) => ({ value: f.id, label: f.name })) }] : []),
       ]} />
 
       {facilities.length === 0 ? (
-        <EmptyState icon={<Package className="h-10 w-10" />} title="먼저 창고(스튜디오)를 등록하세요" action={<Link href="/facility/register"><Button>창고(스튜디오) 등록</Button></Link>} />
+        <EmptyState icon={<Package className="h-10 w-10" />} title="먼저 공간을 등록하세요" action={<Link href="/facility/register"><Button>공간 등록</Button></Link>} />
       ) : products.length === 0 ? (
         <EmptyState icon={<Package className="h-10 w-10" />} title={q || state ? "조건에 맞는 상품이 없습니다" : "등록된 상품이 없습니다"}
           description="상품을 등록하면 셀러가 상품을 보고 바로 예약할 수 있습니다."

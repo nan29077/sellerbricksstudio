@@ -1,7 +1,7 @@
 import { ShoppingBag, Store, type LucideIcon } from "lucide-react";
 
 // 회원가입 유형 (메인페이지 · 가입 선택 화면 · 가입 폼 상단 전환 탭에서 함께 사용)
-// 창고(스튜디오)는 본사가 직접 운영하므로 가입 유형이 없다 (2026-11-14)
+// 공간은 본사가 직접 운영하므로 가입 유형이 없다 (2026-11-14)
 export type SignupRole = "SELLER" | "BRAND_ADMIN";
 
 export const SIGNUP_ROLES: {
@@ -11,7 +11,7 @@ export const SIGNUP_ROLES: {
   {
     role: "SELLER", href: "/signup/seller", icon: Store, label: "셀러",
     title: "셀러", summary: "라이브 방송으로 상품을 판매해요",
-    points: ["창고(스튜디오) 무료 예약", "브랜드 상품 찜 · 샘플 신청", "판매 정산 · 주문 확인"],
+    points: ["공간 무료 예약", "브랜드 상품 찜 · 샘플 신청", "판매 정산 · 주문 확인"],
     cta: "셀러로 가입",
   },
   {

@@ -107,7 +107,7 @@ export default async function AdminUsers({ searchParams }: { searchParams: SP })
                     <td data-label="역할" className="px-4 py-3"><Badge tone={ROLE_TONE[u.role] ?? "gray"}>{ROLE_LABELS[u.role]}</Badge></td>
                     <td data-label="활동" className="whitespace-nowrap px-4 py-3 text-xs text-slate-600">
                       {u.role === "SELLER" && `예약 ${u._count.bookings}건 · 주문서 ${u._count.orders}건`}
-                      {u.role === "FACILITY_ADMIN" && `창고(스튜디오) ${u._count.ownedFacilities}곳`}
+                      {u.role === "FACILITY_ADMIN" && `공간 ${u._count.ownedFacilities}곳`}
                       {u.role === "MANAGER" && `담당 ${u._count.managedFacilities}곳`}
                     </td>
                     <td data-label="가입 · 최근 로그인" className="whitespace-nowrap px-4 py-3 text-xs text-slate-600">{formatDate(u.createdAt)}<br /><span className="text-slate-400">{u.lastLoginAt ? formatDateTime(u.lastLoginAt) : "로그인 기록 없음"}</span></td>

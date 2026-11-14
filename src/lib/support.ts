@@ -89,5 +89,28 @@ export const supportFaq = [
   { category: "LIVE", question: "어떤 라이브 플랫폼에서 판매할 수 있나요?", answer: "셀러브릭스 · 클릭메이트 · 그립 · 바이브 · 모루라이브 · 라이브마켓 · 네이버 쇼핑라이브 · 유튜브 · 틱톡 · 인스타그램 등 셀러가 쓰는 플랫폼에서 판매하면 됩니다. 쓰는 플랫폼은 가입할 때와 설정에서 고를 수 있습니다.", href: "/intro", link: "서비스 알아보기" },
   { category: "SETTLEMENT", question: "결제 · 정산 내역은 어디에서 확인하나요?", answer: "셀러는 결제 · 정산 내역에서 주문서 결제와 환불을, 브랜드사는 정산 메뉴에서 공급대금 정산을 확인할 수 있습니다.", href: "/login", link: "로그인하기" },
   { category: "ACCOUNT", question: "어떤 역할로 가입해야 하나요?", answer: "라이브 판매를 준비한다면 셀러로, 상품을 공급한다면 브랜드사로 가입하세요. 창고 · 스튜디오 · 쇼룸은 스토리지마켓이 직접 운영하므로 따로 가입하지 않습니다.", href: "/signup", link: "가입 유형 보기" },
-  { category: "PARTNERSHIP", question: "운영 중인 창고(스튜디오)를 제휴하고 싶어요.", answer: "스토리지마켓의 창고 · 스튜디오 · 쇼룸은 본사가 직접 운영하거나 직접 관리할 수 있는 제휴 창고만 씁니다. 제휴를 원하시면 고객 문의로 남겨 주세요. 별도 계정 가입은 없습니다.", href: "/support", link: "제휴 문의하기" },
+  { category: "PARTNERSHIP", question: "운영 중인 공간을 제휴하고 싶어요.", answer: "스토리지마켓의 창고 · 스튜디오 · 쇼룸은 본사가 직접 운영하거나 직접 관리할 수 있는 제휴 창고만 씁니다. 제휴를 원하시면 고객 문의로 남겨 주세요. 별도 계정 가입은 없습니다.", href: "/support", link: "제휴 문의하기" },
 ] satisfies { category: SupportCategory; question: string; answer: string; href: string; link: string }[];
+
+/** 다른 역할 전용 화면으로 가는 안내 링크는 숨긴다 (예: 브랜드 계정에 '방송 예약하기'). 비회원은 로그인 화면으로 이어지므로 그대로 둔다. */
+export function linkAllowed(href: string, role?: string | null) {
+  if (!role) return true;
+  if (href.startsWith("/seller/")) return role === "SELLER";
+  if (href.startsWith("/brand/")) return role === "BRAND_ADMIN";
+  if (href.startsWith("/admin/")) return role === "SUPER_ADMIN";
+  if (href.startsWith("/facility/")) return role === "SUPER_ADMIN" || role === "MANAGER";
+  if (href.startsWith("/manager/")) return role === "MANAGER";
+  return true;
+}
+
+/** 고객이 아직 안 읽은 운영팀 답변이 있는지 (예전 데이터는 답변 시각으로 본다) */
+export function hasUnreadForUser(i: { lastAdminReplyAt: Date | null; answeredAt: Date | null; userReadAt: Date | null }) {
+  const last = i.lastAdminReplyAt ?? i.answeredAt;
+  return !!last && (!i.userReadAt || last > i.userReadAt);
+}
+/** 운영팀이 아직 안 읽은 고객 메시지가 있는지 */
+export function hasUnreadForAdmin(i: { createdAt: Date; lastUserReplyAt: Date | null; adminReadAt: Date | null }) {
+  const last = i.lastUserReplyAt ?? i.createdAt;
+  return !i.adminReadAt || last > i.adminReadAt;
+}
+export const SUPPORT_HOURS = "평일 10:00~18:00";

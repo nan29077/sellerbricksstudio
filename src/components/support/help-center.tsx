@@ -8,9 +8,9 @@ import { ArrowRight, CheckCircle2, ChevronDown, Search, Send } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
 import { api } from "@/lib/client-api";
-import { SUPPORT_CATEGORIES, isSupportCategory, supportFaq, supportInquirySchema } from "@/lib/support";
+import { SUPPORT_CATEGORIES, isSupportCategory, linkAllowed, supportFaq, supportInquirySchema } from "@/lib/support";
 
-export function SupportFaq() {
+export function SupportFaq({ role }: { role?: string | null }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
   const term = query.trim().toLowerCase();
@@ -39,7 +39,7 @@ export function SupportFaq() {
               <span>{item.question}</span><ChevronDown className="h-4 w-4 shrink-0 text-brand-700 group-open:rotate-180" />
             </summary>
             <p className="text-sm leading-6 text-slate-600">{item.answer}</p>
-            <Link href={item.href} className="inline-flex min-h-11 items-center gap-1 text-xs font-bold text-brand-700 hover:text-navy">{item.link}<ArrowRight className="h-4 w-4" /></Link>
+            {linkAllowed(item.href, role) && <Link href={item.href} className="inline-flex min-h-11 items-center gap-1 text-xs font-bold text-brand-700 hover:text-navy">{item.link}<ArrowRight className="h-4 w-4" /></Link>}
           </details>
         ))}
         {!results.length && <p role="status" className="py-4 text-sm text-slate-600">검색 결과가 없습니다. 다른 검색어를 입력하거나 1:1 문의를 남겨 주세요.</p>}

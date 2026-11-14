@@ -106,7 +106,7 @@ export default function IntroPage() {
           style={{ backgroundImage: "radial-gradient(circle at 20% 50%, #F5A623 0%, transparent 50%), radial-gradient(circle at 80% 20%, #FFC107 0%, transparent 40%)" }} />
         <div className="container relative z-10 text-center">
           <h1 className="mb-5 break-keep text-3xl font-black leading-tight tracking-tight text-white md:text-5xl">
-            셀러·창고·브랜드가 함께하는<br />
+            상품 고르고 공간만 예약하면<br />
             <span className="text-brand-300">라이브 커머스</span>
           </h1>
           <p className="mx-auto mb-8 max-w-2xl break-keep text-base leading-relaxed text-white/85 md:text-lg">
@@ -395,7 +395,7 @@ export default function IntroPage() {
             지금 바로 시작하세요
           </h2>
           <p className="mx-auto mb-8 max-w-xl break-keep text-lg leading-relaxed text-navy">
-            셀러, 창고·스튜디오 운영자, 브랜드 중 내게 맞는 유형으로 시작하세요.
+            셀러와 브랜드 중 내게 맞는 유형으로 시작하세요. 창고 · 스튜디오 · 쇼룸은 스토리지마켓이 직접 운영합니다.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/signup" className={buttonVariants({ size: "lg", variant: "secondary", className: "rounded-xl font-bold" })}>가입 유형 보기</Link>

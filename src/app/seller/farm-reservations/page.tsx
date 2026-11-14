@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 import { PageHeader } from "@/components/layout/dashboard-widgets";
@@ -25,6 +26,8 @@ const TABS = [
 
 export default async function SellerReservationOverview({ searchParams }: { searchParams: SP }) {
   const user = await requireRole(["SELLER"]);
+  // 예약 캘린더는 '예약 · 방송 일정'과 같은 화면으로 합쳤다 (2026-11-14)
+  if (sp(searchParams, "tab") === "calendar") redirect("/seller/bookings?view=calendar");
   const tab = (TABS.find((t) => t.key === sp(searchParams, "tab"))?.key ?? "favorites") as (typeof TABS)[number]["key"];
   const month = parseMonth(sp(searchParams, "month"));
 
@@ -50,12 +53,12 @@ export default async function SellerReservationOverview({ searchParams }: { sear
 
   return (
     <div className="space-y-5 pb-24 md:pb-0">
-      <PageHeader title="찜 · 문의한 공간" description="자주 찾는 창고 · 스튜디오 · 쇼룸과 보낸 문의, 월간 예약 일정을 모아 봤어요."
+      <PageHeader title="찜 · 문의한 공간" description="자주 찾는 창고 · 스튜디오 · 쇼룸과 공간에 보낸 문의를 모아 봤어요. 예약 캘린더는 '예약 · 방송 일정'에서 볼 수 있어요."
         action={<Link href="/seller/bookings/new"><Button><CalendarPlus className="h-4 w-4" />방송 예약하기</Button></Link>} />
 
       <div className="flex gap-1.5 overflow-x-auto">
         {TABS.map((t) => (
-          <Link key={t.key} href={withParams(BASE, {}, { tab: t.key === "favorites" ? undefined : t.key })}
+          <Link key={t.key} href={t.key === "calendar" ? "/seller/bookings?view=calendar" : withParams(BASE, {}, { tab: t.key === "favorites" ? undefined : t.key })}
             className={cn("flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold", tab === t.key ? "border-navy bg-navy text-white" : "border-[#E5E0D6] bg-white text-slate-600")}>
             <t.icon className="h-4 w-4" />{t.label}
             {t.key === "inquiries" && unreadReplies > 0 && <span className="rounded-full bg-red-500 px-1.5 text-[11px] text-white">{unreadReplies}</span>}

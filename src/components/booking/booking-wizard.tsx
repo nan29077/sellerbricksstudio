@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input, Label, Textarea, Select } from "@/components/ui/input";
 import { SlotPicker, endOf, type PickerPolicy, type SlotValue } from "./slot-picker";
-import { cn, formatKRW, sellerUnitProfit } from "@/lib/utils";
+import { cn, formatDateTime, formatKRW, sellerUnitProfit } from "@/lib/utils";
+import { earliestDisplayStart, optionCombos } from "@/lib/brand-pricing";
 import { facilityTypeLabel, facilityTypeTone } from "@/lib/status";
 
 export type WizardFacility = {
@@ -26,7 +27,7 @@ type FacilityProduct = {
 };
 type BrandListing = {
   brandProductId: string; name: string; brandName: string; imageUrl: string | null; supplyPrice: number; salePrice: number;
-  category: string; leadDays: number; options: { name: string; values: string[] }[];
+  category: string; leadDays: number; options: { name: string; values: string[] }[]; stock?: number; soldOut?: string[];
 };
 type BrandPick = { quantity: number; optionLabel: string };
 type Occ = { date: string; start: string; end: string; ok: boolean; reason?: string | null };
@@ -167,6 +168,12 @@ export function BookingWizard({
     setError("");
     if (step === 0 && !facilityId) return setError("예약할 창고 · 스튜디오 · 쇼룸을 선택하세요.");
     if (step === 1 && missingOption) return setError(`${missingOption.name}: 시연품 옵션을 고르세요.`);
+    if (step === 1) { const empty = pickedBrand.find((b) => b.stock === 0); if (empty) return setError(`${empty.name}: 브랜드 재고가 없어 시연품을 받을 수 없어요. 빼고 진행해 주세요.`); }
+    if (step === 2 && slot.date && slot.start) {
+      const start = new Date(`${slot.date}T${slot.start}:00+09:00`);
+      const late = pickedBrand.find((b) => start < earliestDisplayStart(b.leadDays));
+      if (late) return setError(`${late.name}: 시연품을 받으려면 ${formatDateTime(earliestDisplayStart(late.leadDays).toISOString())} 이후 방송으로 골라 주세요. (상품을 빼면 이 날짜로 예약할 수 있어요)`);
+    }
     if (step === 2) {
       if (!slot.date || !slot.start) return setError("날짜와 시작 시간을 선택하세요.");
       if (slotStatus !== "available") return setError("선택한 시간은 예약할 수 없습니다. 다른 시간을 선택하세요.");
@@ -351,14 +358,19 @@ export function BookingWizard({
                           <p className="truncate text-[11px] text-slate-500">{b.brandName} · {b.category}</p>
                           <p className="line-clamp-2 text-sm font-bold text-navy">{b.name}</p>
                           <p className="text-[11px] text-slate-500">공급가 {formatKRW(b.supplyPrice)} · 내 판매가 {formatKRW(b.salePrice)}</p>
+                          <p className="text-[11px] font-semibold text-violet-700">시연품은 {formatDateTime(earliestDisplayStart(b.leadDays).toISOString())} 이후 방송부터 받을 수 있어요</p>
+                          {b.stock === 0 && <p className="text-[11px] font-bold text-red-600">브랜드 재고가 없어 시연품을 받을 수 없어요</p>}
                           {!pick ? (
                             <Button type="button" size="sm" variant="outline" className="mt-1.5" onClick={() => setBrandPicks((p) => ({ ...p, [b.brandProductId]: { quantity: 1, optionLabel: "" } }))}>방송에 담기</Button>
                           ) : (
                             <div className="mt-1.5 space-y-1.5">
                               {b.options.length > 0 && (
                                 <Select aria-label={`${b.name} 시연품 옵션`} value={pick.optionLabel} onChange={(e) => setBrandPicks((p) => ({ ...p, [b.brandProductId]: { ...pick, optionLabel: e.target.value } }))} className="h-9 text-xs">
-                                  <option value="">시연품 옵션 선택</option>
-                                  {b.options.flatMap((g) => g.values.map((v) => <option key={`${g.name}:${v}`} value={`${g.name}:${v}`}>{g.name} {v}</option>))}
+                                  <option value="">시연품 옵션 선택 ({b.options.map((g) => g.name).join(" / ")})</option>
+                                  {optionCombos(b.options).map((key) => {
+                                    const out = b.soldOut?.includes(key);
+                                    return <option key={key} value={key} disabled={out}>{key}{out ? " (품절)" : ""}</option>;
+                                  })}
                                 </Select>
                               )}
                               <div className="flex items-center gap-1.5">

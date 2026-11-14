@@ -69,7 +69,7 @@ function hourOf(t: string | null | undefined, fallback: number) {
   return m ? +m[1] + +m[2] / 60 : fallback;
 }
 
-/** 창고(스튜디오) 하루 운영 시간(시간) — 미입력 시 09~22시 */
+/** 공간 하루 운영 시간(시간) — 미입력 시 09~22시 */
 export function openHoursPerDay(f: { openTime?: string | null; closeTime?: string | null }) {
   const o = hourOf(f.openTime, 9), c = hourOf(f.closeTime, 22);
   return c > o ? c - o : 24 - o + c;

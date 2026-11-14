@@ -1,3 +1,4 @@
+import { hasUnreadForUser } from "@/lib/support";
 import { randomBytes } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { getSessionUser } from "@/lib/auth";
@@ -72,8 +73,12 @@ export async function GET() {
   if (!user) return fail("로그인 후 내 문의를 확인할 수 있어요.", 401);
   const rows = await prisma.supportInquiry.findMany({
     where: { userId: user.id }, orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }], take: 20,
-    select: { id: true, subject: true, category: true, status: true, answeredAt: true, createdAt: true, updatedAt: true, _count: { select: { messages: true } } },
+    select: { id: true, subject: true, category: true, status: true, answeredAt: true, createdAt: true, updatedAt: true, lastAdminReplyAt: true, userReadAt: true, message: true, _count: { select: { messages: true } },
+      messages: { orderBy: { createdAt: "desc" }, take: 1, select: { body: true, author: true } } },
   }).catch(() => null);
   if (!rows) return fail("문의 내역을 불러오지 못했습니다.", 503);
-  return ok(rows.map((r) => ({ id: r.id, subject: r.subject, category: SUPPORT_CATEGORIES[r.category].label, status: effectiveStatus(r), createdAt: r.createdAt, updatedAt: r.updatedAt, messages: r._count.messages })));
+  return ok(rows.map((r) => ({
+    id: r.id, subject: r.subject, category: SUPPORT_CATEGORIES[r.category].label, status: effectiveStatus(r), createdAt: r.createdAt, updatedAt: r.updatedAt, messages: r._count.messages,
+    unread: hasUnreadForUser(r), last: (r.messages[0]?.body ?? r.message).slice(0, 80), lastFrom: r.messages[0]?.author ?? "USER",
+  })));
 }

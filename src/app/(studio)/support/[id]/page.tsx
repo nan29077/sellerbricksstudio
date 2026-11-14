@@ -19,6 +19,7 @@ export default async function SupportDetail({ params }: { params: { id: string }
   const item = await prisma.supportInquiry.findFirst({ where: { id: params.id, userId: user.id }, include: { messages: { orderBy: { createdAt: "asc" } } } });
   if (!item) notFound();
   const status = effectiveStatus(item);
+  await prisma.supportInquiry.update({ where: { id: item.id }, data: { userReadAt: new Date(), updatedAt: item.updatedAt } }).catch(() => undefined);
 
   return (
     <article className="space-y-4 px-4 pb-12 pt-4 sm:px-6">

@@ -12,11 +12,11 @@ import { FULFILLMENT_ITEM_SELECT, orderActions, orderParts } from "@/lib/order-f
 import { clearLimit, consume } from "@/lib/rate-limit";
 import { canOperateFacility } from "@/lib/facility-owner";
 
-const REFUND_DENIED = "출고된 주문의 환불은 상품을 출고한 창고(스튜디오) 또는 최고관리자만 할 수 있습니다. 브랜드가 보낸 상품의 환불은 고객지원 1:1 문의로 요청해 주세요.";
+const REFUND_DENIED = "출고된 주문의 환불은 상품을 출고한 공간 또는 최고관리자만 할 수 있습니다. 브랜드가 보낸 상품의 환불은 고객지원 1:1 문의로 요청해 주세요.";
 
 // PATCH /api/orders/[id]
 //  body: { status, reason?, carrier?, trackingNumber? }
-//    - 준비중 · 발송(운송장) · 배송완료: 직접 출고분의 배송 담당만 (창고(스튜디오) 방송 → 창고, 셀러 공간 방송의 임시 상품 → 셀러)
+//    - 준비중 · 발송(운송장) · 배송완료: 직접 출고분의 배송 담당만 (공간 방송 → 창고, 셀러 공간 방송의 임시 상품 → 셀러)
 //      브랜드 직배송분은 브랜드가 발주서에서 처리하고, 모두 끝나면 주문 상태가 자동으로 바뀐다.
 //    - 취소(출고 전): 셀러 · 주문 운영자(창고 방송은 창고, 셀러 공간 방송은 셀러) · 최고관리자
 //    - 환불(출고 후): 주문 운영자 · 최고관리자
@@ -61,7 +61,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         if (status && ["PREPARING", "SHIPPED", "DELIVERED"].includes(status) && !can.isShipper) {
           return fail(can.localShipper === null
             ? "브랜드 직배송 상품은 브랜드가 발주서에서 출고 · 배송 완료를 처리합니다. 여기서는 배송 상태를 확인만 할 수 있습니다."
-            : can.localShipper === "FACILITY" ? "배송 상태는 상품을 출고하는 창고(스튜디오)가 바꿉니다. 셀러는 확인만 할 수 있습니다." : "배송 상태는 셀러가 바꿉니다.", 403);
+            : can.localShipper === "FACILITY" ? "배송 상태는 상품을 출고하는 공간이 바꿉니다. 셀러는 확인만 할 수 있습니다." : "배송 상태는 셀러가 바꿉니다.", 403);
         }
         if (status === "REFUNDED" && !can.canRefund) return fail(REFUND_DENIED, 403);
         return fail("현재 주문 상태에서는 이 처리를 할 수 없습니다.", 409);

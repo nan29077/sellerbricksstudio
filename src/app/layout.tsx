@@ -5,7 +5,7 @@ import { Providers } from "@/components/providers";
 import { DEFAULT_SITE_TITLE, SITE_NAME as siteName } from "@/lib/site-brand";
 
 const shareTitle = "좋은 상품이 더 멀리 닿는 라이브";
-const shareDescription = `창고(스튜디오) 찾기부터 라이브 준비와 판매 관리까지, ${siteName}이 함께합니다.`;
+const shareDescription = `공간 찾기부터 라이브 준비와 판매 관리까지, ${siteName}이 함께합니다.`;
 const shareImage = "/images/social/share-card-v8.jpg";
 
 function getSiteUrl(): URL {

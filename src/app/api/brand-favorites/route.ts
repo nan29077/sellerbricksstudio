@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { ok, fail, handleError } from "@/lib/http";
 import { BRAND_BUYER_ROLES } from "@/lib/brands";
 
-// POST /api/brand-favorites { productId } — 셀러 · 창고(스튜디오) 관리자가 브랜드 상품을 찜/해제 → { favorited }
+// POST /api/brand-favorites { productId } — 셀러 · 스토리지마켓 관리자가 브랜드 상품을 찜/해제 → { favorited }
 export async function POST(req: NextRequest) {
   try {
     const user = await requireUser();

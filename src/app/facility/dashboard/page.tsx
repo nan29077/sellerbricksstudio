@@ -146,7 +146,7 @@ export default async function FacilityDashboard() {
         <div className="space-y-6">
           <DashHero eyebrow={`SPACE OPERATIONS · ${todayLabel()}`} title={hello}
             description="최고관리자가 담당 공간을 지정하면 예약 · 일정 · 상품 · 주문 현황이 이곳에 모여요." />
-          <Empty icon={Warehouse} text="아직 담당 창고(스튜디오)가 지정되지 않았습니다" />
+          <Empty icon={Warehouse} text="아직 담당 공간이 지정되지 않았습니다" />
         </div>
       );
     }
@@ -154,7 +154,7 @@ export default async function FacilityDashboard() {
       <div className="space-y-6">
         <DashHero eyebrow={`SPACE OPERATIONS · ${todayLabel()}`} title={hello}
           description="직영 · 직접 관리하는 창고 · 스튜디오 · 쇼룸을 등록하면 예약 · 일정 · 상품 · 판매 현황이 이곳에 모여요."
-          actions={<HeroButton href="/facility/register" primary><Building2 className="h-4 w-4" />창고(스튜디오) 등록하기</HeroButton>} />
+          actions={<HeroButton href="/facility/register" primary><Building2 className="h-4 w-4" />공간 등록하기</HeroButton>} />
         <Empty icon={Warehouse} text="아직 등록된 공간이 없어요" action={{ href: "/facility/register", label: "등록 시작" }} />
       </div>
     );
@@ -269,7 +269,7 @@ export default async function FacilityDashboard() {
         </Panel>
       </div>
 
-      <ProductMixPanel scope={{ facilityIds: d.perFac.map((f) => f.id) }} />
+      <ProductMixPanel scope={{ facilityIds: d.perFac.map((f) => f.id) }} requestsHref={user.role === "SUPER_ADMIN" ? "/facility/brand-requests" : null} />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <Panel eyebrow="REVIEWS" title="최근 리뷰" action={{ href: "/facility/reviews", label: "리뷰 관리" }}>

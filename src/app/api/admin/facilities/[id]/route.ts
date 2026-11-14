@@ -13,7 +13,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const user = await requireRole(["SUPER_ADMIN"]);
     const body = await req.json().catch(() => ({}));
     const f = await prisma.facility.findUnique({ where: { id: params.id }, select: { id: true, name: true, status: true } });
-    if (!f) return fail("창고(스튜디오)를 찾을 수 없습니다.", 404);
+    if (!f) return fail("공간을 찾을 수 없습니다.", 404);
 
     if (body.feeRate !== undefined) {
       if (body.feeRate === null || body.feeRate === "") {

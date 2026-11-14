@@ -8,7 +8,8 @@ import { EmptyState } from "@/components/ui/empty";
 import { buttonVariants } from "@/components/ui/button";
 import { SellerListingRow } from "@/components/brand/seller-listing-row";
 import { ShopImage } from "@/components/shop/shop-image";
-import { brandArtworkFor, brandProductHref } from "@/lib/brands";
+import { brandArtworkFor, brandProductHref, parseOptions } from "@/lib/brands";
+import { readVariants } from "@/lib/brand-pricing";
 import { generatedBrandProductArtwork } from "@/lib/brand-product-artwork";
 import { defaultProfileImage } from "@/lib/profile";
 import { cn, formatKRW } from "@/lib/utils";
@@ -70,6 +71,18 @@ export default async function SellerBrandProducts() {
                     <div className="rounded-xl bg-[#F9F7F2] px-1.5 py-2"><dt className="text-[10px] font-semibold text-slate-500">누적 판매</dt><dd className="mt-0.5 truncate text-sm font-extrabold text-navy">{(soldMap.get(bp.id) ?? 0).toLocaleString()}개</dd></div>
                   </dl>
                   <p className="flex items-center gap-1 text-[11px] text-slate-500"><PackageCheck className="h-3.5 w-3.5" aria-hidden />브랜드 재고 {bp.stock.toLocaleString()}개 · 플랫폼 수수료는 별도</p>
+                  {(() => {
+                    const vs = readVariants(bp.optionVariants, parseOptions(bp.options)).filter((v) => v.extra || v.saleExtra || v.soldOut);
+                    if (!vs.length) return null;
+                    return (
+                      <details className="rounded-xl bg-violet-50/60 px-3 py-2 text-[11px] text-violet-900">
+                        <summary className="cursor-pointer font-bold">옵션별 가격 · 품절 {vs.length}개</summary>
+                        <ul className="mt-1 space-y-0.5">
+                          {vs.map((v) => <li key={v.key} className={v.soldOut ? "text-slate-400 line-through" : ""}>{v.key} — 공급 {formatKRW(bp.supplyPrice + v.extra)} · 판매 {formatKRW(l.salePrice + v.saleExtra)}{v.soldOut ? " (품절)" : ""}</li>)}
+                        </ul>
+                      </details>
+                    );
+                  })()}
                   <div className="mt-auto space-y-2 border-t border-slate-100 pt-3">
                     <p className="text-[11px] font-semibold text-slate-500">내 판매가{bp.priceRule === "FIXED" && bp.salePrice > 0 ? " · 브랜드 고정" : bp.salePrice > 0 ? ` · 브랜드 권장 ${formatKRW(bp.salePrice)}` : ""}</p>
                     <SellerListingRow id={l.id} salePrice={l.salePrice} isActive={l.isActive} supplyPrice={bp.supplyPrice} fixed={bp.priceRule === "FIXED" && bp.salePrice > 0} />

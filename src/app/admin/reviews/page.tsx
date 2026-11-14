@@ -40,7 +40,7 @@ export default async function AdminReviews({ searchParams }: { searchParams: SP 
   ]);
   return (
     <div className="space-y-5">
-      <PageHeader title="리뷰 관리" description="전체 창고(스튜디오) 리뷰를 모니터링하고, 부적절한 리뷰는 숨김 처리합니다. 숨긴 리뷰는 평점 계산에서 제외됩니다." />
+      <PageHeader title="리뷰 관리" description="전체 공간 리뷰를 모니터링하고, 부적절한 리뷰는 숨김 처리합니다. 숨긴 리뷰는 평점 계산에서 제외됩니다." />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="전체 평균" value={`★ ${(avg._avg.rating ?? 0).toFixed(2)}`} sub={`리뷰 ${all}개`} icon={Star} tone="brand" />
         <Kpi label="2점 이하" value={`${low}개`} icon={AlertTriangle} tone="red" />
@@ -50,7 +50,7 @@ export default async function AdminReviews({ searchParams }: { searchParams: SP 
       <StatusTabs base={BASE} params={searchParams} paramKey="filter" tabs={[
         { value: "", label: "전체", count: all }, { value: "low", label: "2점 이하", count: low }, { value: "unreplied", label: "답글 없음", count: unreplied }, { value: "hidden", label: "숨김", count: hidden },
       ]} />
-      <FilterBar fields={[{ type: "search", key: "q", placeholder: "내용 · 창고(스튜디오) · 셀러 이메일" }, { type: "select", key: "facility", label: "창고(스튜디오)", options: facilities.map((f) => ({ value: f.id, label: f.name })) }]} />
+      <FilterBar fields={[{ type: "search", key: "q", placeholder: "내용 · 공간 · 셀러 이메일" }, { type: "select", key: "facility", label: "공간", options: facilities.map((f) => ({ value: f.id, label: f.name })) }]} />
       {rows.length === 0 ? <EmptyState icon={<Star className="h-10 w-10" />} title="리뷰가 없습니다" /> : rows.map((r) => (
         <Card key={r.id} className={r.isHidden ? "opacity-70" : ""}>
           <CardContent className="space-y-2 p-4 sm:p-5">

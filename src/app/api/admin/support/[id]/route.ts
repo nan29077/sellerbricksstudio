@@ -18,6 +18,7 @@ const schema = z.object({
   priority: z.enum(["LOW", "NORMAL", "HIGH", "URGENT"]).optional(),
   assigneeId: z.string().max(64).nullable().optional(),
   adminMemo: z.string().max(3000).nullable().optional(),
+  read: z.literal(true).optional(), // 관리 화면에서 펼쳐 봄 → 운영팀 읽음
 });
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
@@ -27,7 +28,13 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   if (!z.string().uuid().safeParse(params.id).success) return fail("문의를 찾을 수 없습니다.", 404);
   const input = schema.safeParse(await request.json().catch(() => null));
   if (!input.success) return fail(input.error.issues[0].message);
-  const { reply, attachments = [], status, priority, assigneeId, adminMemo } = input.data;
+  const { reply, attachments = [], status, priority, assigneeId, adminMemo, read } = input.data;
+  if (read && reply === undefined && status === undefined && priority === undefined && assigneeId === undefined && adminMemo === undefined) {
+    const row = await prisma.supportInquiry.findUnique({ where: { id: params.id }, select: { updatedAt: true } }).catch(() => null);
+    if (!row) return fail("문의를 찾을 수 없습니다.", 404);
+    await prisma.supportInquiry.update({ where: { id: params.id }, data: { adminReadAt: new Date(), updatedAt: row.updatedAt } });
+    return ok({ id: params.id });
+  }
   if (reply === undefined && status === undefined && priority === undefined && assigneeId === undefined && adminMemo === undefined) return fail("바꿀 내용이 없습니다.");
   if (attachments.some((a) => !isOwnUpload(a))) return fail("첨부 이미지는 스토리지마켓에 올린 이미지만 쓸 수 있습니다.");
 
@@ -47,7 +54,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       await tx.supportInquiry.update({
         where: { id: inquiry.id },
         data: {
-          ...(reply ? { reply, answeredAt: inquiry.answeredAt ?? now } : {}),
+          ...(reply ? { reply, answeredAt: inquiry.answeredAt ?? now, lastAdminReplyAt: now, adminReadAt: now } : {}),
           ...(nextStatus ? { status: nextStatus, closedAt: nextStatus === "CLOSED" ? now : null } : {}),
           ...(priority ? { priority } : {}),
           ...(assigneeId !== undefined ? { assigneeId: assigneeId || null } : {}),

@@ -58,7 +58,7 @@ export default async function AdminBookings({ searchParams }: { searchParams: SP
 
   return (
     <div className="space-y-5">
-      <PageHeader title="예약 현황" description={`전체 창고(스튜디오)의 예약을 조회하고 처리합니다. (창고 운영 콘솔의 예약 현황과 같은 기능) 승인 대기 ${policy.pendingExpireHours ? `${policy.pendingExpireHours}시간 자동 만료` : "자동 만료 꺼짐"} · 노쇼는 시작 ${policy.noShowGraceMinutes}분 후부터.`}
+      <PageHeader title="예약 현황" description={`전체 공간의 예약을 조회하고 처리합니다. (창고 운영 콘솔의 예약 현황과 같은 기능) 승인 대기 ${policy.pendingExpireHours ? `${policy.pendingExpireHours}시간 자동 만료` : "자동 만료 꺼짐"} · 노쇼는 시작 ${policy.noShowGraceMinutes}분 후부터.`}
         action={<div className="flex gap-2"><a href="/admin/policy" className="inline-flex h-9 items-center rounded-lg border px-3 text-sm font-semibold">예약 정책</a>
           <PatchButton url="/api/cron/bookings" body={{}} variant="outline" size="sm" confirmText="자동 만료 · 이용 완료 · 이용 전 알림을 지금 실행할까요?">자동 처리 실행</PatchButton></div>} />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -70,11 +70,11 @@ export default async function AdminBookings({ searchParams }: { searchParams: SP
       <StatusTabs base={BASE} params={searchParams} tabs={[{ value: "", label: "전체", count: all }, ...Object.entries(BOOKING_STATUS).map(([k, v]) => ({ value: k, label: v.label, count: c[k] ?? 0 }))]} />
       <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
         <FilterBar className="flex-1" fields={[
-          { type: "search", key: "q", placeholder: "창고(스튜디오) · 셀러 · 목적" },
-          { type: "select", key: "facility", label: "창고(스튜디오)", options: facilities.map((f) => ({ value: f.id, label: f.name })) },
+          { type: "search", key: "q", placeholder: "공간 · 셀러 · 목적" },
+          { type: "select", key: "facility", label: "공간", options: facilities.map((f) => ({ value: f.id, label: f.name })) },
           { type: "date", key: "from", label: "이용일 시작" }, { type: "date", key: "to", label: "이용일 끝" },
         ]} />
-        <CsvButton label="CSV" filename="전체예약" headers={["상태", "창고(스튜디오)", "셀러", "이메일", "시작", "이용시간", "예약번호", "신청일"]}
+        <CsvButton label="CSV" filename="전체예약" headers={["상태", "공간", "셀러", "이메일", "시작", "이용시간", "예약번호", "신청일"]}
           rows={rows.map((b) => [BOOKING_STATUS[b.status]?.label, b.facility.name, b.seller.profile?.name, b.seller.email, formatDateTime(b.startAt), hoursBetween(b.startAt, b.endAt), b.code, formatDateTime(b.createdAt)])} />
       </div>
       {rows.length === 0 ? <EmptyState icon={<CalendarDays className="h-10 w-10" />} title="조건에 맞는 예약이 없습니다" /> : (

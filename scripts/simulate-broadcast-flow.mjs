@@ -124,12 +124,12 @@ async function main() {
     ?? await db.brandProduct.findFirst({ where: { isActive: true, allowDropship: true, shop: { status: "APPROVED" } } });
   await db.brandPartner.deleteMany({ where: { shopId: product.shopId, userId: sellerUser.id, status: "BLOCKED" } });
   await db.sellerBrandProduct.upsert({ where: { sellerId_brandProductId: { sellerId: sellerUser.id, brandProductId: product.id } }, update: { isActive: true }, create: { sellerId: sellerUser.id, brandProductId: product.id, salePrice: product.supplyPrice + 5000 } });
-  if (product.options && JSON.stringify(product.options) !== "[]" && JSON.stringify(product.options) !== "null") await db.brandProduct.update({ where: { id: product.id }, data: { options: [] } }).catch(() => {});
+  await db.brandProduct.update({ where: { id: product.id }, data: { options: "", optionVariants: [], leadDays: 2, stock: { increment: 50 } } });
   r = await seller.req("GET", "/api/seller/brand-listings");
   ok(r.ok && r.data.some((x) => x.brandProductId === product.id && x.imageUrl), "예약 화면: 내 방송 상품 목록 (사진 포함)", r.data?.slice?.(0, 1));
   const space = await db.facility.findFirst({ where: { status: "APPROVED", autoApprove: false }, orderBy: { createdAt: "asc" } }) ?? fac;
   // 빈 날짜를 찾아 예약 (다시 돌려도 겹치지 않게)
-  const book = async (hm, extra, from = 5) => {
+  const book = async (hm, extra, from = 8) => {
     let res, d;
     for (let n = from + (stamp % 7); n < 58; n++) {
       d = weekday(n);
@@ -138,6 +138,8 @@ async function main() {
     }
     return { res, d };
   };
+  r = await seller.req("POST", "/api/bookings", { facilityId: space.id, startAt: `${weekday(1)}T10:00`, endAt: `${weekday(1)}T12:00`, brandItems: [{ brandProductId: product.id, quantity: 1 }] });
+  ok(r.status >= 400 && /이후 방송/.test(r.error ?? ""), "방송이 너무 가까우면 시연품을 담을 수 없음 (출고 + 2일 전 도착)", r);
   let made = await book(["10:00", "12:00"], { purpose: "방송 시뮬", brandItems: [{ brandProductId: product.id, quantity: 2 }] });
   const day = made.d; r = made.res;
   ok(r.status === 201, "셀러: 브랜드 상품을 담아 공간 예약", r);
@@ -157,8 +159,14 @@ async function main() {
   const reqId = item.brandRequestId;
   r = await brand.req("POST", "/api/brands", { action: "transition", requestId: reqId, status: "APPROVED" });
   ok(r.ok, "브랜드: 시연품 요청 수락", r);
+  const stockBefore = (await db.brandProduct.findUnique({ where: { id: product.id } })).stock;
   r = await brand.req("POST", "/api/brands", { action: "transition", requestId: reqId, status: "SHIPPED", carrier: "CJ대한통운", trackingNumber: "123456789012" });
   ok(r.ok, "브랜드: 시연품 발송 (운송장)", r);
+  ok((await db.brandProduct.findUnique({ where: { id: product.id } })).stock === stockBefore - 2, "시연품 발송 → 브랜드 재고에서 2개 차감", { stockBefore });
+  pg = await brand.page("/brand/dashboard");
+  ok(pg.status === 200 && pg.text.includes("다가오는 방송 시연품"), "브랜드 대시보드: 다가오는 방송 시연품 카드");
+  pg = await admin.page("/admin/displays");
+  ok(pg.status === 200 && pg.text.includes("방송 시연품 현황") && pg.text.includes(space.name), "최고관리자: 방송 시연품 현황판");
   r = await brand.req("PATCH", `/api/booking-brand-items/${item.id}`, { action: "arrived" });
   ok(r.status === 403, "브랜드는 도착 확인 불가 (받는 공간에서 확인)", r);
   r = await admin.req("PATCH", `/api/booking-brand-items/${item.id}`, { action: "arrived" });
@@ -172,8 +180,10 @@ async function main() {
   const b2 = r.data?.bookings?.[0]?.id;
   ok(r.status === 201, "두 번째 예약 (일정 변경 · 취소 시험)", r);
   await admin.req("PATCH", `/api/bookings/${b2}`, { status: "APPROVED" });
+  r = await seller.req("PATCH", `/api/bookings/${b2}`, { action: "reschedule", startAt: `${weekday(1)}T14:00`, endAt: `${weekday(1)}T16:00` });
+  ok(r.status >= 400 && /도착할 시간/.test(r.error ?? ""), "아직 안 보낸 시연품이 있으면 너무 가까운 날로 일정 변경 불가", r);
   let day3 = made.d;
-  for (let n = 1; n < 30; n++) { const d = weekday(5 + ((stamp + n * 3) % 50)); if (d !== made.d && !(await db.booking.findFirst({ where: { facilityId: space.id, status: { in: ["PENDING", "APPROVED"] }, startAt: { lt: kst(d, "16:00") }, endAt: { gt: kst(d, "14:00") } } }))) { day3 = d; break; } }
+  for (let n = 1; n < 30; n++) { const d = weekday(8 + ((stamp + n * 3) % 48)); if (d !== made.d && !(await db.booking.findFirst({ where: { facilityId: space.id, status: { in: ["PENDING", "APPROVED"] }, startAt: { lt: kst(d, "16:00") }, endAt: { gt: kst(d, "14:00") } } }))) { day3 = d; break; } }
   r = await seller.req("PATCH", `/api/bookings/${b2}`, { action: "reschedule", startAt: `${day3}T14:00`, endAt: `${day3}T16:00` });
   const item2 = await db.bookingBrandItem.findFirst({ where: { bookingId: b2 } });
   ok(r.ok && item2?.dueAt && Math.abs(item2.dueAt.getTime() - (kst(day3, "14:00").getTime() - 48 * 3600000)) < 60000, "일정 변경 → 시연품 도착 기한도 바뀜", { r: r.error, dueAt: item2?.dueAt });
@@ -223,6 +233,14 @@ async function main() {
   ok(r.status === 201 && ord?.total === (10000 + 2000) * 2, "주문서: 옵션 추가 공급가까지 결제 (12,000원 × 2)", r.data?.results?.[0] ?? r);
   r = await seller.req("POST", "/api/seller/order-sheets", { method: "EASY_PAY", sheets: [{ ...sheetBase, externalOrderNo: `PX-${stamp}-2`, lines: [{ code: `B-${gp.id}`, optionLabel: "블랙 / M", quantity: 1 }] }] });
   ok(!r.data?.results?.[0]?.ok && /품절/.test(r.data?.results?.[0]?.error ?? r.error ?? ""), "주문서: 품절 옵션은 낼 수 없음", r.data?.results?.[0] ?? r);
+  r = await seller.req("POST", "/api/bookings", { facilityId: space.id, startAt: `${weekday(25)}T19:00`, endAt: `${weekday(25)}T21:00`, brandItems: [{ brandProductId: gp.id, optionLabel: "블랙 / M" }] });
+  ok(r.status >= 400 && /품절/.test(r.error ?? ""), "방송 예약: 품절 옵션은 시연품으로 고를 수 없음", r);
+  r = await seller.req("POST", "/api/bookings", { facilityId: space.id, startAt: `${weekday(25)}T19:00`, endAt: `${weekday(25)}T21:00`, brandItems: [{ brandProductId: gp.id }] });
+  ok(r.status >= 400 && /옵션/.test(r.error ?? ""), "방송 예약: 옵션 상품은 옵션을 골라야 함", r);
+  const fixedFp = await db.facilityProduct.findFirst({ where: { brandProductId: gp.id } });
+  ok(!fixedFp || fixedFp.salePrice === 16900, "판매가 고정: 스토리지마켓 입고 상품 판매가도 맞춰짐", fixedFp && { sale: fixedFp.salePrice });
+  r = await admin.req("POST", "/api/brand-imports", { action: "import", brandProductId: gp.id, target: "FACILITY", fulfillment: "DROPSHIP", salePrice: 18000, facilityId: space.id });
+  ok(r.status >= 400 && /고정/.test(r.error ?? ""), "판매가 고정: 입고 상품으로 가져올 때도 고정가만 가능", r);
 
   console.log("\n[4] 문의하기 (챗봇 · 1:1 · 관리)");
   r = await guest.req("POST", "/api/support/chat", { message: "시연품은 언제 도착해요?" });
@@ -249,6 +267,45 @@ async function main() {
   ok(r.ok && (await db.supportInquiry.findUnique({ where: { id: gid } })).status === "OPEN", "비회원 추가 문의 → 다시 새 문의", r);
   r = await guest.req("POST", `/api/support/inquiries/${gid}/messages`, { body: "토큰 없이 보내기 시도", token: "wrong" });
   ok(r.status === 403 || r.status === 404, "확인 링크가 틀리면 추가 문의 불가", r);
+  // 채팅형 1:1 상담: 대화 불러오기 · 안 읽은 답변 · 읽음 · 만족도 · 종료
+  r = await guest.req("POST", "/api/support/unread", { tokens: [token] });
+  ok(r.ok && r.data.count === 0 && r.data.threads?.[0]?.id === gid, "비회원: 이 기기에 저장한 상담 목록 불러오기 (읽은 상태)", r.data);
+  await admin.req("PATCH", `/api/admin/support/${gid}`, { reply: "수수료는 판매가의 5%예요." });
+  r = await guest.req("POST", "/api/support/unread", { tokens: [token] });
+  ok(r.ok && r.data.count === 1 && r.data.threads?.[0]?.unread, "운영팀 답변 → 비회원 안 읽은 답변 1개 (문의하기 버튼 빨간 숫자)", r.data);
+  r = await guest.req("GET", `/api/support/inquiries/${gid}?token=${token}`);
+  ok(r.ok && r.data.items.some((m) => m.author === "ADMIN" && /5%/.test(m.body)) && r.data.items.filter((m) => m.author === "USER").length >= 2, "채팅 대화 불러오기 (고객 · 운영팀 말풍선)", r.data?.items?.length);
+  r = await guest.req("POST", "/api/support/unread", { tokens: [token] });
+  ok(r.data?.count === 0, "대화를 열면 읽음 처리", r.data);
+  r = await guest.req("GET", `/api/support/inquiries/${gid}?token=wrongtoken12345`);
+  ok(r.status === 404, "토큰이 틀리면 대화를 볼 수 없음", r);
+  r = await guest.req("PATCH", `/api/support/inquiries/${gid}`, { action: "rate", rating: 5, token });
+  ok(r.ok && (await db.supportInquiry.findUnique({ where: { id: gid } })).rating === 5, "상담 만족도 평가 (5점)", r);
+  r = await guest.req("PATCH", `/api/support/inquiries/${gid}`, { action: "close", token });
+  ok(r.ok && (await db.supportInquiry.findUnique({ where: { id: gid } })).status === "CLOSED", "고객이 '해결됐어요'로 상담 종료", r);
+  r = await guest.req("POST", `/api/support/inquiries/${gid}/messages`, { body: "하나만 더 여쭤볼게요, 정산 주기는요?", token });
+  ok(r.ok && (await db.supportInquiry.findUnique({ where: { id: gid } })).status === "OPEN", "종료된 상담에 다시 보내면 다시 열림", r);
+  r = await admin.req("PATCH", `/api/admin/support/${gid}`, { read: true });
+  ok(r.ok && !!(await db.supportInquiry.findUnique({ where: { id: gid } })).adminReadAt, "운영팀이 펼쳐 보면 읽음 표시", r);
+  pg = await admin.page("/admin/support?status=rated");
+  ok(pg.status === 200 && pg.text.includes("만족도"), "관리 화면: 만족도 평가 탭 · 만족도 KPI");
+  // 회원 채팅
+  const mid = randomUUID();
+  r = await seller.req("POST", "/api/support/inquiries", { id: mid, category: "SPACE_BOOKING", subject: `시뮬 회원 채팅 ${stamp}`, message: "방송 예약 날짜를 바꾸고 싶어요. 어떻게 하나요?", source: "POPUP" });
+  ok(r.status === 201, "회원: 1:1 상담 시작", r);
+  await admin.req("PATCH", `/api/admin/support/${mid}`, { reply: "예약 · 방송 일정에서 '일정 변경'을 눌러 주세요." });
+  r = await seller.req("GET", "/api/support/unread");
+  ok(r.ok && r.data.ids.includes(mid), "회원: 안 읽은 답변 표시", r.data);
+  r = await seller.req("GET", "/api/support/inquiries");
+  ok(r.ok && r.data.some((x) => x.id === mid && x.unread && x.lastFrom === "ADMIN"), "회원 상담 목록: 마지막 메시지 · 안 읽음 표시", r.data?.[0]);
+  r = await seller.req("GET", `/api/support/inquiries/${mid}`);
+  ok(r.ok && (await seller.req("GET", "/api/support/unread")).data.ids.includes(mid) === false, "회원: 대화를 열면 읽음", r);
+  r = await brand.req("GET", `/api/support/inquiries/${mid}`);
+  ok(r.status === 404, "다른 회원의 상담은 볼 수 없음", r);
+  r = await brand.req("POST", "/api/support/chat", { message: "공간 예약은 어떻게 해요?" });
+  ok(r.ok && !(r.data.links ?? []).some((l) => l.href.startsWith("/seller/")), "챗봇: 다른 역할 전용 링크는 숨김 (브랜드에게 셀러 화면 링크 안 보임)", r.data?.links);
+  pg = await brand.page("/support");
+  ok(pg.status === 200 && !pg.text.includes('href="/seller/bookings/new"'), "고객센터 FAQ: 브랜드 계정에는 셀러 전용 링크 숨김");
   if (tpl) await admin.req("DELETE", `/api/admin/support/templates?id=${tpl}`);
   pg = await admin.page("/api/admin/support/export");
   ok(pg.status === 200 && pg.text.includes(`시뮬 비회원 문의 ${stamp}`), "문의 CSV 내려받기");

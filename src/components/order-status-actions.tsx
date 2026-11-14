@@ -20,7 +20,7 @@ export type OrderActionSet = { statuses: string[]; canCancel: boolean; canRefund
 const CARRIERS = ["CJ대한통운", "한진택배", "롯데택배", "우체국택배", "로젠택배", "경동택배", "직접 전달"];
 
 // 주문 목록의 상태 처리 버튼. 현재 상태에서 가능한 다음 단계 + 부분 취소(상품 줄 · 발주서 단위)
-// 배송 담당(창고(스튜디오) · 셀러 공간 셀러)만 준비 · 발송 · 배송 완료를 누를 수 있다. 셀러는 창고 방송 주문을 확인하고 출고 전 취소만 할 수 있다.
+// 배송 담당(공간 · 셀러 공간 셀러)만 준비 · 발송 · 배송 완료를 누를 수 있다. 셀러는 창고 방송 주문을 확인하고 출고 전 취소만 할 수 있다.
 export function OrderStatusActions({ orderId, status, items = [], cancelRequests = [], refundedAmount = 0, actions }: {
   orderId: string; status: string; items?: OrderLine[]; cancelRequests?: CancelRequest[]; refundedAmount?: number; actions: OrderActionSet;
 }) {
@@ -36,7 +36,7 @@ export function OrderStatusActions({ orderId, status, items = [], cancelRequests
   const open = items.filter((i) => !i.cancelledAt);
   const canPartial = (actions.canCancel || actions.canRefund) && open.length > 1;
   const viewOnly = !actions.isShipper && ["PAID", "PREPARING", "SHIPPED", "DELIVERED"].includes(status)
-    ? (actions.localShipper === "FACILITY" ? "배송은 창고(스튜디오)가 처리 · 확인만 가능" : actions.localShipper === null ? "브랜드가 배송 처리 · 확인만 가능" : "")
+    ? (actions.localShipper === "FACILITY" ? "배송은 공간이 처리 · 확인만 가능" : actions.localShipper === null ? "브랜드가 배송 처리 · 확인만 가능" : "")
     : "";
   if (next.length === 0 && !canPartial) return <span className="text-xs text-muted-foreground">{refundedAmount > 0 ? `환불 ${formatKRW(refundedAmount)}` : viewOnly || "-"}</span>;
 

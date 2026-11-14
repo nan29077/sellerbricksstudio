@@ -25,7 +25,7 @@ export default async function FacilitySchedule({ searchParams }: { searchParams:
   const ids = await operableFacilityIds(user);
   const facilities = await prisma.facility.findMany({ where: { id: { in: ids } }, orderBy: { createdAt: "asc" }, include: { slots: true } });
   if (facilities.length === 0) {
-    return <div><PageHeader title="일정 관리" /><EmptyState icon={<Building2 className="h-10 w-10" />} title="등록된 창고(스튜디오)가 없습니다" action={<Link href="/facility/register" className="text-sm font-semibold text-brand-700">창고(스튜디오) 등록하기</Link>} /></div>;
+    return <div><PageHeader title="일정 관리" /><EmptyState icon={<Building2 className="h-10 w-10" />} title="등록된 공간이 없습니다" action={<Link href="/facility/register" className="text-sm font-semibold text-brand-700">공간 등록하기</Link>} /></div>;
   }
   const f = facilities.find((x) => x.id === sp(searchParams, "facility")) ?? facilities[0];
   const month = parseMonth(sp(searchParams, "month"));

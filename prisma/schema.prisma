@@ -365,6 +365,12 @@ model SupportInquiry {
   pagePath        String?          @db.VarChar(200) // 문의를 연 화면
   lastUserReplyAt DateTime? // 고객이 마지막으로 추가 문의한 시각
   closedAt        DateTime?
+  // 2026-11-14 채팅형 1:1 상담: 읽음 표시 · 만족도
+  lastAdminReplyAt DateTime? // 운영팀이 마지막으로 답한 시각
+  userReadAt      DateTime? // 고객이 마지막으로 대화를 본 시각
+  adminReadAt     DateTime? // 운영팀이 마지막으로 대화를 본 시각
+  rating          Int? // 상담 만족도 1~5
+  ratingNote      String?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @default(now()) @updatedAt
   messages        SupportMessage[]

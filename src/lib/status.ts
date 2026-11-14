@@ -51,7 +51,7 @@ export const SETTLEMENT_STATUS: Record<string, { label: string; tone: "yellow" |
   PENDING: { label: "정산 대기", tone: "yellow" }, CONFIRMED: { label: "지급 예정", tone: "blue" }, PAID: { label: "지급 완료", tone: "green" },
 };
 
-// 창고(스튜디오) — 외부 창고 계정은 없고 본사가 운영한다. PENDING 은 '비공개(준비 중)'
+// 공간 — 외부 창고 계정은 없고 본사가 운영한다. PENDING 은 '비공개(준비 중)'
 export const FACILITY_TYPE_LABEL: Record<string, string> = { WAREHOUSE: "창고", STUDIO: "스튜디오", SHOWROOM: "쇼룸" };
 export const facilityTypeLabel = (type: string | null | undefined) => FACILITY_TYPE_LABEL[type ?? ""] ?? "창고";
 export const facilityTypeTone = (type: string | null | undefined): "blue" | "purple" | "green" =>

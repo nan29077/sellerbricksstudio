@@ -5,7 +5,7 @@ import { getSettings } from "@/lib/settings";
 import { getAccountAvatar } from "@/lib/profile-server";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 
-// 창고 운영 콘솔 — 창고(스튜디오) 계정은 없다. 최고관리자는 모든 창고, 창고 운영 매니저는 담당 창고만 운영한다.
+// 창고 운영 콘솔 — 공간 계정은 없다. 최고관리자는 모든 창고, 창고 운영 매니저는 담당 창고만 운영한다.
 export default async function Layout({ children }: { children: React.ReactNode }) {
   const u = await getSessionUser();
   if (!u) redirect("/login");

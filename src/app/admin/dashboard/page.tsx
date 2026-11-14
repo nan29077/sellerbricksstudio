@@ -37,7 +37,7 @@ async function load() {
 
   const [
     userCounts, facilityCounts, orders, bookings, users,
-    pendingSettlements, pendingMarketing, lowReviews, supportWaiting, stalePending, failedPayments,
+    pendingSettlements, pendingMarketing, lowReviews, supportWaiting, lateDisplays, stalePending, failedPayments,
     recentSheets, sheetsToShip, latestBookings, latestOrders, recentUsers, regions, methods, reviewAgg,
   ] = await Promise.all([
     prisma.user.groupBy({ by: ["role"], _count: true }),
@@ -48,7 +48,8 @@ async function load() {
     Promise.all([prisma.settlement.count({ where: { status: { in: ["PENDING", "CONFIRMED"] } } }), prisma.brandSettlement.count({ where: { status: { in: ["PENDING", "CONFIRMED"] } } })]).then(([a, b]) => a + b), // 판매 · 브랜드 정산 대기
     prisma.marketingApplication.count({ where: { status: "PENDING" } }),
     prisma.facilityReview.count({ where: { rating: { lte: 2 }, isHidden: false, createdAt: { gte: lastMonthStart } } }),
-    prisma.supportInquiry.count({ where: { answeredAt: null } }),
+    prisma.supportInquiry.count({ where: { status: { in: ["OPEN", "IN_PROGRESS"] }, OR: [{ answeredAt: null }, { lastUserReplyAt: { not: null } }] } }),
+    prisma.bookingBrandItem.count({ where: { brandRequest: { kind: "DISPLAY", status: { in: ["PENDING", "APPROVED"] } }, dueAt: { lt: new Date() }, booking: { status: "APPROVED" } } }).catch(() => 0),
     prisma.booking.count({ where: { status: "PENDING", createdAt: { lt: addDays(now, -1) } } }),
     prisma.payment.count({ where: { status: "FAILED", createdAt: { gte: addDays(now, -7) } } }),
     prisma.order.findMany({
@@ -90,7 +91,7 @@ async function load() {
   const approvalHours = mBookings.filter((b) => b.approvedAt).map((b) => (b.approvedAt!.getTime() - b.createdAt.getTime()) / 3600000);
   const avgApproval = approvalHours.length ? approvalHours.reduce((a, b) => a + b, 0) / approvalHours.length : null;
 
-  // TOP 창고(스튜디오) · 셀러
+  // TOP 공간 · 셀러
   const facCount = new Map<string, number>();
   for (const b of mBookings) if (b.status !== "CANCELLED") facCount.set(b.facilityId, (facCount.get(b.facilityId) ?? 0) + 1);
   const sellerGmv = new Map<string, { gmv: number; n: number }>();
@@ -119,11 +120,11 @@ async function load() {
     approvalRate: ratio(approvedLike, decided), cancelRate: ratio(st("CANCELLED"), mBookings.length), avgApproval,
     rating: reviewAgg._avg.rating, reviewCount: reviewAgg._count,
     pendingBookingsAll: await prisma.booking.count({ where: { status: "PENDING" } }),
-    todo: { pendingSettlements, pendingMarketing, lowReviews, supportWaiting, stalePending, failedPayments },
+    todo: { pendingSettlements, pendingMarketing, lowReviews, supportWaiting, lateDisplays, stalePending, failedPayments },
     recentSheets, sheetsToShip, latestBookings, latestOrders, recentUsers,
     regions: regions.sort((a, b) => b._count - a._count),
     methods: methods.sort((a, b) => (b._sum.amount ?? 0) - (a._sum.amount ?? 0)),
-    topFacilities: topFacIds.map(([id, n]) => { const f = facNames.find((x) => x.id === id); return { key: id, name: f?.name ?? "창고(스튜디오)", sub: f ? `${f.region} · ★ ${f.rating.toFixed(1)}` : undefined, value: n, valueLabel: `${n}건` }; }),
+    topFacilities: topFacIds.map(([id, n]) => { const f = facNames.find((x) => x.id === id); return { key: id, name: f?.name ?? "공간", sub: f ? `${f.region} · ★ ${f.rating.toFixed(1)}` : undefined, value: n, valueLabel: `${n}건` }; }),
     topSellers: topSellerIds.map(([id, v]) => { const u = sellerNames.find((x) => x.id === id); return { key: id, name: u?.profile?.name ?? u?.email ?? "셀러", sub: `${u?.profile?.companyName ? u.profile.companyName + " · " : ""}주문 ${v.n}건`, value: v.gmv, valueLabel: compactKRW(v.gmv) }; }),
   };
 }
@@ -164,7 +165,7 @@ export default async function AdminDashboard() {
         chips={[
           ...(d.sheetsToShip ? [{ label: `출고 대기 주문서 ${d.sheetsToShip}건`, tone: "live" as const }] : []),
           ...(urgentCount ? [{ label: `확인 필요 ${urgentCount}건`, tone: "warn" as const }] : [{ label: "긴급 처리 항목 없음" }]),
-          { label: `운영 창고(스튜디오) ${d.facApproved}곳` },
+          { label: `운영 공간 ${d.facApproved}곳` },
         ]}
         actions={<><HeroButton href="/admin/bookings?status=PENDING" primary><ClipboardList className="h-4 w-4" />예약 승인 처리</HeroButton><HeroButton href="/"><ArrowUpRight className="h-4 w-4" />사이트 보기</HeroButton></>}
         aside={
@@ -192,7 +193,7 @@ export default async function AdminDashboard() {
         <KpiTile label="결제 완료 주문" value={d.orders.toLocaleString("ko-KR")} unit="건" delta={d.ordersDelta} sub={`객단가 ${compactKRW(d.aov)}`} icon={ShoppingBag} tone="navy" spark={d.ordersDaily.map((x) => x.value)} href="/admin/orders" />
         <KpiTile label="예약 신청" value={d.bookings.toLocaleString("ko-KR")} unit="건" delta={d.bookingsDelta} sub="이번 달" icon={CalendarDays} tone="violet" spark={d.bookingDaily.map((x) => x.value)} href="/admin/bookings" />
         <KpiTile label="신규 가입" value={d.newUsers.toLocaleString("ko-KR")} unit="명" delta={d.usersDelta} sub={`전체 ${d.totalUsers.toLocaleString("ko-KR")}명`} icon={UserPlus} tone="green" spark={d.userDaily.map((x) => x.value)} href="/admin/users" />
-        <KpiTile label="운영 창고(스튜디오)" value={String(d.facApproved)} unit="곳" sub={d.facPending ? `승인 대기 ${d.facPending}곳` : "승인 대기 없음"} icon={Building2} tone="sky" href="/admin/facilities" />
+        <KpiTile label="운영 공간" value={String(d.facApproved)} unit="곳" sub={d.facPending ? `승인 대기 ${d.facPending}곳` : "승인 대기 없음"} icon={Building2} tone="sky" href="/admin/facilities" />
         <KpiTile label="출고 대기 주문서" value={String(d.sheetsToShip)} unit="건" sub="결제 완료 · 출고 전" icon={FileText} tone="red" href="/admin/orders" />
       </div>
 
@@ -204,7 +205,8 @@ export default async function AdminDashboard() {
           <TodoList items={[
             { label: "공간 승인 대기", desc: "새로 등록된 창고 · 스튜디오 · 쇼룸을 검토하세요", n: d.facPending, href: "/admin/facilities?status=PENDING", icon: Building2, tone: "sky", urgent: d.facPending > 0 },
             { label: "24시간 넘게 대기 중인 예약", desc: "공간 운영자의 응답이 늦어지고 있어요", n: d.todo.stalePending, href: "/admin/bookings?status=PENDING", icon: BadgeAlert, tone: "red", urgent: true },
-            { label: "답변 대기 고객 문의", desc: "고객센터 문의에 답변하세요", n: d.todo.supportWaiting, href: "/admin/support?status=waiting", icon: Headset, tone: "blue" },
+            { label: "답변 대기 고객 문의", desc: "고객센터 문의에 답변하세요", n: d.todo.supportWaiting, href: "/admin/support?status=OPEN", icon: Headset, tone: "blue" },
+            { label: "도착 기한이 지난 방송 시연품", desc: "브랜드가 아직 보내지 않았어요", n: d.todo.lateDisplays, href: "/admin/displays?tab=late", icon: BadgeAlert, tone: "red", urgent: d.todo.lateDisplays > 0 },
             { label: "결제 실패 (최근 7일)", desc: "PG 오류·한도 초과 여부를 확인하세요", n: d.todo.failedPayments, href: "/admin/payments", icon: CreditCard, tone: "red" },
             { label: "정산 처리 대기", desc: "판매 · 브랜드 정산서를 확정하고 지급하세요", n: d.todo.pendingSettlements, href: "/admin/payouts", icon: Wallet, tone: "green" },
             { label: "마케팅 지원 신청", desc: "셀러의 지원 신청을 검토하세요", n: d.todo.pendingMarketing, href: "/admin/marketing?status=PENDING", icon: Megaphone, tone: "violet" },
@@ -252,7 +254,7 @@ export default async function AdminDashboard() {
             {d.methods.length === 0 ? <p className="text-sm text-slate-400">결제 데이터가 없습니다</p> : d.methods.map((m) => (
               <Meter key={m.method} label={PAYMENT_METHOD[m.method] ?? m.method} value={m._sum.amount ?? 0} max={d!.methods.reduce((s, x) => s + (x._sum.amount ?? 0), 0)} right={`${compactKRW(m._sum.amount ?? 0)} · ${m._count}건`} tone="navy" />
             ))}
-            <p className="pt-2 text-xs font-bold text-slate-500">지역별 운영 창고(스튜디오)</p>
+            <p className="pt-2 text-xs font-bold text-slate-500">지역별 운영 공간</p>
             {d.regions.length === 0 ? <p className="text-sm text-slate-400">운영 중인 공간이 없습니다</p> : d.regions.slice(0, 6).map((r) => (
               <Meter key={r.region} label={r.region} value={r._count} max={d!.facApproved} right={`${r._count}곳`} tone="sky" />
             ))}
@@ -299,7 +301,7 @@ export default async function AdminDashboard() {
         <Panel eyebrow="SHORTCUTS" title="빠른 이동">
           <ShortcutGrid cols="sm:grid-cols-2" items={[
             { title: "회원 관리", desc: "역할·상태·메모 관리", href: "/admin/users", icon: Users, tone: "green" },
-            { title: "창고(스튜디오) 승인", desc: "등록 공간 검토", href: "/admin/facilities", icon: Building2, tone: "sky", badge: d.facPending },
+            { title: "공간 승인", desc: "등록 공간 검토", href: "/admin/facilities", icon: Building2, tone: "sky", badge: d.facPending },
             { title: "예약 관리", desc: "예약 요청과 상태", href: "/admin/bookings", icon: ClipboardList, tone: "violet", badge: d.pendingBookingsAll },
             { title: "정산 관리", desc: "판매 · 브랜드 정산", href: "/admin/payouts", icon: Wallet, tone: "green", badge: d.todo.pendingSettlements },
             { title: "고객 문의", desc: "1:1 문의 답변", href: "/admin/support", icon: Headset, tone: "blue", badge: d.todo.supportWaiting },

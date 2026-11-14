@@ -6,7 +6,7 @@ import { canOperateFacility, notifyFacility } from "@/lib/facility-owner";
 
 // GET /api/facilities/[id]/inquiries
 // - SELLER: 본인 문의 목록
-// - 창고 운영자(최고관리자 · 담당 매니저): 해당 창고(스튜디오)의 모든 문의
+// - 창고 운영자(최고관리자 · 담당 매니저): 해당 공간의 모든 문의
 // - SUPER_ADMIN: 전체 문의
 export async function GET(
   req: NextRequest,
@@ -72,7 +72,7 @@ export async function POST(
       select: { id: true, status: true, name: true },
     });
     if (!facility || facility.status !== "APPROVED") {
-      return NextResponse.json({ error: "창고(스튜디오)를 찾을 수 없습니다" }, { status: 404 });
+      return NextResponse.json({ error: "공간을 찾을 수 없습니다" }, { status: 404 });
     }
 
     const inquiry = await (prisma as any).facilityInquiry.create({

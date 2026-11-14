@@ -23,7 +23,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const data: Record<string, unknown> = {};
     if (typeof body.isActive === "boolean") data.isActive = body.isActive;
     if (body.role !== undefined) {
-      if (!["SELLER", "BRAND_ADMIN", "MANAGER"].includes(body.role)) return fail("변경할 수 없는 역할입니다. (창고(스튜디오) 관리자 역할은 없어졌습니다)");
+      if (!["SELLER", "BRAND_ADMIN", "MANAGER"].includes(body.role)) return fail("변경할 수 없는 역할입니다. (공간 관리자 역할은 없어졌습니다)");
       data.role = body.role;
     }
     if (data.role !== undefined || data.isActive === false) data.sessionVersion = { increment: 1 }; // 기존 로그인 끊기

@@ -108,7 +108,7 @@ export function BookingForm({
     fetchProducts(facilityId);
   }, [facilityId, fetchProducts]);
 
-  // 날짜 · 창고(스튜디오)가 바뀌면 그날의 예약 현황을 불러온다.
+  // 날짜 · 공간이 바뀌면 그날의 예약 현황을 불러온다.
   useEffect(() => {
     if (!facilityId || !date) { setAvail(null); return; }
     let alive = true;
@@ -199,8 +199,8 @@ export function BookingForm({
           </h2>
           <div className="space-y-4">
             <div>
-              <Label>창고(스튜디오) 선택</Label>
-              <Select aria-label="창고(스튜디오) 선택" value={facilityId} onChange={(e) => setFacilityId(e.target.value)}>
+              <Label>공간 선택</Label>
+              <Select aria-label="공간 선택" value={facilityId} onChange={(e) => setFacilityId(e.target.value)}>
                 {facilities.map((f) => (
                   <option key={f.id} value={f.id}>
                     {f.name} ({facilityTypeLabel(f.type)}, {f.region})
@@ -336,7 +336,7 @@ export function BookingForm({
               ) : products.length === 0 ? (
                 <div className="py-6 text-center text-sm text-muted-foreground">
                   <Package className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
-                  이 창고(스튜디오)에 등록된 상품이 없습니다.
+                  이 공간에 등록된 상품이 없습니다.
                 </div>
               ) : (
                 <>
@@ -483,7 +483,7 @@ export function BookingForm({
               </div>
             )}
             <div className="rounded-lg bg-muted/50 p-3 mb-4 space-y-1 text-xs text-muted-foreground">
-              <p><span className="font-semibold text-navy">창고(스튜디오):</span> {currentFacility?.name}</p>
+              <p><span className="font-semibold text-navy">공간:</span> {currentFacility?.name}</p>
               {date && <p><span className="font-semibold text-navy">날짜:</span> {date} {start} ~ {end}</p>}
               {purpose && <p><span className="font-semibold text-navy">목적:</span> {purpose}</p>}
               {selectedIds.size > 0 && (

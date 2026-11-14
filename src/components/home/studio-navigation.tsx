@@ -56,7 +56,7 @@ export function StudioTopBar({ account }: { account: Account }) {
         <MenuItems account={account} desktop={false} onNavigate={() => menu.current?.close()} />
       </dialog>
       {pathname !== "/support" && (
-        <SupportButton ariaLabel="문의하기" className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-[max(1rem,calc((100vw-716px)/2+1rem))] z-40 grid h-12 w-12 place-items-center rounded-full bg-navy text-white shadow-lg hover:bg-navy-700 lg:hidden">
+        <SupportButton showUnread ariaLabel="문의하기" className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-[max(1rem,calc((100vw-716px)/2+1rem))] z-40 grid h-12 w-12 place-items-center rounded-full bg-navy text-white shadow-lg hover:bg-navy-700 lg:hidden">
           <Headset className="h-5 w-5 text-brand-300" />
         </SupportButton>
       )}
@@ -64,7 +64,7 @@ export function StudioTopBar({ account }: { account: Account }) {
         {[
           { href: "/", label: "홈", icon: House, active: pathname === "/" },
           { href: "/brands", label: "브랜드샵", icon: ShoppingBag, active: pathname.startsWith("/brands") },
-          { href: "/#spaces", label: "공간 찾기", icon: Warehouse, active: pathname.startsWith("/showcase/") },
+          { href: "/facilities", label: "공간 찾기", icon: Warehouse, active: pathname.startsWith("/facilities") },
           { href: "/support", label: "도움말", icon: CircleHelp, active: pathname.startsWith("/support") },
           { href: account ? settingsHref[account.role] : "/login", label: "마이페이지", icon: UserCircle },
         ].map(({ href, label, icon: Icon, active }) => (
@@ -89,7 +89,7 @@ export function StudioNavigation({ account }: { account: Account }) {
         <MenuItems account={account} desktop />
         <p aria-hidden="true" className="pb-1 pt-2 text-center text-[11px] font-black tracking-[0.13em] text-slate-500">STORAGE MARKET</p>
       </div>
-      <SupportButton className="row-start-3 mb-1 flex min-h-11 items-center justify-center gap-1.5 self-end rounded-full border border-white/20 bg-navy px-3 text-[11px] font-bold text-white shadow-lg transition hover:bg-navy-700 [@media(max-height:740px)]:row-start-2">
+      <SupportButton showUnread ariaLabel="문의하기" className="row-start-3 mb-1 flex min-h-11 items-center justify-center gap-1.5 self-end rounded-full border border-white/20 bg-navy px-3 text-[11px] font-bold text-white shadow-lg transition hover:bg-navy-700 [@media(max-height:740px)]:row-start-2">
         <Headset className="h-4 w-4 text-brand-300" />문의하기
       </SupportButton>
     </>
@@ -102,7 +102,7 @@ function MenuItems({ account, desktop, onNavigate }: { account: Account; desktop
   const items = [
     { href: "/", label: "홈", icon: House, active: pathname === "/" },
     { href: "/intro", label: "서비스 소개", icon: Map },
-    { href: "/#spaces", label: "공간 찾기", icon: Warehouse, active: pathname.startsWith("/showcase/") },
+    { href: "/facilities", label: "공간 찾기", icon: Warehouse, active: pathname.startsWith("/facilities") },
     { href: "/brands", label: "브랜드샵", icon: ShoppingBag, active: pathname.startsWith("/brands") },
     ...(home && home !== "/" ? [{ href: home, label: "대시보드", icon: LayoutDashboard }] : []),
     { href: "/support", label: desktop ? "도움말" : "도움말 · 문의하기", icon: CircleHelp, active: pathname === "/support" },
