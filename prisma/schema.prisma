@@ -346,24 +346,26 @@ model SupportInquiry {
 }
 
 model Profile {
-  id             String    @id @default(cuid())
-  userId         String    @unique
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name           String
-  phone          String?
-  companyName    String?
-  businessNumber String?
-  categories     String[]  @default([]) // 관심·취급 카테고리
-  avatarUrl      String?
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  phone           String?
+  companyName     String?
+  businessNumber  String?
+  categories      String[]  @default([]) // 관심·취급 카테고리
+  avatarUrl       String?
   // 셀러 정산 계좌 (판매 정산 지급용)
-  bankName       String?
-  bankAccount    String?
-  accountHolder  String?
-  bankChangedAt  DateTime?
-  snsLinks       Json? // 내 SNS 주소 { instagram, youtube, tiktok }
-  notifyPrefs    Json? // 알림 받기 설정 { order, settlement, live } (false 면 끔)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  bankName        String?
+  bankAccount     String?
+  accountHolder   String?
+  bankChangedAt   DateTime?
+  snsLinks        Json? // 내 SNS 주소 { instagram, youtube, tiktok }
+  livePlatforms   String[]  @default([]) // 셀러가 판매하는 라이브 커머스 플랫폼 (src/lib/live-platforms.ts 의 코드)
+  livePlatformEtc String? // '기타 플랫폼' 직접 입력
+  notifyPrefs     Json? // 알림 받기 설정 { order, settlement, live } (false 면 끔)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
 
 // ===================== Facilities =====================
@@ -629,7 +631,8 @@ model LiveSession {
   status           LiveStatus         @default(DRAFT)
   scheduledStart   DateTime?
   scheduledEnd     DateTime?
-  buyerLinkUrl     String? // 구매자용 방송 링크 (주문 페이지). 방송 영상은 셀러의 외부 채널(StreamChannel)에서 송출
+  buyerLinkUrl     String? // (사용 안 함) 예전 구매자용 방송 링크
+  isOrderSheet     Boolean            @default(false) // 셀러 주문서를 담는 내부 묶음 (방송 아님 · 방송 목록에 보이지 않음)
   alimtalkStatus   NotificationStatus @default(PENDING)
   numberVersion    Int                @default(0) // 상품번호 변경 폴링용 버전
   endedAt          DateTime? // 방송 종료 시각 (종료 후 주문 허용 시간 계산)
@@ -699,6 +702,11 @@ model LiveProductNumberHistory {
 model Order {
   id                 String      @id @default(cuid())
   orderNo            String      @unique
+  // 셀러 주문서 (2026-11-14~): 셀러가 외부 라이브 플랫폼에서 판 주문을 직접 작성한다. buyer* = 받는 분, totalAmount = 셀러 결제액(공급가 + 스토리지마켓 출고 배송비)
+  source             String      @default("LIVE") // SHEET(셀러 주문서) | LIVE(예전 구매자 직접 주문) — 주문서는 코드에서 SHEET 로 저장
+  platform           String? // 판매한 플랫폼 코드 (src/lib/live-platforms.ts)
+  externalOrderNo    String? // 외부 플랫폼 주문번호
+  sheetMemo          String? // 배송 메모
   liveSessionId      String
   liveSession        LiveSession @relation(fields: [liveSessionId], references: [id])
   sellerId           String
@@ -1323,7 +1331,8 @@ model PlatformPolicy {
   reminderHoursBefore    Int      @default(24) // 이용 n시간 전 알림
   poConfirmHours         Int      @default(24) // 브랜드 발주 확인 권장 시간(지연 표시 기준)
   sampleMaxPerOrder      Int      @default(20) // 샘플 주문당 최대 수량
-  orderAfterEndHours     Int      @default(0) // 방송 종료 후 주문을 받는 시간(0 = 종료 즉시 마감)
+  orderAfterEndHours     Int      @default(0) // (사용 안 함) 방송 종료 후 주문을 받는 시간
+  sheetShippingFee       Int      @default(3000) // 셀러 주문서: 스토리지마켓(창고)이 출고하는 주문의 건당 배송비 — 셀러가 결제, 출고한 창고 몫
   liveAutoEndHours       Int      @default(2) // 예약(방송 예정) 종료 시각이 지나고 n시간 뒤에도 방송 중이면 자동 종료 (0 = 끄기)
   settleAfterDays        Int      @default(7) // 배송 완료 후 n일이 지나야 정산 대상(구매 확정 유예, 보통 7)
   piiRetentionDays       Int      @default(90) // 배송 완료 n일 후 브랜드 화면에서 구매자 연락처·주소 가림

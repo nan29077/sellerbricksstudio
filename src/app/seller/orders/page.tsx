@@ -1,3 +1,6 @@
+import Link from "next/link";
+import { SquarePlus } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
 import { prisma } from "@/lib/prisma";
 import { PO_CHIP_INCLUDE } from "@/components/brand/po-chips";
 import { requireRole } from "@/lib/auth";
@@ -26,7 +29,7 @@ export default async function SellerOrders({ searchParams }: { searchParams: SP 
   try {
     const where = {
       sellerId: user.id, ...orderFilterWhere(status),
-      ...(q && { AND: [{ OR: [{ orderNo: { contains: q, mode: "insensitive" as const } }, { buyerName: { contains: q } }] }] }),
+      ...(q && { AND: [{ OR: [{ orderNo: { contains: q, mode: "insensitive" as const } }, { buyerName: { contains: q } }, { externalOrderNo: { contains: q } }] }] }),
     };
     [orders, total] = await Promise.all([
       prisma.order.findMany({
@@ -42,11 +45,12 @@ export default async function SellerOrders({ searchParams }: { searchParams: SP 
 
   return (
     <div className="pb-24 md:pb-0">
-      <PageHeader title="주문 현황" description="라이브 방송에서 발생한 주문과 배송 진행 상태를 확인합니다. 배송은 상품을 출고하는 창고(스튜디오) 또는 브랜드가 처리합니다." />
+      <PageHeader title="주문서 · 배송 현황" description="내가 작성한 주문서의 발주 · 배송 상태입니다. 운송장이 나오면 판매한 플랫폼에 입력해 주세요. 출고 전에는 취소할 수 있고, 결제한 금액은 결제 수단으로 환불됩니다."
+        action={<Link href="/seller/orders/new" className={buttonVariants({ variant: "secondary" })}><SquarePlus className="h-4 w-4" />주문서 작성</Link>} />
       <OrderFilterTabs base={BASE} params={searchParams} current={status} q={q} />
 
       {orders.length === 0 ? (
-        <EmptyState title="주문이 없습니다" description={status || q ? "조건에 맞는 주문이 없습니다." : "라이브 방송 후 주문이 들어오면 여기서 확인할 수 있습니다."} />
+        <EmptyState title="주문서가 없습니다" description={status || q ? "조건에 맞는 주문서가 없습니다." : "라이브 플랫폼에서 판매한 뒤 주문서를 작성하면 여기서 발주 · 배송 상태를 확인할 수 있습니다."} />
       ) : (
         <OrderCardList orders={orders} actor={actor} piiRetentionDays={policy.piiRetentionDays} show={{ place: true }} />
       )}

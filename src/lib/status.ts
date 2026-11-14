@@ -57,4 +57,4 @@ export const facilityTypeLabel = (type: string | null | undefined) => FACILITY_T
 export const facilityTypeTone = (type: string | null | undefined): "blue" | "purple" | "green" =>
   type === "WAREHOUSE" ? "blue" : type === "SHOWROOM" ? "green" : "purple";
 export const FACILITY_STATUS_LABEL: Record<string, string> = { PENDING: "비공개(준비 중)", APPROVED: "공개", SUSPENDED: "운영 정지" };
-export const FACILITY_OPERATION_LABEL: Record<string, string> = { DIRECT: "직영", PARTNER: "제휴" };
+export const FACILITY_OPERATION_LABEL: Record<string, string> = { DIRECT: "직영", PARTNER: "제휴 (직접 관리)" };

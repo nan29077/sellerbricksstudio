@@ -67,7 +67,7 @@ export async function BrandRequestList({ scope, manager, params, base }: {
           {Object.entries(BRAND_REQUEST_STATUS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </Select>
         <Select aria-label="신청 종류" name="kind" defaultValue={kindFilter ?? ""} className="w-auto">
-          <option value="">전체 종류</option><option value="SAMPLE">샘플 주문</option><option value="SUPPLY">창고 입고 요청</option>
+          <option value="">전체 종류</option><option value="SAMPLE">샘플 주문</option><option value="SUPPLY">스토리지마켓 입고 요청</option>
         </Select>
         {manager && <Input aria-label="신청 번호" name="request" placeholder="신청 번호" maxLength={64} defaultValue={requestId} className="max-w-52" />}
         <Button variant="outline">조회</Button>
@@ -122,7 +122,7 @@ export async function BrandRequestList({ scope, manager, params, base }: {
             return (
               <div className="mt-3 rounded-xl border border-brand-100 bg-brand-50/60 p-3 text-xs text-slate-700">
                 <p className="font-bold text-navy">{onList ? "판매 목록에 담긴 상품입니다" : "샘플이 마음에 드셨나요? 바로 판매해 보세요"}</p>
-                <p className="mt-1 break-keep">판매 목록에 담아 방송에 올리면, 주문이 들어올 때마다 배송 정보가 담긴 발주서가 브랜드사로 자동 전달됩니다. 직배송 상품은 브랜드사가 출고·운송장 입력을 하고, 진행 상태는 주문 관리에서 확인할 수 있습니다.</p>
+                <p className="mt-1 break-keep">셀러가 외부 플랫폼에서 팔고 주문서를 내면, 받는 분 정보가 담긴 발주서가 브랜드사로 자동 전달됩니다. 위탁배송 상품은 브랜드사가 출고·운송장 입력을 하고, 진행 상태는 주문 관리에서 확인할 수 있습니다.</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {onList
                     ? <><Link href={manage} className="hit font-bold text-brand-800 hover:underline">판매 상품 관리 →</Link><Link href={orders} className="hit font-bold text-brand-800 hover:underline">주문 · 발주 현황 →</Link></>

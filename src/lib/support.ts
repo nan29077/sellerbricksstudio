@@ -30,9 +30,9 @@ export const supportReplySchema = z.object({
 export const supportFaq = [
   { category: "SPACE_BOOKING", question: "원하는 공간을 어떻게 예약하나요?", answer: "등록 공간의 상세 화면에서 날짜와 시간을 선택해 예약을 신청합니다. 예약 상태는 계정의 예약 관리 화면에서 확인할 수 있습니다.", href: "/facilities", link: "등록 공간 둘러보기" },
   { category: "SPACE_BOOKING", question: "예시 공간을 예약할 수 있나요?", answer: "메인의 예시 공간은 공간 구성과 이용료를 살펴보기 위한 가상 사례입니다. 실제 예약은 등록 공간 상세 화면에서 신청해 주세요.", href: "/facilities", link: "예약 가능한 공간 찾기" },
-  { category: "ORDER_PAYMENT", question: "주문번호로 주문 상태를 확인할 수 있나요?", answer: "주문 조회 화면에서 안내에 따라 주문 정보와 주문 시 입력한 정보를 입력하면 진행 상태를 확인할 수 있습니다.", href: "/order-lookup", link: "주문 조회하기" },
-  { category: "LIVE", question: "방송 상품의 순서나 번호를 변경할 수 있나요?", answer: "라이브 세션에서 판매할 상품을 선택하고, 노출 순서와 상품번호를 관리할 수 있습니다.", href: "/intro", link: "라이브 운영 알아보기" },
-  { category: "SETTLEMENT", question: "정산 내역은 어디에서 확인하나요?", answer: "로그인 후 역할별 대시보드의 정산 메뉴에서 내역을 확인할 수 있습니다.", href: "/login", link: "로그인하기" },
+  { category: "ORDER_PAYMENT", question: "외부 플랫폼에서 판매한 주문은 어떻게 보내나요?", answer: "셀러 대시보드의 주문서 작성에서 화면으로 입력하거나 엑셀(CSV)로 올립니다. 공급가(스토리지마켓 출고 상품은 배송비 포함)를 결제하면 브랜드 · 스토리지마켓으로 바로 전달되고, 받는 분에게 발송됩니다. 구매자가 스토리지마켓에서 직접 주문하는 기능은 없습니다.", href: "/login", link: "로그인하기" },
+  { category: "LIVE", question: "어떤 라이브 플랫폼에서 판매할 수 있나요?", answer: "셀러브릭스 · 클릭메이트 · 그립 · 바이브 · 모루라이브 · 라이브마켓 · 네이버 쇼핑라이브 · 유튜브 · 틱톡 · 인스타그램 등 셀러가 쓰는 플랫폼에서 판매하면 됩니다. 쓰는 플랫폼은 가입할 때와 설정에서 고를 수 있습니다.", href: "/intro", link: "서비스 알아보기" },
+  { category: "SETTLEMENT", question: "결제 · 정산 내역은 어디에서 확인하나요?", answer: "셀러는 결제 · 정산 내역에서 주문서 결제와 환불을, 브랜드사는 정산 메뉴에서 공급대금 정산을 확인할 수 있습니다.", href: "/login", link: "로그인하기" },
   { category: "ACCOUNT", question: "어떤 역할로 가입해야 하나요?", answer: "라이브 판매를 준비한다면 셀러로, 상품을 공급한다면 브랜드사로 가입하세요. 창고 · 스튜디오 · 쇼룸은 스토리지마켓이 직접 운영하므로 따로 가입하지 않습니다.", href: "/signup", link: "가입 유형 보기" },
-  { category: "PARTNERSHIP", question: "운영 중인 창고(스튜디오)를 제휴하고 싶어요.", answer: "스토리지마켓의 창고 · 스튜디오 · 쇼룸은 본사가 직접 운영하거나 긴밀하게 연동된 제휴 창고만 씁니다. 제휴를 원하시면 고객 문의로 남겨 주세요. 별도 계정 가입은 없습니다.", href: "/support", link: "제휴 문의하기" },
+  { category: "PARTNERSHIP", question: "운영 중인 창고(스튜디오)를 제휴하고 싶어요.", answer: "스토리지마켓의 창고 · 스튜디오 · 쇼룸은 본사가 직접 운영하거나 직접 관리할 수 있는 제휴 창고만 씁니다. 제휴를 원하시면 고객 문의로 남겨 주세요. 별도 계정 가입은 없습니다.", href: "/support", link: "제휴 문의하기" },
 ] satisfies { category: SupportCategory; question: string; answer: string; href: string; link: string }[];

@@ -23,6 +23,7 @@ const schema = z.object({
   maxPendingBookings: z.coerce.number().int().min(0).max(100),
   requestReplyHours: z.coerce.number().int().min(0).max(24 * 30),
   requestAutoRejectHours: z.coerce.number().int().min(0).max(24 * 30),
+  sheetShippingFee: z.coerce.number().int().min(0).max(100000),
 }).partial();
 
 export async function GET() {

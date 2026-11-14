@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { withParams, type SP } from "@/lib/list";
 import { ORDER_FILTERS } from "@/lib/order-view";
 
-// 주문 현황 상단: 상태 필터 + 주문번호 · 구매자 검색 + 출고 대기 목록(엑셀) 내려받기
+// 주문 현황 상단: 상태 필터 + 주문번호 · 받는 분 검색 + 출고 대기 목록(엑셀) 내려받기
 export function OrderFilterTabs({ base, params, current, q, exportHref }: { base: string; params: SP; current: string; q: string; exportHref?: string }) {
   return (
     <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -15,7 +15,7 @@ export function OrderFilterTabs({ base, params, current, q, exportHref }: { base
       </div>
       <form action={base} className="ml-auto flex items-center gap-1.5">
         {current && <input type="hidden" name="status" value={current} />}
-        <input name="q" defaultValue={q} placeholder="주문번호 · 구매자" aria-label="주문 검색" className="h-10 w-40 rounded-lg border border-border px-2.5 text-sm" />
+        <input name="q" defaultValue={q} placeholder="주문번호 · 받는 분" aria-label="주문 검색" className="h-10 w-40 rounded-lg border border-border px-2.5 text-sm" />
         <button className="h-10 rounded-lg border border-border bg-white px-3 text-xs font-bold text-navy hover:bg-brand-50">검색</button>
       </form>
       {exportHref && <a href={exportHref} className="inline-flex h-10 items-center rounded-lg bg-navy px-3 text-xs font-bold text-white hover:opacity-90">출고 대기 목록 내려받기</a>}

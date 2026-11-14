@@ -102,7 +102,7 @@ export default async function BrandDashboard() {
   if (!d.shop) {
     const steps = [
       { n: 1, title: "브랜드샵 만들기", desc: "샵 이름 · 소개 · 취급 카테고리와 정산 계좌를 입력합니다.", href: "/brand/shop", cta: "샵 만들기" },
-      { n: 2, title: "상품 등록", desc: "공급가 · 권장 소비자가 · 배송 방식(직배송/창고 입고) · 샘플 조건을 정합니다.", href: "/brand/products?new=1", cta: "상품 등록" },
+      { n: 2, title: "상품 등록", desc: "공급가 · 권장 소비자가 · 배송 방식(위탁배송 · 스토리지마켓 입고) · 샘플 조건을 정합니다.", href: "/brand/products?new=1", cta: "상품 등록" },
       { n: 3, title: "승인 후 공개", desc: "최고관리자 승인 후 셀러·창고(스튜디오)가 브랜드샵에서 상품을 찾아 판매합니다.", href: "/brands", cta: "다른 샵 보기" },
     ];
     return (
@@ -163,7 +163,7 @@ export default async function BrandDashboard() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-6">
         <KpiTile emphasis label="이번 달 발주 (공급가)" value={compactKRW(d.supply)} delta={d.supplyDelta} sub={`${d.poCount}건 · 전월 동기 대비`} icon={Banknote} tone="brand" spark={d.spark} href="/brand/orders" />
         <KpiTile label="신규 발주" value={String(d.todo.newPos)} unit="건" sub={d.todo.latePos ? `확인 지연 ${d.todo.latePos}건` : `${d.policy.poConfirmHours}시간 안에 확인`} icon={ClipboardList} tone={d.todo.latePos ? "red" : "amber"} href="/brand/orders?status=NEW" />
-        <KpiTile label="출고 대기 (직배송)" value={String(d.todo.toShip)} unit="건" sub="운송장 입력 필요" icon={Truck} tone="blue" href="/brand/orders?status=CONFIRMED" />
+        <KpiTile label="출고 대기 (위탁배송)" value={String(d.todo.toShip)} unit="건" sub="운송장 입력 필요" icon={Truck} tone="blue" href="/brand/orders?status=CONFIRMED" />
         <KpiTile label="샘플 · 입고 신청" value={String(d.todo.samplePending + d.todo.supplyPending)} unit="건" sub={`샘플 ${d.todo.samplePending} · 입고 ${d.todo.supplyPending}`} icon={Gift} tone="violet" href="/brand/requests?status=PENDING" />
         <KpiTile label="판매처" value={String(d.channels.sellers + d.channels.facilities)} unit="곳" sub={`셀러 ${d.channels.sellers} · 창고 ${d.channels.facilities}`} icon={Users} tone="green" href="/brand/channels" />
         <KpiTile label="공개 상품" value={String(d.products.active)} unit="개" sub={`전체 ${d.products.total} · 샘플 가능 ${d.products.sampleReady}`} icon={Boxes} tone="sky" href="/brand/products" />
@@ -177,13 +177,13 @@ export default async function BrandDashboard() {
           <TodoList items={[
             { label: "확인이 늦어진 발주", desc: `${d.policy.poConfirmHours}시간 넘게 확인하지 않았어요`, n: d.todo.latePos, href: "/brand/orders?status=NEW", icon: BadgeAlert, tone: "red", urgent: true },
             { label: "신규 발주 확인", n: d.todo.newPos - d.todo.latePos, href: "/brand/orders?status=NEW", icon: FileText, tone: "amber" },
-            { label: "운송장 입력 대기 (직배송)", n: d.todo.toShip, href: "/brand/orders?status=CONFIRMED", icon: Truck, tone: "blue" },
+            { label: "운송장 입력 대기 (위탁배송)", n: d.todo.toShip, href: "/brand/orders?status=CONFIRMED", icon: Truck, tone: "blue" },
             { label: "출고 불가 요청 중", desc: "판매처가 부분 취소하면 정리돼요", n: d.todo.cancelRequested, href: "/brand/claims", icon: BadgeAlert, tone: "red" },
             { label: "반품 상품 수령 대기", n: d.todo.returnsWaiting, href: "/brand/claims?status=RETURNED", icon: PackageX, tone: "amber" },
             { label: "안 읽은 판매처 문의", n: d.todo.unreadThreads, href: "/brand/messages", icon: FileText, tone: "violet" },
             { label: "판매처 신청 승인", n: d.todo.partnerPending, href: "/brand/channels", icon: Package, tone: "sky" },
             { label: "샘플 신청 검토", desc: "빠른 응답이 판매처 확보로 이어져요", n: d.todo.samplePending, href: "/brand/requests?status=PENDING", icon: Gift, tone: "violet" },
-            { label: "창고 입고 요청 검토", n: d.todo.supplyPending, href: "/brand/requests?kind=SUPPLY", icon: Package, tone: "sky" },
+            { label: "스토리지마켓 입고 요청 검토", n: d.todo.supplyPending, href: "/brand/requests?kind=SUPPLY", icon: Package, tone: "sky" },
             { label: "결제 대기 샘플", n: d.todo.awaitingPayment, href: "/brand/requests?status=AWAITING_PAYMENT", icon: CreditCard, tone: "slate" },
             { label: "품절된 공개 상품", desc: "재고를 채우거나 숨김 처리하세요", n: d.todo.soldout, href: "/brand/products?filter=soldout", icon: PackageX, tone: "red" },
             { label: "샵 정보 미입력 항목", desc: missing.map((m) => m.label).slice(0, 3).join(" · "), n: missing.length, href: "/brand/shop", icon: LayoutTemplate, tone: "slate" },
@@ -199,7 +199,7 @@ export default async function BrandDashboard() {
           <RankList empty="최근 6개월 발주가 없습니다" items={d.topSellers} />
         </Panel>
         <Panel eyebrow="FULFILLMENT" title="배송 방식 비중" className="lg:col-span-2 2xl:col-span-1">
-          {total === 0 ? <Empty text="발주가 생기면 직배송 / 창고 입고 비중이 표시됩니다" /> : (
+          {total === 0 ? <Empty text="발주가 생기면 위탁배송 / 스토리지마켓 입고 비중이 표시됩니다" /> : (
             <Donut centerValue={compactKRW(total)} centerLabel="6개월 공급가" segments={[
               { label: FULFILLMENT_LABEL.DROPSHIP, value: d.mix.dropship, tone: "violet" },
               { label: FULFILLMENT_LABEL.WAREHOUSE, value: d.mix.warehouse, tone: "sky" },

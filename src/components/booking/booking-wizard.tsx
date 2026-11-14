@@ -202,7 +202,7 @@ export function BookingWizard({
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
             <Link href="/seller/bookings"><Button className="w-full sm:w-auto">예약 관리로 이동</Button></Link>
-            {done.autoApproved && <Link href="/seller/live-sessions"><Button variant="outline" className="w-full sm:w-auto">라이브 준비하기</Button></Link>}
+            {done.autoApproved && <Link href="/seller/orders/new"><Button variant="outline" className="w-full sm:w-auto">판매 후 주문서 작성</Button></Link>}
             <Button variant="ghost" onClick={() => { setDone(null); setStep(2); setSlot((s) => ({ ...s, start: "" })); }}>같은 곳 추가 예약</Button>
           </div>
         </CardContent>

@@ -5,19 +5,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Kpi, BarChart, ProgressRow } from "@/components/list/charts";
 import { PLATFORMS, periodStatus } from "@/lib/marketing-labels";
 import { formatKRW } from "@/lib/utils";
+import { livePlatformLabel } from "@/lib/live-platforms";
 import { addMonths, kstParts, kstStartOfMonth } from "@/lib/kst";
-import { Eye, Heart, MousePointerClick, Users, Send, Ticket, Target, CalendarCheck } from "lucide-react";
+import { Eye, Heart, MousePointerClick, Users, Send, FileText, Target, CalendarCheck } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function SellerMarketingAnalytics() {
   const user = await requireRole(["SELLER"]);
   const start = addMonths(kstStartOfMonth(new Date()), -5);
-  const [accounts, posts, promos, coupons, bookings] = await Promise.all([
+  const [accounts, posts, promos, sheetByPlatform, bookings] = await Promise.all([
     prisma.snsAccount.findMany({ where: { sellerId: user.id } }),
     prisma.snsPost.findMany({ where: { sellerId: user.id, status: "POSTED", scheduledAt: { gte: start } } }),
     prisma.sellerPromotion.findMany({ where: { sellerId: user.id, isPublished: true } }),
-    prisma.sellerCoupon.findMany({ where: { sellerId: user.id } }),
+    prisma.order.groupBy({ by: ["platform"], where: { sellerId: user.id, source: "SHEET", status: { in: ["PAID", "PREPARING", "SHIPPED", "DELIVERED"] }, createdAt: { gte: start } }, _count: { id: true }, _sum: { totalAmount: true } }),
     prisma.booking.findMany({ where: { sellerId: user.id, status: { in: ["APPROVED", "COMPLETED"] }, startAt: { gte: start } }, select: { startAt: true, totalPrice: true } }),
   ]);
 
@@ -40,11 +41,12 @@ export default async function SellerMarketingAnalytics() {
   const topPosts = [...posts].sort((a, b) => (b.views ?? 0) - (a.views ?? 0)).slice(0, 5);
 
   const ended = promos.filter((p) => periodStatus(p.startAt, p.endAt).key === "ENDED" && p.targetAmount);
-  const couponUsed = coupons.reduce((s, c) => s + c.usedQty, 0);
+  const sheetTotal = sheetByPlatform.reduce((s, g) => s + g._count.id, 0);
+  const sheetRows = [...sheetByPlatform].sort((a, b) => b._count.id - a._count.id);
 
   return (
     <div className="space-y-5 pb-24 md:pb-0">
-      <PageHeader title="마케팅 분석" description="최근 6개월 동안 등록한 SNS 성과·이벤트·쿠폰·방송 예약 데이터를 모아 보여줍니다." />
+      <PageHeader title="마케팅 분석" description="최근 6개월 동안 등록한 SNS 성과·이벤트·판매 플랫폼별 주문서·방송 예약 데이터를 모아 보여줍니다." />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="총 팔로워" value={followers.toLocaleString()} sub={`${accounts.length}개 채널`} icon={Users} tone="brand" />
@@ -103,10 +105,10 @@ export default async function SellerMarketingAnalytics() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Ticket className="h-4 w-4 text-brand-500" />쿠폰 사용</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="flex items-center gap-2 text-base"><FileText className="h-4 w-4 text-brand-500" />판매 플랫폼별 주문서</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            <p className="text-3xl font-extrabold text-navy">{couponUsed.toLocaleString()}<span className="ml-1 text-sm font-medium text-muted-foreground">회 사용</span></p>
-            {coupons.sort((a, b) => b.usedQty - a.usedQty).slice(0, 5).map((c) => <ProgressRow key={c.id} label={c.name} value={c.usedQty} max={Math.max(1, coupons[0]?.usedQty ?? 1)} tone="navy" />)}
+            <p className="text-3xl font-extrabold text-navy">{sheetTotal.toLocaleString()}<span className="ml-1 text-sm font-medium text-muted-foreground">건</span></p>
+            {sheetRows.slice(0, 6).map((g) => <ProgressRow key={g.platform ?? "none"} label={livePlatformLabel(g.platform)} value={g._count.id} max={Math.max(1, sheetRows[0]?._count.id ?? 1)} right={formatKRW(g._sum.totalAmount ?? 0)} tone="navy" />)}
           </CardContent>
         </Card>
         <Card>

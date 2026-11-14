@@ -45,9 +45,9 @@ const SOURCING_FEATURES = [
 ];
 
 const PAYMENT_FEATURES = [
-  { icon: CreditCard, title: "신용카드 · 간편결제",   desc: "카카오페이, 네이버페이, 토스페이 등 주요 간편결제 지원." },
-  { icon: ShoppingCart,title: "간편 계좌이체",         desc: "번거로운 계좌이체도 간편계좌이체 시스템으로 처리." },
-  { icon: Users,      title: "소셜주문서 시스템",     desc: "어르신(실버 구매자)도 쉽게 구매할 수 있는 초간단 주문 시스템." },
+  { icon: Users,      title: "쓰던 플랫폼 그대로",   desc: "셀러브릭스 · 클릭메이트 · 그립 · 바이브 등 셀러가 쓰는 라이브 플랫폼에서 판매합니다." },
+  { icon: ShoppingCart,title: "주문서 한 장으로 발주", desc: "판매한 주문을 화면 입력 또는 엑셀로 올리면 브랜드 · 스토리지마켓으로 바로 전달됩니다." },
+  { icon: CreditCard, title: "공급가만 결제",         desc: "주문서를 낼 때 공급가(스토리지마켓 출고 시 배송비 포함)만 결제하고, 받는 분에게 바로 발송됩니다." },
 ];
 
 const TAX_FEATURES = [
@@ -69,7 +69,7 @@ const REASONS = [
   { no: "03", title: "전문 스튜디오 완비",    desc: "장비·조명·세트 갖춘 스튜디오에서 바로 방송 시작" },
   { no: "04", title: "지역 농가 살리기 협력", desc: "전남·목포·부안 공식 협력. 지역 특산물 직방송 연계" },
   { no: "05", title: "원스톱 세무 지원",      desc: "사업자 등록부터 부가세 신고까지 파트너 세무사 연계" },
-  { no: "06", title: "간편 결제 완벽 지원",   desc: "실버 세대도 쉬운 소셜주문서 + 모든 간편결제 연동" },
+  { no: "06", title: "주문서 발송 대행",       desc: "외부 플랫폼 판매분을 주문서로 내면 브랜드 · 스토리지마켓이 대신 발송" },
 ];
 
 /* ────────────────────────────────
@@ -282,21 +282,21 @@ export default function IntroPage() {
         </div>
       </section>
 
-      {/* -- 섹션 6: 결제 지원 -- */}
+      {/* -- 섹션 6: 주문서 · 발송 -- */}
       <section className="py-16 md:py-20 bg-[#FFFBF0]">
         <div className="container">
           <div className="text-center mb-12">
-            <SectionBadge>결제 지원</SectionBadge>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-navy mb-3">누구나 쉬운 결제 시스템</h2>
+            <SectionBadge>주문서 · 발송</SectionBadge>
+            <h2 className="text-3xl md:text-4xl font-extrabold text-navy mb-3">어디서 팔든, 주문서 한 장이면 발송까지</h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              어르신(실버 구매자)도 쉽게 구매할 수 있는 소셜주문서부터 모든 간편결제까지 지원합니다.
+              판매는 셀러가 쓰는 라이브 플랫폼에서, 발송은 스토리지마켓에서. 브랜드 위탁배송과 스토리지마켓 출고를 상품마다 고를 수 있습니다.
             </p>
           </div>
           <div className="grid sm:grid-cols-3 gap-5">
             {PAYMENT_FEATURES.map((f) => <FeatureCard key={f.title} {...f} />)}
           </div>
           <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {["카카오페이", "네이버페이", "토스페이", "신용카드"].map((p) => (
+            {["셀러브릭스", "클릭메이트", "그립", "바이브", "모루라이브", "라이브마켓", "유튜브", "인스타그램"].map((p) => (
               <div key={p} className="bg-white rounded-xl border border-border p-3 text-center text-sm font-semibold text-navy shadow-sm">
                 {p}
               </div>

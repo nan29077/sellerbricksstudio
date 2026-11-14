@@ -2,16 +2,16 @@ import { Badge } from "@/components/ui/badge";
 import { LocalShipChip, PoChips } from "@/components/brand/po-chips";
 import { OrderStatusActions } from "@/components/order-status-actions";
 import { OrderDetail } from "@/components/order-detail";
-import { OrderClaimPanel } from "@/components/order-claim-panel";
 import { ORDER_STATUS } from "@/lib/status";
 import { formatKRW, formatDateTime } from "@/lib/utils";
 import { orderActionProps } from "@/lib/order-action-props";
 import { orderDetailProps } from "@/lib/order-view";
 import type { OrderActor } from "@/lib/order-fulfillment";
+import { livePlatformLabel } from "@/lib/live-platforms";
 
 type Show = { seller?: boolean; place?: boolean };
 
-// 주문 현황 목록 (창고(스튜디오) · 셀러 · 최고관리자 공통).
+// 주문서 · 주문 현황 목록 (창고 운영 · 셀러 · 최고관리자 공통). 금액은 셀러 주문서면 셀러 결제액.
 // 표 대신 주문 한 건을 카드 한 장으로 보여 준다. 모바일에서도 좌우로 밀지 않고 상품 · 배송지 · 상태 · 처리 버튼을 한 번에 볼 수 있다.
 export function OrderCardList({ orders, actor, piiRetentionDays, show = {} }: { orders: any[]; actor: OrderActor; piiRetentionDays: number; show?: Show }) {
   return (
@@ -19,10 +19,12 @@ export function OrderCardList({ orders, actor, piiRetentionDays, show = {} }: { 
       {orders.map((o) => {
         const st = ORDER_STATUS[o.status as keyof typeof ORDER_STATUS] ?? { label: o.status, tone: "gray" as const };
         const meta: [string, React.ReactNode][] = [
-          ["구매자", o.buyerName ?? "-"],
           ...(show.seller ? [["셀러", o.seller?.profile?.name ?? "-"] as [string, React.ReactNode]] : []),
-          ...(show.place ? [["방송 장소", o.facility?.name ?? "셀러 공간"] as [string, React.ReactNode]] : []),
-          ["방송", o.liveSession?.title ?? "-"],
+          ...(o.source === "SHEET"
+            ? [["판매 플랫폼", `${livePlatformLabel(o.platform)}${o.externalOrderNo ? ` · ${o.externalOrderNo}` : ""}`] as [string, React.ReactNode],
+               ["보내는 곳", o.facility?.name ? `스토리지마켓 (${o.facility.name})` : "위탁배송(브랜드 배송)"] as [string, React.ReactNode]]
+            : [["방송", o.liveSession?.title ?? "-"] as [string, React.ReactNode], ...(show.place ? [["방송 장소", o.facility?.name ?? "셀러 공간"] as [string, React.ReactNode]] : [])]),
+          ...(o.sheetMemo ? [["배송 메모", o.sheetMemo] as [string, React.ReactNode]] : []),
         ];
         return (
           <li key={o.id} className="rounded-2xl border border-border bg-white p-4 shadow-sm sm:p-5">
@@ -47,7 +49,6 @@ export function OrderCardList({ orders, actor, piiRetentionDays, show = {} }: { 
             <LocalShipChip order={o} />
             <PoChips pos={o.purchaseOrders} />
             <OrderDetail detail={orderDetailProps(o, actor, piiRetentionDays)} />
-            {o.claims?.length > 0 && <OrderClaimPanel claims={o.claims} />}
             <div className="mt-3 border-t border-slate-100 pt-3">
               <OrderStatusActions {...orderActionProps(o, actor)} />
             </div>

@@ -32,7 +32,11 @@ export function BrandProductEditor({ shopId, product }: { shopId: string; produc
     event.preventDefault();
     const form = event.currentTarget;
     const { samplePrice, supplyPrice, stock, sampleStock, isActive, consumerPrice, shippingFee, leadDays, sampleLimitPerBuyer,
-      allowDropship, allowWarehouse, images, minSalePrice, minOrderQty, ...fields } = Object.fromEntries(new FormData(form));
+      shipMode, images, minSalePrice, minOrderQty, ...fields } = Object.fromEntries(new FormData(form));
+    if (shipMode !== "DROPSHIP" && shipMode !== "WAREHOUSE" && shipMode !== "BOTH") {
+      setStatus({ text: "배송 방식을 선택하세요. (위탁배송 · 스토리지마켓 입고 · 둘 다)", error: true });
+      return;
+    }
     setBusy(true);
     setStatus(undefined);
     try {
@@ -44,7 +48,7 @@ export function BrandProductEditor({ shopId, product }: { shopId: string; produc
         sampleLimitPerBuyer: Number(sampleLimitPerBuyer || 0),
         minSalePrice: minSalePrice === "" || minSalePrice == null ? null : Number(minSalePrice),
         minOrderQty: Math.max(1, Number(minOrderQty || 1)),
-        allowDropship: allowDropship === "on", allowWarehouse: allowWarehouse === "on",
+        allowDropship: shipMode !== "WAREHOUSE", allowWarehouse: shipMode !== "DROPSHIP",
         images: String(images ?? "").split(/\s*\n\s*/).map((v) => v.trim()).filter(Boolean),
       });
       if (!product) form.reset();
@@ -83,11 +87,22 @@ export function BrandProductEditor({ shopId, product }: { shopId: string; produc
         </Label>
       </div>
       <fieldset className="grid gap-3 rounded-xl border p-3 sm:grid-cols-2">
-        <legend className="px-1 text-sm font-bold text-navy">판매 방식</legend>
-        <Label className="flex items-center gap-2"><input type="checkbox" name="allowDropship" defaultChecked={product?.allowDropship ?? true} />브랜드 직배송 허용 (판매 시 발주서 → 브랜드가 구매자에게 발송)</Label>
-        <Label className="flex items-center gap-2"><input type="checkbox" name="allowWarehouse" defaultChecked={product?.allowWarehouse ?? true} />창고 입고(위탁) 허용 (창고에 미리 입고 → 창고가 출고)</Label>
-        <Label className="block">창고 입고 최소 수량 (MOQ)<Input type="number" name="minOrderQty" min={1} max={10000} defaultValue={product?.minOrderQty ?? 1} /></Label>
-        <Label className="block">직배송 배송비 안내 (원) — 참고용, 택배비는 공급가에 포함해 주세요<Input type="number" name="shippingFee" min={0} max={1_000_000} defaultValue={product?.shippingFee ?? 0} /></Label>
+        <legend className="px-1 text-sm font-bold text-navy">배송 방식 (필수)</legend>
+        <div className="grid gap-2 sm:col-span-2 sm:grid-cols-3" role="radiogroup" aria-label="배송 방식">
+          {([
+            ["DROPSHIP", "위탁배송 (브랜드 배송)", "셀러 주문서가 발주서로 들어오면 브랜드가 받는 분에게 바로 보냅니다."],
+            ["WAREHOUSE", "스토리지마켓 입고 (스토리지마켓 배송)", "스토리지마켓 창고에 미리 입고하고, 주문이 들어오면 스토리지마켓이 보냅니다."],
+            ["BOTH", "둘 다", "셀러가 위탁배송으로 팔 수 있고, 스토리지마켓 입고도 받습니다."],
+          ] as const).map(([v, label, desc]) => (
+            <label key={v} className="flex cursor-pointer items-start gap-2 rounded-lg border border-border p-2.5 text-sm has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50">
+              <input type="radio" name="shipMode" value={v} required className="mt-1"
+                defaultChecked={product ? (v === "BOTH" ? product.allowDropship && product.allowWarehouse : v === "DROPSHIP" ? product.allowDropship && !product.allowWarehouse : !product.allowDropship && product.allowWarehouse) : false} />
+              <span><span className="block font-bold text-navy">{label}</span><span className="block text-xs text-slate-500">{desc}</span></span>
+            </label>
+          ))}
+        </div>
+        <Label className="block">스토리지마켓 입고 최소 수량 (MOQ)<Input type="number" name="minOrderQty" min={1} max={10000} defaultValue={product?.minOrderQty ?? 1} /></Label>
+        <Label className="block">위탁배송 배송비 안내 (원) — 참고용, 택배비는 공급가에 포함해 주세요<Input type="number" name="shippingFee" min={0} max={1_000_000} defaultValue={product?.shippingFee ?? 0} /></Label>
       </fieldset>
       <fieldset className="grid gap-3 rounded-xl border p-3 sm:grid-cols-3">
         <legend className="px-1 text-sm font-bold text-navy">샘플</legend>

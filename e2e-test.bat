@@ -5,7 +5,7 @@ echo Running the brand-flow E2E simulation against http://localhost:3007 (dev se
 echo NOTE: this creates test data in the local DB. Result is saved to e2e-test.log
 node scripts/simulate-brand-flow.mjs > e2e-test.log 2>&1
 node scripts/simulate-izbeau-features.mjs >> e2e-test.log 2>&1
-node scripts/simulate-buyer-features.mjs >> e2e-test.log 2>&1
+node scripts/simulate-order-sheets.mjs >> e2e-test.log 2>&1
 node scripts/simulate-storage-ops.mjs >> e2e-test.log 2>&1
 type e2e-test.log
 echo.

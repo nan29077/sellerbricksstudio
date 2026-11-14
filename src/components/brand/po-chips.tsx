@@ -9,7 +9,7 @@ export function PoChips({ pos }: { pos?: Po[] | null }) {
     <div className="mt-1 flex flex-col gap-0.5">
       {pos.map((p, i) => (
         <span key={i} className="text-[11px] text-slate-600">
-          {p.fulfillment === "DROPSHIP" ? "직배송" : "위탁"} · {p.brandShop.name} · <b>{PO_STATUS[p.status].label}</b>{p.trackingNumber && ` · ${p.carrier} ${p.trackingNumber}`}
+          {p.fulfillment === "DROPSHIP" ? "위탁배송" : "스토리지마켓 입고"} · {p.brandShop.name} · <b>{PO_STATUS[p.status].label}</b>{p.trackingNumber && ` · ${p.carrier} ${p.trackingNumber}`}
         </span>
       ))}
     </div>

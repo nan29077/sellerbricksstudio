@@ -73,7 +73,7 @@ export default async function BrandChannelsPage() {
         </Panel>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <KpiTile label="전체 판매처" value={String(sellers.size + facilities.size)} unit="곳" icon={Users} tone="brand" emphasis />
-          <KpiTile label="셀러(직배송)" value={String(sellers.size)} unit="명" sub={`등록 상품 ${sellerListings.length}건`} icon={Video} tone="violet" />
+          <KpiTile label="셀러(위탁배송)" value={String(sellers.size)} unit="명" sub={`등록 상품 ${sellerListings.length}건`} icon={Video} tone="violet" />
           <KpiTile label="창고(스튜디오)" value={String(facilities.size)} unit="곳" sub={`등록 상품 ${facilityListings.length}건`} icon={Warehouse} tone="sky" />
           <KpiTile label="최근 3개월 발주" value={compactKRW(pos.reduce((s, p) => s + p.supplyAmount, 0))} sub={`${pos.length}건 · 공급가 기준`} icon={Store} tone="green" />
         </div>

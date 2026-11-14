@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { downloadCsv, parseCsv } from "@/lib/csv";
 import { submitBrandCommand } from "@/components/shop/brand-command";
 
-const HEADERS = ["상품명", "카테고리", "세부카테고리", "SKU", "공급가", "권장소비자가", "최저판매가", "재고", "출고소요일", "옵션", "직배송(Y/N)", "창고입고(Y/N)", "샘플가(비우면 샘플 없음)", "샘플재고", "샘플한도", "대표이미지주소", "상품설명"];
+const HEADERS = ["상품명", "카테고리", "세부카테고리", "SKU", "공급가", "권장소비자가", "최저판매가", "재고", "출고소요일", "옵션", "위탁배송-브랜드배송(Y/N)", "스토리지마켓입고(Y/N)", "샘플가(비우면 샘플 없음)", "샘플재고", "샘플한도", "대표이미지주소", "상품설명"];
 const SAMPLE = ["온유 수분 크림 50ml", "코스메틱", "스킨케어", "ONU-001", 14000, 32000, "", 500, 2, "용량:50ml,100ml", "Y", "Y", 0, 20, 1, "", "민감 피부용 수분 크림"];
 const yes = (v: string) => /^(y|yes|o|true|1|예|가능)$/i.test(v.trim());
 const num = (v: string) => Number(String(v).replace(/[,\s원]/g, "") || 0);
@@ -31,10 +31,12 @@ export function BulkProductUpload({ shopId }: { shopId: string }) {
     for (const [i, r] of rows.entries()) {
       const [name, category, subCategory, sku, supply, consumer, minSale, stock, lead, options, dropship, warehouse, samplePrice, sampleStock, sampleLimit, imageUrl, description] = r.map((v) => (v ?? "").trim());
       try {
+        if (!dropship && !warehouse) throw new Error("배송 방식을 정하세요. 위탁배송 또는 스토리지마켓입고 칸에 Y를 넣어 주세요.");
+        if (dropship && warehouse && !yes(dropship) && !yes(warehouse)) throw new Error("위탁배송 · 스토리지마켓입고 중 하나 이상은 Y여야 합니다.");
         await submitBrandCommand({
           action: "product", shopId, name, category, subCategory, sku, description: description ?? "", imageUrl: imageUrl ?? "",
           supplyPrice: num(supply), consumerPrice: num(consumer), minSalePrice: minSale ? num(minSale) : null, stock: num(stock), leadDays: num(lead || "2"),
-          options: options ?? "", allowDropship: dropship ? yes(dropship) : true, allowWarehouse: warehouse ? yes(warehouse) : true,
+          options: options ?? "", allowDropship: yes(dropship), allowWarehouse: yes(warehouse),
           samplePrice: samplePrice === "" || samplePrice == null ? null : num(samplePrice), sampleStock: num(sampleStock), sampleLimitPerBuyer: sampleLimit ? num(sampleLimit) : 1,
           isActive: true, images: [], shippingFee: 0,
         });

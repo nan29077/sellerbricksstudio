@@ -39,18 +39,6 @@ export const MARKETING_RESOURCES = {
     }).refine((d) => d.endAt > d.startAt, { message: "종료일은 시작일보다 뒤여야 합니다.", path: ["endAt"] }),
     orderBy: { startAt: "desc" },
   },
-  coupons: {
-    model: "sellerCoupon",
-    schema: z.object({
-      name: str().min(1, "쿠폰명을 입력하세요."),
-      code: z.string().trim().toUpperCase().regex(/^[A-Z0-9_-]{4,20}$/, "쿠폰 코드는 영문 대문자·숫자 4~20자입니다."),
-      discountType: z.enum(["PERCENT", "FIXED"]).default("PERCENT"), discountValue: z.coerce.number().min(0),
-      minAmount: int0.default(0), maxDiscount: intOpt, totalQty: intOpt, usedQty: int0.default(0),
-      startAt: dt, endAt: dt, isActive: z.coerce.boolean().default(true),
-    }).refine((d) => d.endAt > d.startAt, { message: "종료일은 시작일보다 뒤여야 합니다.", path: ["endAt"] })
-      .refine((d) => d.discountType !== "PERCENT" || d.discountValue <= 100, { message: "할인율은 100% 이하입니다.", path: ["discountValue"] }),
-    orderBy: { createdAt: "desc" },
-  },
   assets: {
     model: "marketingAsset",
     schema: z.object({

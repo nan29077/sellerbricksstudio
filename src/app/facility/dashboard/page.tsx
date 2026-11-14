@@ -17,7 +17,7 @@ import {
 } from "@/components/dashboard/kit";
 import {
   BadgeAlert, Building2, CalendarCheck, CalendarClock, CalendarDays, CircleDollarSign, ClipboardCheck, FileText, Gauge as GaugeIcon,
-  MessageSquare, Package, PackagePlus, Radio, Repeat, ShoppingBag, Star, Store, Wallet, Warehouse,
+  MessageSquare, Package, PackagePlus, Repeat, ShoppingBag, Star, Store, Wallet, Warehouse,
 } from "lucide-react";
 import { facilityTypeLabel } from "@/lib/status";
 
@@ -40,7 +40,7 @@ async function load(user: { id: string; role: Role }) {
 
   const [
     facilities, bookings, todayBookings, pendingAll, stalePending, orders, topProducts, reviewAgg, latestReviews,
-    toComplete, unrepliedReviews, unreadInquiries, missingSetup, liveNow,
+    toComplete, unrepliedReviews, unreadInquiries, missingSetup, sheetsToShip,
   ] = await Promise.all([
     prisma.facility.findMany({ where: { id: { in: facIds } }, select: { id: true, name: true, region: true, type: true, status: true, rating: true, openTime: true, closeTime: true, autoApprove: true } }),
     prisma.booking.findMany({ where: { ...inFac, OR: [{ startAt: { gte: d90 } }, { createdAt: { gte: lastMonthStart } }] }, select: { facilityId: true, sellerId: true, status: true, startAt: true, endAt: true, createdAt: true, approvedAt: true } }),
@@ -58,7 +58,7 @@ async function load(user: { id: string; role: Role }) {
     prisma.facilityReview.count({ where: { ...inFac, reply: null } }),
     prisma.facilityInquiry.count({ where: { ...inFac, isRead: false } }),
     prisma.facility.count({ where: { id: { in: facIds }, OR: [{ operationType: "PARTNER", bankAccount: null }, { cancelPolicy: null }] } }), // 제휴 창고는 정산 계좌가 필요
-    prisma.liveSession.count({ where: { ...inFac, status: "LIVE" } }),
+    prisma.order.count({ where: { facilityId: { in: facIds }, source: "SHEET", status: "PAID" } }),
   ]);
 
   const used = bookings.filter((b) => b.status === "APPROVED" || b.status === "COMPLETED");
@@ -105,7 +105,7 @@ async function load(user: { id: string; role: Role }) {
     empty: false as const,
     perFac, totalHours, util: totalCap ? Math.min(100, Math.round((totalHours / totalCap) * 100)) : 0,
     monthReq: mReq.length, reqDelta: deltaPct(mReq.length, pReq.length), avgApproval,
-    pendingAll, stalePending, liveNow,
+    pendingAll, stalePending, sheetsToShip,
     gmv, gmvDelta: deltaPct(gmv, pOrders.reduce((s, o) => s + (o.totalAmount - o.refundedAmount), 0)), orderCount: mOrders.length,
     trend: zipSeries(
       dailySeries(orders.filter((o) => o.createdAt >= addDays(today, -29)), 30, (o) => o.createdAt, (o) => (o.totalAmount - o.refundedAmount)),
@@ -171,9 +171,9 @@ export default async function FacilityDashboard() {
         description="오늘 일정과 승인 대기, 가동률·판매 성과를 확인하고 바로 처리하세요."
         chips={[
           ...(d.inUse ? [{ label: `지금 이용 중 ${d.inUse}건`, tone: "live" as const }] : []),
+          ...(d.sheetsToShip ? [{ label: `출고할 주문서 ${d.sheetsToShip}건`, tone: "warn" as const }] : []),
           ...(d.pendingAll ? [{ label: `승인 대기 ${d.pendingAll}건`, tone: "warn" as const }] : []),
           { label: `오늘 예약 ${d.todayCount}건` },
-          ...(d.liveNow ? [{ label: `방송 중 ${d.liveNow}건`, tone: "live" as const }] : []),
         ]}
         actions={<><HeroButton href="/facility/bookings?status=PENDING" primary><ClipboardCheck className="h-4 w-4" />예약 승인하기</HeroButton><HeroButton href="/facility/schedule"><CalendarClock className="h-4 w-4" />운영 일정</HeroButton>{d.perFac[0] && <HeroButton href={`/facilities/${d.perFac[0].id}`}><Store className="h-4 w-4" />{d.perFac.length > 1 ? `샵 바로가기 · ${d.perFac[0].name}` : "샵 바로가기"}</HeroButton>}</>}
         aside={
@@ -285,8 +285,7 @@ export default async function FacilityDashboard() {
             { title: "운영 일정", desc: "운영 시간·휴무일", href: "/facility/schedule", icon: CalendarClock, tone: "sky" },
             { title: "상품 등록", desc: "셀러가 판매할 상품", href: "/facility/products/new", icon: PackagePlus, tone: "brand" },
             { title: "상품 관리", desc: "재고·가격·수수료", href: "/facility/products", icon: Package, tone: "navy" },
-            { title: "라이브 현황", desc: "공간에서 진행 중인 방송", href: "/facility/live-sessions", icon: Radio, tone: "red" },
-            { title: "주문 · 출고", desc: "판매 주문 확인", href: "/facility/orders", icon: ShoppingBag, tone: "amber" },
+            { title: "주문서 출고", desc: "셀러 주문서 출고 · 운송장", href: "/facility/orders", icon: ShoppingBag, tone: "amber" },
             { title: "매출", desc: "창고 판매 몫 · 제휴 지급", href: "/facility/settlements", icon: Wallet, tone: "green" },
             { title: "공간 소개 페이지", desc: "셀러에게 보이는 화면", href: "/facility/pages", icon: Warehouse, tone: "slate" },
           ]} />

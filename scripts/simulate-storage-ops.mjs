@@ -157,7 +157,7 @@ async function main() {
   ok(pg.status === 200 && !pg.text.includes("이용 내역"), "셀러 정산: 이용료 탭 없음", { status: pg.status });
   pg = await seller.page("/seller/bookings");
   ok(pg.status === 200, "셀러 예약 메뉴 정상");
-  pg = await admin.page("/admin/live-settings");
+  pg = await admin.page("/admin/site-management?tab=access");
   ok(pg.status === 200 && !pg.text.includes("창고(스튜디오) 이용자 비활성화"), "메뉴 권한: 창고 이용자 비활성화 스위치 없음");
 
   console.log("\n[6] 브랜드 화면에 본사 계정 표시 · 매니저는 브랜드 거래 불가");

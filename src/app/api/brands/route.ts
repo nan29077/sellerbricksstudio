@@ -74,7 +74,7 @@ const commandSchema = z.discriminatedUnion("action", [
     shippingFee: price.default(0), leadDays: z.number().int().min(0).max(60).default(2),
     sampleLimitPerBuyer: z.number().int().min(0).max(100).default(1),
     minSalePrice: price.nullable().optional(), // 최저 판매가 (판매처가 이보다 싸게 팔 수 없음)
-    minOrderQty: z.number().int().min(1).max(10000).optional(), // 창고 입고 요청 최소 수량(MOQ). 보내지 않으면 기존 값 유지
+    minOrderQty: z.number().int().min(1).max(10000).optional(), // 스토리지마켓 입고 요청 최소 수량(MOQ). 보내지 않으면 기존 값 유지
     // 상품 정보 고시 (화장품·식품 등). 보내지 않으면 기존 값을 그대로 둔다
     volume: line(60).optional(), expiryInfo: line(60).optional(), ingredients: line(3000).optional(), certification: line(200).optional(),
   }),
@@ -85,7 +85,7 @@ const commandSchema = z.discriminatedUnion("action", [
     phone: line(30).regex(/^[+\d ()-]{8,30}$/, "연락처를 확인해 주세요.")
       .refine((value) => value.replace(/\D/g, "").length >= 8, "연락처를 확인해 주세요."),
     address: line(300).min(5), message: line(1000),
-    facilityProductId: id.optional(), // 창고 입고 요청 대상 판매 상품
+    facilityProductId: id.optional(), // 스토리지마켓 입고 요청 대상 판매 상품
     method: z.enum(["CARD", "EASY_PAY", "BANK_TRANSFER"]).default("CARD"), // 유료 샘플 결제수단
   }),
   z.object({
@@ -189,7 +189,7 @@ export async function POST(req: Request) {
     if (command.action === "product") {
       if (!admin && user.role !== "BRAND_ADMIN") return fail("브랜드사 계정이 필요합니다.", 403);
       const { action, shopId, productId, revision, ...data } = command;
-      if (!data.allowDropship && !data.allowWarehouse) return fail("직배송과 창고 입고 중 하나 이상은 허용해야 합니다.");
+      if (!data.allowDropship && !data.allowWarehouse) return fail("위탁배송과 스토리지마켓 입고 중 하나 이상은 허용해야 합니다.");
       if (data.minSalePrice != null && data.minSalePrice < data.supplyPrice) return fail("최저 판매가는 공급가보다 낮을 수 없습니다.");
       const shop = await prisma.brandShop.findFirst({ where: { id: shopId, ...ownerScope }, select: { id: true, lowStockThreshold: true } });
       if (!shop) return fail("편집할 수 있는 브랜드샵을 찾지 못했습니다.", 404);
@@ -242,7 +242,7 @@ export async function POST(req: Request) {
       if (!buyerEnabled) return fail("셀러 계정이 필요합니다.", 403);
       const verifyBlocked = await emailVerifyBlock(user);
       if (verifyBlocked) return fail(verifyBlocked, 403);
-      if (command.kind === "SUPPLY" && user.role !== "SUPER_ADMIN") return fail("창고 입고 요청은 스토리지마켓 본사(최고관리자)만 할 수 있습니다.", 403);
+      if (command.kind === "SUPPLY" && user.role !== "SUPER_ADMIN") return fail("스토리지마켓 입고 요청은 스토리지마켓 본사(최고관리자)만 할 수 있습니다.", 403);
       const target = await prisma.brandProduct.findUnique({ where: { id: command.productId }, select: { shopId: true, samplePrice: true, shop: { select: { requireSellerApproval: true } } } });
       if (target) {
         const access = await partnerAccess(target.shopId, user.id, command.kind === "SUPPLY" && target.shop.requireSellerApproval);
@@ -284,7 +284,7 @@ export async function POST(req: Request) {
           if (used >= product.sampleLimitPerBuyer) throw new BrandConflict(`이 상품의 샘플은 계정당 ${product.sampleLimitPerBuyer}회까지 신청할 수 있습니다.`);
         }
         if (!sample) {
-          if (!product.allowWarehouse) throw new BrandConflict("이 상품은 창고 입고(위탁)를 받지 않습니다.");
+          if (!product.allowWarehouse) throw new BrandConflict("이 상품은 스토리지마켓 입고를 받지 않습니다.");
           if (command.quantity < product.minOrderQty) throw new BrandConflict(`이 상품은 창고 입고를 최소 ${product.minOrderQty.toLocaleString("ko-KR")}개부터 요청할 수 있습니다.`);
           const listing = command.facilityProductId ? await tx.facilityProduct.findFirst({
             where: { id: command.facilityProductId, brandProductId: product.id, fulfillment: "WAREHOUSE" }, // 입고 요청은 최고관리자만 (위에서 확인)

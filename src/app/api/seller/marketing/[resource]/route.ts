@@ -27,10 +27,6 @@ export async function POST(req: NextRequest, { params }: { params: { resource: s
     const cfg = MARKETING_RESOURCES[params.resource];
     let data: any;
     try { data = cfg.schema.parse(await req.json()); } catch (e) { return fail(zodMessage(e) ?? "입력값을 확인하세요."); }
-    if (params.resource === "coupons") {
-      const dup = await prisma.sellerCoupon.findUnique({ where: { code: data.code } });
-      if (dup) return fail("이미 사용 중인 쿠폰 코드입니다.", 409);
-    }
     if (params.resource === "sns-accounts") {
       const dup = await prisma.snsAccount.findFirst({ where: { sellerId: user.id, platform: data.platform, handle: data.handle } });
       if (dup) return fail("이미 등록한 계정입니다.", 409);

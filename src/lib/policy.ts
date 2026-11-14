@@ -9,6 +9,7 @@ export const POLICY_DEFAULTS = {
   orderAfterEndHours: 0, liveAutoEndHours: 2, settleAfterDays: 7, piiRetentionDays: 90,
   requireEmailVerify: false as boolean, maxPendingBookings: 10,
   requestReplyHours: 72, requestAutoRejectHours: 72,
+  sheetShippingFee: 3000,
 } satisfies Omit<PlatformPolicy, "id" | "updatedBy" | "updatedAt">;
 
 export type Policy = typeof POLICY_DEFAULTS;

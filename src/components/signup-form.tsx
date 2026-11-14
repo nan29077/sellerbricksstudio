@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { CategoryPicker } from "@/components/category-picker";
+import { LivePlatformPicker } from "@/components/live-platform-picker";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { SIGNUP_ROLES } from "@/lib/signup-roles";
@@ -20,6 +21,8 @@ export function SignupForm({ role }: { role: keyof typeof ROLE_LABEL }) {
   const brand = role === "BRAND_ADMIN";
   const [form, setForm] = useState({ email: "", password: "", name: "", phone: "", companyName: "", businessNumber: "" });
   const [categories, setCategories] = useState<string[]>([]);
+  const [platforms, setPlatforms] = useState<string[]>([]);
+  const [platformEtc, setPlatformEtc] = useState("");
   const [agree, setAgree] = useState({ terms: false, privacy: false });
   const [error, setError] = useState(""); const [loading, setLoading] = useState(false);
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [k]: e.target.value });
@@ -27,11 +30,13 @@ export function SignupForm({ role }: { role: keyof typeof ROLE_LABEL }) {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (brand && categories.length === 0) { setError("취급 카테고리를 1개 이상 선택하세요."); return; }
+    if (!brand && platforms.length === 0) { setError("판매하는 라이브 플랫폼을 1개 이상 선택하세요."); return; }
+    if (!brand && platforms.includes("ETC") && !platformEtc.trim()) { setError("기타 플랫폼 이름을 입력하세요."); return; }
     if (!agree.terms || !agree.privacy) { setError("필수 약관에 동의해 주세요."); return; }
     setLoading(true); setError("");
     const res = await fetch("/api/auth/signup", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, businessNumber: form.businessNumber || undefined, categories, role, agreeTerms: agree.terms, agreePrivacy: agree.privacy }),
+      body: JSON.stringify({ ...form, businessNumber: form.businessNumber || undefined, categories, role, ...(!brand && { livePlatforms: platforms, livePlatformEtc: platformEtc.trim() || undefined }), agreeTerms: agree.terms, agreePrivacy: agree.privacy }),
     });
     const json = await res.json().catch(() => ({ ok: false }));
     if (!json.ok) { setError(json.error ?? "회원가입에 실패했습니다."); setLoading(false); return; }
@@ -66,6 +71,13 @@ export function SignupForm({ role }: { role: keyof typeof ROLE_LABEL }) {
         <div><Label htmlFor="su-company">{brand ? "브랜드(회사)명 (필수)" : "회사/상호명"}</Label><Input id="su-company" autoComplete="organization" value={form.companyName} onChange={set("companyName")} required={brand} minLength={brand ? 2 : undefined} maxLength={60} /></div>
         {brand && (
           <div><Label htmlFor="su-biz">사업자등록번호{brand ? "" : " (선택)"}</Label><Input id="su-biz" value={form.businessNumber} onChange={set("businessNumber")} placeholder="000-00-00000" maxLength={20} inputMode="numeric" /></div>
+        )}
+        {!brand && (
+          <div>
+            <Label>판매하는 라이브 플랫폼 (필수 · 여러 개 선택)</Label>
+            <p className="mb-2 text-xs text-muted-foreground">스토리지마켓에서 고른 상품을 어디에서 판매하는지 골라 주세요. 주문서를 쓸 때 이 플랫폼 중에서 고릅니다. 설정에서 바꿀 수 있어요.</p>
+            <LivePlatformPicker value={platforms} onChange={setPlatforms} etc={platformEtc} onEtcChange={setPlatformEtc} idPrefix="su-lp" />
+          </div>
         )}
         <div>
           <Label>{brand ? "취급 카테고리" : "관심 카테고리"}</Label>

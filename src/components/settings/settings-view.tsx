@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { ROLE_LABELS } from "@/lib/rbac";
 import { resolveProfileAvatar } from "@/lib/profile";
 import { SettingsPanel } from "./settings-panel";
+import { SellerPlatformsForm } from "./seller-platforms-form";
 import { PayoutAccountForm } from "./payout-account-form";
 import { readNotifyPrefs } from "@/lib/notify";
 
@@ -33,6 +34,8 @@ export async function SettingsView({ role, showBookings = false }: { role: strin
   let createdAtLabel = "-";
   let sns: { instagram: string; youtube: string; tiktok: string } | null = null;
   let notifyPrefs: { order: boolean; settlement: boolean; live: boolean } | null = null;
+  let livePlatforms: string[] = [];
+  let livePlatformEtc = "";
 
   try {
     const dbUser = await prisma.user.findUnique({ where: { id: u.id }, include: { profile: true } });
@@ -44,6 +47,8 @@ export async function SettingsView({ role, showBookings = false }: { role: strin
       createdAtLabel = fmtDate(dbUser.createdAt);
       const raw = dbUser.profile?.snsLinks as Record<string, unknown> | null | undefined;
       if (raw && typeof raw === "object") sns = { instagram: String(raw.instagram ?? ""), youtube: String(raw.youtube ?? ""), tiktok: String(raw.tiktok ?? "") };
+      livePlatforms = dbUser.profile?.livePlatforms ?? [];
+      livePlatformEtc = dbUser.profile?.livePlatformEtc ?? "";
       if (dbUser.profile?.notifyPrefs) notifyPrefs = readNotifyPrefs(dbUser.profile.notifyPrefs);
     }
   } catch { /* DB 미가동 등 — 기본값 사용 */ }
@@ -66,7 +71,7 @@ export async function SettingsView({ role, showBookings = false }: { role: strin
     } catch { /* DB 미가동 등 — 빈 목록 */ }
   }
 
-  const payout = role === "SELLER" ? "판매 정산서가 '지급 완료'되면 이 계좌로 셀러 정산금(판매 수익 + 배송비)이 입금됩니다."
+  const payout = role === "SELLER" ? "정산 조정 · 환불 차액 등 셀러에게 돌려드릴 금액이 있을 때 이 계좌로 입금됩니다. (주문서 결제 취소는 결제 수단으로 바로 환불됩니다)"
     : role === "MANAGER" ? "영업 수수료가 이 계좌로 지급됩니다." : null;
   return (
     <>
@@ -86,6 +91,7 @@ export async function SettingsView({ role, showBookings = false }: { role: strin
       sns={sns}
       notifyPrefs={notifyPrefs}
     />
+    {role === "SELLER" && !isDemo && <div className="mt-5 max-w-2xl"><SellerPlatformsForm initial={livePlatforms} initialEtc={livePlatformEtc} /></div>}
     {payout && !isDemo && <div className="mt-5 max-w-2xl"><PayoutAccountForm description={payout} /></div>}
     </>
   );

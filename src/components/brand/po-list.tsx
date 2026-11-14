@@ -59,7 +59,7 @@ export async function PurchaseOrderList({ scope, actor, base, params }: {
         {status && <input type="hidden" name="status" value={status} />}
         <Input name="q" defaultValue={q} placeholder="발주번호 · 주문번호 · 받는 분 · 상품명" maxLength={60} className="max-w-xs" />
         <Select name="mode" defaultValue={mode ?? ""} className="w-auto" aria-label="배송 방식">
-          <option value="">전체 배송방식</option><option value="DROPSHIP">브랜드 직배송</option><option value="WAREHOUSE">창고 입고(위탁)</option>
+          <option value="">전체 배송방식</option><option value="DROPSHIP">위탁배송(브랜드 배송)</option><option value="WAREHOUSE">스토리지마켓 입고</option>
         </Select>
         <Input type="date" name="from" defaultValue={sp(params, "from")} className="w-auto" aria-label="시작일" />
         <Input type="date" name="to" defaultValue={sp(params, "to")} className="w-auto" aria-label="종료일" />

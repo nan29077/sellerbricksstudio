@@ -10,7 +10,6 @@ import { notifyPurchaseOrderChanges } from "@/lib/purchase-orders";
 import { applyOrderStatusInTx, cancelOrderItems, OrderActionError, shipLocalPartInTx } from "@/lib/order-actions";
 import { FULFILLMENT_ITEM_SELECT, orderActions, orderParts } from "@/lib/order-fulfillment";
 import { clearLimit, consume } from "@/lib/rate-limit";
-import { notifyBuyer } from "@/lib/order-notify";
 import { canOperateFacility } from "@/lib/facility-owner";
 
 const REFUND_DENIED = "출고된 주문의 환불은 상품을 출고한 창고(스튜디오) 또는 최고관리자만 할 수 있습니다. 브랜드가 보낸 상품의 환불은 고객지원 1:1 문의로 요청해 주세요.";
@@ -88,7 +87,6 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
             body: `${order.facility?.name ?? ""}${status === "SHIPPED" ? ` · ${carrier} ${trackingNumber}` : ""}`, link: "/seller/orders",
           });
         }
-        if (status === "SHIPPED") await notifyBuyer(order.id, { kind: "SHIPPED", carrier, trackingNumber, from: order.facility?.name });
         const fresh = await prisma.order.findUnique({ where: { id: order.id }, select: { id: true, status: true } });
         return ok({ id: order.id, status: fresh?.status ?? order.status, localStatus: status });
       }
@@ -111,9 +109,6 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       });
       if ((status === "CANCELLED" || status === "REFUNDED") && !actor.isSeller) {
         await notify({ userId: order.sellerId, type: "ORDER", title: `주문 ${order.orderNo} ${status === "CANCELLED" ? "취소" : "환불"}`, body: note, link: "/seller/orders" });
-      }
-      if (status === "CANCELLED" || status === "REFUNDED") {
-        await notifyBuyer(order.id, { kind: status, amount: order.totalAmount - order.refundedAmount, reason: note });
       }
       return ok({ id: updated.order.id, status: updated.order.status });
     } finally {

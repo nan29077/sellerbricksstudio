@@ -3,11 +3,10 @@ import { AdminBrandOverview } from "@/components/brand/admin-brand-overview";
 import { prisma } from "@/lib/prisma";
 import { reportDbError, type DbIssue } from "@/lib/db-error";
 import { requireRole } from "@/lib/auth";
-import { addDays, addMonths, kstParts, kstStartOfDay, kstStartOfMonth } from "@/lib/kst";
+import { addDays, addMonths, kstStartOfDay, kstStartOfMonth } from "@/lib/kst";
 import { formatKRW } from "@/lib/utils";
-import { PAYMENT_METHOD } from "@/lib/status";
-import { getSettings } from "@/lib/settings";
-import { endOverdueLiveSessions } from "@/lib/live-automation";
+import { ORDER_STATUS, PAYMENT_METHOD } from "@/lib/status";
+import { livePlatformLabel } from "@/lib/live-platforms";
 import {
   SOLD_ORDER_STATUSES, compactKRW, dailySeries, deltaPct, greeting, ratio, relativeTime, todayLabel, zipSeries,
 } from "@/lib/dashboard";
@@ -17,7 +16,7 @@ import {
 } from "@/components/dashboard/kit";
 import {
   ArrowUpRight, BadgeAlert, Building2, CalendarDays, CircleDollarSign, ClipboardList, CreditCard, Globe,
-  Headset, Megaphone, Radio, ScrollText, Settings2, ShoppingBag, Star, UserPlus, Users, Wallet,
+  FileText, Headset, Megaphone, ScrollText, Settings2, ShoppingBag, Star, UserPlus, Users, Wallet,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -39,7 +38,7 @@ async function load() {
   const [
     userCounts, facilityCounts, orders, bookings, users,
     pendingSettlements, pendingMarketing, lowReviews, supportWaiting, stalePending, failedPayments,
-    liveNow, upcomingLives, latestBookings, latestOrders, recentUsers, regions, methods, reviewAgg,
+    recentSheets, sheetsToShip, latestBookings, latestOrders, recentUsers, regions, methods, reviewAgg,
   ] = await Promise.all([
     prisma.user.groupBy({ by: ["role"], _count: true }),
     prisma.facility.groupBy({ by: ["status"], _count: true }),
@@ -52,14 +51,11 @@ async function load() {
     prisma.supportInquiry.count({ where: { answeredAt: null } }),
     prisma.booking.count({ where: { status: "PENDING", createdAt: { lt: addDays(now, -1) } } }),
     prisma.payment.count({ where: { status: "FAILED", createdAt: { gte: addDays(now, -7) } } }),
-    prisma.liveSession.findMany({
-      where: { status: "LIVE" }, take: 4, orderBy: { updatedAt: "desc" },
-      select: { id: true, title: true, slug: true, seller: { select: { email: true, profile: { select: { name: true } } } }, facility: { select: { name: true } }, _count: { select: { orders: true } } },
+    prisma.order.findMany({
+      where: { source: "SHEET", status: { not: "PAYMENT_PENDING" } }, take: 5, orderBy: { createdAt: "desc" },
+      select: { id: true, orderNo: true, status: true, platform: true, totalAmount: true, createdAt: true, seller: { select: { email: true, profile: { select: { name: true } } } }, facility: { select: { name: true } } },
     }),
-    prisma.liveSession.findMany({
-      where: { status: { in: ["READY", "DRAFT"] }, scheduledStart: { gte: now } }, take: 4, orderBy: { scheduledStart: "asc" },
-      select: { id: true, title: true, scheduledStart: true, facility: { select: { name: true } }, seller: { select: { email: true, profile: { select: { name: true } } } } },
-    }),
+    prisma.order.count({ where: { source: "SHEET", status: { in: ["PAID", "PREPARING"] } } }),
     prisma.booking.findMany({
       take: 5, orderBy: { createdAt: "desc" },
       select: { id: true, status: true, createdAt: true, facility: { select: { name: true } }, seller: { select: { email: true, profile: { select: { name: true } } } } },
@@ -124,7 +120,7 @@ async function load() {
     rating: reviewAgg._avg.rating, reviewCount: reviewAgg._count,
     pendingBookingsAll: await prisma.booking.count({ where: { status: "PENDING" } }),
     todo: { pendingSettlements, pendingMarketing, lowReviews, supportWaiting, stalePending, failedPayments },
-    liveNow, upcomingLives, latestBookings, latestOrders, recentUsers,
+    recentSheets, sheetsToShip, latestBookings, latestOrders, recentUsers,
     regions: regions.sort((a, b) => b._count - a._count),
     methods: methods.sort((a, b) => (b._sum.amount ?? 0) - (a._sum.amount ?? 0)),
     topFacilities: topFacIds.map(([id, n]) => { const f = facNames.find((x) => x.id === id); return { key: id, name: f?.name ?? "창고(스튜디오)", sub: f ? `${f.region} · ★ ${f.rating.toFixed(1)}` : undefined, value: n, valueLabel: `${n}건` }; }),
@@ -138,8 +134,6 @@ export default async function AdminDashboard() {
   const me = await requireRole(["SUPER_ADMIN"]);
   let d: Awaited<ReturnType<typeof load>> | null = null;
   let issue: DbIssue = "unknown";
-  await endOverdueLiveSessions(); // 예정 시간이 지난 방송은 먼저 종료 (1분에 한 번)
-  const { liveEnabled } = await getSettings();
   try { d = await load(); } catch (e) { issue = reportDbError("admin-dashboard", e); }
 
   if (!d) {
@@ -168,7 +162,7 @@ export default async function AdminDashboard() {
         title={`${greeting()}, ${me.name ?? "관리자"}님`}
         description="거래, 예약, 회원, 정산 흐름을 한 화면에서 확인하고 필요한 작업으로 바로 이동하세요."
         chips={[
-          ...(d.liveNow.length ? [{ label: `지금 방송 중 ${d.liveNow.length}건`, tone: "live" as const }] : []),
+          ...(d.sheetsToShip ? [{ label: `출고 대기 주문서 ${d.sheetsToShip}건`, tone: "live" as const }] : []),
           ...(urgentCount ? [{ label: `확인 필요 ${urgentCount}건`, tone: "warn" as const }] : [{ label: "긴급 처리 항목 없음" }]),
           { label: `운영 창고(스튜디오) ${d.facApproved}곳` },
         ]}
@@ -199,7 +193,7 @@ export default async function AdminDashboard() {
         <KpiTile label="예약 신청" value={d.bookings.toLocaleString("ko-KR")} unit="건" delta={d.bookingsDelta} sub="이번 달" icon={CalendarDays} tone="violet" spark={d.bookingDaily.map((x) => x.value)} href="/admin/bookings" />
         <KpiTile label="신규 가입" value={d.newUsers.toLocaleString("ko-KR")} unit="명" delta={d.usersDelta} sub={`전체 ${d.totalUsers.toLocaleString("ko-KR")}명`} icon={UserPlus} tone="green" spark={d.userDaily.map((x) => x.value)} href="/admin/users" />
         <KpiTile label="운영 창고(스튜디오)" value={String(d.facApproved)} unit="곳" sub={d.facPending ? `승인 대기 ${d.facPending}곳` : "승인 대기 없음"} icon={Building2} tone="sky" href="/admin/facilities" />
-        <KpiTile label="라이브 방송" value={String(d.liveNow.length)} unit="건" sub={`예정 ${d.upcomingLives.length}건`} icon={Radio} tone="red" href="/admin/live-settings" />
+        <KpiTile label="출고 대기 주문서" value={String(d.sheetsToShip)} unit="건" sub="결제 완료 · 출고 전" icon={FileText} tone="red" href="/admin/orders" />
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
@@ -267,29 +261,18 @@ export default async function AdminDashboard() {
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-        <Panel eyebrow="LIVE" title="라이브 방송 현황" action={{ href: "/admin/live-settings", label: "라이브 설정" }}>
-          {!liveEnabled && <p className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">라이브 기능이 꺼져 있습니다. 셀러 · 창고(스튜디오)는 새 방송을 만들거나 시작할 수 없습니다. (진행 중인 방송은 예정 시간이 지나면 자동 종료)</p>}
-          {d.liveNow.length + d.upcomingLives.length === 0 ? <Empty icon={Radio} text="진행 중이거나 예정된 방송이 없습니다" /> : (
+        <Panel eyebrow="ORDER SHEETS" title="최근 셀러 주문서" action={{ href: "/admin/orders", label: "주문 관리" }}>
+          {d.recentSheets.length === 0 ? <Empty icon={FileText} text="아직 들어온 주문서가 없습니다" /> : (
             <ul className="space-y-2">
-              {d.liveNow.map((l) => (
-                <li key={l.id}>
-                  <Link href={`/live/${l.slug}`} className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50/50 p-3 hover:bg-rose-50">
-                    <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-rose-500 text-white"><Radio className="h-5 w-5" /><span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-ping rounded-full bg-rose-400" /></span>
-                    <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-navy">{l.title}</span><span className="block truncate text-xs text-slate-500">{nameOf(l.seller)} · {(l.facility?.name ?? "셀러 공간")}</span></span>
-                    <Pill tone="red">LIVE · 주문 {l._count.orders}</Pill>
+              {d.recentSheets.map((o) => (
+                <li key={o.id}>
+                  <Link href={`/admin/orders?q=${encodeURIComponent(o.orderNo)}`} className="flex items-center gap-3 rounded-2xl border border-[#EEEAE2] p-3 hover:bg-brand-50/40">
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-navy text-white"><FileText className="h-5 w-5" /></span>
+                    <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-navy">{nameOf(o.seller)} · {livePlatformLabel(o.platform)}</span><span className="block truncate text-xs text-slate-500">{o.orderNo} · {o.facility?.name ? `스토리지마켓 (${o.facility.name})` : "위탁배송(브랜드 배송)"} · {relativeTime(o.createdAt)}</span></span>
+                    <Pill tone={o.status === "PAID" || o.status === "PREPARING" ? "amber" : o.status === "SHIPPED" ? "green" : o.status === "DELIVERED" ? "blue" : "slate"}>{ORDER_STATUS[o.status]?.label ?? o.status} · {compactKRW(o.totalAmount)}</Pill>
                   </Link>
                 </li>
               ))}
-              {d.upcomingLives.map((l) => {
-                const p = kstParts(l.scheduledStart!);
-                return (
-                  <li key={l.id} className="flex items-center gap-3 rounded-2xl border border-[#EEEAE2] p-3">
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-navy text-center text-[11px] font-bold leading-tight text-white">{p.month}/{p.day}<br />{String(p.hour).padStart(2, "0")}:{String(p.minute).padStart(2, "0")}</span>
-                    <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-navy">{l.title}</span><span className="block truncate text-xs text-slate-500">{nameOf(l.seller)} · {(l.facility?.name ?? "셀러 공간")}</span></span>
-                    <Pill tone="blue">{relativeTime(l.scheduledStart!)}</Pill>
-                  </li>
-                );
-              })}
             </ul>
           )}
         </Panel>
@@ -321,7 +304,7 @@ export default async function AdminDashboard() {
             { title: "정산 관리", desc: "판매 · 브랜드 정산", href: "/admin/payouts", icon: Wallet, tone: "green", badge: d.todo.pendingSettlements },
             { title: "고객 문의", desc: "1:1 문의 답변", href: "/admin/support", icon: Headset, tone: "blue", badge: d.todo.supportWaiting },
             { title: "마케팅 지원", desc: "셀러 캠페인 관리", href: "/admin/marketing", icon: Megaphone, tone: "violet" },
-            { title: "사이트 설정", desc: "배너·기본 정보", href: "/admin/site-settings", icon: Settings2, tone: "slate" },
+            { title: "사이트 관리", desc: "배너·여백·공지·권한", href: "/admin/site-management", icon: Settings2, tone: "slate" },
             { title: "감사 로그", desc: "관리 작업 이력", href: "/admin/audit-logs", icon: ScrollText, tone: "navy" },
           ]} />
         </Panel>

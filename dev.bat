@@ -5,8 +5,12 @@ rem Stop any leftover dev server of this project first (orphaned node keeps port
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0stop-dev.ps1" -Quiet
 
 rem Packages missing (node_modules emptied by an unfinished npm install/ci) -> reinstall first
-if not exist "node_modules\next\package.json" (
-    echo node_modules is missing or incomplete. Running npm install...
+rem New packages added to package.json (e.g. exceljs for order-sheet Excel upload) are installed too
+set NEED_INSTALL=
+if not exist "node_modules\next\package.json" set NEED_INSTALL=1
+if not exist "node_modules\exceljs\package.json" set NEED_INSTALL=1
+if defined NEED_INSTALL (
+    echo node_modules is missing or incomplete or new packages were added. Running npm install...
     call npm install
     if errorlevel 1 (
         echo npm install failed. Close other programs using this folder and try again.

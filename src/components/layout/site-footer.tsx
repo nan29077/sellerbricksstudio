@@ -7,8 +7,8 @@ import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { BUSINESS_INFO as B, bizInfoCheckUrl } from "@/lib/business-info";
 
 const footerLinks = [
-  { title: "서비스", links: [{ href: "/intro", label: "서비스 소개" }, { href: "/facilities", label: "창고(스튜디오) 찾기" }, { href: "/facilities?type=STUDIO", label: "스튜디오" }, { href: "/facilities?type=WAREHOUSE", label: "창고" }, { href: "/order-lookup", label: "주문 조회" }, { href: "/notices", label: "공지사항" }] },
-  { title: "시작하기", links: [{ href: "/signup/seller", label: "셀러 가입" }, { href: "/signup/brand", label: "브랜드사 가입" }, { href: "/signup/facility", label: "창고(스튜디오) 가입" }, { href: "/login", label: "로그인" }, { href: "/support", label: "문의하기" }] },
+  { title: "서비스", links: [{ href: "/intro", label: "서비스 소개" }, { href: "/facilities", label: "창고(스튜디오) 찾기" }, { href: "/facilities?type=STUDIO", label: "스튜디오" }, { href: "/facilities?type=WAREHOUSE", label: "창고" }, { href: "/facilities?type=SHOWROOM", label: "쇼룸" }, { href: "/notices", label: "공지사항" }] },
+  { title: "시작하기", links: [{ href: "/signup/seller", label: "셀러 가입" }, { href: "/signup/brand", label: "브랜드사 가입" }, { href: "/login", label: "로그인" }, { href: "/support", label: "문의하기" }] },
 ];
 
 export function SiteFooter() {

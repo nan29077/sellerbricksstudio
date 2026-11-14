@@ -146,14 +146,14 @@ export async function BrandProductsPanel({ shop, params, admin = false, header =
     <section id="products" className="scroll-mt-24 space-y-4">
       {header ? (
         <PageHeader title={admin ? "상품 · 재고" : "상품 · 재고 관리"}
-          description="공급가 · 권장 소비자가 · 옵션 · 배송 방식(직배송/창고 입고) · 샘플 조건을 상품마다 정합니다."
+          description="공급가 · 권장 소비자가 · 옵션 · 배송 방식(위탁배송 · 스토리지마켓 입고) · 샘플 조건을 상품마다 정합니다."
           action={!admin ? <div className="flex flex-wrap gap-2">
             <Link className={buttonVariants({ variant: "outline" })} href="/brand/shop">샵 꾸미기 · 정보</Link>
             <a className={buttonVariants({ variant: "outline" })} href={`/brands/${shop.id}`} target="_blank" rel="noopener noreferrer">샵 바로가기 (새 창)</a>
           </div> : undefined} />
       ) : (
         <div><h2 className="text-xl font-black text-navy">상품 및 재고</h2>
-          <p className="text-sm text-slate-600">공급가 · 권장 소비자가 · 옵션 · 배송 방식(직배송/창고 입고) · 샘플 조건을 상품마다 정합니다.</p></div>
+          <p className="text-sm text-slate-600">공급가 · 권장 소비자가 · 옵션 · 배송 방식(위탁배송 · 스토리지마켓 입고) · 샘플 조건을 상품마다 정합니다.</p></div>
       )}
 
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
@@ -214,7 +214,7 @@ export async function BrandProductsPanel({ shop, params, admin = false, header =
                   </span>
                   <span className="mt-0.5 block truncate text-xs text-slate-500">
                     {product.category}{product.subCategory ? ` › ${product.subCategory}` : ""}{product.sku ? ` · ${product.sku}` : ""}
-                    {" · "}{[product.allowDropship && "직배송", product.allowWarehouse && "창고 입고"].filter(Boolean).join("/") || "배송 방식 없음"}
+                    {" · "}{[product.allowDropship && "위탁배송", product.allowWarehouse && "스토리지마켓 입고"].filter(Boolean).join("/") || "배송 방식 없음"}
                   </span>
                 </span>
                 <span className="hidden shrink-0 text-right text-xs sm:block">

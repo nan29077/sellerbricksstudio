@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isCategory } from "./categories";
+import { isLivePlatform } from "./live-platforms";
 
 export const signupSchema = z.object({
   email: z.string().email("올바른 이메일을 입력하세요."),
@@ -11,9 +12,16 @@ export const signupSchema = z.object({
   categories: z.array(z.string().refine(isCategory, "알 수 없는 카테고리입니다.")).max(17).optional(),
   // 직접 가입은 셀러 · 브랜드사만. 창고(스튜디오)는 본사가 운영하고, 창고 운영 매니저는 최고관리자가 만든다.
   role: z.enum(["SELLER", "BRAND_ADMIN"], { errorMap: () => ({ message: "가입할 수 없는 회원 유형입니다." }) }),
+  livePlatforms: z.array(z.string().refine(isLivePlatform, "알 수 없는 플랫폼입니다.")).max(40).optional(),
+  livePlatformEtc: z.string().trim().max(60).optional(),
   agreeTerms: z.literal(true, { errorMap: () => ({ message: "이용약관에 동의해 주세요." }) }),
   agreePrivacy: z.literal(true, { errorMap: () => ({ message: "개인정보 수집·이용에 동의해 주세요." }) }),
 }).superRefine((v, ctx) => {
+  if (v.role === "SELLER") {
+    if (!v.livePlatforms?.length) ctx.addIssue({ code: "custom", path: ["livePlatforms"], message: "판매하는 라이브 플랫폼을 1개 이상 선택하세요." });
+    if (v.livePlatforms?.includes("ETC") && !v.livePlatformEtc) ctx.addIssue({ code: "custom", path: ["livePlatformEtc"], message: "기타 플랫폼 이름을 입력하세요." });
+    return;
+  }
   if (v.role !== "BRAND_ADMIN") return;
   if (!v.companyName || v.companyName.length < 2) ctx.addIssue({ code: "custom", path: ["companyName"], message: "브랜드(회사)명을 2자 이상 입력하세요." });
   if (!v.categories?.length) ctx.addIssue({ code: "custom", path: ["categories"], message: "취급 카테고리를 1개 이상 선택하세요." });

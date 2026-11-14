@@ -3,52 +3,80 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 import { PageHeader } from "@/components/layout/dashboard-widgets";
 import { Badge } from "@/components/ui/badge";
-import { Table } from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/empty";
-import { Kpi } from "@/components/list/charts";
-import { computeSettlement, revenueLines } from "@/lib/settlement";
-import { RevenueTable } from "@/components/settlement/revenue-table";
-import { formatDate, formatKRW } from "@/lib/utils";
-import type { SP } from "@/lib/list";
-import { Wallet, CalendarCheck, TrendingUp, Banknote } from "lucide-react";
+import { Kpi, BarChart } from "@/components/list/charts";
+import { CsvButton } from "@/components/list/csv-button";
+import { Pagination } from "@/components/list/pagination";
+import { ORDER_STATUS } from "@/lib/status";
+import { livePlatformLabel } from "@/lib/live-platforms";
+import { formatDateTime, formatKRW } from "@/lib/utils";
+import { addMonths, kstParts, kstStartOfMonth } from "@/lib/kst";
+import { growth, pageOf, type SP } from "@/lib/list";
+import { Banknote, CalendarCheck, TrendingUp, Undo2 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
-const SETTLE_STATUS: Record<string, { label: string; tone: "yellow" | "blue" | "green" }> = {
-  PENDING: { label: "정산 대기", tone: "yellow" }, CONFIRMED: { label: "정산 확정", tone: "blue" }, PAID: { label: "지급 완료", tone: "green" },
-};
+const BASE = "/seller/settlements";
+const PAID_STATUSES = ["PAID", "PREPARING", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED"] as const;
 
-export default async function SellerSettlements({ searchParams }: { searchParams: SP }) {
+// 셀러 결제 · 정산 내역 — 구매자 결제는 없다. 셀러는 주문서를 낼 때 공급가(+ 스토리지마켓 출고 배송비)를 결제하고,
+// 판매 대금은 판매한 라이브 플랫폼에서 받는다. 여기서는 주문서 결제 · 환불 내역을 보여 준다.
+export default async function SellerPayments({ searchParams }: { searchParams: SP }) {
   const user = await requireRole(["SELLER"]);
-  // 창고(스튜디오) 이용료는 없다(무료) — 판매 정산만 보여 준다. (예전 '이용 내역' 탭은 없앴다)
-  const [settlements, sales, revenue, account] = await Promise.all([
-    prisma.settlement.findMany({ where: { sellerId: user.id }, orderBy: { periodEnd: "desc" }, include: { facility: { select: { name: true } } } }),
-    computeSettlement({ sellerId: user.id }).catch(() => ({ orderCount: 0, gross: 0, sellerProfit: 0, facilityAmount: 0 })),
-    revenueLines({ sellerId: user.id }).catch(() => []),
-    prisma.profile.findUnique({ where: { userId: user.id }, select: { bankAccount: true } }).catch(() => null),
+  const { page, size, skip, take } = pageOf(searchParams, 20);
+  const monthStart = kstStartOfMonth(new Date());
+  const yearStart = addMonths(monthStart, -11);
+  // 결제가 실패해 닫힌 주문서는 빼고, 실제로 결제된(이후 취소 · 환불 포함) 주문서만
+  const where = { sellerId: user.id, source: "SHEET", status: { in: [...PAID_STATUSES] }, payment: { status: { in: ["PAID", "CANCELLED", "REFUNDED"] as ("PAID" | "CANCELLED" | "REFUNDED")[] } } };
+  const [rows, total, yearRows, sums] = await Promise.all([
+    prisma.order.findMany({
+      where, orderBy: { createdAt: "desc" }, skip, take,
+      select: { id: true, orderNo: true, createdAt: true, status: true, totalAmount: true, refundedAmount: true, shippingFee: true, platform: true, externalOrderNo: true, buyerName: true, facility: { select: { name: true } }, items: { select: { productName: true, quantity: true } } },
+    }),
+    prisma.order.count({ where }),
+    prisma.order.findMany({ where: { ...where, createdAt: { gte: yearStart } }, select: { createdAt: true, totalAmount: true, refundedAmount: true } }),
+    prisma.order.aggregate({ where, _sum: { totalAmount: true, refundedAmount: true }, _count: true }),
   ]);
+  const months = Array.from({ length: 12 }, (_, i) => addMonths(yearStart, i));
+  const monthly = months.map((m) => ({ label: `${kstParts(m).month}월`, value: yearRows.filter((o) => o.createdAt >= m && o.createdAt < addMonths(m, 1)).reduce((s, o) => s + o.totalAmount - o.refundedAmount, 0) }));
+  const paid = sums._sum.totalAmount ?? 0, refunded = sums._sum.refundedAmount ?? 0;
 
   return (
     <div className="space-y-5 pb-24 md:pb-0">
-      <PageHeader title="정산 내역" description="판매 정산 현황을 확인합니다. 창고(스튜디오) 이용료는 없습니다." />
-
+      <PageHeader title="결제 · 정산 내역" description="주문서를 낼 때 결제한 공급가와 환불 내역입니다. 판매 대금은 판매한 라이브 플랫폼에서 정산받습니다."
+        action={<Link href="/seller/orders/new" className="inline-flex h-10 items-center rounded-lg bg-navy px-4 text-sm font-semibold text-white">주문서 작성</Link>} />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Kpi label="이번 달 결제 (환불 제외)" value={formatKRW(monthly[11].value)} delta={growth(monthly[11].value, monthly[10].value)} sub="지난달 대비" icon={TrendingUp} tone="navy" />
+        <Kpi label="누적 결제" value={formatKRW(paid)} sub={`주문 ${sums._count}건`} icon={Banknote} tone="brand" />
+        <Kpi label="누적 환불" value={formatKRW(refunded)} icon={Undo2} tone="blue" />
+        <Kpi label="실제 결제 합계" value={formatKRW(paid - refunded)} icon={CalendarCheck} tone="green" />
+      </div>
+      <div className="rounded-2xl border border-[#E9E5DC] bg-white p-4"><p className="mb-2 text-sm font-bold text-navy">월별 결제 (12개월 · 환불 제외)</p><BarChart data={monthly} format={(n) => formatKRW(n)} /></div>
+      {rows.length === 0 ? <EmptyState title="결제 내역이 없습니다" description="주문서를 작성해 결제하면 여기에 표시됩니다." /> : (
         <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Kpi label="판매 매출" value={formatKRW(sales?.gross ?? 0)} sub={`주문 ${sales?.orderCount ?? 0}건`} icon={TrendingUp} tone="navy" />
-            <Kpi label="셀러 수익(예상)" value={formatKRW(sales?.sellerProfit ?? 0)} sub={sales && "platformFee" in sales ? `플랫폼 수수료 ${formatKRW(sales.platformFee)} · 브랜드 대금 ${formatKRW(sales.brandAmount)} 제외` : undefined} icon={Wallet} tone="brand" />
-            <Kpi label="정산 대기" value={formatKRW(settlements.filter((s) => s.status !== "PAID").reduce((a, s) => a + s.commissionAmount, 0))} icon={CalendarCheck} tone="blue" />
-            <Kpi label="지급 완료" value={formatKRW(settlements.filter((s) => s.status === "PAID").reduce((a, s) => a + s.commissionAmount, 0))} icon={Banknote} tone="green" />
+          <div className="flex justify-end">
+            <CsvButton label="CSV" filename="주문서결제내역" headers={["결제일", "주문번호", "플랫폼", "외부 주문번호", "받는 분", "상품", "보내는 곳", "배송비", "결제액", "환불액", "상태"]}
+              rows={rows.map((o) => [formatDateTime(o.createdAt), o.orderNo, livePlatformLabel(o.platform), o.externalOrderNo ?? "", o.buyerName, o.items.map((i) => `${i.productName}×${i.quantity}`).join(", "), o.facility?.name ?? "브랜드 직배송", o.shippingFee, o.totalAmount, o.refundedAmount, ORDER_STATUS[o.status]?.label ?? o.status])} />
           </div>
-          {!account?.bankAccount && !user.id.startsWith("demo-") && (
-            <Link href="/seller/settings" className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
-              <Banknote className="h-5 w-5" />정산 계좌가 등록되지 않았습니다. 설정에서 정산 계좌를 등록해야 판매 정산금을 받을 수 있습니다.
-            </Link>
-          )}
-          <RevenueTable rows={revenue} perspective="SELLER" />
-          {settlements.length === 0 ? <EmptyState title="판매 정산 내역이 없습니다" description="라이브 판매 정산이 생성되면 여기에 표시됩니다." /> : (
-            <Table headers={["정산 기간", "창고(스튜디오)", "총 매출", "셀러 수익", "창고 정산금", "상태"]}
-              rows={settlements.map((s) => [`${formatDate(s.periodStart)} ~ ${formatDate(s.periodEnd)}`, (s.facility?.name ?? "셀러 공간"), formatKRW(s.grossAmount), <b key="c">{formatKRW(s.commissionAmount)}</b>, formatKRW(s.facilityAmount), <Badge key="s" tone={SETTLE_STATUS[s.status]?.tone}>{SETTLE_STATUS[s.status]?.label}</Badge>])} />
-          )}
+          <ul className="space-y-2">
+            {rows.map((o) => {
+              const st = ORDER_STATUS[o.status] ?? { label: o.status, tone: "gray" as const };
+              return (
+                <li key={o.id} className="rounded-2xl border border-border bg-white p-4 text-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-xs font-semibold text-navy">{o.orderNo}</span>
+                    <Badge tone={st.tone}>{st.label}</Badge>
+                    <span className="ml-auto font-extrabold text-navy">{formatKRW(o.totalAmount)}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">{formatDateTime(o.createdAt)} · {livePlatformLabel(o.platform)}{o.externalOrderNo ? ` · ${o.externalOrderNo}` : ""} · {o.facility?.name ? `스토리지마켓 (${o.facility.name})` : "브랜드 직배송"}</p>
+                  <p className="mt-1 text-xs text-slate-600">{o.items.map((i) => `${i.productName} ×${i.quantity}`).join(", ")}{o.shippingFee ? ` · 배송비 ${formatKRW(o.shippingFee)}` : ""}</p>
+                  {o.refundedAmount > 0 && <p className="mt-1 text-xs font-semibold text-blue-700">환불 {formatKRW(o.refundedAmount)}</p>}
+                </li>
+              );
+            })}
+          </ul>
+          <Pagination base={BASE} params={searchParams} page={page} size={size} total={total} />
         </>
+      )}
     </div>
   );
 }

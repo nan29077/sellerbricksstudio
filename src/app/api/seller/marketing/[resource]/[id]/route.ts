@@ -27,10 +27,6 @@ export async function PATCH(req: NextRequest, { params }: { params: { resource: 
     catch (e) { return fail(e instanceof ZodError ? e.issues[0]?.message ?? "입력값을 확인하세요." : "입력값을 확인하세요."); }
     const keys = Object.keys(base.shape ?? data);
     const patch = Object.fromEntries(keys.filter((k) => k in data).map((k) => [k, data[k]]));
-    if (params.resource === "coupons" && patch.code !== found.row.code) {
-      const dup = await prisma.sellerCoupon.findUnique({ where: { code: patch.code } });
-      if (dup) return fail("이미 사용 중인 쿠폰 코드입니다.", 409);
-    }
     const row = await (prisma as any)[found.cfg.model].update({ where: { id: params.id }, data: patch });
     return ok(row);
   } catch (e) { return handleError(e); }

@@ -9,9 +9,9 @@ import {
   LogOut, Menu, X, type LucideIcon,
   LayoutDashboard, CalendarDays, MessageSquare,
   Warehouse, CalendarClock, Users, Building2, SquarePlus,
-  Settings, ScrollText, Sliders, Image as ImageIcon,
+  Settings, ScrollText, Image as ImageIcon,
   ChevronRight, Home, Globe, TrendingUp, Megaphone,
-  Share2, BarChart3, Ticket, LayoutTemplate, Star, Wallet, Coins, Package, ShoppingBag, ClipboardList,
+  Share2, BarChart3, LayoutTemplate, Star, Wallet, Coins, Package, ShoppingBag, ClipboardList,
   FileText, Percent, Banknote, PackagePlus, Undo2, UserCog,
   Heart,
 } from "lucide-react";
@@ -49,10 +49,7 @@ const ROLE_NAV: Record<string, NavSection[]> = {
     ]},
     { title: "시스템 설정", items: [
       { href: "/admin/support",         label: "고객 문의 관리", icon: MessageSquare },
-      { href: "/admin/home-background", label: "메인 여백 관리", icon: ImageIcon },
-      { href: "/admin/site-settings",   label: "사이트 설정",    icon: ImageIcon },
       { href: "/admin/site-management", label: "사이트 관리",    icon: Globe },
-      { href: "/admin/live-settings",   label: "메뉴 권한 설정", icon: Sliders },
       { href: "/admin/integrations",    label: "연동 설정",      icon: Settings },
       { href: "/admin/audit-logs",      label: "감사 로그",      icon: ScrollText },
     ]},
@@ -65,6 +62,10 @@ const ROLE_NAV: Record<string, NavSection[]> = {
       { href: "/seller/dashboard", label: "대시보드", icon: LayoutDashboard },
       { href: "/seller/bookings",  label: "예약 관리", icon: CalendarDays },
     ]},
+    { title: "주문서", items: [
+      { href: "/seller/orders/new", label: "주문서 작성", icon: SquarePlus },
+      { href: "/seller/orders",     label: "주문서 · 배송 현황", icon: FileText },
+    ]},
     { title: "브랜드", items: [
       { href: "/brands", label: "브랜드샵 둘러보기", icon: ShoppingBag },
       { href: "/seller/brand-products", label: "내 브랜드 판매 상품", icon: PackagePlus },
@@ -73,7 +74,7 @@ const ROLE_NAV: Record<string, NavSection[]> = {
       { href: "/brand-messages", label: "브랜드 문의", icon: MessageSquare },
     ]},
     { title: "창고·스튜디오", items: [
-      { href: "/seller/products",           label: "판매 상품 둘러보기", icon: Package },
+      { href: "/seller/products",           label: "스토리지마켓 창고 상품", icon: Package },
       { href: "/facilities",                label: "창고(스튜디오) 검색", icon: Warehouse },
       { href: "/seller/farm-reservations",  label: "창고(스튜디오) 예약 현황",      icon: Building2 },
     ]},
@@ -82,10 +83,9 @@ const ROLE_NAV: Record<string, NavSection[]> = {
       { href: "/seller/marketing/events",    label: "이벤트/프로모션", icon: Megaphone },
       { href: "/seller/marketing/assets",    label: "광고 소재",      icon: ImageIcon },
       { href: "/seller/marketing/analytics", label: "마케팅 분석",    icon: BarChart3 },
-      { href: "/seller/marketing/coupons",   label: "쿠폰 관리",     icon: Ticket },
     ]},
     { title: "정산", items: [
-      { href: "/seller/settlements", label: "정산 내역", icon: TrendingUp },
+      { href: "/seller/settlements", label: "결제 · 정산 내역", icon: TrendingUp },
     ]},
     { title: "계정", items: [
       { href: "/seller/settings", label: "설정", icon: Settings },
@@ -115,7 +115,6 @@ const ROLE_NAV: Record<string, NavSection[]> = {
     ]},
     { title: "주문 · 매출", items: [
       { href: "/facility/orders",        label: "주문 · 출고", icon: FileText },
-      { href: "/facility/live-sessions", label: "창고 방송", icon: CalendarClock, requiresLive: true },
       { href: "/facility/settlements",   label: "창고 매출", icon: TrendingUp },
     ]},
     { title: "관리자", items: [
@@ -138,7 +137,6 @@ const ROLE_NAV: Record<string, NavSection[]> = {
     ]},
     { title: "주문 · 매출", items: [
       { href: "/facility/orders",        label: "주문 · 출고", icon: FileText },
-      { href: "/facility/live-sessions", label: "창고 방송", icon: CalendarClock, requiresLive: true },
       { href: "/facility/settlements",   label: "창고 매출", icon: TrendingUp },
     ]},
     { title: "매니저", items: [

@@ -29,6 +29,10 @@ export async function POST(req: NextRequest) {
           create: {
             name: data.name, phone: data.phone, companyName: data.companyName,
             businessNumber: data.businessNumber || null, categories: Array.from(new Set(data.categories ?? [])),
+            ...(data.role === "SELLER" && {
+              livePlatforms: Array.from(new Set(data.livePlatforms ?? [])),
+              livePlatformEtc: data.livePlatforms?.includes("ETC") ? data.livePlatformEtc || null : null,
+            }),
           },
         },
         // 브랜드사는 가입과 동시에 브랜드샵(승인 대기)을 만든다.

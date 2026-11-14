@@ -5,7 +5,8 @@ import { SETTLEMENT_ORDER_INCLUDE, splitOrder } from "./settlement";
 import { getPaymentAdapter } from "./adapters/payment";
 import { audit } from "./audit";
 import { refreshOrderStatusInTx } from "./order-fulfillment";
-import { notifyBuyer } from "./order-notify";
+import { notify } from "./notify";
+import { formatKRW } from "./utils";
 import { releaseCouponInTx } from "./coupons";
 import {
   closePurchaseOrderInTx, notifyPoPartners, notifyPurchaseOrderChanges, releaseOrderStockInTx,
@@ -144,7 +145,7 @@ export async function cancelOrderItems(params: { orderId: string; itemIds?: stri
     });
     await notifyPurchaseOrderChanges(result.poChanges);
     await audit({ actorId: params.actorId, action: `ORDER_${status}`, entity: "Order", entityId: order.id, meta: { reason, partial: false } });
-    await notifyBuyer(order.id, { kind: status === "CANCELLED" ? "CANCELLED" : "REFUNDED", amount: refundLeft, reason });
+    if (params.actorId !== order.sellerId) await notify({ userId: order.sellerId, type: "ORDER", title: `주문 ${order.orderNo} ${status === "CANCELLED" ? "취소" : "환불"}`, body: `${formatKRW(refundLeft)} 환불 · ${reason}`, link: "/seller/orders" });
     return { status: result.status, refunded: refundLeft, full: true };
   }
 
@@ -177,7 +178,7 @@ export async function cancelOrderItems(params: { orderId: string; itemIds?: stri
   });
   await notifyPurchaseOrderChanges(poChanges);
   await audit({ actorId: params.actorId, action: "ORDER_PARTIAL_CANCEL", entity: "Order", entityId: order.id, meta: { reason, amount, items: targets.length, preShip } });
-  await notifyBuyer(order.id, { kind: preShip ? "CANCELLED" : "REFUNDED", amount, reason, partial: true });
+  if (params.actorId !== order.sellerId) await notify({ userId: order.sellerId, type: "ORDER", title: `주문 ${order.orderNo} 일부 ${preShip ? "취소" : "환불"}`, body: `${formatKRW(amount)} 환불 · ${reason}`, link: "/seller/orders" });
   return { status: order.status, refunded: amount, full: false };
 }
 

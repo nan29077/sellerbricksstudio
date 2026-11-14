@@ -13,7 +13,6 @@ export const ORDER_FILTERS = [
   { key: "shipping", label: "배송중" },
   { key: "done", label: "배송완료" },
   { key: "closed", label: "취소 · 환불" },
-  { key: "claim", label: "구매자 요청" },
 ] as const;
 
 export function orderFilterWhere(key: string | undefined) {
@@ -22,12 +21,12 @@ export function orderFilterWhere(key: string | undefined) {
     case "shipping": return { OR: [{ status: "SHIPPED" as const }, { status: "PREPARING" as const, localShippedAt: { not: null } }] };
     case "done": return { status: "DELIVERED" as const };
     case "closed": return { status: { in: ["CANCELLED", "REFUNDED"] as ("CANCELLED" | "REFUNDED")[] } };
-    case "claim": return { claims: { some: { status: "REQUESTED" as const } } };
     default: return {};
   }
 }
 
 type OrderForDetail = Omit<OrderForFulfillment, "items" | "purchaseOrders"> & {
+  source?: string | null; // SHEET 면 셀러가 받는 분 정보를 직접 입력한 주문서
   buyerName: string; buyerPhone: string; buyerAddress?: string | null; shippingFee?: number | null; discountAmount?: number | null;
   deliveredAt?: Date | string | null; updatedAt?: Date | string | null;
   shipCarrier?: string | null; shipTrackingNumber?: string | null;
@@ -48,13 +47,14 @@ export function orderDetailProps(o: OrderForDetail, actor: OrderActor, piiRetent
   const ships = parts.localShipper === "FACILITY" ? actor.isFacilityOwner : parts.localShipper === "SELLER" ? actor.isSeller : false;
   const closedAt = o.localDeliveredAt ?? o.deliveredAt ?? (["CANCELLED", "REFUNDED"].includes(o.status as string) ? o.updatedAt : null);
   const expired = !!closedAt && Date.now() - new Date(closedAt).getTime() > piiRetentionDays * 86400000;
-  const full = actor.isAdmin || (ships && !expired);
+  // 셀러 주문서는 셀러가 받는 분 정보를 직접 적었으므로 셀러에게도 보여 준다 (보관 기간까지)
+  const full = actor.isAdmin || ((ships || (o.source === "SHEET" && actor.isSeller)) && !expired);
   const address = o.buyerAddress ?? "";
   const note = full ? ""
-    : ships ? `배송 완료 ${piiRetentionDays}일이 지나 구매자 정보를 가렸습니다`
+    : ships || o.source === "SHEET" ? `배송 완료 ${piiRetentionDays}일이 지나 받는 분 정보를 가렸습니다`
     : parts.localShipper === null && parts.hasBrand ? "브랜드 직배송 — 배송지는 브랜드 발주서로 전달됩니다"
-    : parts.localShipper === "FACILITY" ? "창고(스튜디오)가 출고합니다 — 구매자 정보는 출고 담당에게만 보입니다"
-    : "구매자 정보는 출고 담당에게만 보입니다";
+    : parts.localShipper === "FACILITY" ? "스토리지마켓 창고가 출고합니다 — 받는 분 정보는 출고 담당에게만 보입니다"
+    : "받는 분 정보는 출고 담당에게만 보입니다";
   return {
     lines: items.map((i) => ({
       id: i.id, name: i.productName, option: i.optionLabel, quantity: i.quantity, lineTotal: i.lineTotal,

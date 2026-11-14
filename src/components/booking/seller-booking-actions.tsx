@@ -3,7 +3,7 @@ import { appAlert } from "@/components/ui/app-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { CalendarClock, CalendarPlus, MessageSquareText, RotateCcw, Star, XCircle, Radio } from "lucide-react";
+import { CalendarClock, CalendarPlus, MessageSquareText, RotateCcw, Star, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Label, Textarea } from "@/components/ui/input";
@@ -80,9 +80,6 @@ export function SellerBookingActions({ booking, review }: Props) {
 
   return (
     <div className="flex flex-wrap gap-2 lg:justify-end">
-      {booking.status === "APPROVED" && upcoming && !booking.hasLive && (
-        <Link href={`/seller/live-sessions?bookingId=${booking.id}`}><Button size="sm"><Radio className="h-3.5 w-3.5" />라이브 준비</Button></Link>
-      )}
       {booking.status === "APPROVED" && upcoming && (
         <Button size="sm" variant="outline" onClick={downloadIcs}><CalendarPlus className="h-3.5 w-3.5" />캘린더 추가</Button>
       )}

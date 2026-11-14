@@ -79,7 +79,7 @@ export function BrandImportButton({ product, target, facilities = [] }: {
         {done ? (
           <div className="space-y-3 text-sm">
             <p className="rounded-xl bg-emerald-50 p-3 font-semibold text-emerald-800">
-              {done.kind === "SELLER" ? "내 브랜드 판매 상품에 담았습니다. 라이브 세션 만들기에서 '내 공간에서 방송'을 고르면 이 상품을 올릴 수 있어요. 주문이 들어오면 브랜드가 구매자에게 바로 배송합니다."
+              {done.kind === "SELLER" ? "내 브랜드 판매 상품에 담았습니다. 외부 라이브 플랫폼에서 팔고 '주문서 작성'에 이 상품을 담으면, 공급가를 결제하는 즉시 발주서가 브랜드로 전달되고 브랜드가 받는 분에게 바로 배송합니다."
                 : done.needsStock ? "창고 입고 방식으로 등록했습니다. 브랜드사에 입고를 요청하고, 입고 확인 후 판매가 시작됩니다."
                 : "창고(스튜디오) 판매 상품으로 등록했습니다. 셀러가 예약할 때 이 상품을 고를 수 있습니다."}
             </p>
@@ -112,7 +112,7 @@ export function BrandImportButton({ product, target, facilities = [] }: {
             </Label>
             <p className="rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
               공급가 {formatKRW(product.supplyPrice)} · 판매 1개당 차액 <b className={margin < 0 ? "text-red-600" : "text-navy"}>{formatKRW(margin)}</b>
-              <br />결제는 플랫폼이 받고, 플랫폼 수수료를 뺀 뒤 브랜드·창고(스튜디오)·셀러에게 정산합니다.
+              <br />{target === "SELLER" ? "판매가는 셀러가 외부 플랫폼에서 받는 참고 가격입니다. 주문서를 낼 때는 공급가(+스토리지마켓 출고 시 배송비)만 결제합니다." : "주문서 결제는 플랫폼이 받고, 플랫폼 수수료를 뺀 뒤 브랜드에 정산합니다."}
               <br />샘플 구매는 상품 카드의 &lsquo;샘플 신청&rsquo;에서 따로 진행합니다. (판매 상품 가져오기와 별개)
             </p>
             {target === "FACILITY" && (

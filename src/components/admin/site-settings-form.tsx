@@ -5,11 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea, Label } from "@/components/ui/input";
 import type { SiteSettings } from "@/lib/settings";
-import { HomeBackgroundPicker } from "@/components/admin/home-background-picker";
 import { api } from "@/lib/client-api";
 import { Save, Image as ImageIcon, Globe, CheckCircle2 } from "lucide-react";
 
-const editableKeys = ["homeBackground", "siteName", "siteDescription", "bannerEnabled", "bannerText", "bannerLinkLabel", "bannerLinkUrl"] as const;
+const editableKeys = ["siteName", "siteDescription", "bannerEnabled", "bannerText", "bannerLinkLabel", "bannerLinkUrl"] as const;
 
 export function SiteSettingsForm({ initial }: { initial: SiteSettings }) {
   const router = useRouter();
@@ -44,22 +43,11 @@ export function SiteSettingsForm({ initial }: { initial: SiteSettings }) {
 
   return (
     <div className="space-y-5">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <ImageIcon className="h-5 w-5 text-brand-500" />메인 여백 배경
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="mb-4 text-sm leading-6 text-slate-600">PC 양옆에 표시할 배경을 고르고 아래 설정 저장 버튼을 눌러주세요.</p>
-          <HomeBackgroundPicker value={form.homeBackground} onChange={(value) => set("homeBackground", value)} disabled={busy} />
-        </CardContent>
-      </Card>
       {/* 사이트 관리 */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Globe className="h-5 w-5 text-brand-500" />사이트 관리
+            <Globe className="h-5 w-5 text-brand-500" />사이트 기본 정보
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">

@@ -7,7 +7,8 @@ import { requireRole } from "@/lib/auth";
 import { runBookingMaintenance } from "@/lib/booking-automation";
 import { formatKRW } from "@/lib/utils";
 import { addDays, addMonths, hhmm, kstParts, kstStartOfMonth, WEEKDAYS } from "@/lib/kst";
-import { LIVE_STATUS, facilityTypeLabel } from "@/lib/status";
+import { ORDER_STATUS, facilityTypeLabel } from "@/lib/status";
+import { livePlatformLabel } from "@/lib/live-platforms";
 import { registeredSpaceThumbnail } from "@/lib/showcase";
 import {
   SOLD_ORDER_STATUSES, compactKRW, dailySeries, dday, deltaPct, greeting, hoursText, monthlySeries, overlapHours, todayLabel, zipSeries,
@@ -17,8 +18,8 @@ import {
   DashHero, DataNotice, Empty, HeroButton, HeroPanel, KpiTile, Panel, Pill, RankList, ShortcutGrid, TodoList, TrendChart,
 } from "@/components/dashboard/kit";
 import {
-  CalendarDays, CalendarPlus, CheckCircle2, CircleDollarSign, Clock, ExternalLink, Heart, MapPin, Megaphone,
-  MessageSquare, PackageCheck, Radio, Search, Share2, ShoppingBag, Star, Wallet,
+  CalendarDays, CalendarPlus, CheckCircle2, CircleDollarSign, Clock, ExternalLink, FileText, Heart, MapPin, Megaphone,
+  MessageSquare, PackageCheck, Search, Share2, ShoppingBag, SquarePlus, Star, Truck, Wallet,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -37,32 +38,31 @@ async function load(userId: string) {
   const sold = { in: [...SOLD_ORDER_STATUSES] };
 
   const [
-    orders, bookings, upcoming, lives, topProducts, settlePending, settlePaid,
-    reviewTodo, repliedInquiries, activePromos, plannedPosts, toShip, notPrepared, favorites, frequent,
+    orders, bookings, upcoming, sheets, topProducts, shipping, paidTotal,
+    reviewTodo, repliedInquiries, activePromos, plannedPosts, toShip, favorites, frequent,
   ] = await Promise.all([
-    prisma.order.findMany({ where: { sellerId: userId, status: sold, createdAt: { gte: sixStart < lastMonthStart ? sixStart : lastMonthStart } }, select: { createdAt: true, totalAmount: true, refundedAmount: true, liveSessionId: true } }),
+    prisma.order.findMany({ where: { sellerId: userId, source: "SHEET", status: sold, createdAt: { gte: sixStart < lastMonthStart ? sixStart : lastMonthStart } }, select: { createdAt: true, totalAmount: true, refundedAmount: true } }),
     prisma.booking.findMany({ where: { sellerId: userId, createdAt: { gte: lastMonthStart } }, select: { createdAt: true, startAt: true, endAt: true, status: true } }),
     prisma.booking.findMany({
       where: { sellerId: userId, status: { in: ["APPROVED", "PENDING"] }, endAt: { gte: now } },
       orderBy: { startAt: "asc" }, take: 5,
-      select: { id: true, status: true, startAt: true, endAt: true, purpose: true, facility: { select: { id: true, name: true, region: true, address: true } }, liveSession: { select: { id: true, status: true } } },
+      select: { id: true, status: true, startAt: true, endAt: true, purpose: true, facility: { select: { id: true, name: true, region: true, address: true } } },
     }),
-    prisma.liveSession.findMany({
-      where: { sellerId: userId }, orderBy: [{ scheduledStart: "desc" }, { createdAt: "desc" }], take: 5,
-      select: { id: true, title: true, status: true, scheduledStart: true, createdAt: true, facility: { select: { name: true } }, _count: { select: { orders: true, products: true } } },
+    prisma.order.findMany({
+      where: { sellerId: userId, source: "SHEET", status: { not: "PAYMENT_PENDING" } }, orderBy: { createdAt: "desc" }, take: 6,
+      select: { id: true, orderNo: true, status: true, createdAt: true, platform: true, externalOrderNo: true, buyerName: true, totalAmount: true, refundedAmount: true, _count: { select: { items: true } } },
     }),
     prisma.orderItem.groupBy({
-      by: ["productName"], where: { order: { sellerId: userId, status: sold, createdAt: { gte: monthStart } } },
+      by: ["productName"], where: { order: { sellerId: userId, source: "SHEET", status: sold, createdAt: { gte: monthStart } } },
       _sum: { quantity: true, lineTotal: true }, orderBy: { _sum: { lineTotal: "desc" } }, take: 5,
     }),
-    prisma.settlement.aggregate({ where: { sellerId: userId, status: { in: ["PENDING", "CONFIRMED"] } }, _sum: { commissionAmount: true }, _count: true }),
-    prisma.settlement.aggregate({ where: { sellerId: userId, status: "PAID" }, _sum: { commissionAmount: true } }),
+    prisma.order.count({ where: { sellerId: userId, source: "SHEET", status: "SHIPPED" } }),
+    prisma.order.aggregate({ where: { sellerId: userId, source: "SHEET", status: { in: [...SOLD_ORDER_STATUSES] } }, _sum: { totalAmount: true, refundedAmount: true } }),
     prisma.booking.count({ where: { sellerId: userId, status: "COMPLETED", review: null } }),
     prisma.facilityInquiry.count({ where: { sellerId: userId, reply: { not: null }, repliedAt: { gte: addDays(now, -7) } } }),
     prisma.sellerPromotion.count({ where: { sellerId: userId, isPublished: true, startAt: { lte: now }, endAt: { gte: now } } }),
     prisma.snsPost.count({ where: { sellerId: userId, status: "PLANNED", scheduledAt: { gte: now, lt: addDays(now, 7) } } }),
-    prisma.order.count({ where: { sellerId: userId, status: "PAID" } }),
-    prisma.booking.findMany({ where: { sellerId: userId, status: "APPROVED", startAt: { gte: now, lt: addDays(now, 3) }, liveSession: null }, select: { id: true }, orderBy: { startAt: "asc" } }),
+    prisma.order.count({ where: { sellerId: userId, source: "SHEET", status: { in: ["PAID", "PREPARING"] } } }),
     prisma.facilityFavorite.findMany({ where: { userId }, take: 4, orderBy: { createdAt: "desc" }, select: { facility: { select: { id: true, name: true, region: true, type: true, rating: true, status: true } } } }),
     prisma.booking.groupBy({ by: ["facilityId"], where: { sellerId: userId, status: { in: ["APPROVED", "COMPLETED"] } }, _count: { id: true }, orderBy: { _count: { id: "desc" } }, take: 4 }),
   ]);
@@ -86,10 +86,6 @@ async function load(userId: string) {
   const pBookings = bookings.filter((b) => b.createdAt < lastMonthSameDay);
   const usedHours = overlapHours(bookings.filter((b) => b.status === "APPROVED" || b.status === "COMPLETED"), monthStart, addMonths(monthStart, 1));
 
-  const gmvBySession = new Map<string, number>();
-  for (const o of orders) gmvBySession.set(o.liveSessionId, (gmvBySession.get(o.liveSessionId) ?? 0) + (o.totalAmount - o.refundedAmount));
-
-  const liveMonths = await prisma.liveSession.findMany({ where: { sellerId: userId, status: { in: ["LIVE", "ENDED"] }, createdAt: { gte: sixStart } }, select: { createdAt: true, scheduledStart: true } });
 
   return {
     gmv, gmvDelta: deltaPct(gmv, pOrders.reduce((s, o) => s + (o.totalAmount - o.refundedAmount), 0)),
@@ -98,13 +94,13 @@ async function load(userId: string) {
     gmvDaily: dailySeries(orders.filter((o) => o.createdAt >= addDays(now, -29)), 30, (o) => o.createdAt, (o) => (o.totalAmount - o.refundedAmount)),
     trend: zipSeries(
       monthlySeries(orders.filter((o) => o.createdAt >= sixStart), 6, (o) => o.createdAt, (o) => (o.totalAmount - o.refundedAmount)),
-      monthlySeries(liveMonths, 6, (l) => l.scheduledStart ?? l.createdAt),
+      monthlySeries(orders.filter((o) => o.createdAt >= sixStart), 6, (o) => o.createdAt),
     ),
-    upcoming, lives: lives.map((l) => ({ ...l, gmv: gmvBySession.get(l.id) ?? 0 })),
+    upcoming, sheets,
     topProducts, spaces: [...picked.values()],
-    settlePending: settlePending._sum.commissionAmount ?? 0, settlePendingCount: settlePending._count, settlePaid: settlePaid._sum.commissionAmount ?? 0,
+    shipping, paidTotal: (paidTotal._sum.totalAmount ?? 0) - (paidTotal._sum.refundedAmount ?? 0),
     pendingBookings: upcoming.filter((b) => b.status === "PENDING").length,
-    todo: { reviewTodo, repliedInquiries, activePromos, plannedPosts, toShip, notPrepared },
+    todo: { reviewTodo, repliedInquiries, activePromos, plannedPosts, toShip },
   };
 }
 
@@ -128,16 +124,16 @@ export default async function SellerDashboard() {
       <DashHero
         eyebrow={`SELLER STUDIO · ${todayLabel()}`}
         title={hello}
-        description="공간 예약부터 라이브 판매, 정산까지 — 오늘 챙길 일과 성과를 한눈에 확인하세요. 창고(스튜디오) 이용료는 무료입니다."
+        description="외부 라이브 플랫폼에서 판매하고 주문서를 내면, 브랜드 · 스토리지마켓이 받는 분에게 바로 보냅니다. 오늘 챙길 일과 성과를 한눈에 확인하세요."
         chips={[
-          ...(d.todo.notPrepared.length ? [{ label: `라이브 준비 필요 ${d.todo.notPrepared.length}건`, tone: "warn" as const }] : []),
+          ...(d.todo.toShip ? [{ label: `출고 준비 중 주문서 ${d.todo.toShip}건` }] : []),
           ...(d.pendingBookings ? [{ label: `승인 대기 ${d.pendingBookings}건` }] : []),
           { label: `이번 달 공간 이용 ${hoursText(d.usedHours)}` },
         ]}
-        actions={<><HeroButton href="/seller/bookings/new" primary><CalendarPlus className="h-4 w-4" />공간 예약하기</HeroButton><HeroButton href="/facilities"><Search className="h-4 w-4" />창고(스튜디오) 찾기</HeroButton></>}
+        actions={<><HeroButton href="/seller/orders/new" primary><SquarePlus className="h-4 w-4" />주문서 작성</HeroButton><HeroButton href="/seller/bookings/new"><CalendarPlus className="h-4 w-4" />공간 예약하기</HeroButton><HeroButton href="/facilities"><Search className="h-4 w-4" />창고(스튜디오) 찾기</HeroButton></>}
         aside={
           next && np ? (
-            <HeroPanel title="다음 일정" href={next.liveSession ? `/seller/live-sessions/${next.liveSession.id}` : next.status === "APPROVED" ? `/seller/live-sessions?bookingId=${next.id}` : "/seller/bookings"} cta={next.liveSession ? "라이브 관리" : next.status === "APPROVED" ? "라이브 준비하기" : "예약 확인"}>
+            <HeroPanel title="다음 일정" href="/seller/bookings" cta="예약 확인">
               <div className="flex items-center gap-3">
                 <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-brand-500 text-center text-navy">
                   <span><span className="block text-[11px] font-bold">{np.month}월</span><span className="block text-xl font-extrabold leading-none">{np.day}</span></span>
@@ -151,32 +147,31 @@ export default async function SellerDashboard() {
             </HeroPanel>
           ) : (
             <HeroPanel title="다음 일정" href="/facilities" cta="공간 둘러보기">
-              <p className="text-sm text-white/75">예정된 예약이 없어요. 상품이 준비된 창고(스튜디오)를 찾아 첫 방송을 잡아 보세요.</p>
+              <p className="text-sm text-white/75">예정된 예약이 없어요. 상품이 준비된 창고(스튜디오)를 찾아 방송 공간을 예약해 보세요.</p>
             </HeroPanel>
           )
         }
       />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiTile emphasis label="이번 달 라이브 매출" value={compactKRW(d.gmv)} delta={d.gmvDelta} sub="전월 동기 대비" icon={CircleDollarSign} tone="brand" spark={d.gmvDaily.map((x) => x.value)} href="/seller/orders" />
-        <KpiTile label="결제 완료 주문" value={d.orderCount.toLocaleString("ko-KR")} unit="건" sub={`객단가 ${compactKRW(d.aov)}`} icon={ShoppingBag} tone="navy" href="/seller/orders" />
+        <KpiTile emphasis label="이번 달 주문서 결제액" value={compactKRW(d.gmv)} delta={d.gmvDelta} sub="전월 동기 대비" icon={CircleDollarSign} tone="brand" spark={d.gmvDaily.map((x) => x.value)} href="/seller/settlements" />
+        <KpiTile label="이번 달 주문서" value={d.orderCount.toLocaleString("ko-KR")} unit="건" sub={`건당 ${compactKRW(d.aov)}`} icon={FileText} tone="navy" href="/seller/orders" />
         <KpiTile label="이번 달 예약" value={String(d.bookingCount)} unit="건" delta={d.bookingDelta} sub={`이용 ${hoursText(d.usedHours)}`} icon={CalendarDays} tone="violet" href="/seller/bookings" />
-        <KpiTile label="정산 예정 수익" value={compactKRW(d.settlePending)} sub={`누적 수령 ${compactKRW(d.settlePaid)}`} icon={Wallet} tone="green" href="/seller/settlements" />
+        <KpiTile label="배송 중" value={String(d.shipping)} unit="건" sub={`누적 결제 ${compactKRW(d.paidTotal)}`} icon={Truck} tone="green" href="/seller/orders?status=SHIPPED" />
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-        <Panel eyebrow="6 MONTHS" title="월별 라이브 매출 · 방송 횟수" action={{ href: "/seller/settlements", label: "정산 보기" }}>
-          <TrendChart data={d.trend} a={{ name: "매출", format: compactKRW }} b={{ name: "방송", format: (n) => `${n}회` }} height={180} />
+        <Panel eyebrow="6 MONTHS" title="월별 주문서 결제액 · 건수" action={{ href: "/seller/settlements", label: "결제 내역" }}>
+          <TrendChart data={d.trend} a={{ name: "결제액", format: compactKRW }} b={{ name: "주문서", format: (n) => `${n}건` }} height={180} />
         </Panel>
         <Panel eyebrow="TO DO" title="지금 챙길 일">
           <TodoList items={[
-            { label: "라이브 준비가 필요한 예약", desc: "3일 안에 이용하는데 방송이 아직 없어요", n: d.todo.notPrepared.length, href: d.todo.notPrepared[0] ? `/seller/live-sessions?bookingId=${d.todo.notPrepared[0].id}` : "/seller/live-sessions", icon: Radio, tone: "red", urgent: true },
-            { label: "발송 준비할 주문", desc: "결제가 끝난 주문을 처리하세요", n: d.todo.toShip, href: "/seller/orders", icon: PackageCheck, tone: "brand" },
+            { label: "출고 준비 중인 주문서", desc: "브랜드 · 스토리지마켓이 보낼 준비를 하고 있어요", n: d.todo.toShip, href: "/seller/orders?status=PAID", icon: PackageCheck, tone: "brand" },
             { label: "리뷰를 기다리는 이용 완료 예약", desc: "후기를 남기면 다음 예약에 도움이 돼요", n: d.todo.reviewTodo, href: "/seller/bookings?status=COMPLETED", icon: Star, tone: "amber" },
             { label: "최근 7일 답변 받은 문의", n: d.todo.repliedInquiries, href: "/seller/farm-reservations?tab=inquiries", icon: MessageSquare, tone: "blue" },
             { label: "진행 중인 이벤트", n: d.todo.activePromos, href: "/seller/marketing/events?status=ACTIVE", icon: Megaphone, tone: "violet" },
             { label: "7일 내 게시 예정 콘텐츠", n: d.todo.plannedPosts, href: "/seller/marketing", icon: Share2, tone: "sky" },
-          ]} emptyText="밀린 일이 없어요. 다음 방송을 준비해 볼까요?" />
+          ]} emptyText="밀린 일이 없어요. 판매한 주문이 있으면 주문서를 작성해 주세요." />
         </Panel>
       </div>
 
@@ -199,7 +194,7 @@ export default async function SellerDashboard() {
                       </span>
                       <span className="flex shrink-0 flex-col items-end gap-1">
                         <Pill tone={s.tone}>{s.label}</Pill>
-                        <span className="text-[11px] font-bold text-slate-500">{dday(b.startAt)}{b.status === "APPROVED" && (b.liveSession ? " · 방송 준비됨" : " · 방송 미등록")}</span>
+                        <span className="text-[11px] font-bold text-slate-500">{dday(b.startAt)}</span>
                       </span>
                     </Link>
                   </li>
@@ -208,32 +203,31 @@ export default async function SellerDashboard() {
             </ul>
           )}
         </Panel>
-        <Panel eyebrow="BEST SELLERS" title="이번 달 인기 상품" action={{ href: "/seller/orders", label: "주문 보기" }}>
+        <Panel eyebrow="BEST SELLERS" title="이번 달 주문서 인기 상품" action={{ href: "/seller/orders", label: "주문서 보기" }}>
           <RankList empty="이번 달 판매된 상품이 아직 없습니다"
-            items={d.topProducts.map((p) => ({ key: p.productName, name: p.productName, sub: `${(p._sum.quantity ?? 0).toLocaleString("ko-KR")}개 판매`, value: p._sum.lineTotal ?? 0, valueLabel: compactKRW(p._sum.lineTotal ?? 0) }))} />
+            items={d.topProducts.map((p) => ({ key: p.productName, name: p.productName, sub: `${(p._sum.quantity ?? 0).toLocaleString("ko-KR")}개 주문`, value: p._sum.lineTotal ?? 0, valueLabel: compactKRW(p._sum.lineTotal ?? 0) }))} />
         </Panel>
       </div>
 
       <ProductMixPanel scope={{ sellerId: user.id }} />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-        <Panel eyebrow="LIVE REPORT" title="최근 라이브 성과" action={{ href: "/seller/live-sessions", label: "라이브 관리" }}>
-          {d.lives.length === 0 ? <Empty icon={Radio} text="아직 진행한 라이브가 없습니다" action={{ href: "/seller/live-sessions", label: "라이브 만들기" }} /> : (
+        <Panel eyebrow="ORDER SHEETS" title="최근 주문서" action={{ href: "/seller/orders", label: "주문서 · 배송 현황" }}>
+          {d.sheets.length === 0 ? <Empty icon={FileText} text="아직 낸 주문서가 없습니다" action={{ href: "/seller/orders/new", label: "주문서 작성" }} /> : (
             <div className="-mx-1 overflow-x-auto">
               <table className="w-full min-w-[480px] text-sm rtable">
-                <thead><tr className="text-left text-[11px] font-bold text-slate-400"><th className="px-1 pb-2">방송</th><th className="px-1 pb-2">상태</th><th className="px-1 pb-2 text-right">상품</th><th className="px-1 pb-2 text-right">주문</th><th className="px-1 pb-2 text-right">매출</th></tr></thead>
+                <thead><tr className="text-left text-[11px] font-bold text-slate-400"><th className="px-1 pb-2">주문서</th><th className="px-1 pb-2">상태</th><th className="px-1 pb-2 text-right">상품</th><th className="px-1 pb-2 text-right">결제액</th></tr></thead>
                 <tbody className="divide-y divide-[#F0ECE6]">
-                  {d.lives.map((l) => {
-                    const st = LIVE_STATUS[l.status];
-                    const when = l.scheduledStart ?? l.createdAt;
-                    const tone = l.status === "LIVE" ? "red" : l.status === "READY" ? "blue" : "slate";
+                  {d.sheets.map((o) => {
+                    const st = ORDER_STATUS[o.status];
+                    const tone = o.status === "DELIVERED" ? "blue" : o.status === "SHIPPED" ? "green" : o.status === "CANCELLED" || o.status === "REFUNDED" ? "slate" : "amber";
+                    const p = kstParts(o.createdAt);
                     return (
-                      <tr key={l.id}>
-                        <td data-label="방송" className="max-w-0 px-1 py-2.5"><Link href={`/seller/live-sessions/${l.id}`} className="block truncate font-bold text-navy hover:text-brand-700">{l.title}</Link><span className="block truncate text-[11px] text-slate-500">{kstParts(when).month}/{kstParts(when).day} · {(l.facility?.name ?? "셀러 공간")}</span></td>
-                        <td data-label="상태" className="px-1 py-2.5"><Pill tone={tone}>{st?.label ?? l.status}</Pill></td>
-                        <td data-label="상품" className="px-1 py-2.5 text-right text-slate-600">{l._count.products}</td>
-                        <td data-label="주문" className="px-1 py-2.5 text-right text-slate-600">{l._count.orders}</td>
-                        <td data-label="매출" className="px-1 py-2.5 text-right font-extrabold text-navy">{formatKRW(l.gmv)}</td>
+                      <tr key={o.id}>
+                        <td data-label="주문서" className="max-w-0 px-1 py-2.5"><Link href={`/seller/orders?q=${encodeURIComponent(o.orderNo)}`} className="block truncate font-bold text-navy hover:text-brand-700">{o.buyerName} · {o.orderNo}</Link><span className="block truncate text-[11px] text-slate-500">{p.month}/{p.day} · {livePlatformLabel(o.platform)}{o.externalOrderNo ? ` · ${o.externalOrderNo}` : ""}</span></td>
+                        <td data-label="상태" className="px-1 py-2.5"><Pill tone={tone}>{st?.label ?? o.status}</Pill></td>
+                        <td data-label="상품" className="px-1 py-2.5 text-right text-slate-600">{o._count.items}</td>
+                        <td data-label="결제액" className="px-1 py-2.5 text-right font-extrabold text-navy">{formatKRW(o.totalAmount - o.refundedAmount)}</td>
                       </tr>
                     );
                   })}
@@ -265,12 +259,12 @@ export default async function SellerDashboard() {
 
       <Panel eyebrow="SHORTCUTS" title="바로가기">
         <ShortcutGrid cols="sm:grid-cols-2 xl:grid-cols-4" items={[
-          { title: "예약 신청", desc: "새 공간 예약 만들기", href: "/seller/bookings/new", icon: CalendarPlus, tone: "brand" },
-          { title: "라이브 관리", desc: "방송·상품번호 설정", href: "/seller/live-sessions", icon: Radio, tone: "red" },
-          { title: "주문 관리", desc: "결제·발송 처리", href: "/seller/orders", icon: ShoppingBag, tone: "navy", badge: d.todo.toShip },
-          { title: "정산 내역", desc: d.settlePendingCount ? `정산 예정 ${d.settlePendingCount}건` : "정산 현황 확인", href: "/seller/settlements", icon: Wallet, tone: "green" },
+          { title: "주문서 작성", desc: "화면 입력 · 엑셀 업로드", href: "/seller/orders/new", icon: SquarePlus, tone: "brand" },
+          { title: "주문서 · 배송 현황", desc: "출고 · 운송장 확인", href: "/seller/orders", icon: ShoppingBag, tone: "navy", badge: d.todo.toShip },
+          { title: "결제 · 정산 내역", desc: "주문서 결제 · 환불", href: "/seller/settlements", icon: Wallet, tone: "green" },
+          { title: "예약 신청", desc: "새 공간 예약 만들기", href: "/seller/bookings/new", icon: CalendarPlus, tone: "red" },
           { title: "마케팅 지원", desc: "SNS·광고 소재·이벤트", href: "/seller/marketing", icon: Megaphone, tone: "violet" },
-          { title: "카카오 알림톡", desc: "구독자 알림 관리", href: "/seller/kakao", icon: MessageSquare, tone: "amber" },
+          { title: "브랜드 상품 고르기", desc: "위탁배송 상품 담기", href: "/brands", icon: Star, tone: "amber" },
           { title: "예약 캘린더", desc: "월간 일정 보기", href: "/seller/bookings?view=calendar", icon: CheckCircle2, tone: "sky" },
           { title: "스토리지마켓 플랫폼", desc: "sellerbricks.co.kr", href: "https://sellerbricks.co.kr", icon: ExternalLink, tone: "slate" },
         ]} />

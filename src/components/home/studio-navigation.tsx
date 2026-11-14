@@ -7,7 +7,7 @@ import { signOut } from "next-auth/react";
 import { useRef } from "react";
 import type { Role } from "@prisma/client";
 import {
-  ArrowUpRight, CircleHelp, ClipboardList, Headset, House, LayoutDashboard, LogIn, LogOut,
+  ArrowUpRight, CircleHelp, Headset, House, LayoutDashboard, LogIn, LogOut,
   Map, Menu, ShoppingBag, UserCircle, Warehouse, X,
 } from "lucide-react";
 import { NotificationBell } from "@/components/layout/notification-bell";
@@ -103,7 +103,6 @@ function MenuItems({ account, desktop, onNavigate }: { account: Account; desktop
     { href: "/intro", label: "서비스 소개", icon: Map },
     { href: "/#spaces", label: "공간 찾기", icon: Warehouse, active: pathname.startsWith("/showcase/") },
     { href: "/brands", label: "브랜드샵", icon: ShoppingBag, active: pathname.startsWith("/brands") },
-    { href: "/order-lookup", label: "주문 조회", icon: ClipboardList },
     ...(home && home !== "/" ? [{ href: home, label: "대시보드", icon: LayoutDashboard }] : []),
     { href: "/support", label: desktop ? "도움말" : "도움말 · 문의하기", icon: CircleHelp, active: pathname === "/support" },
   ];

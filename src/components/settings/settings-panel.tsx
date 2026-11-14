@@ -96,7 +96,8 @@ export function SettingsPanel(props: SettingsPanelProps) {
   const [name, setName] = useState(props.name);
   const [phone, setPhone] = useState(props.phone);
   const [sns, setSns] = useState(props.sns ?? { instagram: "", youtube: "", tiktok: "" });
-  const [imageIndex, setImageIndex] = useState(props.profileImageIndex);
+  const imageIndex = props.profileImageIndex;
+  const animalLabel = PROFILE_ANIMALS[imageIndex - 1]?.label;
   const [avatarUrl, setAvatarUrl] = useState(props.avatarUrl);
   const [photoChanged, setPhotoChanged] = useState(false);
   const [readingPhoto, setReadingPhoto] = useState(false);
@@ -163,7 +164,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name, phone, profileImageIndex: imageIndex, sns,
+          name, phone, sns,
           ...(photoChanged ? { avatarUrl } : {}),
         }),
       });
@@ -276,7 +277,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
                 />
                 <div>
                   <p className="font-bold text-navy">프로필 사진</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{avatarUrl ? "내 사진이 프로필에 우선 표시됩니다." : "선택한 동물 캐릭터가 프로필에 표시됩니다."}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{avatarUrl ? "내 사진이 프로필에 우선 표시됩니다." : "내 동물 캐릭터가 프로필에 표시됩니다."}</p>
                 </div>
               </div>
               <div>
@@ -297,28 +298,12 @@ export function SettingsPanel(props: SettingsPanelProps) {
                 <p className="mt-2 text-xs text-muted-foreground">JPG, PNG, WebP · 10MB 이하</p>
                 {photoError && <p role="alert" className="mt-2 text-xs text-red-700">{photoError}</p>}
               </div>
-              <div>
-                <p className="mb-2 text-sm font-medium text-navy">동물 캐릭터 선택</p>
-                {avatarUrl && <p className="mb-2 text-xs text-muted-foreground">내 사진을 제거하면 여기서 선택한 캐릭터가 표시됩니다.</p>}
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(44px,48px))] gap-2">
-                  {PROFILE_ANIMALS.map((animal, index) => (
-                    <button
-                      key={animal.id}
-                      type="button"
-                      disabled={profileSaving}
-                      onClick={() => { setImageIndex(index + 1); setProfileMsg(null); }}
-                      className={cn(
-                        "relative aspect-square overflow-hidden rounded-full border-2 transition",
-                        imageIndex === index + 1 ? "border-brand-500 ring-2 ring-brand-200" : "border-transparent hover:border-brand-300",
-                      )}
-                      aria-label={animal.label}
-                      title={animal.label}
-                      aria-pressed={imageIndex === index + 1}
-                    >
-                      <Image src={getProfileImage(index + 1)} alt="" fill unoptimized className="object-cover" />
-                    </button>
-                  ))}
-                </div>
+              <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-3">
+                <Image src={getProfileImage(imageIndex)} alt="" width={44} height={44} unoptimized className="h-11 w-11 shrink-0 rounded-full border border-brand-200 bg-white object-cover" />
+                <p className="text-xs text-muted-foreground">
+                  <b className="text-navy">내 동물 캐릭터{animalLabel ? ` · ${animalLabel}` : ""}</b><br />
+                  가입할 때 무작위로 정해지며 바꿀 수 없습니다.{avatarUrl ? " 내 사진을 제거하면 이 캐릭터가 표시됩니다." : ""}
+                </p>
               </div>
             </div>
             <div className="min-w-0 space-y-4 border-t border-border pt-5 xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">

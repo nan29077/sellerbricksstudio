@@ -11,6 +11,7 @@ import { StatusTabs } from "@/components/list/status-tabs";
 import { Pagination } from "@/components/list/pagination";
 import { CsvButton } from "@/components/list/csv-button";
 import { ResourceForm, PatchButton, type Field } from "@/components/resource-form";
+import { livePlatformLabel } from "@/lib/live-platforms";
 import { ROLE_LABELS } from "@/lib/rbac";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { addDays } from "@/lib/kst";
@@ -50,7 +51,7 @@ export default async function AdminUsers({ searchParams }: { searchParams: SP })
   const [rows, total, byRole, inactive, newThisWeek, activeRecent] = await Promise.all([
     prisma.user.findMany({
       where, skip, take, orderBy: sort === "login" ? { lastLoginAt: { sort: "desc", nulls: "last" } } : { createdAt: "desc" },
-      include: { profile: true, _count: { select: { bookings: true, ownedFacilities: true, managedFacilities: true } } },
+      include: { profile: true, _count: { select: { bookings: true, ownedFacilities: true, managedFacilities: true, orders: true } } },
     }),
     prisma.user.count({ where }),
     prisma.user.groupBy({ by: ["role"], where: { role: { not: "BUYER" } }, _count: true }),
@@ -100,11 +101,12 @@ export default async function AdminUsers({ searchParams }: { searchParams: SP })
                       <p className="font-semibold text-navy">{u.profile?.name ?? "-"}</p>
                       <p className="text-xs text-slate-500">{u.email}</p>
                       {(u.profile?.phone || u.profile?.companyName) && <p className="text-[11px] text-slate-400">{[u.profile?.companyName, u.profile?.phone].filter(Boolean).join(" · ")}</p>}
+                      {u.role === "SELLER" && (u.profile?.livePlatforms?.length ?? 0) > 0 && <p className="mt-0.5 max-w-xs text-[11px] text-brand-800">플랫폼: {u.profile!.livePlatforms.map((c) => livePlatformLabel(c, u.profile!.livePlatformEtc)).join(", ")}</p>}
                       {u.adminMemo && <p className="mt-1 max-w-xs truncate rounded bg-amber-50 px-2 py-0.5 text-[11px] text-amber-800" title={u.adminMemo}>📝 {u.adminMemo}</p>}
                     </td>
                     <td data-label="역할" className="px-4 py-3"><Badge tone={ROLE_TONE[u.role] ?? "gray"}>{ROLE_LABELS[u.role]}</Badge></td>
                     <td data-label="활동" className="whitespace-nowrap px-4 py-3 text-xs text-slate-600">
-                      {u.role === "SELLER" && `예약 ${u._count.bookings}건`}
+                      {u.role === "SELLER" && `예약 ${u._count.bookings}건 · 주문서 ${u._count.orders}건`}
                       {u.role === "FACILITY_ADMIN" && `창고(스튜디오) ${u._count.ownedFacilities}곳`}
                       {u.role === "MANAGER" && `담당 ${u._count.managedFacilities}곳`}
                     </td>

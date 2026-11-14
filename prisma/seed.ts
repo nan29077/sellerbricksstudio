@@ -37,9 +37,11 @@ async function main() {
     update: {},
     create: {
       email: "seller@sellerbricks.kr", passwordHash: pw, role: Role.SELLER, profileImageIndex: 16,
-      profile: { create: { name: "테스트셀러", companyName: "셀러스토어", phone: "010-1234-5678" } },
+      profile: { create: { name: "테스트셀러", companyName: "셀러스토어", phone: "010-1234-5678", livePlatforms: ["SELLERBRICKS", "CLICKMATE", "GRIP"] } },
     },
   });
+  // 셀러가 쓰는 판매 플랫폼 (가입 시 필수) — 예전 시드로 만든 계정도 채운다
+  await prisma.profile.updateMany({ where: { userId: seller.id, livePlatforms: { isEmpty: true } }, data: { livePlatforms: ["SELLERBRICKS", "CLICKMATE", "GRIP"] } });
 
   // 창고 운영 매니저 수수료 5%
   await prisma.managerCommissionRule.upsert({
@@ -152,40 +154,27 @@ async function main() {
   });
   if (!(await prisma.brandProduct.count({ where: { shopId: shop.id } }))) {
     await prisma.brandProduct.createMany({ data: [
-      { shopId: shop.id, name: "온유 수분 진정 크림 50ml", category: "코스메틱", subCategory: "스킨케어", supplyPrice: 14000, consumerPrice: 32000, stock: 500, samplePrice: 0, sampleStock: 50, sampleLimitPerBuyer: 1, options: "용량:50ml,100ml", leadDays: 2 },
-      { shopId: shop.id, name: "온유 비건 선크림", category: "코스메틱", subCategory: "스킨케어", supplyPrice: 11000, consumerPrice: 25000, stock: 300, samplePrice: 3000, sampleStock: 30, sampleLimitPerBuyer: 2, leadDays: 1 },
-      { shopId: shop.id, name: "그래놀라 바 12입", category: "식품", subCategory: "과자·간식", supplyPrice: 9000, consumerPrice: 19800, stock: 800, samplePrice: null, sampleStock: 0, allowDropship: true, allowWarehouse: true, leadDays: 2 },
+      { shopId: shop.id, name: "온유 수분 진정 크림 50ml", category: "코스메틱", subCategory: "스킨케어", supplyPrice: 14000, consumerPrice: 32000, stock: 500, samplePrice: 0, sampleStock: 50, sampleLimitPerBuyer: 1, options: "용량:50ml,100ml", allowDropship: true, allowWarehouse: false, leadDays: 2 },
+      { shopId: shop.id, name: "온유 비건 선크림", category: "코스메틱", subCategory: "스킨케어", supplyPrice: 11000, consumerPrice: 25000, stock: 300, samplePrice: 3000, sampleStock: 30, sampleLimitPerBuyer: 2, allowDropship: true, allowWarehouse: true, leadDays: 1 },
+      { shopId: shop.id, name: "그래놀라 바 12입", category: "식품", subCategory: "과자·간식", supplyPrice: 9000, consumerPrice: 19800, stock: 800, samplePrice: null, sampleStock: 0, allowDropship: false, allowWarehouse: true, leadDays: 2 },
     ] });
   }
-
-  // ---------------- 알림톡 템플릿 ----------------
-  await prisma.notificationTemplate.upsert({
-    where: { code: "LIVE_OPEN" },
-    update: {},
-    create: {
-      code: "LIVE_OPEN", name: "라이브 시작 안내",
-      content: "[스토리지마켓] 오늘 오후 8시 라이브 방송이 시작됩니다. 아래 링크에서 상품번호로 간편하게 구매하세요. {방송링크}",
-    },
-  });
-
-  // ---------------- 카카오 채널 (셀러) ----------------
-  const channel = await prisma.kakaoChannel.create({
-    data: {
-      sellerId: seller.id, channelName: "셀러스토어 채널", plusFriendId: "@sellerstore",
-      subscribers: { create: [
-        { name: "구매자A", phone: "010-1111-2222" },
-        { name: "구매자B", phone: "010-3333-4444" },
-        { name: "구매자C", phone: "010-5555-6666" },
-      ] },
-    },
-  });
+  // 셀러가 고른 위탁배송 상품 (주문서에 바로 담을 수 있다)
+  const cream = await prisma.brandProduct.findFirst({ where: { shopId: shop.id, name: "온유 수분 진정 크림 50ml" }, select: { id: true } });
+  if (cream) {
+    await prisma.sellerBrandProduct.upsert({
+      where: { sellerId_brandProductId: { sellerId: seller.id, brandProductId: cream.id } },
+      update: {},
+      create: { sellerId: seller.id, brandProductId: cream.id, salePrice: 29000 },
+    });
+  }
 
   // ---------------- 플랫폼 기본 수수료율 (창고(스튜디오) 예약 정산용) ----------------
   if (!(await prisma.commissionRule.findFirst({ where: { scope: "PLATFORM" } }))) {
     await prisma.commissionRule.create({ data: { scope: "PLATFORM", commissionType: "PERCENT", commissionValue: 10 } });
   }
 
-  console.log("Seed 완료:", { brand: brandUser.email, admin: admin.email, manager: manager.email, seller: seller.email, facilities: facilities.length, channel: channel.channelName });
+  console.log("Seed 완료:", { brand: brandUser.email, admin: admin.email, manager: manager.email, seller: seller.email, facilities: facilities.length });
 }
 
 main()

@@ -22,10 +22,22 @@ const nextConfig = (phase) => ({
   reactStrictMode: true,
   poweredByHeader: false,
   // src/instrumentation.ts (선택: INTERNAL_CRON=1 일 때 서버 내장 스케줄러)
-  experimental: { instrumentationHook: true },
+  experimental: { instrumentationHook: true, serverComponentsExternalPackages: ["exceljs"] },
   images: { remotePatterns: imageHosts.map((hostname) => ({ protocol: "https", hostname })) },
   // ESLint 는 `npm run lint` 로 따로 돌린다 (빌드는 TypeScript 타입 체크만으로 막는다)
   eslint: { ignoreDuringBuilds: true },
+  // 없어진 화면의 예전 주소 (2026-11-14): 구매자 · 방송 기능 삭제, 사이트 관리 탭 병합
+  async redirects() {
+    return [
+      { source: "/admin/site-settings", destination: "/admin/site-management?tab=basic", permanent: false },
+      { source: "/admin/home-background", destination: "/admin/site-management?tab=background", permanent: false },
+      { source: "/admin/live-settings", destination: "/admin/site-management?tab=access", permanent: false },
+      { source: "/seller/live-sessions/:path*", destination: "/seller/orders", permanent: false },
+      { source: "/seller/kakao", destination: "/seller/orders", permanent: false },
+      { source: "/seller/marketing/coupons", destination: "/seller/orders", permanent: false },
+      { source: "/facility/live-sessions/:path*", destination: "/facility/orders", permanent: false },
+    ];
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
