@@ -1490,3 +1490,31 @@ model SiteNotice {
 
   @@index([isPublished, createdAt])
 }
+
+/// 메인 '라이브 커머스' 플레이어에 보여 줄 외부 방송 (2026-11-14)
+///  - MANUAL: 최고관리자가 외부 방송 주소(유튜브 · 그립 · 클릭메이트 …)를 직접 입력
+///  - SELLERBRICKS: 셀러브릭스에서 자체 송출 중인 방송을 연동(웹훅 · 피드)으로 받아 온다
+model ExternalBroadcast {
+  id           String    @id @default(cuid())
+  source       String    @default("MANUAL") // MANUAL | SELLERBRICKS
+  externalId   String? // 셀러브릭스 방송 ID (MANUAL 은 비움)
+  title        String
+  sellerName   String    @default("")
+  platform     String    @default("ETC") // live-platforms 코드
+  url          String // 시청 주소 (새 창으로 열기)
+  embedUrl     String? // 끼워 넣을 수 있는 플레이어 주소 (허용 호스트만)
+  hlsUrl       String? // HLS(.m3u8) 재생 주소 (셀러브릭스 자체 송출)
+  thumbnailUrl String?
+  status       String    @default("LIVE") // SCHEDULED | LIVE | ENDED
+  startsAt     DateTime?
+  endsAt       DateTime?
+  isVisible    Boolean   @default(true) // 최고관리자가 메인에서 숨김
+  sortOrder    Int       @default(0)
+  lastSyncedAt DateTime? // 연동으로 마지막으로 받은 시각
+  createdBy    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([source, externalId])
+  @@index([status, isVisible])
+}

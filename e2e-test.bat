@@ -7,6 +7,7 @@ node scripts/simulate-brand-flow.mjs > e2e-test.log 2>&1
 node scripts/simulate-izbeau-features.mjs >> e2e-test.log 2>&1
 node scripts/simulate-order-sheets.mjs >> e2e-test.log 2>&1
 node scripts/simulate-storage-ops.mjs >> e2e-test.log 2>&1
+node scripts/simulate-broadcasts.mjs >> e2e-test.log 2>&1
 type e2e-test.log
 echo.
 echo Done. This window closes in 10 seconds.
