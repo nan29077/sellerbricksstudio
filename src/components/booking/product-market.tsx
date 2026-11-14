@@ -6,7 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { cn, formatKRW, sellerUnitProfit } from "@/lib/utils";
-import { facilityTypeLabel, facilityTypeTone } from "@/lib/status";
+import { facilityTypeLabel } from "@/lib/status";
+import { PriceLine, ProductCard, ProductGrid, type ProductView } from "@/components/shop/product-card";
+
+const PRODUCT_FALLBACK = "/images/placeholder/product.svg";
 
 export type MarketItem = {
   id: string; name: string; category: string; description: string | null; image: string | null;
@@ -21,7 +24,7 @@ const KEY = "sb.productPicks";
 const commissionOf = (i: { commissionType: string; commissionValue: number; salePrice: number; supplyPrice?: number | null }) => sellerUnitProfit(i);
 
 // 상품 카드 목록 + 담은 상품(창고별) 바구니. 담은 내용은 페이지를 넘겨도 유지된다(이 브라우저 탭 한정).
-export function ProductMarket({ items }: { items: MarketItem[] }) {
+export function ProductMarket({ items, view = "grid" }: { items: MarketItem[]; view?: ProductView }) {
   const [picks, setPicks] = useState<Record<string, Pick>>({});
   const [open, setOpen] = useState(false);
   const [detail, setDetail] = useState<MarketItem | null>(null);
@@ -50,45 +53,32 @@ export function ProductMarket({ items }: { items: MarketItem[] }) {
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+      <ProductGrid view={view}>
         {items.map((i) => {
           const q = picks[i.id]?.qty ?? 0;
           const off = i.consumerPrice > i.salePrice ? Math.round((1 - i.salePrice / i.consumerPrice) * 100) : 0;
           return (
-            <div key={i.id} className={cn("flex flex-col overflow-hidden rounded-2xl border-2 bg-white transition", q ? "border-brand-500 shadow-md" : "border-[#E9E5DC]")}>
-              <button type="button" onClick={() => setDetail(i)} className="relative aspect-square bg-muted text-left">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                {i.image ? <img src={i.image} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Package className="h-10 w-10 text-slate-300" /></div>}
-                {off > 0 && <span className="absolute left-2 top-2 rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-bold text-white">-{off}%</span>}
-                {i.stock === 0 && <span className="absolute inset-0 flex items-center justify-center bg-white/70 text-sm font-bold text-slate-600">품절</span>}
-              </button>
-              <div className="flex flex-1 flex-col gap-1 p-3">
-                <p className="text-[11px] text-slate-500">{i.category}{i.bookedCount > 0 && ` · ${i.bookedCount}회 예약`}</p>
-                <button type="button" onClick={() => setDetail(i)} className="line-clamp-2 text-left text-sm font-bold text-navy hover:underline">{i.name}</button>
-                <p className="text-base font-extrabold text-brand-700">{formatKRW(i.salePrice)}{off > 0 && <span className="ml-1 text-[11px] font-normal text-slate-400 line-through">{formatKRW(i.consumerPrice)}</span>}</p>
-                {i.supplyPrice != null
-                  ? <p className="text-[11px] font-semibold text-purple-700">공급가 {formatKRW(i.supplyPrice)} · 개당 마진 {formatKRW(commissionOf(i))}</p>
-                  : <p className="text-[11px] font-semibold text-purple-700">개당 수익 {formatKRW(commissionOf(i))}{i.commissionType === "PERCENT" && ` (${i.commissionValue}%)`}</p>}
-                <Link href={`/facilities/${i.facility.id}`} className="mt-auto flex items-center gap-1 truncate pt-1 text-[11px] text-slate-500 hover:underline">
-                  <Badge tone={facilityTypeTone(i.facility.type)} className="shrink-0 px-1.5 py-0 text-[11px]">{facilityTypeLabel(i.facility.type)}</Badge>
-                  <span className="truncate">{i.facility.name} · {i.facility.region}</span>
-                </Link>
-                <div className="mt-1.5">
-                  {q === 0 ? (
-                    <Button size="sm" variant="outline" className="w-full" disabled={i.stock === 0} onClick={() => setQty(i, 1)}><Plus className="h-4 w-4" />방송 상품 담기</Button>
-                  ) : (
-                    <div className="flex items-center gap-1">
-                      <button type="button" onClick={() => setQty(i, q - 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border" aria-label="수량 줄이기"><Minus className="h-4 w-4" /></button>
-                      <input value={q} inputMode="numeric" onChange={(e) => setQty(i, Number(e.target.value.replace(/\D/g, "")) || 0)} className="h-9 min-w-0 flex-1 rounded-lg border border-border text-center text-sm font-bold" aria-label="판매 예정 수량" />
-                      <button type="button" onClick={() => setQty(i, q + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border" aria-label="수량 늘리기"><Plus className="h-4 w-4" /></button>
-                    </div>
-                  )}
+            <ProductCard key={i.id} view={view} onOpen={() => setDetail(i)} selected={q > 0}
+              image={i.image} fallback={PRODUCT_FALLBACK} title={i.name} cover={i.stock === 0 ? "품절" : undefined}
+              brand={{ name: `${i.facility.name} · ${i.facility.region}` }}
+              status={q > 0 ? { label: `${q}개 담음`, tone: "navy" } : undefined}
+              subtitle={<>{i.category}{i.bookedCount > 0 && ` · ${i.bookedCount}회 예약`}</>}
+              price={<PriceLine value={formatKRW(i.salePrice)} rate={off} strike={off > 0 ? formatKRW(i.consumerPrice) : undefined}
+                note={<span className="text-purple-700">{i.supplyPrice != null ? `공급 ${formatKRW(i.supplyPrice)} · 마진 ${formatKRW(commissionOf(i))}` : `개당 수익 ${formatKRW(commissionOf(i))}${i.commissionType === "PERCENT" ? ` (${i.commissionValue}%)` : ""}`}</span>} />}
+              chips={[{ label: facilityTypeLabel(i.facility.type), tone: i.facility.type === "STUDIO" ? "violet" : "blue" }, i.facility.autoApprove && { label: "즉시 확정", tone: "green" }]}
+              hideDetail
+              actions={q === 0 ? (
+                <Button size="sm" variant="outline" className="h-9 w-full rounded-xl text-xs" disabled={i.stock === 0} onClick={() => setQty(i, 1)}><Plus className="h-4 w-4" />방송 상품 담기</Button>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <button type="button" onClick={() => setQty(i, q - 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border" aria-label="수량 줄이기"><Minus className="h-4 w-4" /></button>
+                  <input value={q} inputMode="numeric" onChange={(e) => setQty(i, Number(e.target.value.replace(/\D/g, "")) || 0)} className="h-9 min-w-0 flex-1 rounded-lg border border-border text-center text-sm font-bold" aria-label="판매 예정 수량" />
+                  <button type="button" onClick={() => setQty(i, q + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border" aria-label="수량 늘리기"><Plus className="h-4 w-4" /></button>
                 </div>
-              </div>
-            </div>
+              )} />
           );
         })}
-      </div>
+      </ProductGrid>
 
       {count > 0 && (
         <div className="fixed inset-x-0 bottom-16 z-40 px-3 md:bottom-4 md:left-auto md:right-6 md:w-[420px] md:px-0">

@@ -9,6 +9,7 @@ import { Kpi } from "@/components/list/charts";
 import { EmptyState } from "@/components/ui/empty";
 import { Button } from "@/components/ui/button";
 import { ProductMarket, type MarketItem } from "@/components/booking/product-market";
+import { ProductToolbar, ViewToggle, viewOf } from "@/components/shop/product-card";
 import { pageOf, sp, type SP } from "@/lib/list";
 import { CalendarPlus, Package, Warehouse, Percent, Boxes } from "lucide-react";
 
@@ -51,6 +52,7 @@ export default async function SellerProducts({ searchParams }: { searchParams: S
       include: {
         product: { select: { name: true, category: true, description: true, thumbnailUrl: true, images: { take: 1, orderBy: { sortOrder: "asc" }, select: { url: true } } } },
         facility: { select: { id: true, name: true, type: true, region: true, rating: true, autoApprove: true } },
+        brandProduct: { select: { imageUrl: true } },
         _count: { select: { bookingProducts: true } },
       },
     }).catch(() => []),
@@ -63,7 +65,7 @@ export default async function SellerProducts({ searchParams }: { searchParams: S
 
   const items: MarketItem[] = rows.map((r) => ({
     id: r.id, name: r.product.name, category: r.product.category, description: r.product.description,
-    image: r.product.thumbnailUrl ?? r.product.images[0]?.url ?? null,
+    image: r.product.thumbnailUrl ?? r.product.images[0]?.url ?? r.brandProduct?.imageUrl ?? null,
     salePrice: r.salePrice, consumerPrice: r.consumerPrice, stock: r.stock, shippingInfo: r.shippingInfo,
     commissionType: r.commissionType, commissionValue: r.commissionValue, bookedCount: r._count.bookingProducts, supplyPrice: r.supplyPrice,
     facility: { id: r.facility.id, name: r.facility.name, type: r.facility.type, region: r.facility.region, rating: r.facility.rating, autoApprove: r.facility.autoApprove },
@@ -101,7 +103,8 @@ export default async function SellerProducts({ searchParams }: { searchParams: S
           action={<Link href="/seller/bookings/new"><Button>장소 예약하기</Button></Link>} />
       ) : (
         <>
-          <ProductMarket items={items} />
+          <ProductToolbar count={total} toggle={<ViewToggle base={BASE} params={searchParams} view={viewOf(searchParams)} />} />
+          <ProductMarket items={items} view={viewOf(searchParams)} />
           <Pagination base={BASE} params={searchParams} page={page} size={size} total={total} />
         </>
       )}

@@ -29,7 +29,7 @@ export function canSeeSupplyPrice(role?: Role | null) {
 export const SUPPLY_PRICE_HIDDEN_NOTE = "공급가는 셀러 · 스토리지마켓 계정으로 로그인하면 볼 수 있습니다";
 
 export function brandProductHref(shopId: string, productId: string, base = "/brands") {
-  return `${base}/${shopId}?product=${encodeURIComponent(productId)}#shop-products`;
+  return `${base}/${shopId}?product=${encodeURIComponent(productId)}`;
 }
 
 export function brandArtworkFor(category: string) {

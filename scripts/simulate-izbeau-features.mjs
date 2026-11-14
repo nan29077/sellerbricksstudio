@@ -84,12 +84,14 @@ async function main() {
   ok(pg.status === 200 && !pg.text.includes(priceText) && pg.text.includes("로그인하면 볼 수 있습니다"), "비로그인: 브랜드샵에 공급가 숨김 + 안내 문구", { status: pg.status, has: pg.text.includes(priceText) });
   ok(!pg.text.includes("최저 판매가"), "비로그인: 최저 판매가 숨김");
   ok(pg.text.includes("39,000"), "비로그인: 권장 소비자가는 표시");
-  ok(pg.text.includes("창고 입고(최소 10개)"), "MOQ 표시");
   pg = await guest.page(`/brands/${shopId}?product=${pid}`);
+  ok(pg.text.includes("창고 입고(최소 10개)"), "MOQ 표시 (상품 상세)");
   ok(pg.text.includes("상품 정보 고시") && pg.text.includes("제조일로부터 24개월") && pg.text.includes("기능성화장품 심사 완료"), "상품 상세에 상품 정보 고시 표시");
   ok(!pg.text.includes(priceText), "비로그인: 상품 상세에도 공급가 없음");
   pg = await seller.page(`/brands/${shopId}`);
-  ok(pg.text.includes(priceText) && pg.text.includes("최저 판매가"), "셀러: 공급가·최저 판매가 표시");
+  ok(pg.text.includes(priceText), "셀러: 목록 카드에 공급가 표시");
+  pg = await seller.page(`/brands/${shopId}?product=${pid}`);
+  ok(pg.text.includes(priceText) && pg.text.includes("최저 판매가"), "셀러: 상품 상세에 공급가·최저 판매가 표시");
   pg = await fac.page(`/brands/${shopId}`);
   ok(pg.text.includes(priceText), "창고: 공급가 표시");
   pg = await admin.page(`/brands/${shopId}`);

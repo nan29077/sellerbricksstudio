@@ -1,3 +1,4 @@
+import { PriceLine, ProductCard, ProductGrid, ProductToolbar, ViewToggle, viewOf } from "@/components/shop/product-card";
 import Link from "next/link";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -36,6 +37,7 @@ const EDIT_FIELDS: Field[] = [
 export async function FacilityProductsManager({ searchParams, admin = false }: { searchParams: SP; admin?: boolean }) {
   const user = await requireRole(admin ? ["SUPER_ADMIN"] : ["SUPER_ADMIN", "MANAGER"]);
   const q = sp(searchParams, "q");
+  const view = viewOf(searchParams);
   const state = sp(searchParams, "state");
   const fid = sp(searchParams, "facility");
   const adminFacility = admin && fid ? await prisma.facility.findUnique({ where: { id: fid }, select: { id: true, name: true } }) : null;
@@ -55,7 +57,7 @@ export async function FacilityProductsManager({ searchParams, admin = false }: {
     prisma.facility.findMany({ where: { id: { in: facIds } }, select: { id: true, name: true } }),
     prisma.facilityProduct.findMany({
       where, orderBy: [{ isSellable: "desc" }, { createdAt: "desc" }],
-      include: { product: true, facility: { select: { name: true } }, _count: { select: { bookingProducts: true, liveSessionProducts: true } } },
+      include: { product: { include: { images: { select: { url: true }, take: 1, orderBy: { sortOrder: "asc" } } } }, brandProduct: { select: { imageUrl: true } }, facility: { select: { name: true } }, _count: { select: { bookingProducts: true, liveSessionProducts: true } } },
     }),
     // 다가오는 예약(대기·승인)에서 요청된 상품별 수량
     prisma.bookingProduct.groupBy({
@@ -99,55 +101,39 @@ export async function FacilityProductsManager({ searchParams, admin = false }: {
           description="상품을 등록하면 셀러가 상품을 보고 바로 예약할 수 있습니다."
           action={<Link href={newProductHref}><Button>첫 상품 등록</Button></Link>} />
       ) : (
-        <div className="space-y-3">
+        <>
+        <ProductToolbar count={products.length} toggle={<ViewToggle base={admin ? "/admin/facility-products" : "/facility/products"} params={searchParams} view={view} />} />
+        <ProductGrid view={view}>
           {products.map((fp) => {
             const unit = sellerUnitProfit(fp);
             const r = req.get(fp.id);
             const short = !!r && r.qty > fp.stock;
             return (
-              <Card key={fp.id} className={fp.isSellable ? "" : "opacity-70"}>
-                <CardContent className="flex flex-col gap-3 p-4 sm:flex-row">
-                  <div className="flex min-w-0 flex-1 gap-4">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    {fp.product.thumbnailUrl ? <img src={fp.product.thumbnailUrl} alt="" className="h-20 w-20 shrink-0 rounded-xl bg-muted object-cover" />
-                      : <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-muted"><Package className="h-7 w-7 text-slate-300" /></div>}
-                    <div className="min-w-0 flex-1">
-                      <div className="mb-1 flex flex-wrap items-center gap-1.5">
-                        <Badge tone={fp.isSellable ? "green" : "gray"}>{fp.isSellable ? "판매중" : "중단"}</Badge>
-                        <span className="text-xs text-muted-foreground">{fp.product.category}{fp.product.sku && ` · ${fp.product.sku}`}</span>
-                        {facilities.length > 1 && <span className="text-xs text-slate-500">· {fp.facility.name}</span>}
-                      </div>
-                      <p className="truncate font-bold text-navy">{fp.product.name}</p>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-                        <span>판매가 <b className="text-navy">{formatKRW(fp.salePrice)}</b></span>
-                        <span className={fp.stock <= 10 ? "font-semibold text-amber-700" : ""}>재고 {fp.stock.toLocaleString()}개</span>
-                        {fp.supplyPrice != null
-                          ? <span>공급가 <b className="text-navy">{formatKRW(fp.supplyPrice)}</b> · 셀러 마진 {formatKRW(unit)}/개 <span className="text-[11px]">(판매 수수료 차감 전)</span></span>
-                          : <span>셀러 수익 {formatKRW(unit)}/개{fp.commissionType === "PERCENT" && ` (${fp.commissionValue}%)`}</span>}
-                      </div>
-                      <div className="mt-1.5 flex flex-wrap gap-1.5 text-[11px]">
-                        <span className="rounded-full bg-blue-50 px-2 py-0.5 font-semibold text-blue-700">누적 예약 {fp._count.bookingProducts}회</span>
-                        <span className="rounded-full bg-purple-50 px-2 py-0.5 font-semibold text-purple-700">라이브 판매 {fp._count.liveSessionProducts}회</span>
-                        {r && <span className={`rounded-full px-2 py-0.5 font-semibold ${short ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-700"}`}>다가오는 예약 {r.n}건 · {r.qty.toLocaleString()}개 예정{short && " · 재고 부족"}</span>}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 gap-2 sm:flex-col">
-                    <ResourceForm url="/api/facility-products" id={fp.id} fields={EDIT_FIELDS} title="상품 수정" triggerLabel="수정" triggerSize="sm" triggerVariant="outline"
-                      initial={{
-                        name: fp.product.name, category: fp.product.category, sku: fp.product.sku ?? "", salePrice: fp.salePrice, consumerPrice: fp.consumerPrice, supplyPrice: fp.supplyPrice ?? "",
-                        stock: fp.stock, shippingInfo: fp.shippingInfo ?? "", commissionType: fp.commissionType, commissionValue: fp.commissionValue,
-                        thumbnailUrl: fp.product.thumbnailUrl ?? "", description: fp.product.description ?? "",
-                      }} />
-                    <ActionButton url={`/api/facility-products/${fp.id}`} method="PATCH" body={{ isSellable: !fp.isSellable }} size="sm" variant="outline">
-                      {fp.isSellable ? "판매 중단" : "판매 재개"}
-                    </ActionButton>
-                  </div>
-                </CardContent>
-              </Card>
+              <ProductCard key={fp.id} view={view} dim={!fp.isSellable} hideDetail
+                image={fp.product.thumbnailUrl ?? fp.product.images[0]?.url ?? fp.brandProduct?.imageUrl} fallback="/images/placeholder/product.svg" title={fp.product.name}
+                brand={facilities.length > 1 ? { name: fp.facility.name } : undefined}
+                status={fp.isSellable ? { label: "판매 중", tone: "green" } : { label: "판매 중단", tone: "gray" }}
+                cover={fp.stock <= 0 ? "품절" : undefined}
+                subtitle={<>{fp.product.category}{fp.product.sku && ` · ${fp.product.sku}`}</>}
+                price={<PriceLine label="판매가" value={formatKRW(fp.salePrice)}
+                  note={<span className="text-purple-700">{fp.supplyPrice != null ? `공급 ${formatKRW(fp.supplyPrice)} · 셀러 마진 ${formatKRW(unit)}` : `셀러 수익 ${formatKRW(unit)}${fp.commissionType === "PERCENT" ? ` (${fp.commissionValue}%)` : ""}`}</span>} />}
+                chips={[fp.stock > 0 && fp.stock <= 10 && { label: "재고 적음", tone: "amber" }, r && { label: `예약 ${r.n}건 · ${r.qty.toLocaleString()}개${short ? " · 부족" : ""}`, tone: short ? "red" : "green" }]}
+                meta={<>재고 {fp.stock.toLocaleString()}개 · 누적 예약 {fp._count.bookingProducts}회 · 라이브 {fp._count.liveSessionProducts}회</>}
+                actions={<div className="flex gap-1.5 [&>button]:h-9 [&>button]:flex-1 [&>button]:px-1 [&>button]:text-xs">
+                  <ResourceForm url="/api/facility-products" id={fp.id} fields={EDIT_FIELDS} title="상품 수정" triggerLabel="수정" triggerSize="sm" triggerVariant="outline"
+                    initial={{
+                      name: fp.product.name, category: fp.product.category, sku: fp.product.sku ?? "", salePrice: fp.salePrice, consumerPrice: fp.consumerPrice, supplyPrice: fp.supplyPrice ?? "",
+                      stock: fp.stock, shippingInfo: fp.shippingInfo ?? "", commissionType: fp.commissionType, commissionValue: fp.commissionValue,
+                      thumbnailUrl: fp.product.thumbnailUrl ?? "", description: fp.product.description ?? "",
+                    }} />
+                  <ActionButton url={`/api/facility-products/${fp.id}`} method="PATCH" body={{ isSellable: !fp.isSellable }} size="sm" variant="outline">
+                    {fp.isSellable ? "판매 중단" : "판매 재개"}
+                  </ActionButton>
+                </div>} />
             );
           })}
-        </div>
+        </ProductGrid>
+        </>
       )}
     </div>
   );

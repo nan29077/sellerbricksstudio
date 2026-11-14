@@ -10,8 +10,11 @@ import { buttonVariants } from "@/components/ui/button";
 import { MessageCenter } from "@/components/brand/message-thread";
 import { BrandRequestList } from "@/components/shop/brand-request-list";
 import { BrandFavoriteButton } from "@/components/shop/brand-favorite-button";
-import { ShopImage } from "@/components/shop/shop-image";
 import { brandArtworkFor } from "@/lib/brands";
+import { priceBreakdown } from "@/lib/brand-pricing";
+import { generatedBrandProductArtwork } from "@/lib/brand-product-artwork";
+import { defaultProfileImage } from "@/lib/profile";
+import { PriceLine, ProductCard, ProductGrid, ProductToolbar, ViewToggle, viewOf } from "@/components/shop/product-card";
 import { runBrandRequestMaintenance } from "@/lib/brand-request-automation";
 
 // 셀러(·최고관리자)의 브랜드 관련 화면 — 2026-11-14부터 각 대시보드 안에서 연다.
@@ -53,11 +56,12 @@ export async function BuyerBrandRequests({ user, searchParams }: { user: Session
   );
 }
 
-export async function BuyerBrandFavorites({ user }: { user: SessionUser }) {
+export async function BuyerBrandFavorites({ user, searchParams = {} }: { user: SessionUser; searchParams?: SP }) {
   const home = buyerHome(user.role);
+  const view = viewOf(searchParams);
   const rows = user.id.startsWith("demo-") ? [] : await prisma.brandProductFavorite.findMany({
     where: { userId: user.id }, orderBy: { createdAt: "desc" },
-    include: { brandProduct: { select: { id: true, name: true, category: true, imageUrl: true, supplyPrice: true, consumerPrice: true, samplePrice: true, stock: true, isActive: true, shop: { select: { id: true, name: true, status: true } } } } },
+    include: { brandProduct: { select: { id: true, name: true, category: true, imageUrl: true, supplyPrice: true, consumerPrice: true, salePrice: true, samplePrice: true, sampleStock: true, stock: true, isActive: true, shop: { select: { id: true, name: true, status: true, logoUrl: true } } } } },
   });
   const imported = new Set(rows.length ? (user.role === "SELLER"
     ? await prisma.sellerBrandProduct.findMany({ where: { sellerId: user.id, brandProductId: { in: rows.map((r) => r.brandProductId) } }, select: { brandProductId: true } })
@@ -72,31 +76,31 @@ export async function BuyerBrandFavorites({ user }: { user: SessionUser }) {
           <Heart className="h-8 w-8 text-slate-300" aria-hidden />
           <p className="break-keep text-sm text-slate-600">아직 찜한 상품이 없어요. 브랜드샵에서 마음에 드는 상품의 &lsquo;찜하기&rsquo;를 눌러 보세요.</p>
         </div>
-      ) : (
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+      ) : <>
+        <ProductToolbar count={rows.length} toggle={<ViewToggle base={`${home}/brand-favorites`} params={searchParams} view={view} />} />
+        <ProductGrid view={view}>
           {rows.map(({ brandProduct: p }) => {
             const available = p.isActive && p.shop.status === "APPROVED";
+            const pb = priceBreakdown(p);
+            const sample = p.samplePrice !== null && p.sampleStock > 0;
+            const artwork = generatedBrandProductArtwork(p.shop.name, p);
             return (
-              <li key={p.id} className="flex min-w-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-                <Link href={brandProductHref(p.shop.id, p.id, `${home}/brands`)} aria-label={`${p.name} 상품 보기`} className="group block aspect-square overflow-hidden bg-[#F4F0E9]">
-                  <ShopImage src={p.imageUrl} fallback={brandArtworkFor(p.category)} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03] motion-reduce:transition-none" />
-                </Link>
-                <div className="flex flex-1 flex-col gap-1 p-3">
-                  <p className="truncate text-[11px] font-semibold text-slate-500">{p.shop.name}</p>
-                  <Link href={brandProductHref(p.shop.id, p.id, `${home}/brands`)} className="line-clamp-2 break-keep text-sm font-bold text-navy hover:underline">{p.name}</Link>
-                  <p className="text-xs font-semibold text-navy">공급 {formatKRW(p.supplyPrice)}{p.consumerPrice > 0 && <span className="font-normal text-slate-500"> · 권장 {formatKRW(p.consumerPrice)}</span>}</p>
-                  <p className="text-[11px] text-slate-600">샘플 {p.samplePrice === null ? "미제공" : p.samplePrice === 0 ? "무료" : formatKRW(p.samplePrice)} · 재고 {p.stock}개</p>
-                  <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-2">
-                    <BrandFavoriteButton productId={p.id} initial />
-                    {imported.has(p.id) && <span className="rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-bold text-emerald-700">내 방송 상품</span>}
-                    {!available && <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-500">판매 중지</span>}
-                  </div>
-                </div>
-              </li>
+              <ProductCard key={p.id} view={view} href={available ? brandProductHref(p.shop.id, p.id, `${home}/brands`) : undefined} dim={!available}
+                image={p.imageUrl} fallback={artwork?.cover ?? brandArtworkFor(p.category)} title={p.name}
+                brand={{ name: p.shop.name, logo: p.shop.logoUrl, logoFallback: defaultProfileImage(`brand:${p.shop.id}`), href: available ? `${home}/brands/${p.shop.id}` : undefined }}
+                status={!available ? { label: "판매 중지", tone: "gray" } : imported.has(p.id) ? { label: user.role === "SELLER" ? "내 방송 상품" : "판매 중", tone: "green" } : undefined}
+                cover={available && p.stock <= 0 ? "품절" : undefined}
+                price={<PriceLine label="공급" value={formatKRW(p.supplyPrice)} note={pb.sale > 0 ? `판매가 ${formatKRW(pb.sale)} · 마진 ${formatKRW(pb.sellerMargin)}` : p.consumerPrice > 0 ? `소비자가 ${formatKRW(p.consumerPrice)}` : undefined} />}
+                chips={[sample ? { label: p.samplePrice === 0 ? "무료 샘플" : "유료 샘플", tone: "brand" } : { label: "샘플 없음", tone: "gray" }, available && p.stock > 0 && p.stock <= 10 && { label: "재고 적음", tone: "amber" }]}
+                meta={<>재고 {p.stock.toLocaleString()}개</>}
+                actions={<div className="flex items-center gap-1.5">
+                  <BrandFavoriteButton productId={p.id} initial className="h-9 flex-1 justify-center rounded-xl text-xs" />
+                </div>}
+                hideDetail={!available} />
             );
           })}
-        </ul>
-      )}
+        </ProductGrid>
+      </>}
     </div>
   );
 }

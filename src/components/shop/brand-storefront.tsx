@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, BadgeCheck, Heart, House, Info, LayoutGrid, MapPin, MessageCircle, Package, Phone } from "lucide-react";
+import { ArrowLeft, BadgeCheck, CalendarPlus, Heart, House, Info, LayoutGrid, MapPin, MessageCircle, Phone } from "lucide-react";
 import { BrandFavoriteButton } from "@/components/shop/brand-favorite-button";
 import { PartnerApply } from "@/components/brand/partner-apply";
 import { prisma } from "@/lib/prisma";
@@ -23,6 +23,8 @@ import { ShopImage } from "@/components/shop/shop-image";
 import { ShopShell } from "@/components/shop/shop-shell";
 import { buyerHome } from "@/components/shop/buyer-brand-pages";
 import { StudioBrandMark } from "@/components/home/studio-brand";
+import { PriceLine, ProductCard, ProductChip, ProductGrid, ViewToggle, viewOf } from "@/components/shop/product-card";
+import { ProductGallery } from "@/components/shop/product-gallery";
 
 // 브랜드샵 화면 — 메인(/brands/[id])과 각 대시보드 안(셀러 /seller/brands/[id] 등)에서 같은 내용을 보여 준다 (2026-11-14)
 export async function BrandStorefront({ id, searchParams, base = "/brands", frame = "shop", studio = false }: { id: string; searchParams: SP; base?: string; frame?: "shop" | "inline"; studio?: boolean }) {
@@ -49,7 +51,8 @@ export async function BrandStorefront({ id, searchParams, base = "/brands", fram
   const selectedProduct = sp(searchParams, "product")?.slice(0, 64);
   const { page, size, skip, take } = pageOf(searchParams, 12);
   const where = {
-    shopId: shop.id, isActive: true,
+    // 숨긴 상품도 자기 브랜드 · 최고관리자는 상세를 볼 수 있다
+    shopId: shop.id, ...(!(selectedProduct && (isMine || user?.role === "SUPER_ADMIN")) && { isActive: true }),
     ...(selectedProduct ? { id: selectedProduct } : category ? { category: { in: categoryFilterValues(category) } } : {}),
   };
   const [products, total, policy, facilities] = await Promise.all([
@@ -86,10 +89,17 @@ export async function BrandStorefront({ id, searchParams, base = "/brands", fram
   const shopAvatar = defaultProfileImage(`brand:${shop.id}`);
   const management = user?.role === "SUPER_ADMIN" ? `/admin/brands/${shop.id}` : isMine ? "/brand/shop" : null;
   // 메뉴는 이 브랜드샵 안의 섹션으로만 구성
+  const detail = selectedProduct ? products[0] : undefined;
+  const view = viewOf(searchParams);
+  const notices = <>
+    {buyer && published && blocked && <p className="mt-4 rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">이 브랜드와의 거래가 중지된 계정입니다. 샘플 신청과 상품 가져오기를 할 수 없습니다.</p>}
+    {buyer && published && !blocked && !canImport && <PartnerApply shopId={shop.id} status={partner?.status === "PENDING" ? "PENDING" : "NONE"} />}
+    {!detail && user && !buyer && published && <p className="mt-4 flex items-start gap-1.5 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500"><Info aria-hidden="true" className="mt-px h-3.5 w-3.5 shrink-0" />찜 · 샘플 신청 · 판매 상품 가져오기는 셀러와 공간 계정에서 이용할 수 있습니다.</p>}
+  </>;
   const links = [
     { href: "#shop-home", label: "홈", icon: House },
-    { href: "#shop-products", label: "상품", icon: LayoutGrid },
-    { href: "#shop-info", label: "브랜드 정보", icon: Info },
+    { href: `${detail ? path : ""}#shop-products`, label: "상품", icon: LayoutGrid },
+    { href: `${detail ? path : ""}#shop-info`, label: "브랜드 정보", icon: Info },
     { href: "#shop-contact", label: "문의", icon: MessageCircle },
   ];
 
@@ -108,6 +118,11 @@ export async function BrandStorefront({ id, searchParams, base = "/brands", fram
         </div>
       </header>
       <main className="px-3 py-4 sm:px-6 sm:py-6">
+        {detail ? (
+          <Link href={path} className="mb-3 inline-flex min-h-9 items-center gap-1 text-sm font-bold text-slate-600 hover:text-navy">
+            <ArrowLeft className="h-4 w-4" aria-hidden />{shop.name} 전체 상품
+          </Link>
+        ) : <>
         <div className="relative aspect-[16/8] overflow-hidden rounded-[26px] bg-navy sm:aspect-[16/7]">
           <ShopImage src={shop.bannerUrl} fallback={BRAND_ARTWORK[0].url} eager className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-r from-navy/90 via-navy/45 to-transparent" />
@@ -132,145 +147,159 @@ export async function BrandStorefront({ id, searchParams, base = "/brands", fram
           </div>
           {shop.description && <p className="mt-4 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-600">{shop.description}</p>}
           {!user && <Link href={login} className={`${buttonVariants({ size: "sm" })} mt-4 w-full sm:w-auto`}>로그인하고 샘플 신청하기</Link>}
-          {buyer && published && blocked && <p className="mt-4 rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">이 브랜드와의 거래가 중지된 계정입니다. 샘플 신청과 상품 가져오기를 할 수 없습니다.</p>}
-          {buyer && published && !blocked && !canImport && <PartnerApply shopId={shop.id} status={partner?.status === "PENDING" ? "PENDING" : "NONE"} />}
-          {user && !buyer && published && <p className="mt-4 flex items-start gap-1.5 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500"><Info aria-hidden="true" className="mt-px h-3.5 w-3.5 shrink-0" />찜 · 샘플 신청 · 판매 상품 가져오기는 셀러와 공간 계정에서 이용할 수 있습니다.</p>}
+          {notices}
         </section>
+        </>}
 
-        <section id="shop-products" className="mt-7 scroll-mt-4 space-y-4">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <h2 className="text-xl font-black text-navy">브랜드 상품</h2>
-            {selectedProduct ? (
-              <Link href={`${path}#shop-products`} className={buttonVariants({ size: "sm", variant: "outline" })}>전체 상품 보기</Link>
-            ) : (
-              <form action={path} className="flex items-center gap-2">
-                <Select name="category" aria-label="상품 카테고리" defaultValue={category ?? ""} className="w-auto">
-                  <option value="">전체 카테고리</option>
-                  {BRAND_CATEGORIES.map((name) => <option key={name}>{name}</option>)}
-                </Select>
-                <Button size="sm" variant="outline">조회</Button>
-              </form>
-            )}
-          </div>
+        <section id="shop-products" className={cn("scroll-mt-4 space-y-4", !detail && "mt-7")}>
+          {!detail && (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-xl font-black text-navy">브랜드 상품 <span className="text-base text-brand-700">{total.toLocaleString("ko-KR")}</span></h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <form action={path} className="flex items-center gap-2">
+                  {view === "list" && <input type="hidden" name="view" value="list" />}
+                  <Select name="category" aria-label="상품 카테고리" defaultValue={category ?? ""} className="h-9 w-auto">
+                    <option value="">전체 카테고리</option>
+                    {BRAND_CATEGORIES.map((name) => <option key={name}>{name}</option>)}
+                  </Select>
+                  <Button size="sm" variant="outline">조회</Button>
+                </form>
+                <ViewToggle base={path} params={searchParams} view={view} />
+              </div>
+            </div>
+          )}
           {products.length === 0 && <p className="rounded-2xl border bg-white p-6 text-sm text-slate-600">{selectedProduct ? "선택한 상품을 현재 볼 수 없습니다." : "공개된 상품이 없습니다."}</p>}
-          <div className={cn("grid grid-cols-1 gap-3", !selectedProduct && "min-[390px]:grid-cols-2")}>
-            {products.map((product) => {
-              const artwork = generatedBrandProductArtwork(shop.name, product);
-              const uploadedImages = [...new Set([product.imageUrl, ...product.images].filter(Boolean))];
-              const generatedDetail = selectedProduct && uploadedImages.length === 0 ? artwork?.detail : undefined;
-              const imageSrc = selectedProduct ? uploadedImages[0] ?? generatedDetail : product.imageUrl;
-              const fallback = artwork?.cover ?? brandArtworkFor(product.category);
-              const image = (
-                <ShopImage src={imageSrc} fallback={fallback} alt={product.name} eager={!!selectedProduct}
-                  className={cn("w-full", selectedProduct ? "aspect-[4/3] object-contain" : "aspect-square object-cover")} />
-              );
-
-              return (
-                <article key={product.id} className={cn(
-                  "grid min-w-0 overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-sm",
-                  selectedProduct ? "items-start sm:grid-cols-2" : "grid-rows-[auto_1fr]",
-                )}>
-                  <div>
-                    <div className="relative bg-[#F4F0E9]">
-                      {selectedProduct ? image : (
-                        <Link href={brandProductHref(shop.id, product.id, base)} aria-label={`${product.name} 상품 보기`}
-                          className="group block overflow-hidden focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-800">
-                          {image}
-                          <span className={buttonVariants({ variant: "outline", className: "absolute bottom-2 right-2 rounded-xl px-3 text-xs group-hover:border-brand-300 group-hover:bg-brand-50" })}>상품 보기</span>
-                        </Link>
+          {detail ? (() => {
+            const product = detail;
+            const artwork = generatedBrandProductArtwork(shop.name, product);
+            const fallback = artwork?.cover ?? brandArtworkFor(product.category);
+            const uploaded = [...new Set([product.imageUrl, ...product.images].filter((v): v is string => !!v))];
+            const gallery = uploaded.length ? uploaded : [artwork?.detail ?? fallback];
+            const pb = priceBreakdown(product);
+            const groups = parseOptions(product.options);
+            const variants = readVariants(product.optionVariants, groups);
+            const notice = ([["용량·중량", product.volume], ["유통기한", product.expiryInfo], ["인증·신고", product.certification], ["제조 · 수입", product.manufacturer], ["원산지", product.origin], ["과세", product.taxType === "TAX_FREE" ? "면세" : ""], ["반품 배송비", product.returnShippingFee ? formatKRW(product.returnShippingFee) : ""], ["교환 배송비", product.exchangeShippingFee ? formatKRW(product.exchangeShippingFee) : ""], ["전성분·원재료", product.ingredients]] as const).filter(([, v]) => v);
+            const delivery = [product.allowDropship && "위탁배송", product.allowWarehouse && (product.minOrderQty > 1 ? `창고 입고(최소 ${product.minOrderQty.toLocaleString("ko-KR")}개)` : "창고 입고")].filter(Boolean).join(" · ") || "배송 방식 준비 중";
+            const left = product.sampleLimitPerBuyer > 0 ? product.sampleLimitPerBuyer - (used.get(product.id) ?? 0) : Infinity;
+            const onList = imported.has(product.id);
+            return (
+              <article className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm">
+                <div className="grid gap-5 p-3 sm:p-5 md:grid-cols-2 md:gap-7">
+                  <ProductGallery images={gallery} fallback={fallback} alt={product.name} />
+                  <div className="flex min-w-0 flex-col gap-3">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <ShopImage src={shop.logoUrl} fallback={shopAvatar} alt="" className="h-6 w-6 shrink-0 rounded-full border bg-white object-cover" />
+                      <Link href={path} className="truncate text-xs font-bold text-slate-600 hover:text-navy hover:underline">{shop.name}</Link>
+                      <span className="text-[11px] text-slate-400">· {product.category}{product.subCategory ? ` › ${product.subCategory}` : ""}</span>
+                    </div>
+                    <h1 className="break-keep text-xl font-black leading-snug tracking-tight text-navy sm:text-2xl">{product.name}</h1>
+                    <div className="flex flex-wrap gap-1">
+                      {[!product.isActive && { label: "숨김 상품(비공개)", tone: "gray" as const }, onList && { label: user?.role === "SELLER" ? "내 방송 상품" : "판매 목록에 있음", tone: "green" as const },
+                        favorites.has(product.id) && { label: "찜한 상품", tone: "red" as const },
+                        product.stock <= 0 ? { label: "품절", tone: "gray" as const } : product.stock <= 10 && { label: "재고 적음", tone: "amber" as const },
+                        product.samplePrice !== null && product.sampleStock > 0 && { label: product.samplePrice === 0 ? "무료 샘플" : "유료 샘플", tone: "brand" as const },
+                        product.priceRule === "FIXED" && pb.sale > 0 && { label: "판매가 고정", tone: "navy" as const },
+                      ].filter(Boolean).map((c) => c && <ProductChip key={c.label} chip={c} />)}
+                    </div>
+                    <div className="rounded-2xl bg-[#F9F7F2] p-3.5 sm:p-4">
+                      {showSupply ? (
+                        <dl className="grid grid-cols-2 gap-x-3 gap-y-2.5 text-sm">
+                          <div><dt className="text-[11px] font-semibold text-slate-500">공급가</dt><dd className="text-lg font-black text-navy">{formatKRW(product.supplyPrice)}</dd></div>
+                          <div><dt className="text-[11px] font-semibold text-slate-500">{pb.sale > 0 ? "판매가" : "권장 소비자가"}</dt>
+                            <dd className="flex flex-wrap items-baseline gap-x-1">{pb.discountRate > 0 && <b className="text-sm text-rose-600">{pb.discountRate}%</b>}<span className="text-lg font-black text-navy">{formatKRW(pb.sale || product.consumerPrice)}</span></dd></div>
+                          {pb.list > 0 && pb.sale > 0 && <div><dt className="text-[11px] font-semibold text-slate-500">정가</dt><dd className="font-bold text-slate-500 line-through">{formatKRW(pb.list)}</dd></div>}
+                          {(pb.sale > 0 || product.consumerPrice > 0) && <div><dt className="text-[11px] font-semibold text-slate-500">1개당 마진</dt><dd className="font-black text-emerald-700">{formatKRW(pb.sale > 0 ? pb.sellerMargin : product.consumerPrice - product.supplyPrice)}{pb.sale > 0 && <span className="ml-1 text-xs font-bold">({pb.sellerMarginRate}%)</span>}</dd></div>}
+                          {product.minSalePrice != null && <div className="col-span-2 text-[11px] font-semibold text-rose-700">최저 판매가 {formatKRW(product.minSalePrice)} 아래로는 팔 수 없어요</div>}
+                        </dl>
+                      ) : (
+                        <div className="space-y-1">
+                          {pb.sale > 0 ? <p className="flex flex-wrap items-baseline gap-x-1.5"><span className="text-[11px] font-semibold text-slate-500">판매가</span>{pb.discountRate > 0 && <b className="text-rose-600">{pb.discountRate}%</b>}<span className="text-lg font-black text-navy">{formatKRW(pb.sale)}</span>{pb.list > 0 && <s className="text-xs text-slate-400">{formatKRW(pb.list)}</s>}</p>
+                            : product.consumerPrice > 0 && <p><span className="text-[11px] font-semibold text-slate-500">권장 소비자가 </span><span className="text-lg font-black text-navy">{formatKRW(product.consumerPrice)}</span></p>}
+                          <p className="text-xs font-semibold text-slate-600">{SUPPLY_PRICE_HIDDEN_NOTE}</p>
+                        </div>
                       )}
-                      <span className="pointer-events-none absolute left-2 top-2 rounded-md bg-white/95 px-2 py-1 text-[11px] font-bold text-navy shadow-sm">{product.category}</span>
                     </div>
-                  </div>
-                  <div className="flex flex-1 flex-col gap-2 p-3 sm:p-4">
-                    <h3 className="break-words text-base font-extrabold tracking-tight text-navy">{product.name}</h3>
-                    {product.description && <p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-600">{product.description}</p>}
-                    {product.subCategory && <p className="text-[11px] font-semibold text-slate-500">{product.category} › {product.subCategory}</p>}
-                    {parseOptions(product.options).map((g) => <p key={g.name} className="text-[11px] text-slate-600">{g.name}: {g.values.join(", ")}</p>)}
-                    {showSupply ? <>
-                      <p className="mt-auto text-sm font-black">공급 {formatKRW(product.supplyPrice)}<span className="ml-1 text-xs font-medium text-slate-600">· {product.stock}개</span></p>
-                      {(() => {
-                        const pb = priceBreakdown(product);
-                        return pb.sale > 0 ? (
-                          <p className="flex flex-wrap items-baseline gap-x-1.5 text-xs text-slate-700">
-                            <span>판매가 <b className="text-navy">{formatKRW(pb.sale)}</b></span>
-                            {pb.discountRate > 0 && <><s className="text-slate-400">{formatKRW(pb.list)}</s><b className="text-rose-600">{pb.discountRate}%</b></>}
-                            <span className="font-bold text-emerald-700">· 마진 {formatKRW(pb.sellerMargin)} ({pb.sellerMarginRate}%)</span>
-                            {product.priceRule === "FIXED" && <span className="rounded-full bg-navy px-1.5 py-0.5 text-[10px] font-bold text-white">판매가 고정</span>}
-                          </p>
-                        ) : product.consumerPrice > 0 ? <p className="text-xs text-slate-600">권장 소비자가 {formatKRW(product.consumerPrice)} · 차액 {formatKRW(product.consumerPrice - product.supplyPrice)}</p> : null;
-                      })()}
-                      {(() => {
-                        const vs = readVariants(product.optionVariants, parseOptions(product.options));
-                        if (!vs.length) return null;
-                        const shown = selectedProduct ? vs : vs.slice(0, 3);
-                        return (
-                          <ul className="flex flex-wrap gap-1 text-[10.5px]">
-                            {shown.map((v) => (
-                              <li key={v.key} className={cn("rounded-full px-2 py-0.5 font-semibold", v.soldOut ? "bg-slate-100 text-slate-400 line-through" : "bg-violet-50 text-violet-800")}>
-                                {v.key}{v.soldOut ? " 품절" : `${v.extra ? ` · 공급 ${v.extra > 0 ? "+" : ""}${formatKRW(v.extra)}` : ""}${v.saleExtra && product.salePrice > 0 ? ` · 판매 ${formatKRW(product.salePrice + v.saleExtra)}` : ""}`}
-                              </li>
-                            ))}
-                            {shown.length < vs.length && <li className="px-1 text-slate-500">외 {vs.length - shown.length}개</li>}
-                          </ul>
-                        );
-                      })()}
-                    </> : <>
-                      <p className="mt-auto text-xs font-bold text-slate-600">{product.stock <= 0 && <span className="mr-1 text-rose-700">품절 ·</span>}{SUPPLY_PRICE_HIDDEN_NOTE}</p>
-                      {product.salePrice > 0 ? <p className="text-xs text-slate-600">판매가 {formatKRW(product.salePrice)}{product.consumerPrice > product.salePrice && <s className="ml-1 text-slate-400">{formatKRW(product.consumerPrice)}</s>}</p>
-                        : product.consumerPrice > 0 && <p className="text-xs text-slate-600">권장 소비자가 {formatKRW(product.consumerPrice)}</p>}
-                    </>}
-                    <p className="text-[11px] text-slate-600">{[product.allowDropship && "직배송", product.allowWarehouse && (product.minOrderQty > 1 ? `창고 입고(최소 ${product.minOrderQty.toLocaleString("ko-KR")}개)` : "창고 입고")].filter(Boolean).join(" · ")} · 출고 {product.leadDays}일</p>
-                    {!!selectedProduct && (product.volume || product.expiryInfo || product.ingredients || product.certification || product.manufacturer || product.origin || product.returnShippingFee > 0) && (
-                      <dl className="grid gap-1 rounded-xl bg-slate-50 p-3 text-[11px] text-slate-700">
-                        <div className="font-bold text-navy">상품 정보 고시</div>
-                        {([["용량·중량", product.volume], ["유통기한", product.expiryInfo], ["인증·신고", product.certification], ["제조 · 수입", product.manufacturer], ["원산지", product.origin], ["과세", product.taxType === "TAX_FREE" ? "면세" : ""], ["반품 배송비", product.returnShippingFee ? formatKRW(product.returnShippingFee) : ""], ["교환 배송비", product.exchangeShippingFee ? formatKRW(product.exchangeShippingFee) : ""], ["전성분·원재료", product.ingredients]] as const).filter(([, v]) => v).map(([k, v]) => (
-                          <div key={k} className="flex gap-2"><dt className="w-20 shrink-0 text-slate-500">{k}</dt><dd className="min-w-0 whitespace-pre-wrap break-words">{v}</dd></div>
-                        ))}
-                      </dl>
-                    )}
-                    {product.samplePrice !== null && <p className="text-xs font-semibold text-slate-600"><Package className="mr-1 inline h-3.5 w-3.5" />샘플 {product.samplePrice === 0 ? "무료" : formatKRW(product.samplePrice)} · {product.sampleStock}개{product.sampleLimitPerBuyer > 0 && ` · 계정당 ${product.sampleLimitPerBuyer}회`}</p>}
-                    {showSupply && product.minSalePrice != null && <p className="text-[11px] font-semibold text-rose-700">최저 판매가 {formatKRW(product.minSalePrice)}</p>}
-                    {published && <div className="mt-1 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
-                      {/* 상품마다 샘플 신청(무료)·샘플 구매(유료)를 바로 할 수 있게 */}
-                      {buyer && !blocked && <BrandFavoriteButton productId={product.id} initial={favorites.has(product.id)} className="rounded-xl px-3 text-xs" />}
-                      {!user && <Link href={`/login?callbackUrl=${encodeURIComponent(brandProductHref(shop.id, product.id, base))}`} className={buttonVariants({ variant: "outline", className: "rounded-xl px-3 text-xs" })}><Heart aria-hidden="true" className="h-3.5 w-3.5" />찜하기</Link>}
-                      {user && !buyer && <span title="셀러 계정 전용" aria-disabled="true" className="inline-flex min-h-11 cursor-not-allowed items-center gap-2 rounded-xl border bg-slate-50 px-3 text-xs font-bold text-slate-500"><Heart aria-hidden="true" className="h-3.5 w-3.5" />찜하기</span>}
-                      {buyer && !blocked && imported.has(product.id) ? <span className="rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-bold text-emerald-700">판매 목록에 있음</span> : null}
-                      {buyer && !blocked && user && canImport && <BrandImportButton target={user.role === "SELLER" ? "SELLER" : "FACILITY"} facilities={facilities}
-                        product={{ id: product.id, name: product.name, supplyPrice: product.supplyPrice, consumerPrice: product.consumerPrice, stock: product.stock, allowDropship: product.allowDropship, allowWarehouse: product.allowWarehouse, salePrice: product.salePrice, priceRule: product.priceRule, minSalePrice: product.minSalePrice }} />}
-                      {product.samplePrice === null ? (
-                        <span className="text-[11px] font-semibold text-slate-500">샘플 미제공</span>
-                      ) : !user ? (
-                        <Link href={`/login?callbackUrl=${encodeURIComponent(brandProductHref(shop.id, product.id, base))}`} className={buttonVariants({ variant: "outline", className: "rounded-xl border-brand-200 bg-brand-50 px-3 text-xs font-bold" })}>
-                          {product.samplePrice === 0 ? "무료 샘플 신청" : "샘플 구매"}
-                        </Link>
-                      ) : buyer && !blocked ? (() => {
-                        const left = product.sampleLimitPerBuyer > 0 ? product.sampleLimitPerBuyer - (used.get(product.id) ?? 0) : Infinity;
-                        return left > 0
-                          ? <BrandOrderButton productId={product.id} name={product.name} kind="SAMPLE" unitPrice={product.samplePrice} stock={product.sampleStock} maxQuantity={policy.sampleMaxPerOrder}
-                              limitNote={Number.isFinite(left) ? `이 상품 샘플은 ${left}회 더 신청할 수 있습니다.` : undefined} />
-                          : <span className="text-[11px] font-semibold text-slate-500">샘플 신청 한도 사용</span>;
-                      })() : user && !buyer ? (
-                        <span title="셀러 계정 전용" aria-disabled="true" className={buttonVariants({ variant: "outline", className: "pointer-events-none rounded-xl px-3 text-xs opacity-50" })}>
-                          {product.samplePrice === 0 ? "무료 샘플 신청" : "샘플 구매"}
-                        </span>
-                      ) : null}
-                    </div>}
-                  </div>
-                  {!!selectedProduct && uploadedImages.length > 1 && (
-                    <div className="grid gap-3 border-t p-3 sm:col-span-2 sm:grid-cols-2 sm:p-4">
-                      {uploadedImages.slice(1).map((url, index) => (
-                        <ShopImage key={url} src={url} fallback={imageSrc ?? fallback} alt={`${product.name} 추가 이미지 ${index + 1}`}
-                          className="aspect-[4/3] w-full rounded-xl bg-[#F4F0E9] object-contain" />
+                    <dl className="divide-y divide-slate-100 rounded-2xl border border-slate-100 text-[13px]">
+                      {([
+                        ["배송", delivery],
+                        ["출고", `주문 후 ${product.leadDays}일 안에 출고${product.shippingFee ? ` · 배송비 ${formatKRW(product.shippingFee)}` : " · 무료 배송"}`],
+                        showSupply ? ["재고", `${product.stock.toLocaleString("ko-KR")}개`] : null,
+                        ["샘플", product.samplePrice === null ? "샘플 미제공" : `${product.samplePrice === 0 ? "무료" : formatKRW(product.samplePrice)} · 남은 ${product.sampleStock.toLocaleString("ko-KR")}개${product.sampleLimitPerBuyer > 0 ? ` · 계정당 ${product.sampleLimitPerBuyer}회` : ""}`],
+                        ...groups.map((g) => [g.name, g.values.join(", ")]),
+                      ].filter(Boolean) as string[][]).map(([k, v]) => (
+                        <div key={k} className="flex gap-3 px-3 py-2"><dt className="w-14 shrink-0 font-semibold text-slate-500">{k}</dt><dd className="min-w-0 break-words font-medium text-slate-700">{v}</dd></div>
                       ))}
-                    </div>
-                  )}
-                </article>
-              );
-            })}
-          </div>
-          {!selectedProduct && <Pagination base={path} params={searchParams} page={page} size={size} total={total} />}
+                    </dl>
+                    {showSupply && variants.length > 0 && (
+                      <details className="rounded-2xl border border-violet-100 bg-violet-50/50 px-3 py-2 text-xs text-violet-900" open={variants.length <= 6}>
+                        <summary className="cursor-pointer py-1 font-bold">옵션별 가격 · 품절 ({variants.length})</summary>
+                        <ul className="mt-1 divide-y divide-violet-100">
+                          {variants.map((v) => (
+                            <li key={v.key} className={cn("flex flex-wrap justify-between gap-x-2 py-1.5", v.soldOut && "text-slate-400 line-through")}>
+                              <span className="font-semibold">{v.key}</span>
+                              <span>{v.soldOut ? "품절" : `공급 ${formatKRW(product.supplyPrice + v.extra)}${pb.sale > 0 ? ` · 판매 ${formatKRW(pb.sale + v.saleExtra)}` : ""}`}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    )}
+                    {published && (
+                      <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 [&>*]:min-h-10">
+                        {buyer && !blocked && <BrandFavoriteButton productId={product.id} initial={favorites.has(product.id)} className="rounded-xl px-3 text-xs" />}
+                        {!user && <Link href={login} className={buttonVariants({ variant: "outline", className: "rounded-xl px-3 text-xs" })}><Heart aria-hidden="true" className="h-3.5 w-3.5" />찜하기</Link>}
+                        {buyer && !blocked && user && canImport && !onList && <BrandImportButton target={user.role === "SELLER" ? "SELLER" : "FACILITY"} facilities={facilities}
+                          product={{ id: product.id, name: product.name, supplyPrice: product.supplyPrice, consumerPrice: product.consumerPrice, stock: product.stock, allowDropship: product.allowDropship, allowWarehouse: product.allowWarehouse, salePrice: product.salePrice, priceRule: product.priceRule, minSalePrice: product.minSalePrice }} />}
+                        {product.samplePrice !== null && (!user
+                          ? <Link href={login} className={buttonVariants({ variant: "outline", className: "rounded-xl border-brand-200 bg-brand-50 px-3 text-xs font-bold" })}>{product.samplePrice === 0 ? "무료 샘플 신청" : "샘플 구매"}</Link>
+                          : buyer && !blocked ? (left > 0
+                            ? <BrandOrderButton productId={product.id} name={product.name} kind="SAMPLE" unitPrice={product.samplePrice} stock={product.sampleStock} maxQuantity={policy.sampleMaxPerOrder}
+                                limitNote={Number.isFinite(left) ? `이 상품 샘플은 ${left}회 더 신청할 수 있습니다.` : undefined} />
+                            : <span className="inline-flex items-center text-[11px] font-semibold text-slate-500">샘플 신청 한도 사용</span>) : null)}
+                        {user?.role === "SELLER" && onList && product.allowDropship && <Link href={`/seller/bookings/new?brand=${product.id}`} className={buttonVariants({ size: "sm", className: "rounded-xl px-3 text-xs" })}><CalendarPlus className="h-4 w-4" aria-hidden />이 상품으로 방송 예약</Link>}
+                        {buyer && !blocked && user && <Link href={`${buyerHome(user.role)}/brand-messages?shop=${shop.id}`} className={buttonVariants({ variant: "ghost", className: "rounded-xl px-3 text-xs" })}><MessageCircle className="h-4 w-4" aria-hidden />브랜드 문의</Link>}
+                        {user && !buyer && <p className="basis-full text-[11px] text-slate-500">찜 · 샘플 신청 · 판매 상품 가져오기는 셀러와 스토리지마켓 계정에서 이용할 수 있습니다.</p>}
+                      </div>
+                    )}
+                    {notices}
+                  </div>
+                </div>
+                {product.description && (
+                  <section className="border-t border-slate-100 p-4 sm:p-6">
+                    <h2 className="mb-2 text-sm font-black text-navy">상품 설명</h2>
+                    <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-600">{product.description}</p>
+                  </section>
+                )}
+                {notice.length > 0 && (
+                  <section className="border-t border-slate-100 p-4 sm:p-6">
+                    <h2 className="mb-2 text-sm font-black text-navy">상품 정보 고시</h2>
+                    <dl className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-100 text-xs">
+                      {notice.map(([k, v]) => <div key={k} className="flex"><dt className="w-24 shrink-0 bg-slate-50 px-3 py-2 font-semibold text-slate-500 sm:w-32">{k}</dt><dd className="min-w-0 whitespace-pre-wrap break-words px-3 py-2 text-slate-700">{v}</dd></div>)}
+                    </dl>
+                  </section>
+                )}
+              </article>
+            );
+          })() : (
+            <ProductGrid view={view} narrow className={frame === "inline" ? "xl:grid-cols-4" : undefined}>
+              {products.map((product) => {
+                const artwork = generatedBrandProductArtwork(shop.name, product);
+                const pb = priceBreakdown(product);
+                const sample = product.samplePrice !== null && product.sampleStock > 0;
+                return (
+                  <ProductCard key={product.id} view={view} href={brandProductHref(shop.id, product.id, base)}
+                    image={product.imageUrl} fallback={artwork?.cover ?? brandArtworkFor(product.category)} title={product.name}
+                    subtitle={product.category}
+                    status={imported.has(product.id) ? { label: user?.role === "SELLER" ? "내 방송 상품" : "판매 중", tone: "green" } : undefined}
+                    cover={product.stock <= 0 ? "품절" : undefined}
+                    price={showSupply
+                      ? <PriceLine label="공급" value={formatKRW(product.supplyPrice)} note={pb.sale > 0 ? `판매가 ${formatKRW(pb.sale)} · 마진 ${formatKRW(pb.sellerMargin)}` : product.consumerPrice > 0 ? `소비자가 ${formatKRW(product.consumerPrice)}` : undefined} />
+                      : <PriceLine value={pb.sale > 0 ? formatKRW(pb.sale) : product.consumerPrice > 0 ? formatKRW(product.consumerPrice) : "가격 문의"} rate={pb.discountRate} strike={pb.discountRate ? formatKRW(pb.list) : undefined} note={!user ? "공급가는 로그인하면 볼 수 있습니다" : undefined} />}
+                    chips={[sample && { label: product.samplePrice === 0 ? "무료 샘플" : "유료 샘플", tone: "brand" }, favorites.has(product.id) && { label: "찜", tone: "red" }, product.allowWarehouse && { label: "창고 입고", tone: "violet" }]} />
+                );
+              })}
+            </ProductGrid>
+          )}
+          {!detail && <Pagination base={path} params={searchParams} page={page} size={size} total={total} />}
         </section>
         <section id="shop-contact" className="mt-7 scroll-mt-4 rounded-[24px] border border-slate-100 bg-white p-5 sm:p-6">
           <h2 className="text-lg font-black text-navy">문의 · 교환/반품</h2>

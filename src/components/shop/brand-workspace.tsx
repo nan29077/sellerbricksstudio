@@ -6,7 +6,11 @@ import { Pagination } from "@/components/list/pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
-import { BRAND_CATEGORIES, BRAND_SHOP_STATUS } from "@/lib/brands";
+import { BRAND_CATEGORIES, BRAND_SHOP_STATUS, brandArtworkFor, brandProductHref } from "@/lib/brands";
+import { priceBreakdown } from "@/lib/brand-pricing";
+import { generatedBrandProductArtwork } from "@/lib/brand-product-artwork";
+import { ShopImage } from "@/components/shop/shop-image";
+import { PriceLine, ProductCard, ProductChip, ProductGrid, ViewToggle, viewOf } from "@/components/shop/product-card";
 import { categoryFilterValues } from "@/lib/categories";
 import { brandFeeRateOf, getPolicy } from "@/lib/policy";
 import { pageOf, sp, withParams, type SP } from "@/lib/list";
@@ -109,6 +113,8 @@ export async function BrandProductsPanel({ shop, params, admin = false, header =
   const filter = FILTERS.find((f) => f.value === sp(params, "filter"))?.value ?? "";
   const sort = SORTS.find((s) => s.value === sp(params, "sort"))?.value ?? "";
   const openNew = sp(params, "new") === "1";
+  const view = viewOf(params);
+  const openId = sp(params, "open");
   const { page, size, skip, take } = pageOf(params);
   const feeRate = brandFeeRateOf(await getPolicy(), shop.feeRate);
 
@@ -191,27 +197,47 @@ export async function BrandProductsPanel({ shop, params, admin = false, header =
         <Select name="sort" aria-label="정렬" defaultValue={sort} className="w-auto">
           {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
         </Select>
+        {view === "list" && <input type="hidden" name="view" value="list" />}
         <Button variant="outline">검색</Button>
-        <span className="ml-auto text-xs text-slate-500">{total.toLocaleString("ko-KR")}개</span>
+        <span className="ml-auto flex items-center gap-2"><span className="text-xs font-bold text-slate-500">{total.toLocaleString("ko-KR")}개</span><ViewToggle base={base} params={params} view={view} /></span>
       </form>
 
       {!products.length && <p className="rounded-2xl border bg-white px-4 py-6 text-center text-sm text-slate-600">조건에 맞는 상품이 없습니다.</p>}
+      {view === "grid" ? (
+        <ProductGrid view="grid">
+          {products.map((product) => {
+            const ch = channels.get(product.id) ?? 0;
+            const pb = priceBreakdown(product);
+            const artwork = generatedBrandProductArtwork(shop.name, product);
+            return (
+              <ProductCard key={product.id} href={brandProductHref(shop.id, product.id)} dim={!product.isActive}
+                image={product.imageUrl} fallback={artwork?.cover ?? brandArtworkFor(product.category)} title={product.name}
+                subtitle={<>{product.category}{product.sku ? ` · ${product.sku}` : ""}</>}
+                status={!product.isActive ? { label: "숨김", tone: "gray" } : { label: "판매 중", tone: "green" }}
+                cover={product.stock === 0 ? "품절" : undefined}
+                price={<PriceLine label="공급" value={formatKRW(product.supplyPrice)} note={pb.sale > 0 ? `판매가 ${formatKRW(pb.sale)}` : product.consumerPrice > 0 ? `소비자가 ${formatKRW(product.consumerPrice)}` : undefined} />}
+                chips={[product.stock > 0 && product.stock <= LOW_STOCK && { label: "재고 적음", tone: "amber" }, product.sampleStock > 0 && product.isActive && { label: product.samplePrice ? "유료 샘플" : "무료 샘플", tone: "brand" }, ch > 0 && { label: `판매처 ${ch}곳`, tone: "violet" }]}
+                meta={<>재고 {product.stock.toLocaleString("ko-KR")}개 · {[product.allowDropship && "위탁배송", product.allowWarehouse && "창고 입고"].filter(Boolean).join("/") || "배송 방식 없음"}</>}
+                actions={<Link href={`${link({ view: "list", open: product.id })}#p-${product.id}`} className={buttonVariants({ size: "sm", className: "h-9 w-full rounded-xl text-xs" })}>수정 · 재고</Link>} />
+            );
+          })}
+        </ProductGrid>
+      ) : (
       <div className="space-y-2">
         {products.map((product) => {
           const ch = channels.get(product.id) ?? 0;
           const stockTone = product.stock === 0 ? "text-rose-600" : product.stock <= LOW_STOCK ? "text-amber-600" : "text-slate-600";
           return (
-            <details className="group rounded-2xl border bg-white" key={product.id}>
+            <details id={`p-${product.id}`} className="group scroll-mt-24 rounded-2xl border bg-white shadow-[0_1px_2px_#1A1A2E0D]" key={product.id} open={openId === product.id}>
               <summary className="flex cursor-pointer list-none items-center gap-3 px-3 py-3 sm:px-4">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                {product.imageUrl ? <img src={product.imageUrl} alt="" className="h-12 w-12 shrink-0 rounded-xl border object-cover" loading="lazy" />
-                  : <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand-50 text-xs font-bold text-brand-700">{product.category.slice(0, 2)}</span>}
+                <ShopImage src={product.imageUrl} fallback={generatedBrandProductArtwork(shop.name, product)?.cover ?? brandArtworkFor(product.category)} alt="" className="h-14 w-14 shrink-0 rounded-xl border border-slate-100 bg-[#F4F0E9] object-cover sm:h-16 sm:w-16" />
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-center gap-1.5">
                     <span className="truncate font-bold text-navy">{product.name}</span>
-                    {!product.isActive && <Badge tone="gray">숨김</Badge>}
-                    {product.stock === 0 && <Badge tone="red">품절</Badge>}
-                    {product.sampleStock > 0 && product.isActive && <Badge tone="blue">{product.samplePrice ? "유료 샘플" : "무료 샘플"}</Badge>}
+                    {!product.isActive && <ProductChip chip={{ label: "숨김", tone: "gray" }} />}
+                    {product.stock === 0 && <ProductChip chip={{ label: "품절", tone: "red" }} />}
+                    {product.sampleStock > 0 && product.isActive && <ProductChip chip={{ label: product.samplePrice ? "유료 샘플" : "무료 샘플", tone: "brand" }} />}
                   </span>
                   <span className="mt-0.5 block truncate text-xs text-slate-500">
                     {product.category}{product.subCategory ? ` › ${product.subCategory}` : ""}{product.sku ? ` · ${product.sku}` : ""}
@@ -244,6 +270,7 @@ export async function BrandProductsPanel({ shop, params, admin = false, header =
           );
         })}
       </div>
+      )}
       <Pagination base={base} params={params} page={page} size={size} total={total} />
     </section>
   );

@@ -7,5 +7,5 @@ export const metadata = { title: "찜한 브랜드 상품 | 스토리지마켓" 
 
 export default async function Page({ searchParams }: { searchParams: SP }) {
   const user = await requireRole(["SUPER_ADMIN"]);
-  return <BuyerBrandFavorites user={user} />;
+  return <BuyerBrandFavorites user={user} searchParams={searchParams} />;
 }
