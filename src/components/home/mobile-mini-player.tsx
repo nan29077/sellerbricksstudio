@@ -3,14 +3,15 @@
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { ArrowUpRight, ChevronLeft, ChevronRight, Maximize2, Minimize2, Play, X } from "lucide-react";
+import { ArrowUpRight, ChevronDown, ChevronLeft, ChevronRight, Play, VolumeX, X } from "lucide-react";
 import { SAMPLE_SLIDES, toSlide, type Slide } from "@/components/home/home-broadcast-player";
 import type { HomeVideoItem } from "@/lib/home-videos";
 import { cn } from "@/lib/utils";
 
 // 모바일 미니 플레이어 (2026-11-14)
 //  - 모바일(1024px 미만)에서만 오른쪽 아래에 떠서 화면을 따라다닌다. PC는 왼쪽 플레이어를 그대로 쓴다.
-//  - 모양: 작게는 3:4 세로형 카드(쇼핑 라이브 · 숏폼 위젯처럼), 크게 보기는 9:16. 가로 영상은 위아래 여백을 두고 보여 준다.
+//  - 모양: 네이버 쇼핑라이브 미니 플레이어처럼 작은 9:16 세로 화면에서 영상이 소리 없이 바로 재생된다.
+//    누르면 크게 보기(소리 · 조작 · 이전/다음), 오른쪽 위 X 로 닫기. 동작 줄이기 · 데이터 절약 설정이면 사진만 보여 준다.
 //  - 위치: 하단 메뉴바 위 → 문의하기 버튼 위. 하단 메뉴바는 절대 가리지 않는다.
 //  - 메인(/)은 화면 안 큰 플레이어가 보이는 동안 숨고, 큰 플레이어가 화면 밖으로 나가면 나타난다.
 //  - 브랜드샵은 그 브랜드 영상만 (영상이 없으면 띄우지 않음). 닫기(X)를 누르면 이번 방문 동안 닫힌다.
@@ -47,13 +48,17 @@ export function MobileMiniPlayer({ videos }: { videos: HomeVideoItem[] | null })
   const [closed, setClosed] = useState<string[]>([]);
   const [anchorVisible, setAnchorVisible] = useState(false);
   const [index, setIndex] = useState(0);
-  const [playing, setPlaying] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [quiet, setQuiet] = useState(true); // 미리보기 자동 재생을 끌지 (동작 줄이기 · 데이터 절약)
 
-  useEffect(() => { setClosed(readClosed()); }, []);
+  useEffect(() => {
+    setClosed(readClosed());
+    const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
+    setQuiet(!!saveData || window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }, []);
   // 영상 목록이 바뀌면(다른 브랜드샵 등) 처음부터
   const sourceKey = source?.key;
-  useEffect(() => { setIndex(0); setPlaying(false); }, [sourceKey]);
+  useEffect(() => { setIndex(0); setExpanded(false); }, [sourceKey]);
 
   // 메인: 화면 안 큰 플레이어가 보이는 동안은 숨긴다
   useEffect(() => {
@@ -67,66 +72,94 @@ export function MobileMiniPlayer({ videos }: { videos: HomeVideoItem[] | null })
   }, [pathname]);
 
   if (!source || !source.slides.length || closed.includes(source.key)) return null;
-  const hidden = pathname === "/" && anchorVisible && !playing;
+  const hidden = pathname === "/" && anchorVisible && !expanded;
   const slide = source.slides[Math.min(index, source.slides.length - 1)];
   const src = slide.source;
   const count = source.slides.length;
+  const tab = hidden ? -1 : 0;
   // 문의하기 버튼(h-12, 하단 메뉴바 위 4.75rem)이 있는 화면은 그 위로, 없는 화면(/support)은 메뉴바 바로 위로
   const bottom = pathname === "/support" ? "bottom-[calc(4.75rem+env(safe-area-inset-bottom))]" : "bottom-[calc(8.5rem+env(safe-area-inset-bottom))]";
+  const place = cn("fixed right-[max(1rem,calc((100vw-716px)/2+1rem))] z-30 lg:hidden", bottom);
 
   function close() {
     const next = [...new Set([...readClosed(), source!.key])];
     try { sessionStorage.setItem(CLOSED_KEY, JSON.stringify(next)); } catch { /* 저장이 안 되면 이번 화면에서만 닫힘 */ }
     setClosed(next);
-    setPlaying(false);
+    setExpanded(false);
   }
-  function go(step: number) {
-    setIndex((i) => (i + step + count) % count);
-    setPlaying(false);
+  function go(step: number) { setIndex((i) => (i + step + count) % count); }
+
+  // ── 크게 보기: 소리 · 조작 버튼이 있는 9:16 플레이어 ──────────────────────
+  if (expanded) {
+    return (
+      <aside aria-label={`${source.title} 플레이어`} data-mini-player data-expanded
+        className={cn(place, "w-[min(16rem,calc(100vw-2rem),calc((100dvh-21rem)*0.5625))] overflow-hidden rounded-[18px] bg-[#111122] text-white shadow-[0_18px_48px_#0000005c]")}>
+        <div className="flex items-center gap-1 py-1.5 pl-3 pr-1">
+          <p className="min-w-0 flex-1 truncate text-xs font-bold" title={slide.title}>{slide.title}</p>
+          <button type="button" onClick={() => setExpanded(false)} aria-label="작게 보기" className="grid h-8 w-8 shrink-0 place-items-center rounded-full hover:bg-white/10"><ChevronDown className="h-4 w-4" aria-hidden /></button>
+          <button type="button" onClick={close} aria-label="미니 플레이어 닫기" className="grid h-8 w-8 shrink-0 place-items-center rounded-full hover:bg-white/10"><X className="h-4 w-4" aria-hidden /></button>
+        </div>
+        <div className="relative aspect-[9/16] bg-black">
+          {src.kind === "file" ? (
+            <video key={slide.id} className="h-full w-full object-contain" src={src.src} poster={slide.poster} aria-label={slide.title} autoPlay playsInline controls preload="metadata" />
+          ) : src.kind === "youtube" || src.kind === "vimeo" ? (
+            <iframe key={slide.id} className="h-full w-full" title={slide.title} src={src.embed.replace("mute=1", "mute=0").replace("muted=1", "muted=0")}
+              allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen />
+          ) : (
+            <>
+              <Image src={slide.poster} alt="" fill unoptimized sizes="256px" className="object-cover" />
+              <a href={slide.url} target="_blank" rel="noopener noreferrer" className="absolute inset-x-4 bottom-4 inline-flex h-10 items-center justify-center gap-1 rounded-full bg-white text-xs font-bold text-navy shadow">원본에서 보기<ArrowUpRight className="h-4 w-4" aria-hidden /></a>
+            </>
+          )}
+        </div>
+        {count > 1 && (
+          <div className="flex items-center gap-0.5 py-1 pl-3 pr-1">
+            <span className="mr-auto text-[11px] tabular-nums text-white/60">{index + 1} / {count}</span>
+            <button type="button" onClick={() => go(-1)} aria-label="이전 영상" className="grid h-8 w-8 place-items-center rounded-full hover:bg-white/10"><ChevronLeft className="h-4 w-4" aria-hidden /></button>
+            <button type="button" onClick={() => go(1)} aria-label="다음 영상" className="grid h-8 w-8 place-items-center rounded-full hover:bg-white/10"><ChevronRight className="h-4 w-4" aria-hidden /></button>
+          </div>
+        )}
+      </aside>
+    );
   }
 
-  const tab = hidden ? -1 : 0;
-  const iconBtn = "grid place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm hover:bg-black/75";
+  // ── 미니: 작은 9:16 화면에서 소리 없이 바로 재생 (네이버 쇼핑라이브 미니 플레이어처럼) ──
+  const preview = !quiet && !hidden;
   return (
-    <aside aria-label={`${source.title} 미니 플레이어`} data-mini-player
-      className={cn("fixed right-[max(1rem,calc((100vw-716px)/2+1rem))] z-30 overflow-hidden rounded-2xl border border-white/10 bg-navy text-white shadow-[0_12px_32px_#1A1A2E59] transition-[opacity,transform,width] duration-200 motion-reduce:transition-none lg:hidden",
-        bottom, expanded ? "w-[min(15rem,calc(100vw-2rem),calc((100dvh-17rem)*0.5625))]" : "w-28",
-        hidden && "pointer-events-none translate-y-3 opacity-0")}
-      aria-hidden={hidden || undefined}>
-      {/* 작게: 3:4 세로형 카드(쇼핑 라이브 · 숏폼 위젯처럼) · 크게: 9:16 */}
-      <div className={cn("relative bg-black", expanded ? "aspect-[9/16]" : "aspect-[3/4]")}>
-        {playing && src.kind === "file" ? (
-          <video className="h-full w-full object-contain" src={src.src} poster={slide.poster} aria-label={slide.title}
-            autoPlay playsInline controls={expanded} preload="metadata" onEnded={() => setPlaying(false)} />
-        ) : playing && (src.kind === "youtube" || src.kind === "vimeo") ? (
-          <iframe className="h-full w-full" title={slide.title} src={src.embed}
-            allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen />
-        ) : (
-          <>
-            <Image src={slide.poster} alt="" fill unoptimized sizes="240px" className="object-cover" />
-            <span className="absolute inset-0 bg-gradient-to-t from-navy/85 via-transparent to-navy/40" />
-            <p className={cn("absolute inset-x-2 bottom-2 line-clamp-2 break-keep font-bold leading-snug", expanded ? "text-xs" : "text-[10px]")} title={slide.title}>{slide.title}</p>
-            {src.kind === "link" ? (
-              <a href={slide.url} target="_blank" rel="noopener noreferrer" aria-label={`${slide.title} 원본에서 보기`} tabIndex={tab}
-                className={cn("absolute left-1/2 top-1/2 grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-navy shadow", expanded ? "h-12 w-12" : "h-9 w-9")}><ArrowUpRight className="h-4 w-4" aria-hidden /></a>
-            ) : (
-              <button type="button" onClick={() => setPlaying(true)} aria-label={`${slide.title} 재생`} tabIndex={tab}
-                className={cn("absolute left-1/2 top-1/2 grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-navy shadow", expanded ? "h-12 w-12" : "h-9 w-9")}><Play className="ml-0.5 h-4 w-4" fill="currentColor" aria-hidden /></button>
-            )}
-          </>
-        )}
-        <button type="button" onClick={() => setExpanded((v) => !v)} aria-label={expanded ? "작게 보기" : "크게 보기"} tabIndex={tab}
-          className={cn("absolute left-1 top-1 z-10 h-7 w-7", iconBtn)}>{expanded ? <Minimize2 className="h-3.5 w-3.5" aria-hidden /> : <Maximize2 className="h-3.5 w-3.5" aria-hidden />}</button>
-        <button type="button" onClick={close} aria-label="미니 플레이어 닫기" tabIndex={tab}
-          className={cn("absolute right-1 top-1 z-10 h-7 w-7", iconBtn)}><X className="h-4 w-4" aria-hidden /></button>
-      </div>
-      {expanded && count > 1 && (
-        <div className="flex items-center justify-end gap-0.5 px-1 py-1">
-          <span className="mr-auto pl-2 text-[11px] tabular-nums text-white/60">{index + 1} / {count}</span>
-          <button type="button" onClick={() => go(-1)} aria-label="이전 영상" tabIndex={tab} className="grid h-8 w-8 place-items-center rounded-full hover:bg-white/10"><ChevronLeft className="h-4 w-4" aria-hidden /></button>
-          <button type="button" onClick={() => go(1)} aria-label="다음 영상" tabIndex={tab} className="grid h-8 w-8 place-items-center rounded-full hover:bg-white/10"><ChevronRight className="h-4 w-4" aria-hidden /></button>
-        </div>
+    <aside aria-label={`${source.title} 미니 플레이어`} data-mini-player aria-hidden={hidden || undefined}
+      className={cn(place, "aspect-[9/16] w-[6.5rem] overflow-hidden rounded-[14px] bg-[#111122] shadow-[0_10px_28px_#00000052] ring-1 ring-black/5 transition-[opacity,transform] duration-200 motion-reduce:transition-none",
+        hidden && "pointer-events-none translate-y-3 opacity-0")}>
+      {preview && src.kind === "file" ? (
+        <video key={slide.id} className="absolute inset-0 h-full w-full object-cover" src={src.src} poster={slide.poster} muted autoPlay loop playsInline preload="metadata" aria-hidden />
+      ) : preview && src.kind === "youtube" ? (
+        // 가로 영상은 세로 화면을 꽉 채우도록 가운데를 잘라 보여 준다
+        <iframe key={slide.id} aria-hidden tabIndex={-1} title={slide.title}
+          className={cn("pointer-events-none absolute top-0 h-full", src.vertical ? "left-0 w-full" : "left-1/2 w-[316%] -translate-x-1/2")}
+          src={`https://www.youtube-nocookie.com/embed/${src.id}?autoplay=1&mute=1&controls=0&playsinline=1&loop=1&playlist=${src.id}&modestbranding=1&rel=0&disablekb=1&iv_load_policy=3`}
+          allow="autoplay; encrypted-media" />
+      ) : preview && src.kind === "vimeo" ? (
+        <iframe key={slide.id} aria-hidden tabIndex={-1} title={slide.title}
+          className="pointer-events-none absolute left-1/2 top-0 h-full w-[316%] -translate-x-1/2"
+          src={`https://player.vimeo.com/video/${src.id}?background=1&autoplay=1&muted=1&loop=1&playsinline=1`} allow="autoplay" />
+      ) : (
+        <Image src={slide.poster} alt="" fill unoptimized sizes="104px" className="object-cover" />
       )}
+      <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/55 to-transparent" />
+      {/* 화면 전체를 누르면 크게 보기 (링크 영상은 원본으로) */}
+      {src.kind === "link" ? (
+        <a href={slide.url} target="_blank" rel="noopener noreferrer" tabIndex={tab} aria-label={`${slide.title} 원본에서 보기`} className="absolute inset-0 z-[1]">
+          <span className="absolute left-1/2 top-1/2 grid h-9 w-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-navy"><ArrowUpRight className="h-4 w-4" aria-hidden /></span>
+        </a>
+      ) : (
+        <button type="button" onClick={() => setExpanded(true)} tabIndex={tab} aria-label={`${slide.title} 크게 보기`} className="absolute inset-0 z-[1]">
+          {!preview && <span className="absolute left-1/2 top-1/2 grid h-9 w-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-navy"><Play className="ml-0.5 h-4 w-4" fill="currentColor" aria-hidden /></span>}
+        </button>
+      )}
+      {preview && src.kind !== "link" && <span aria-hidden className="pointer-events-none absolute bottom-1.5 left-1.5 z-[2] grid h-6 w-6 place-items-center rounded-full bg-black/45 text-white"><VolumeX className="h-3.5 w-3.5" /></span>}
+      <button type="button" onClick={close} tabIndex={tab} aria-label="미니 플레이어 닫기"
+        className="absolute right-0 top-0 z-[2] grid h-9 w-9 place-items-center">
+        <span className="grid h-6 w-6 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm"><X className="h-3.5 w-3.5" aria-hidden /></span>
+      </button>
     </aside>
   );
 }
