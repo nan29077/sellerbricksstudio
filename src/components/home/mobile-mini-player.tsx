@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 
 // 모바일 미니 플레이어 (2026-11-14)
 //  - 모바일(1024px 미만)에서만 오른쪽 아래에 떠서 화면을 따라다닌다. PC는 왼쪽 플레이어를 그대로 쓴다.
-//  - 모양: 쇼츠처럼 세로로 긴 9:16. 가로 영상은 위아래 여백을 두고 보여 준다.
+//  - 모양: 작게는 3:4 세로형 카드(쇼핑 라이브 · 숏폼 위젯처럼), 크게 보기는 9:16. 가로 영상은 위아래 여백을 두고 보여 준다.
 //  - 위치: 하단 메뉴바 위 → 문의하기 버튼 위. 하단 메뉴바는 절대 가리지 않는다.
 //  - 메인(/)은 화면 안 큰 플레이어가 보이는 동안 숨고, 큰 플레이어가 화면 밖으로 나가면 나타난다.
 //  - 브랜드샵은 그 브랜드 영상만 (영상이 없으면 띄우지 않음). 닫기(X)를 누르면 이번 방문 동안 닫힌다.
@@ -85,46 +85,48 @@ export function MobileMiniPlayer({ videos }: { videos: HomeVideoItem[] | null })
     setPlaying(false);
   }
 
+  const tab = hidden ? -1 : 0;
+  const iconBtn = "grid place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm hover:bg-black/75";
   return (
     <aside aria-label={`${source.title} 미니 플레이어`} data-mini-player
       className={cn("fixed right-[max(1rem,calc((100vw-716px)/2+1rem))] z-30 overflow-hidden rounded-2xl border border-white/10 bg-navy text-white shadow-[0_12px_32px_#1A1A2E59] transition-[opacity,transform,width] duration-200 motion-reduce:transition-none lg:hidden",
-        bottom, expanded ? "w-[min(15rem,calc(100vw-2rem),calc((100dvh-17rem)*0.5625))]" : "w-[7.5rem]",
+        bottom, expanded ? "w-[min(15rem,calc(100vw-2rem),calc((100dvh-17rem)*0.5625))]" : "w-28",
         hidden && "pointer-events-none translate-y-3 opacity-0")}
       aria-hidden={hidden || undefined}>
-      <div className="relative aspect-[9/16] bg-black">
+      {/* 작게: 3:4 세로형 카드(쇼핑 라이브 · 숏폼 위젯처럼) · 크게: 9:16 */}
+      <div className={cn("relative bg-black", expanded ? "aspect-[9/16]" : "aspect-[3/4]")}>
         {playing && src.kind === "file" ? (
           <video className="h-full w-full object-contain" src={src.src} poster={slide.poster} aria-label={slide.title}
-            autoPlay playsInline controls preload="metadata" onEnded={() => setPlaying(false)} />
+            autoPlay playsInline controls={expanded} preload="metadata" onEnded={() => setPlaying(false)} />
         ) : playing && (src.kind === "youtube" || src.kind === "vimeo") ? (
           <iframe className="h-full w-full" title={slide.title} src={src.embed}
             allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen />
         ) : (
           <>
             <Image src={slide.poster} alt="" fill unoptimized sizes="240px" className="object-cover" />
-            <span className="absolute inset-0 bg-gradient-to-t from-navy/85 via-transparent to-navy/30" />
-            <p className={cn("absolute inset-x-2 bottom-2 line-clamp-2 break-keep font-bold leading-snug", expanded ? "text-xs" : "text-[10.5px]")} title={slide.title}>{slide.title}</p>
+            <span className="absolute inset-0 bg-gradient-to-t from-navy/85 via-transparent to-navy/40" />
+            <p className={cn("absolute inset-x-2 bottom-2 line-clamp-2 break-keep font-bold leading-snug", expanded ? "text-xs" : "text-[10px]")} title={slide.title}>{slide.title}</p>
             {src.kind === "link" ? (
-              <a href={slide.url} target="_blank" rel="noopener noreferrer" aria-label={`${slide.title} 원본에서 보기`} tabIndex={hidden ? -1 : 0}
-                className="absolute left-1/2 top-1/2 grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-navy shadow"><ArrowUpRight className="h-5 w-5" aria-hidden /></a>
+              <a href={slide.url} target="_blank" rel="noopener noreferrer" aria-label={`${slide.title} 원본에서 보기`} tabIndex={tab}
+                className={cn("absolute left-1/2 top-1/2 grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-navy shadow", expanded ? "h-12 w-12" : "h-9 w-9")}><ArrowUpRight className="h-4 w-4" aria-hidden /></a>
             ) : (
-              <button type="button" onClick={() => setPlaying(true)} aria-label={`${slide.title} 재생`} tabIndex={hidden ? -1 : 0}
-                className="absolute left-1/2 top-1/2 grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-navy shadow"><Play className="ml-0.5 h-5 w-5" fill="currentColor" aria-hidden /></button>
+              <button type="button" onClick={() => setPlaying(true)} aria-label={`${slide.title} 재생`} tabIndex={tab}
+                className={cn("absolute left-1/2 top-1/2 grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-navy shadow", expanded ? "h-12 w-12" : "h-9 w-9")}><Play className="ml-0.5 h-4 w-4" fill="currentColor" aria-hidden /></button>
             )}
           </>
         )}
-        <button type="button" onClick={close} aria-label="미니 플레이어 닫기" tabIndex={hidden ? -1 : 0}
-          className="absolute right-1 top-1 z-10 grid h-8 w-8 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm hover:bg-black/75"><X className="h-4 w-4" aria-hidden /></button>
+        <button type="button" onClick={() => setExpanded((v) => !v)} aria-label={expanded ? "작게 보기" : "크게 보기"} tabIndex={tab}
+          className={cn("absolute left-1 top-1 z-10 h-7 w-7", iconBtn)}>{expanded ? <Minimize2 className="h-3.5 w-3.5" aria-hidden /> : <Maximize2 className="h-3.5 w-3.5" aria-hidden />}</button>
+        <button type="button" onClick={close} aria-label="미니 플레이어 닫기" tabIndex={tab}
+          className={cn("absolute right-1 top-1 z-10 h-7 w-7", iconBtn)}><X className="h-4 w-4" aria-hidden /></button>
       </div>
-      <div className="flex items-center gap-0.5 px-1 py-1">
-        <span className="min-w-0 flex-1" />
-        {count > 1 && expanded && <span className="shrink-0 text-[10px] tabular-nums text-white/60">{index + 1}/{count}</span>}
-        {count > 1 && <>
-          {expanded && <button type="button" onClick={() => go(-1)} aria-label="이전 영상" tabIndex={hidden ? -1 : 0} className="grid h-7 w-7 shrink-0 place-items-center rounded-full hover:bg-white/10"><ChevronLeft className="h-4 w-4" aria-hidden /></button>}
-          <button type="button" onClick={() => go(1)} aria-label="다음 영상" tabIndex={hidden ? -1 : 0} className="grid h-7 w-7 shrink-0 place-items-center rounded-full hover:bg-white/10"><ChevronRight className="h-4 w-4" aria-hidden /></button>
-        </>}
-        <button type="button" onClick={() => setExpanded((v) => !v)} aria-label={expanded ? "작게 보기" : "크게 보기"} tabIndex={hidden ? -1 : 0}
-          className="grid h-7 w-7 shrink-0 place-items-center rounded-full hover:bg-white/10">{expanded ? <Minimize2 className="h-3.5 w-3.5" aria-hidden /> : <Maximize2 className="h-3.5 w-3.5" aria-hidden />}</button>
-      </div>
+      {expanded && count > 1 && (
+        <div className="flex items-center justify-end gap-0.5 px-1 py-1">
+          <span className="mr-auto pl-2 text-[11px] tabular-nums text-white/60">{index + 1} / {count}</span>
+          <button type="button" onClick={() => go(-1)} aria-label="이전 영상" tabIndex={tab} className="grid h-8 w-8 place-items-center rounded-full hover:bg-white/10"><ChevronLeft className="h-4 w-4" aria-hidden /></button>
+          <button type="button" onClick={() => go(1)} aria-label="다음 영상" tabIndex={tab} className="grid h-8 w-8 place-items-center rounded-full hover:bg-white/10"><ChevronRight className="h-4 w-4" aria-hidden /></button>
+        </div>
+      )}
     </aside>
   );
 }
