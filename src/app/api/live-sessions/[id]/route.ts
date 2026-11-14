@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { ok, fail, handleError } from "@/lib/http";
 import { audit } from "@/lib/audit";
+import { canOperateFacility } from "@/lib/facility-owner";
 
 // PATCH /api/live-sessions/[id] — 방송 배송비 설정 (셀러 · 방송 장소 창고(스튜디오) 관리자 · 최고관리자)
 //  shippingFee: 0 이면 무료배송(상품가에 포함), freeShippingOver: 이 금액 이상 주문하면 무료 (비우면 조건 없음)
@@ -16,9 +17,9 @@ const schema = z.object({
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await requireUser();
-    const s = await prisma.liveSession.findUnique({ where: { id: params.id }, include: { facility: { select: { ownerId: true } } } });
+    const s = await prisma.liveSession.findUnique({ where: { id: params.id }, include: { facility: { select: { id: true } } } });
     if (!s) return fail("방송을 찾을 수 없습니다.", 404);
-    if (!(s.sellerId === user.id || s.facility?.ownerId === user.id || user.role === "SUPER_ADMIN")) return fail("권한이 없습니다.", 403);
+    if (!(s.sellerId === user.id || user.role === "SUPER_ADMIN" || (await canOperateFacility(user, s.facilityId)))) return fail("권한이 없습니다.", 403);
     if (s.status === "CANCELLED") return fail("취소된 방송은 바꿀 수 없습니다.", 409);
     const data = schema.parse(await req.json().catch(() => ({})));
     const freeShippingOver = data.shippingFee > 0 && data.freeShippingOver ? data.freeShippingOver : null;

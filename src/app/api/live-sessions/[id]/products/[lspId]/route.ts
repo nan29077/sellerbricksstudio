@@ -1,3 +1,4 @@
+import type { Role } from "@prisma/client";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
@@ -5,6 +6,7 @@ import { ok, fail, handleError } from "@/lib/http";
 import { audit } from "@/lib/audit";
 import { z } from "zod";
 import { liveProductLimits } from "@/lib/brand-links";
+import { canOperateFacility } from "@/lib/facility-owner";
 
 const editSchema = z.object({
   isActive: z.boolean().optional(),
@@ -13,18 +15,19 @@ const editSchema = z.object({
   nameSnapshot: z.string().trim().min(1, "상품명을 입력하세요.").max(100).optional(),
 }).strip();
 
-async function assertAccess(userId: string, role: string, sessionId: string) {
+async function assertAccess(user: { id: string; role: Role }, sessionId: string) {
   const s = await prisma.liveSession.findUnique({ where: { id: sessionId }, include: { facility: true } });
   if (!s) throw new Error("세션을 찾을 수 없습니다.");
-  if (!(s.sellerId === userId || s.facility?.ownerId === userId || role === "SUPER_ADMIN")) throw new Error("FORBIDDEN");
-  return s;
+  const operator = user.role === "SUPER_ADMIN" || (await canOperateFacility(user, s.facilityId));
+  if (!(s.sellerId === user.id || operator)) throw new Error("FORBIDDEN");
+  return { ...s, operator };
 }
 
 // 상품번호 변경 (방송 중 즉시) 또는 활성/스냅샷 수정
 export async function PATCH(req: NextRequest, { params }: { params: { id: string; lspId: string } }) {
   try {
     const user = await requireUser();
-    const session = await assertAccess(user.id, user.role, params.id);
+    const session = await assertAccess(user, params.id);
     const body = await req.json();
     const lsp = await prisma.liveSessionProduct.findUnique({ where: { id: params.lspId } });
     if (!lsp || lsp.liveSessionId !== params.id) return fail("상품을 찾을 수 없습니다.", 404);
@@ -61,7 +64,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if ((changesPrice || changesStock) && !admin) {
       const limits = await liveProductLimits(prisma, lsp.id);
       if (limits && changesPrice) {
-        const isFacilityOwner = session.facility?.ownerId === user.id;
+        const isFacilityOwner = session.operator; // 방송 장소 창고 운영자
         if (limits.sellerPriceLocked && !isFacilityOwner) return fail("수수료 방식 창고(스튜디오) 상품은 창고(스튜디오)가 정한 가격으로만 팔 수 있습니다. 창고(스튜디오)에 공급가 설정을 요청해 주세요.", 403);
         if (patch.data.priceSnapshot! < limits.floor) return fail(`판매가는 ${limits.floor.toLocaleString()}원(공급가 · 브랜드 최저 판매가) 아래로 정할 수 없습니다.`);
       }
@@ -82,7 +85,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string; lspId: string } }) {
   try {
     const user = await requireUser();
-    await assertAccess(user.id, user.role, params.id);
+    await assertAccess(user, params.id);
     const lsp = await prisma.liveSessionProduct.findFirst({
       where: { id: params.lspId, liveSessionId: params.id },
       include: { _count: { select: { orderItems: true } } },

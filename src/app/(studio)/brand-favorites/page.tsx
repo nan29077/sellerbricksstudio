@@ -21,7 +21,7 @@ export default async function BrandFavorites() {
   });
   const imported = new Set(rows.length ? (user.role === "SELLER"
     ? await prisma.sellerBrandProduct.findMany({ where: { sellerId: user.id, brandProductId: { in: rows.map((r) => r.brandProductId) } }, select: { brandProductId: true } })
-    : await prisma.facilityProduct.findMany({ where: { facility: { ownerId: user.id }, brandProductId: { in: rows.map((r) => r.brandProductId) } }, select: { brandProductId: true } })
+    : await prisma.facilityProduct.findMany({ where: { brandProductId: { in: rows.map((r) => r.brandProductId) } }, select: { brandProductId: true } })
   ).map((x) => x.brandProductId).filter(Boolean) as string[] : []);
   return (
     <div className="space-y-5 px-4 py-7 sm:px-6">

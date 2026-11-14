@@ -33,6 +33,6 @@ export const supportFaq = [
   { category: "ORDER_PAYMENT", question: "주문번호로 주문 상태를 확인할 수 있나요?", answer: "주문 조회 화면에서 안내에 따라 주문 정보와 주문 시 입력한 정보를 입력하면 진행 상태를 확인할 수 있습니다.", href: "/order-lookup", link: "주문 조회하기" },
   { category: "LIVE", question: "방송 상품의 순서나 번호를 변경할 수 있나요?", answer: "라이브 세션에서 판매할 상품을 선택하고, 노출 순서와 상품번호를 관리할 수 있습니다.", href: "/intro", link: "라이브 운영 알아보기" },
   { category: "SETTLEMENT", question: "정산 내역은 어디에서 확인하나요?", answer: "로그인 후 역할별 대시보드의 정산 메뉴에서 내역을 확인할 수 있습니다.", href: "/login", link: "로그인하기" },
-  { category: "ACCOUNT", question: "어떤 역할로 가입해야 하나요?", answer: "라이브 판매를 준비한다면 셀러로, 창고나 스튜디오를 운영한다면 창고(스튜디오) 관리자로 가입하세요.", href: "/signup", link: "가입 유형 보기" },
-  { category: "PARTNERSHIP", question: "운영 중인 공간을 등록하려면 어떻게 하나요?", answer: "창고(스튜디오) 관리자 계정으로 가입한 다음, 대시보드의 창고(스튜디오) 등록 메뉴에서 등록을 신청하세요.", href: "/signup/facility", link: "공간 관리자 가입" },
+  { category: "ACCOUNT", question: "어떤 역할로 가입해야 하나요?", answer: "라이브 판매를 준비한다면 셀러로, 상품을 공급한다면 브랜드사로 가입하세요. 창고 · 스튜디오 · 쇼룸은 스토리지마켓이 직접 운영하므로 따로 가입하지 않습니다.", href: "/signup", link: "가입 유형 보기" },
+  { category: "PARTNERSHIP", question: "운영 중인 창고(스튜디오)를 제휴하고 싶어요.", answer: "스토리지마켓의 창고 · 스튜디오 · 쇼룸은 본사가 직접 운영하거나 긴밀하게 연동된 제휴 창고만 씁니다. 제휴를 원하시면 고객 문의로 남겨 주세요. 별도 계정 가입은 없습니다.", href: "/support", link: "제휴 문의하기" },
 ] satisfies { category: SupportCategory; question: string; answer: string; href: string; link: string }[];

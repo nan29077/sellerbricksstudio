@@ -3,20 +3,19 @@ import { Check } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cardLinkClassName } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { visibleSignupRoles } from "@/lib/signup-roles";
+import { SIGNUP_ROLES } from "@/lib/signup-roles";
 
 const roleIconColors = {
   SELLER: "bg-brand-100 text-brand-800",
   BRAND_ADMIN: "bg-teal-50 text-teal-800",
-  FACILITY_ADMIN: "bg-indigo-50 text-indigo-800",
 };
 
-// 가입 유형 카드: home = 메인페이지 3단 카드, page = 가입 선택 화면 세로 목록
-export function SignupRoleCards({ facilityDisabled, variant }: { facilityDisabled: boolean; variant: "home" | "page" }) {
-  const roles = visibleSignupRoles(facilityDisabled);
+// 가입 유형 카드: home = 메인페이지 카드, page = 가입 선택 화면 세로 목록
+export function SignupRoleCards({ variant }: { variant: "home" | "page" }) {
+  const roles = SIGNUP_ROLES;
   const home = variant === "home";
   return (
-    <ul className={cn("grid gap-3", home && (roles.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"))}>
+    <ul className={cn("grid gap-3", home && "sm:grid-cols-2")}>
       {roles.map(({ role, href, icon: Icon, title, summary, points, cta }) => (
         <li key={role} className="min-w-0">
           <Link href={href} aria-label={cta} className={cn(cardLinkClassName, "p-4")}>

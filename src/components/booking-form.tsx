@@ -10,6 +10,7 @@ import {
   TrendingUp, AlertCircle, Star, Clock, Loader2,
 } from "lucide-react";
 import { todayKST } from "@/lib/utils";
+import { facilityTypeLabel, facilityTypeTone } from "@/lib/status";
 
 type Facility = {
   id: string;
@@ -202,7 +203,7 @@ export function BookingForm({
               <Select aria-label="창고(스튜디오) 선택" value={facilityId} onChange={(e) => setFacilityId(e.target.value)}>
                 {facilities.map((f) => (
                   <option key={f.id} value={f.id}>
-                    {f.name} ({f.type === "WAREHOUSE" ? "창고" : "스튜디오"}, {f.region})
+                    {f.name} ({facilityTypeLabel(f.type)}, {f.region})
                   </option>
                 ))}
               </Select>
@@ -210,8 +211,8 @@ export function BookingForm({
 
             {currentFacility && (
               <div className="rounded-lg bg-brand-50 border border-brand-100 px-3 py-2 flex items-center gap-3 text-sm text-brand-700">
-                <Badge tone={currentFacility.type === "WAREHOUSE" ? "blue" : "purple"}>
-                  {currentFacility.type === "WAREHOUSE" ? "창고" : "스튜디오"}
+                <Badge tone={facilityTypeTone(currentFacility.type)}>
+                  {facilityTypeLabel(currentFacility.type)}
                 </Badge>
                 <span className="font-medium">{currentFacility.region}</span>
                 {currentFacility.openTime && (
@@ -507,7 +508,7 @@ export function BookingForm({
               )}
             </Button>
             <p className="text-center text-xs text-muted-foreground mt-3">
-              예약 신청 후 창고(스튜디오) 관리자의 승인이 완료되면 예약이 확정됩니다.
+              예약 신청 후 스토리지마켓 운영팀이 승인하면 예약이 확정됩니다.
             </p>
           </form>
         </CardContent>

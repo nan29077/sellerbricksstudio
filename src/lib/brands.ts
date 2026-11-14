@@ -15,7 +15,8 @@ export const BRAND_REQUEST_STATUS: Record<BrandRequestStatus, string> = {
 export const BRAND_REQUEST_KIND: Record<BrandRequestKind, string> = {
   SUPPLY: "창고 입고 요청", SAMPLE: "샘플 주문",
 };
-export const BRAND_BUYER_ROLES: Role[] = ["SELLER", "FACILITY_ADMIN"];
+// 브랜드 상품을 가져가 파는 판매처: 셀러, 그리고 스토리지마켓 창고를 대신하는 최고관리자(본사)
+export const BRAND_BUYER_ROLES: Role[] = ["SELLER", "SUPER_ADMIN"];
 
 /**
  * 브랜드 공급가·재고·최저 판매가를 볼 수 있는 계정인지.

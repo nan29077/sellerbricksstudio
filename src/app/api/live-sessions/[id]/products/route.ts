@@ -1,3 +1,4 @@
+import type { Role } from "@prisma/client";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
@@ -6,20 +7,21 @@ import { ok, fail, handleError } from "@/lib/http";
 import { audit } from "@/lib/audit";
 import { brandSnapshotForFacilityProduct } from "@/lib/brand-links";
 import { optionSnapshotOf } from "@/lib/brands";
+import { canOperateFacility } from "@/lib/facility-owner";
 
-// 세션 접근 권한: 셀러 본인 또는 창고(스튜디오) 소유 창고(스튜디오) 관리자
-async function assertAccess(userId: string, role: string, sessionId: string) {
+// 세션 접근 권한: 셀러 본인 · 최고관리자 · 방송 장소 창고 담당 매니저
+async function assertAccess(user: { id: string; role: Role }, sessionId: string) {
   const s = await prisma.liveSession.findUnique({ where: { id: sessionId }, include: { facility: true } });
   if (!s) throw new Error("세션을 찾을 수 없습니다.");
-  const allowed = s.sellerId === userId || s.facility?.ownerId === userId || role === "SUPER_ADMIN";
-  if (!allowed) throw new Error("FORBIDDEN");
-  return s;
+  const operator = user.role === "SUPER_ADMIN" || (await canOperateFacility(user, s.facilityId));
+  if (!(s.sellerId === user.id || operator)) throw new Error("FORBIDDEN");
+  return { ...s, operator };
 }
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await requireUser();
-    const session = await assertAccess(user.id, user.role, params.id);
+    const session = await assertAccess(user, params.id);
     if (session.status === "ENDED" || session.status === "CANCELLED") return fail("종료되거나 취소된 방송에는 상품을 추가할 수 없습니다.");
     const body = await req.json();
     const data = addLiveProductSchema.parse(body);
@@ -70,10 +72,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       if (exists) return fail("이미 추가된 상품입니다.", 409);
       snapshot = { name: fp.product.name, price: fp.salePrice, stock: fp.stock, image: fp.product.thumbnailUrl, source: "CATALOG", facilityProductId: fp.id, brand: await brandSnapshotForFacilityProduct(prisma, fp.id) };
     } else {
-      // 방송 중 임시상품 추가: 임시 상품은 창고(스튜디오)가 출고하고 판매금도 창고 몫이므로 방송 장소 창고(스튜디오) 관리자만 추가한다.
+      // 방송 중 임시상품 추가: 임시 상품은 창고(스튜디오)가 출고하고 판매금도 창고 몫이므로 방송 장소 창고 운영자(최고관리자 · 담당 매니저)만 추가한다.
       // (셀러는 창고 상품 · 가져온 브랜드 상품만 판다. 셀러 공간 방송에는 임시 상품을 올릴 수 없다)
-      if (user.role !== "SUPER_ADMIN" && !(session.facility && session.facility.ownerId === user.id)) {
-        return fail(session.facilityId ? "임시 상품은 방송 장소 창고(스튜디오)만 추가할 수 있습니다. 창고(스튜디오)에 요청해 주세요." : "내 공간 방송에서는 브랜드샵에서 가져온 상품만 판매할 수 있습니다.", 403);
+      if (!(session.facilityId && session.operator)) {
+        return fail(session.facilityId ? "임시 상품은 방송 장소 창고(스튜디오) 운영자만 추가할 수 있습니다. 창고(스튜디오)에 요청해 주세요." : "내 공간 방송에서는 브랜드샵에서 가져온 상품만 판매할 수 있습니다.", 403);
       }
       if (!data.name || data.price == null) return fail("임시상품은 상품명과 가격이 필요합니다.");
       snapshot = { name: data.name, price: data.price, stock: data.stock ?? 0, image: data.image, source: "AD_HOC" };

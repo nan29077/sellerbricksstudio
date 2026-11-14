@@ -9,7 +9,8 @@ export const signupSchema = z.object({
   companyName: z.string().trim().max(60).optional(),
   businessNumber: z.string().trim().max(20).regex(/^[0-9-]*$/, "사업자등록번호는 숫자와 - 만 입력하세요.").optional(),
   categories: z.array(z.string().refine(isCategory, "알 수 없는 카테고리입니다.")).max(17).optional(),
-  role: z.enum(["SELLER", "FACILITY_ADMIN", "MANAGER", "BRAND_ADMIN"]),
+  // 직접 가입은 셀러 · 브랜드사만. 창고(스튜디오)는 본사가 운영하고, 창고 운영 매니저는 최고관리자가 만든다.
+  role: z.enum(["SELLER", "BRAND_ADMIN"], { errorMap: () => ({ message: "가입할 수 없는 회원 유형입니다." }) }),
   agreeTerms: z.literal(true, { errorMap: () => ({ message: "이용약관에 동의해 주세요." }) }),
   agreePrivacy: z.literal(true, { errorMap: () => ({ message: "개인정보 수집·이용에 동의해 주세요." }) }),
 }).superRefine((v, ctx) => {

@@ -51,7 +51,9 @@ async function main() {
   console.log("\n[A0] 준비 — 로그인 · 테스트 브랜드");
   ok((await admin.login("admin@sellerbricks.kr")).data?.user?.role === "SUPER_ADMIN", "최고관리자 로그인");
   ok((await seller.login("seller@sellerbricks.kr")).data?.user?.role === "SELLER", "셀러 로그인");
-  ok((await fac.login("facility@sellerbricks.kr")).data?.user?.role === "FACILITY_ADMIN", "창고 관리자 로그인");
+  // 2026-11-14: 창고(스튜디오) 관리자 계정은 없어졌다 — 창고는 본사가 운영. 창고 운영은 담당 창고 운영 매니저(manager@)로 검증한다
+  { const old = new Client("old-facility"); ok(!(await old.login("facility@sellerbricks.kr")).data?.user, "예전 창고 관리자 계정은 로그인 불가"); }
+  ok((await fac.login("admin@sellerbricks.kr")).data?.user?.role === "SUPER_ADMIN", "본사(최고관리자) 로그인 — 창고 브랜드 거래 주체");
   const email = `izbrand${Date.now()}@test.kr`;
   let r = await guest.req("POST", "/api/auth/signup", { email, password: "password1234", name: "이즈브랜드", phone: "010-8888-0000", companyName: `이즈 테스트 ${Date.now() % 100000}`, businessNumber: "222-33-44444", role: "BRAND_ADMIN", categories: ["코스메틱"], agreeTerms: true, agreePrivacy: true });
   ok(r.status === 201, "테스트 브랜드 가입", r);
@@ -109,7 +111,7 @@ async function main() {
   }
 
   console.log("\n[A3] 창고 입고 MOQ");
-  const F = await db.facility.findFirst({ where: { owner: { email: "facility@sellerbricks.kr" } }, orderBy: { createdAt: "asc" } });
+  const F = await db.facility.findFirst({ where: { owner: { email: "admin@sellerbricks.kr" } }, orderBy: { createdAt: "asc" } });
   r = await fac.req("POST", "/api/brand-imports", { action: "import", brandProductId: pid, target: "FACILITY", facilityId: F.id, fulfillment: "WAREHOUSE", salePrice: 39000, commissionType: "PERCENT", commissionValue: 10 });
   ok(r.status === 201, "창고: 위탁 방식으로 가져오기", r);
   const fpW = r.data?.id;

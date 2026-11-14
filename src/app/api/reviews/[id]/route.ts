@@ -5,6 +5,7 @@ import { ok, fail, handleError } from "@/lib/http";
 import { refreshFacilityRating } from "@/lib/booking";
 import { notify } from "@/lib/notify";
 import { audit } from "@/lib/audit";
+import { canOperateFacility } from "@/lib/facility-owner";
 
 // 셀러: { rating, content } 수정 / 창고(스튜디오): { reply } 답글 / 최고관리자: { isHidden } 숨김
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
@@ -15,7 +16,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (!review) return fail("리뷰를 찾을 수 없습니다.", 404);
 
     if (typeof body.reply === "string") {
-      if (review.facility.ownerId !== user.id && user.role !== "SUPER_ADMIN") return fail("답글 권한이 없습니다.", 403);
+      if (!(await canOperateFacility(user, review.facilityId))) return fail("답글 권한이 없습니다.", 403);
       const reply = body.reply.trim().slice(0, 1000);
       const updated = await prisma.facilityReview.update({ where: { id: review.id }, data: { reply: reply || null, repliedAt: reply ? new Date() : null } });
       if (reply) await notify({ userId: review.sellerId, type: "REVIEW", title: "리뷰에 답글이 달렸습니다", body: `${review.facility.name} · ${reply.slice(0, 60)}`, link: "/seller/bookings?status=COMPLETED" });

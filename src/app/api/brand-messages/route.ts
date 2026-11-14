@@ -16,7 +16,7 @@ const schema = z.object({
   partnerId: z.string().max(64).optional(),  // 브랜드가 판매처에 처음 메시지를 보낼 때
 });
 
-// POST /api/brand-messages — 브랜드 ↔ 판매처(셀러 · 창고 관리자) 1:1 문의
+// POST /api/brand-messages — 브랜드 ↔ 판매처(셀러 · 스토리지마켓 본사) 1:1 문의
 export async function POST(req: Request) {
   try {
     const user = await requireUser();
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
         thread = await prisma.brandThread.upsert({ where: { shopId_partnerId: { shopId: shop.id, partnerId: user.id } }, update: {}, create: { shopId: shop.id, partnerId: user.id } });
       }
       if (!thread) return fail("대화를 찾지 못했습니다.", 404);
-    } else return fail("브랜드 문의는 브랜드사 · 셀러 · 창고(스튜디오) 계정으로 이용할 수 있습니다.", 403);
+    } else return fail("브랜드 문의는 브랜드사 · 셀러 계정으로 이용할 수 있습니다.", 403);
 
     const fromBrand = !!ctx;
     // 직거래 의심(전화번호·계좌번호 등): 보내기는 허용하고 메시지에 표시 + 감사 기록

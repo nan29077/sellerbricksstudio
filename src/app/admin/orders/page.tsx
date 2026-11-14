@@ -81,7 +81,7 @@ export default async function AdminOrders({ searchParams }: { searchParams: SP }
         ))}
       </div>
 
-      <OrderFilterTabs base={BASE} params={searchParams} current={status} q={q} exportHref="/api/orders/export" />
+      <OrderFilterTabs base={BASE} params={searchParams} current={status} q={q} exportHref="/api/orders/export?scope=all" />
 
       {orders.length === 0
         ? <EmptyState title="주문이 없습니다" description={status || q ? "조건에 맞는 주문이 없습니다." : "라이브 방송 후 주문이 들어오면 여기에 표시됩니다."} className="mt-4" />

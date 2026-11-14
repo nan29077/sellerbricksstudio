@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
-import { ownedFacilityIds } from "@/lib/rbac";
+import { operableFacilityIds } from "@/lib/facility-owner";
 import { PageHeader } from "@/components/layout/dashboard-widgets";
 import { EmptyState } from "@/components/ui/empty";
 import { Badge } from "@/components/ui/badge";
@@ -9,14 +9,15 @@ import { buttonVariants } from "@/components/ui/button";
 import { getFacilityPageConfig } from "@/lib/facility-page";
 import { cn } from "@/lib/utils";
 import { ArrowRight, ExternalLink, LayoutTemplate, MapPin, Sparkles } from "lucide-react";
+import { facilityTypeLabel, facilityTypeTone } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
 
 export default async function FacilityPages() {
-  const user = await requireRole(["FACILITY_ADMIN"]);
+  const user = await requireRole(["SUPER_ADMIN", "MANAGER"]);
   let facilities: any[] = [];
   try {
-    const ids = await ownedFacilityIds(user.id);
+    const ids = await operableFacilityIds(user);
     facilities = await prisma.facility.findMany({ where: { id: { in: ids } }, orderBy: { createdAt: "asc" } });
   } catch {
     facilities = [];
@@ -53,7 +54,7 @@ export default async function FacilityPages() {
                   </div>
                   <div className="min-w-0">
                     <div className="mb-2 flex items-center gap-2">
-                      <Badge tone={facility.type === "WAREHOUSE" ? "blue" : "purple"}>{facility.type === "WAREHOUSE" ? "창고" : "스튜디오"}</Badge>
+                      <Badge tone={facilityTypeTone(facility.type)}>{facilityTypeLabel(facility.type)}</Badge>
                       <span className="inline-flex items-center gap-1 text-[11px] text-white/70"><MapPin className="h-3 w-3" />{facility.region}</span>
                     </div>
                     <h2 className="truncate text-xl font-black">{config.pageTitle}</h2>

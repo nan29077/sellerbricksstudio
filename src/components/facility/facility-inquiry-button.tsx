@@ -89,7 +89,7 @@ export function FacilityInquiryButton({
               <div className="py-8 text-center">
                 <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500" />
                 <p className="mt-3 text-base font-black text-navy">문의가 전송되었습니다</p>
-                <p className="mt-1 text-sm text-slate-400">창고(스튜디오) 관리자가 확인 후 답변을 드립니다</p>
+                <p className="mt-1 text-sm text-slate-400">스토리지마켓 운영팀이 확인 후 답변을 드립니다</p>
                 <Button
                   className="mt-6"
                   variant="outline"

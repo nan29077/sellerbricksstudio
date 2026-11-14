@@ -5,6 +5,7 @@ import { makePoNo } from "./brands";
 import { brandRecipients } from "./brand-access";
 import { pct } from "./policy";
 import { refreshOrderStatusInTx } from "./order-fulfillment";
+import { notifyFacility } from "./facility-owner";
 
 type Tx = Prisma.TransactionClient;
 
@@ -307,11 +308,10 @@ export async function notifyPurchaseOrderChanges(changed: PoChange[]) {
   }
 }
 
-// 발주서 상태 알림을 셀러·창고(스튜디오) 관리자에게 각자 자기 화면 링크로 보낸다.
+// 발주서 상태 알림을 셀러 · 창고 운영자(최고관리자 · 담당 매니저)에게 각자 자기 화면 링크로 보낸다.
 export async function notifyPoPartners(po: { sellerId: string; facilityId: string | null }, params: { title: string; body?: string }) {
-  const facility = po.facilityId ? await prisma.facility.findUnique({ where: { id: po.facilityId }, select: { ownerId: true } }).catch(() => null) : null;
   await notify({ userId: po.sellerId, type: "SYSTEM", ...params, link: "/seller/orders" });
-  if (facility?.ownerId && facility.ownerId !== po.sellerId) await notify({ userId: facility.ownerId, type: "SYSTEM", ...params, link: "/facility/orders" });
+  if (po.facilityId) await notifyFacility(po.facilityId, { type: "SYSTEM", ...params, link: "/facility/orders", exclude: [po.sellerId] });
 }
 
 // ---------------------------------------------------------------------------

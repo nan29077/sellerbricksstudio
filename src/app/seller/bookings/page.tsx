@@ -16,7 +16,7 @@ import { Kpi } from "@/components/list/charts";
 import { MonthCalendar } from "@/components/calendar/month-calendar";
 import { SellerBookingActions } from "@/components/booking/seller-booking-actions";
 import { ActionButton } from "@/components/action-button";
-import { BOOKING_STATUS } from "@/lib/status";
+import { BOOKING_STATUS, facilityTypeLabel, facilityTypeTone } from "@/lib/status";
 import { formatDateTime } from "@/lib/utils";
 import { addMonths, hhmm, hoursBetween, kstStartOfMonth, parseMonth } from "@/lib/kst";
 import { dateRange, pageOf, sp, withParams, type SP } from "@/lib/list";
@@ -159,7 +159,7 @@ export default async function SellerBookings({ searchParams }: { searchParams: S
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge tone={st.tone}>{st.label}</Badge>
-                        <Badge tone={b.facility.type === "STUDIO" ? "purple" : "blue"}>{b.facility.type === "STUDIO" ? "스튜디오" : "창고"}</Badge>
+                        <Badge tone={facilityTypeTone(b.facility.type)}>{facilityTypeLabel(b.facility.type)}</Badge>
                         {b.groupId && <Badge tone="gray"><Repeat className="mr-1 h-3 w-3" />정기</Badge>}
                         {b.rescheduleCount > 0 && <Badge tone="gray">일정 변경 {b.rescheduleCount}회</Badge>}
                         {b.code && <span className="font-mono text-xs font-bold text-slate-500">{b.code}</span>}

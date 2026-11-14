@@ -9,6 +9,7 @@ import { notify } from "@/lib/notify";
 import { notifyBuyer } from "@/lib/order-notify";
 import { brandRecipients } from "@/lib/brand-access";
 import { audit } from "@/lib/audit";
+import { notifyFacility } from "@/lib/facility-owner";
 
 // 비회원 구매자의 취소 · 반품 · 교환 요청
 //  POST   { phone, type, reason, detail? } — 요청 남기기
@@ -29,7 +30,6 @@ async function loadOrder(id: string) {
     select: {
       id: true, orderNo: true, status: true, buyerPhone: true, sellerId: true, facilityId: true,
       localShippedAt: true, localDeliveredAt: true, deliveredAt: true,
-      facility: { select: { ownerId: true } },
       items: { select: FULFILLMENT_ITEM_SELECT },
       purchaseOrders: { select: { status: true, fulfillment: true, brandShopId: true } },
       claims: { select: { id: true, status: true } },
@@ -62,8 +62,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const label = CLAIM_LABEL[data.type];
     const body = `${data.reason}${data.detail ? ` · ${data.detail.slice(0, 80)}` : ""}`;
     await notify({ userId: order.sellerId, type: "ORDER", email: true, title: `구매자 ${label} 요청 · ${order.orderNo}`, body, link: "/seller/orders?status=claim" });
-    if (order.facility?.ownerId && order.facility.ownerId !== order.sellerId) {
-      await notify({ userId: order.facility.ownerId, type: "ORDER", email: true, title: `구매자 ${label} 요청 · ${order.orderNo}`, body, link: "/facility/orders?status=claim" });
+    if (order.facilityId) {
+      await notifyFacility(order.facilityId, { type: "ORDER", email: true, partnerEmail: true, title: `구매자 ${label} 요청 · ${order.orderNo}`, body, link: "/facility/orders?status=claim", exclude: [order.sellerId] });
     }
     // 브랜드 직배송 상품이 있으면 브랜드에도 알린다 (반품 · 교환 회수 준비)
     if (data.type !== "CANCEL") {
@@ -87,8 +87,8 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     if (!r.count) return fail("거둘 수 있는 요청이 없습니다.", 404);
     const order = g.order!;
     await notify({ userId: order.sellerId, type: "ORDER", title: `구매자가 요청을 거뒀습니다 · ${order.orderNo}`, link: "/seller/orders" });
-    if (order.facility?.ownerId && order.facility.ownerId !== order.sellerId) {
-      await notify({ userId: order.facility.ownerId, type: "ORDER", title: `구매자가 요청을 거뒀습니다 · ${order.orderNo}`, link: "/facility/orders" });
+    if (order.facilityId) {
+      await notifyFacility(order.facilityId, { type: "ORDER", title: `구매자가 요청을 거뒀습니다 · ${order.orderNo}`, link: "/facility/orders", exclude: [order.sellerId] });
     }
     await audit({ action: "ORDER_CLAIM_WITHDRAW", entity: "Order", entityId: params.id, meta: { claimId } });
     return ok({ id: claimId, status: "WITHDRAWN" });

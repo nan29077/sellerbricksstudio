@@ -52,7 +52,20 @@ async function main() {
   console.log("\n[0] 로그인");
   ok((await admin.login("admin@sellerbricks.kr")).data?.user?.role === "SUPER_ADMIN", "최고관리자 로그인");
   ok((await seller.login("seller@sellerbricks.kr")).data?.user?.role === "SELLER", "셀러 로그인");
-  ok((await fac.login("facility@sellerbricks.kr")).data?.user?.role === "FACILITY_ADMIN", "창고 관리자 로그인");
+  // 2026-11-14: 창고(스튜디오) 관리자 계정은 없어졌다 — 창고는 본사가 운영. 창고 운영은 담당 창고 운영 매니저(manager@)로 검증한다
+  { const old = new Client("old-facility"); ok(!(await old.login("facility@sellerbricks.kr")).data?.user, "예전 창고 관리자 계정은 로그인 불가"); }
+  ok((await fac.login("manager@sellerbricks.kr")).data?.user?.role === "MANAGER", "창고 운영 매니저 로그인");
+  {
+    const bcrypt = (await import("bcryptjs")).default;
+    const em = `oldfac${Date.now()}@test.kr`;
+    await db.user.create({ data: { email: em, role: "FACILITY_ADMIN", passwordHash: await bcrypt.hash("password1234", 10) } });
+    const c = new Client("oldfac-db");
+    ok(!(await c.login(em)).data?.user, "DB에 남은 예전 창고 관리자 계정도 로그인 불가");
+    const su = await new Client("su").req("POST", "/api/auth/signup", { email: `newfac${Date.now()}@test.kr`, password: "password1234", name: "창고", role: "FACILITY_ADMIN", agreeTerms: true, agreePrivacy: true });
+    ok(su.status === 400, "창고(스튜디오) 관리자 회원가입 불가", su);
+    const sm = await new Client("sm").req("POST", "/api/auth/signup", { email: `newmgr${Date.now()}@test.kr`, password: "password1234", name: "매니저", role: "MANAGER", agreeTerms: true, agreePrivacy: true });
+    ok(sm.status === 400, "창고 운영 매니저는 직접 가입 불가 (최고관리자가 만든다)", sm);
+  }
   if ((await admin.req("GET", "/api/admin/settings")).data?.liveEnabled === false) {
     await admin.req("PATCH", "/api/admin/settings", { liveEnabled: true });
     liveRestore = () => admin.req("PATCH", "/api/admin/settings", { liveEnabled: false });
@@ -119,29 +132,32 @@ async function main() {
   r = await seller.req("POST", "/api/brand-imports", { action: "import", brandProductId: p1.id, target: "SELLER", fulfillment: "DROPSHIP", salePrice: 25000 });
   ok(r.status === 201, "셀러: 직배송 판매 상품으로 가져오기", r);
   const listing = r.data.id;
-  const facilities = await db.facility.findMany({ where: { owner: { email: "facility@sellerbricks.kr" } }, orderBy: { createdAt: "asc" } });
+  const facilities = await db.facility.findMany({ where: { owner: { email: "admin@sellerbricks.kr" } }, orderBy: { createdAt: "asc" } });
   const F = facilities[0];
-  r = await fac.req("POST", "/api/brand-imports", { action: "import", brandProductId: p1.id, target: "FACILITY", facilityId: F.id, fulfillment: "WAREHOUSE", salePrice: 28000, commissionType: "PERCENT", commissionValue: 10 });
+  // 브랜드 거래(창고 상품 가져오기 · 입고 요청)는 최고관리자(본사)가 한다 — 매니저는 막힌다
+  r = await fac.req("POST", "/api/brand-imports", { action: "import", brandProductId: p1.id, target: "FACILITY", facilityId: F.id, fulfillment: "WAREHOUSE", salePrice: 28000 });
+  ok(r.status === 403, "창고 운영 매니저는 브랜드 상품 가져오기 불가 (본사만)", r);
+  r = await admin.req("POST", "/api/brand-imports", { action: "import", brandProductId: p1.id, target: "FACILITY", facilityId: F.id, fulfillment: "WAREHOUSE", salePrice: 28000, commissionType: "PERCENT", commissionValue: 10 });
   ok(r.status === 201 && r.data.needsStock, "창고: 위탁(창고 입고) 방식으로 가져오기", r);
   const fpW = r.data.id;
   let fpWRow = await db.facilityProduct.findUnique({ where: { id: fpW } });
   ok(fpWRow.stock === 0 && !fpWRow.isSellable && fpWRow.fulfillment === "WAREHOUSE" && fpWRow.brandProductId === p1.id, "입고 전 재고 0 · 판매 대기", fpWRow);
-  r = await fac.req("POST", "/api/brand-imports", { action: "import", brandProductId: p1.id, target: "FACILITY", facilityId: F.id, fulfillment: "WAREHOUSE", salePrice: 28000 });
+  r = await admin.req("POST", "/api/brand-imports", { action: "import", brandProductId: p1.id, target: "FACILITY", facilityId: F.id, fulfillment: "WAREHOUSE", salePrice: 28000 });
   ok(r.status === 409, "같은 방식 중복 가져오기 거절", r);
-  r = await fac.req("POST", "/api/brand-imports", { action: "import", brandProductId: p2, target: "FACILITY", facilityId: F.id, fulfillment: "WAREHOUSE", salePrice: 9000 });
+  r = await admin.req("POST", "/api/brand-imports", { action: "import", brandProductId: p2, target: "FACILITY", facilityId: F.id, fulfillment: "WAREHOUSE", salePrice: 9000 });
   ok(r.status === 400, "브랜드가 막은 배송방식(창고 입고) 거절", r);
-  r = await fac.req("POST", "/api/brand-imports", { action: "import", brandProductId: p2, target: "FACILITY", facilityId: F.id, fulfillment: "DROPSHIP", salePrice: 9000, commissionType: "PERCENT", commissionValue: 10, stock: 20 });
+  r = await admin.req("POST", "/api/brand-imports", { action: "import", brandProductId: p2, target: "FACILITY", facilityId: F.id, fulfillment: "DROPSHIP", salePrice: 9000, commissionType: "PERCENT", commissionValue: 10, stock: 20 });
   ok(r.status === 201, "창고: 직배송 방식으로 가져오기 (판매 한도 20)", r);
   const fpD = r.data.id;
 
   console.log("\n[5] 창고 입고 요청 → 브랜드 승인·발송 → 창고 입고 확인 → 창고 재고 반영");
-  r = await fac.req("POST", "/api/brands", { action: "request", productId: p1.id, requestKey: key(), kind: "SUPPLY", quantity: 30, expectedUnitPrice: 10000, recipient: F.name, phone: "010-0000-0000", address: F.address, message: "", facilityProductId: fpW });
+  r = await admin.req("POST", "/api/brands", { action: "request", productId: p1.id, requestKey: key(), kind: "SUPPLY", quantity: 30, expectedUnitPrice: 10000, recipient: F.name, phone: "010-0000-0000", address: F.address, message: "", facilityProductId: fpW });
   ok(r.status === 201, "창고 입고 요청 (30개)", r);
   const sup = r.data.id;
   await brand.req("POST", "/api/brands", { action: "transition", requestId: sup, status: "APPROVED" });
   ok((await db.brandProduct.findUnique({ where: { id: p1.id } })).stock === 70, "승인 시 브랜드 재고 100→70");
   await brand.req("POST", "/api/brands", { action: "transition", requestId: sup, status: "SHIPPED", carrier: "로젠", trackingNumber: "999" });
-  r = await fac.req("POST", "/api/brands", { action: "transition", requestId: sup, status: "COMPLETED" });
+  r = await admin.req("POST", "/api/brands", { action: "transition", requestId: sup, status: "COMPLETED" });
   fpWRow = await db.facilityProduct.findUnique({ where: { id: fpW } });
   ok(r.ok && fpWRow.stock === 30 && fpWRow.isSellable, "입고 확인 → 창고 재고 30 · 판매 시작", fpWRow);
 
@@ -153,6 +169,11 @@ async function main() {
       const from = new Date(`${dd}T00:00:00+09:00`), to = new Date(from.getTime() + 24 * 3600000);
       await db.booking.updateMany({ where: { facilityId: F.id, status: { in: ["PENDING", "APPROVED"] }, startAt: { gte: from, lt: to } }, data: { status: "CANCELLED" } });
     }
+  }
+  {
+    const other = facilities.find((x) => x.region === "경기"); // 매니저 담당이 아닌 창고
+    const rr = await fac.req("POST", "/api/facility/time-blocks", { facilityId: other.id, date: day, start: "14:00", end: "16:00", reason: "권한 확인" });
+    ok(rr.status === 403, "매니저는 담당이 아닌 창고 일정을 바꿀 수 없음", rr);
   }
   r = await fac.req("POST", "/api/facility/time-blocks", { facilityId: F.id, date: day, start: "14:00", end: "16:00", reason: "내부 촬영" });
   ok(r.status === 201, "14~16시 시간대 차단", r);

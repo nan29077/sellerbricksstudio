@@ -48,6 +48,7 @@ export function FacilityStorefront({
   user,
   reviews = [],
   favorited = false,
+  canManage = false,
   products,
 }: {
   facility: any;
@@ -55,6 +56,7 @@ export function FacilityStorefront({
   user: { role?: string; id?: string } | null;
   reviews?: PublicReview[];
   favorited?: boolean;
+  canManage?: boolean; // 이 창고의 운영자(최고관리자 · 담당 매니저)
   products: Array<{ id: string; stock: number; salePrice: number; supplyPrice?: number | null; product: { name: string; category: string; thumbnailUrl: string | null } }>;
 }) {
   const accent = FACILITY_PAGE_THEMES[pageConfig.theme].accent;
@@ -76,7 +78,7 @@ export function FacilityStorefront({
   const bookingHrefForSlot = (slot: any) => isSeller
     ? `${directBookingHref}&date=${nextDateForWeekday(slot.weekday, slot.startTime)}&start=${encodeURIComponent(slot.startTime)}&end=${encodeURIComponent(slot.endTime)}`
     : bookingHref;
-  const management = user?.role === "SUPER_ADMIN" && f.ownerId ? `/admin/facilities/${f.id}/shop` : user?.id && user.id === f.ownerId ? `/facility/pages/${f.id}` : null;
+  const management = user?.role === "SUPER_ADMIN" ? `/admin/facilities/${f.id}/shop` : user?.role === "MANAGER" && canManage ? `/facility/pages/${f.id}` : null;
   const shopLinks = [
     { href: "#store-home", label: "홈", icon: House },
     ...(pageConfig.showProducts ? [{ href: "#store-products", label: "상품", icon: LayoutGrid }] : []),

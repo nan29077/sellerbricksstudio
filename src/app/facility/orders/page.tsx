@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { PO_CHIP_INCLUDE } from "@/components/brand/po-chips";
 import { requireRole } from "@/lib/auth";
-import { ownedFacilityIds } from "@/lib/rbac";
+import { operableFacilityIds } from "@/lib/facility-owner";
 import { PageHeader } from "@/components/layout/dashboard-widgets";
 import { EmptyState } from "@/components/ui/empty";
 import { Pagination } from "@/components/list/pagination";
@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 const BASE = "/facility/orders";
 
 export default async function FacilityOrders({ searchParams }: { searchParams: SP }) {
-  const user = await requireRole(["FACILITY_ADMIN"]);
+  const user = await requireRole(["SUPER_ADMIN", "MANAGER"]);
   const status = sp(searchParams, "status") ?? "";
   const q = sp(searchParams, "q") ?? "";
   const { page, size, skip, take } = pageOf(searchParams, 30);
@@ -25,7 +25,7 @@ export default async function FacilityOrders({ searchParams }: { searchParams: S
   let total = 0;
   const policy = await getPolicy();
   try {
-    const facIds = await ownedFacilityIds(user.id);
+    const facIds = await operableFacilityIds(user);
     const where = {
       facilityId: { in: facIds }, ...orderFilterWhere(status),
       ...(q && { AND: [{ OR: [{ orderNo: { contains: q, mode: "insensitive" as const } }, { buyerName: { contains: q } }] }] }),

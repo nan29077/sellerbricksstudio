@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
+import { facilityScope } from "@/lib/facility-owner";
 import { PageHeader } from "@/components/layout/dashboard-widgets";
 import { EmptyState } from "@/components/ui/empty";
 import { Badge } from "@/components/ui/badge";
@@ -12,10 +14,11 @@ import { formatKRW } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 export default async function FacilityBrandProducts() {
-  const user = await requireRole(["FACILITY_ADMIN"]);
+  const user = await requireRole(["SUPER_ADMIN", "MANAGER"]);
+  if (user.role !== "SUPER_ADMIN") redirect("/facility/products"); // 브랜드 거래(가져오기 · 입고 요청)는 최고관리자가 한다
   const [rows, profile] = await Promise.all([
     prisma.facilityProduct.findMany({
-      where: { facility: { ownerId: user.id }, brandProductId: { not: null } }, orderBy: { createdAt: "desc" },
+      where: { facility: facilityScope(user), brandProductId: { not: null } }, orderBy: { createdAt: "desc" },
       include: {
         facility: { select: { name: true, address: true, contactPhone: true } }, product: { select: { name: true } },
         brandProduct: { select: { id: true, name: true, supplyPrice: true, stock: true, isActive: true, allowWarehouse: true, minOrderQty: true, shop: { select: { id: true, name: true, status: true } } } },
@@ -24,12 +27,12 @@ export default async function FacilityBrandProducts() {
     prisma.profile.findUnique({ where: { userId: user.id }, select: { name: true, phone: true } }),
   ]);
   const openRequests = rows.length ? await prisma.brandRequest.groupBy({
-    by: ["facilityProductId"], where: { buyerId: user.id, kind: "SUPPLY", facilityProductId: { in: rows.map((r) => r.id) }, status: { in: ["PENDING", "APPROVED", "SHIPPED"] } },
+    by: ["facilityProductId"], where: { kind: "SUPPLY", facilityProductId: { in: rows.map((r) => r.id) }, status: { in: ["PENDING", "APPROVED", "SHIPPED"] } },
     _sum: { quantity: true },
   }) : [];
   const pending = new Map(openRequests.map((r) => [r.facilityProductId, r._sum.quantity ?? 0]));
   const sold = rows.length ? await prisma.purchaseOrderItem.groupBy({
-    by: ["brandProductId"], where: { purchaseOrder: { facility: { ownerId: user.id }, status: { notIn: ["CANCELLED", "RETURNED"] } } }, _sum: { quantity: true },
+    by: ["brandProductId"], where: { purchaseOrder: { facilityId: { in: Array.from(new Set(rows.map((r) => r.facilityId))) }, status: { notIn: ["CANCELLED", "RETURNED"] } } }, _sum: { quantity: true },
   }) : [];
   const soldMap = new Map(sold.map((s) => [s.brandProductId, s._sum.quantity ?? 0]));
 

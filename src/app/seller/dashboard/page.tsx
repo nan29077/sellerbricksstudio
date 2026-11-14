@@ -1,3 +1,4 @@
+import type { FacilityType } from "@prisma/client";
 import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
@@ -6,7 +7,7 @@ import { requireRole } from "@/lib/auth";
 import { runBookingMaintenance } from "@/lib/booking-automation";
 import { formatKRW } from "@/lib/utils";
 import { addDays, addMonths, hhmm, kstParts, kstStartOfMonth, WEEKDAYS } from "@/lib/kst";
-import { LIVE_STATUS } from "@/lib/status";
+import { LIVE_STATUS, facilityTypeLabel } from "@/lib/status";
 import { registeredSpaceThumbnail } from "@/lib/showcase";
 import {
   SOLD_ORDER_STATUSES, compactKRW, dailySeries, dday, deltaPct, greeting, hoursText, monthlySeries, overlapHours, todayLabel, zipSeries,
@@ -67,7 +68,7 @@ async function load(userId: string) {
   ]);
 
   // 자주 찾는 공간: 찜 → 많이 이용한 곳 → 평점 높은 곳 순으로 채운다
-  const picked = new Map<string, { id: string; name: string; region: string; type: "STUDIO" | "WAREHOUSE"; rating: number; tag: string }>();
+  const picked = new Map<string, { id: string; name: string; region: string; type: FacilityType; rating: number; tag: string }>();
   for (const f of favorites) if (f.facility.status === "APPROVED") picked.set(f.facility.id, { ...f.facility, tag: "찜" });
   if (picked.size < 4 && frequent.length) {
     const fs = await prisma.facility.findMany({ where: { id: { in: frequent.map((f) => f.facilityId) }, status: "APPROVED" }, select: { id: true, name: true, region: true, type: true, rating: true } });
@@ -250,7 +251,7 @@ export default async function SellerDashboard() {
                     <Image src={registeredSpaceThumbnail(f.id, f.type)} alt="" width={72} height={54} unoptimized className="h-12 w-16 shrink-0 rounded-xl object-cover" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-bold text-navy">{f.name}</span>
-                      <span className="flex items-center gap-1 text-xs text-slate-500"><MapPin className="h-3 w-3" />{f.region} · {f.type === "WAREHOUSE" ? "창고" : "스튜디오"} · <Star className="h-3 w-3 fill-amber-400 text-amber-400" />{f.rating.toFixed(1)}</span>
+                      <span className="flex items-center gap-1 text-xs text-slate-500"><MapPin className="h-3 w-3" />{f.region} · {facilityTypeLabel(f.type)} · <Star className="h-3 w-3 fill-amber-400 text-amber-400" />{f.rating.toFixed(1)}</span>
                     </span>
                     <span className="flex shrink-0 flex-col items-end gap-1"><Pill tone={f.tag === "찜" ? "red" : f.tag === "추천" ? "brand" : "violet"}>{f.tag}</Pill><span className="text-[11px] font-bold text-emerald-600">이용료 무료</span></span>
                   </Link>

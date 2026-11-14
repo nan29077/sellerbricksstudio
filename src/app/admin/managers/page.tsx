@@ -50,15 +50,15 @@ export default async function AdminManagers() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="중간관리자 관리" description="영업 담당 창고(스튜디오)를 배정하고, 영업 수수료(판매 수수료의 % 또는 이용 완료 건당 정액)를 설정합니다." action={<RegisterManagerButton />} />
+      <PageHeader title="창고 운영 매니저" description="본사 직원 계정을 만들고 담당 창고(스튜디오)를 지정합니다. 매니저는 담당 창고만 운영(예약 승인 · 일정 · 상품 · 출고 · 문의)할 수 있습니다. 수수료(판매 수수료의 % 또는 이용 완료 건당 정액)도 설정할 수 있습니다." action={<RegisterManagerButton />} />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi label="중간관리자" value={`${managers.length}명`} sub={`활성 ${managers.filter((m) => m.isActive).length}명`} icon={Users} tone="navy" />
+        <Kpi label="창고 운영 매니저" value={`${managers.length}명`} sub={`활성 ${managers.filter((m) => m.isActive).length}명`} icon={Users} tone="navy" />
         <Kpi label="배정된 창고(스튜디오)" value={`${allFacIds.length}곳`} sub={`미배정 ${unassigned}곳`} icon={Building2} tone="brand" />
         <Kpi label="이번 달 수수료 합계" value={formatKRW(rows.reduce((s, r) => s + r.monthCommission, 0))} icon={DollarSign} tone="green" />
         <Kpi label="누적 수수료 합계" value={formatKRW(rows.reduce((s, r) => s + r.totalCommission, 0))} icon={TrendingUp} tone="blue" />
       </div>
       <p className="rounded-xl border border-[#E9E5DC] bg-white px-4 py-3 text-xs text-slate-600">수수료 계산: <b>정률</b> = 담당 창고(스튜디오) 방송의 배송 완료 주문에서 플랫폼이 받은 판매 수수료 × % (창고 이용료는 무료), <b>정액</b> = 이용 완료 1건당 금액</p>
-      {rows.length === 0 ? <EmptyState icon={<Users className="h-10 w-10" />} title="중간관리자가 없습니다" description="오른쪽 위 버튼으로 중간관리자 계정을 만들 수 있습니다." /> : (
+      {rows.length === 0 ? <EmptyState icon={<Users className="h-10 w-10" />} title="창고 운영 매니저가 없습니다" description="오른쪽 위 버튼으로 매니저 계정을 만들 수 있습니다. 매니저가 없어도 최고관리자가 모든 창고를 운영합니다." /> : (
         <div className="space-y-3">
           {rows.map(({ m, rule, ids, mo, tot, monthCommission, totalCommission }) => (
             <Card key={m.id}>

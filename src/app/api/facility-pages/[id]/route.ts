@@ -1,10 +1,11 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/auth";
+import { requireRole, type SessionUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { fail, handleError, ok } from "@/lib/http";
 import { isShopImageUrl } from "@/lib/shop-artwork";
+import { canOperateFacility, FACILITY_OPERATOR_ROLES } from "@/lib/facility-owner";
 import {
   FACILITY_PAGE_THEMES,
   defaultProfileFor,
@@ -32,18 +33,20 @@ const pageSchema = z.object({
   showProducts: z.boolean(),
 });
 
-async function editableFacility(id: string, ownerId?: string) {
+// 창고 운영자(최고관리자 · 담당 매니저)만 창고 샵을 편집한다
+async function editableFacility(id: string, user: SessionUser) {
+  if (!(await canOperateFacility(user, id))) return null;
   return prisma.facility.findFirst({
-    where: { id, ownerId },
+    where: { id },
     select: { id: true, name: true, type: true, description: true },
   });
 }
 
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const user = await requireRole(["FACILITY_ADMIN", "SUPER_ADMIN"]);
-    const facility = await editableFacility(params.id, user.role === "SUPER_ADMIN" ? undefined : user.id);
-    if (!facility) return fail("내 창고(스튜디오)만 편집할 수 있습니다.", 403);
+    const user = await requireRole(FACILITY_OPERATOR_ROLES);
+    const facility = await editableFacility(params.id, user);
+    if (!facility) return fail("운영하는 창고(스튜디오)만 편집할 수 있습니다.", 403);
     const setting = await prisma.setting.findUnique({ where: { key: facilityPageSettingKey(params.id) } });
     return ok(parseFacilityPageConfig(facility, setting?.value));
   } catch (error) {
@@ -53,9 +56,9 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const user = await requireRole(["FACILITY_ADMIN", "SUPER_ADMIN"]);
-    const facility = await editableFacility(params.id, user.role === "SUPER_ADMIN" ? undefined : user.id);
-    if (!facility) return fail("내 창고(스튜디오)만 편집할 수 있습니다.", 403);
+    const user = await requireRole(FACILITY_OPERATOR_ROLES);
+    const facility = await editableFacility(params.id, user);
+    if (!facility) return fail("운영하는 창고(스튜디오)만 편집할 수 있습니다.", 403);
     const input = pageSchema.parse(await req.json());
     const setting = input.backgroundUrl ? null : await prisma.setting.findUnique({ where: { key: facilityPageSettingKey(params.id) } });
     const data = {

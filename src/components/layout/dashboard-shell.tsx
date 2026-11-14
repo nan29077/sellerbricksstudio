@@ -18,7 +18,7 @@ import {
 import { NotificationBell } from "./notification-bell";
 import { cn } from "@/lib/utils";
 
-export type NavItem = { href: string; label: string; icon: LucideIcon; requiresLive?: boolean; requiresFacility?: boolean };
+export type NavItem = { href: string; label: string; icon: LucideIcon; requiresLive?: boolean };
 export type NavSection = { title: string; items: NavItem[] };
 
 const ROLE_NAV: Record<string, NavSection[]> = {
@@ -26,13 +26,16 @@ const ROLE_NAV: Record<string, NavSection[]> = {
     { title: "운영 현황", items: [
       { href: "/admin/dashboard", label: "대시보드", icon: LayoutDashboard },
     ]},
-    { title: "회원 · 창고(스튜디오)", items: [
+    { title: "창고 운영", items: [
+      { href: "/facility/dashboard", label: "창고 운영 콘솔", icon: Warehouse },
+      { href: "/admin/facilities", label: "창고(스튜디오) 목록 · 공개", icon: Building2 },
+      { href: "/admin/managers",   label: "창고 운영 매니저", icon: UserCog },
+    ]},
+    { title: "회원 · 브랜드", items: [
       { href: "/admin/users",      label: "회원 관리", icon: Users },
-      { href: "/admin/facilities", label: "창고(스튜디오) 관리", icon: Building2 },
       { href: "/admin/brands",     label: "브랜드샵 관리", icon: ShoppingBag },
       { href: "/admin/brands/requests", label: "샘플 · 입고 신청", icon: ClipboardList },
       { href: "/admin/purchase-orders", label: "발주 관리", icon: FileText },
-      { href: "/admin/managers",   label: "매니저 관리", icon: Users },
       { href: "/admin/reviews",    label: "리뷰 관리", icon: Star },
     ]},
     { title: "예약 관리", items: [
@@ -60,7 +63,7 @@ const ROLE_NAV: Record<string, NavSection[]> = {
   SELLER: [
     { title: "운영", items: [
       { href: "/seller/dashboard", label: "대시보드", icon: LayoutDashboard },
-      { href: "/seller/bookings",  label: "예약 관리", icon: CalendarDays, requiresFacility: true },
+      { href: "/seller/bookings",  label: "예약 관리", icon: CalendarDays },
     ]},
     { title: "브랜드", items: [
       { href: "/brands", label: "브랜드샵 둘러보기", icon: ShoppingBag },
@@ -70,9 +73,9 @@ const ROLE_NAV: Record<string, NavSection[]> = {
       { href: "/brand-messages", label: "브랜드 문의", icon: MessageSquare },
     ]},
     { title: "창고·스튜디오", items: [
-      { href: "/seller/products",           label: "판매 상품 둘러보기", icon: Package, requiresFacility: true },
+      { href: "/seller/products",           label: "판매 상품 둘러보기", icon: Package },
       { href: "/facilities",                label: "창고(스튜디오) 검색", icon: Warehouse },
-      { href: "/seller/farm-reservations",  label: "창고(스튜디오) 예약 현황",      icon: Building2, requiresFacility: true },
+      { href: "/seller/farm-reservations",  label: "창고(스튜디오) 예약 현황",      icon: Building2 },
     ]},
     { title: "마케팅 지원", items: [
       { href: "/seller/marketing",           label: "SNS 마케팅",     icon: Share2 },
@@ -88,13 +91,14 @@ const ROLE_NAV: Record<string, NavSection[]> = {
       { href: "/seller/settings", label: "설정", icon: Settings },
     ]},
   ],
-  FACILITY_ADMIN: [
-    { title: "운영", items: [
+  // 창고 운영 콘솔 (/facility) — 창고(스튜디오) 계정은 없고 본사가 운영한다. 최고관리자용
+  FACILITY_OPS: [
+    { title: "창고 운영", items: [
       { href: "/facility/dashboard", label: "대시보드",  icon: LayoutDashboard },
       { href: "/facility/profile",   label: "창고(스튜디오) 정보 · 편집", icon: Warehouse },
       { href: "/facility/register",  label: "창고(스튜디오) 등록", icon: SquarePlus },
       { href: "/facility/pages",     label: "창고(스튜디오)샵 관리", icon: LayoutTemplate },
-      { href: "/facility/products",  label: "상품 관리", icon: Package },
+      { href: "/facility/products",  label: "상품 · 재고", icon: Package },
     ]},
     { title: "브랜드", items: [
       { href: "/brands", label: "브랜드샵 둘러보기", icon: ShoppingBag },
@@ -109,9 +113,36 @@ const ROLE_NAV: Record<string, NavSection[]> = {
       { href: "/facility/inquiries",  label: "셀러 문의", icon: MessageSquare },
       { href: "/facility/reviews",    label: "리뷰 관리", icon: Star },
     ]},
-    { title: "창고(스튜디오) 운영", items: [
-      { href: "/facility/settlements", label: "정산 내역", icon: TrendingUp },
-      { href: "/facility/settings",    label: "설정",      icon: Settings },
+    { title: "주문 · 매출", items: [
+      { href: "/facility/orders",        label: "주문 · 출고", icon: FileText },
+      { href: "/facility/live-sessions", label: "창고 방송", icon: CalendarClock, requiresLive: true },
+      { href: "/facility/settlements",   label: "창고 매출", icon: TrendingUp },
+    ]},
+    { title: "관리자", items: [
+      { href: "/admin/dashboard", label: "관리자 메뉴로", icon: Home },
+    ]},
+  ],
+  // 창고 운영 매니저용 (담당 창고만 · 창고 등록과 브랜드 거래는 최고관리자)
+  FACILITY_OPS_MANAGER: [
+    { title: "담당 창고 운영", items: [
+      { href: "/facility/dashboard", label: "대시보드",  icon: LayoutDashboard },
+      { href: "/facility/profile",   label: "창고(스튜디오) 정보 · 편집", icon: Warehouse },
+      { href: "/facility/pages",     label: "창고(스튜디오)샵 관리", icon: LayoutTemplate },
+      { href: "/facility/products",  label: "상품 · 재고", icon: Package },
+    ]},
+    { title: "예약 관리", items: [
+      { href: "/facility/bookings",   label: "예약 현황", icon: CalendarDays },
+      { href: "/facility/schedule",   label: "일정 관리", icon: CalendarClock },
+      { href: "/facility/inquiries",  label: "셀러 문의", icon: MessageSquare },
+      { href: "/facility/reviews",    label: "리뷰 관리", icon: Star },
+    ]},
+    { title: "주문 · 매출", items: [
+      { href: "/facility/orders",        label: "주문 · 출고", icon: FileText },
+      { href: "/facility/live-sessions", label: "창고 방송", icon: CalendarClock, requiresLive: true },
+      { href: "/facility/settlements",   label: "창고 매출", icon: TrendingUp },
+    ]},
+    { title: "매니저", items: [
+      { href: "/manager/dashboard", label: "매니저 메뉴로", icon: Home },
     ]},
   ],
   BRAND_ADMIN: [
@@ -141,13 +172,16 @@ const ROLE_NAV: Record<string, NavSection[]> = {
 };
 
 ROLE_NAV.MANAGER = [
-  { title: "영업 현황", items: [
+  { title: "창고 운영", items: [
+    { href: "/facility/dashboard", label: "담당 창고 운영", icon: Warehouse },
+  ]},
+  { title: "현황", items: [
     { href: "/manager/dashboard",  label: "대시보드", icon: LayoutDashboard },
     { href: "/manager/facilities", label: "담당 창고(스튜디오)", icon: Building2 },
     { href: "/manager/bookings",   label: "예약 현황", icon: CalendarDays },
   ]},
   { title: "매출 · 수수료", items: [
-    { href: "/manager/sales",       label: "매출 현황", icon: Wallet },
+    { href: "/facility/settlements", label: "담당 창고 매출", icon: Wallet },
     { href: "/manager/commissions", label: "내 수수료", icon: Coins },
   ]},
   { title: "계정", items: [
@@ -158,7 +192,8 @@ ROLE_NAV.MANAGER = [
 const ROLE_BADGE_COLOR: Record<string, string> = {
   SUPER_ADMIN:    "bg-red-100 text-red-700",
   SELLER:         "bg-brand-100 text-brand-700",
-  FACILITY_ADMIN: "bg-blue-100 text-blue-700",
+  FACILITY_OPS: "bg-red-100 text-red-700",
+  FACILITY_OPS_MANAGER: "bg-purple-100 text-purple-700",
   BRAND_ADMIN:    "bg-violet-100 text-violet-700",
   MANAGER:        "bg-purple-100 text-purple-700",
 };
@@ -169,7 +204,6 @@ export function DashboardShell({
   userName,
   avatarSrc,
   liveEnabled = true,
-  facilityDisabled = false,
   children,
 }: {
   role: string;
@@ -177,7 +211,6 @@ export function DashboardShell({
   userName: string;
   avatarSrc: string;
   liveEnabled?: boolean;
-  facilityDisabled?: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -197,7 +230,7 @@ export function DashboardShell({
   const sections: NavSection[] = (ROLE_NAV[role] ?? [])
     .map((s) => ({
       ...s,
-      items: s.items.filter((it) => (liveEnabled || !it.requiresLive) && (!facilityDisabled || !it.requiresFacility)),
+      items: s.items.filter((it) => liveEnabled || !it.requiresLive),
     }))
     .filter((s) => s.items.length > 0);
   const navItems = sections.flatMap((s) => s.items);

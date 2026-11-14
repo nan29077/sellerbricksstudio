@@ -1,6 +1,6 @@
-export type SpaceType = "STUDIO" | "WAREHOUSE";
+export type SpaceType = "STUDIO" | "WAREHOUSE" | "SHOWROOM";
 
-export const SPACE_TYPE_LABELS: Record<SpaceType, string> = { STUDIO: "스튜디오", WAREHOUSE: "창고" };
+export const SPACE_TYPE_LABELS: Record<SpaceType, string> = { STUDIO: "스튜디오", WAREHOUSE: "창고", SHOWROOM: "쇼룸" };
 
 export type SpaceCard = {
   id: string;
@@ -49,7 +49,7 @@ function showcaseImage(id: string): string {
 }
 
 export function registeredSpaceThumbnail(id: string, type: SpaceType): string {
-  const spaces = type === "STUDIO" ? studios : warehouses;
+  const spaces = type === "WAREHOUSE" ? warehouses : studios; // 쇼룸은 스튜디오 예시 이미지를 쓴다
   let hash = 0;
   for (const char of id) {
     hash = (hash * 31 + char.charCodeAt(0)) >>> 0;

@@ -20,7 +20,7 @@ export default async function BrandMessagesPage({ searchParams }: { searchParams
     const ctx = await brandContext(user);
     if (!ctx) return <Empty icon={MessageSquare} text="브랜드샵을 만들면 판매처 문의를 받을 수 있습니다." action={{ href: "/brand/shop", label: "브랜드샵 만들기" }} />;
     const to = sp(searchParams, "to");
-    const partner = to ? await prisma.user.findFirst({ where: { id: to, role: { in: ["SELLER", "FACILITY_ADMIN"] } }, select: { id: true, email: true, profile: { select: { name: true, companyName: true } } } }) : null;
+    const partner = to ? await prisma.user.findFirst({ where: { id: to, role: { in: ["SELLER", "SUPER_ADMIN"] } }, select: { id: true, email: true, profile: { select: { name: true, companyName: true } } } }) : null;
     const existing = partner ? await prisma.brandThread.findUnique({ where: { shopId_partnerId: { shopId: ctx.shop.id, partnerId: partner.id } }, select: { id: true } }) : null;
     return (
       <div className="space-y-5">

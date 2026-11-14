@@ -17,6 +17,7 @@ import {
   BadgeAlert, BarChart3, Building2, CalendarDays, CircleDollarSign, ClipboardCheck, Coins, Gauge as GaugeIcon, Settings,
   ShoppingBag, Star, TrendingDown, Users,
 } from "lucide-react";
+import { facilityTypeLabel } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
 
@@ -173,7 +174,7 @@ export default async function ManagerDashboard() {
                 <tr key={f.id}>
                   <td data-label="창고(스튜디오)" className="max-w-0 px-1 py-3">
                     <span className="flex items-center gap-1.5"><span className="truncate font-bold text-navy">{f.name}</span>{f.status !== "APPROVED" && <Pill tone={f.status === "PENDING" ? "amber" : "red"}>{f.status === "PENDING" ? "심사 중" : "정지"}</Pill>}</span>
-                    <span className="block text-[11px] text-slate-500">{f.region} · {f.type === "WAREHOUSE" ? "창고" : "스튜디오"} · {hoursText(f.hours)}</span>
+                    <span className="block text-[11px] text-slate-500">{f.region} · {facilityTypeLabel(f.type)} · {hoursText(f.hours)}</span>
                   </td>
                   <td data-label="가동률" className="w-40 px-1 py-3">
                     <div className="flex items-center gap-2"><div className="h-2 flex-1 overflow-hidden rounded-full bg-[#F1EEE8]"><div className={`h-full rounded-full ${f.util >= 80 ? "bg-rose-400" : f.util >= 40 ? "bg-brand-500" : "bg-emerald-400"}`} style={{ width: `${f.util}%` }} /></div><span className="w-9 text-right text-xs font-bold text-navy">{f.util}%</span></div>

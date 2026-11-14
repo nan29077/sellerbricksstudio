@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { handleError, fail } from "@/lib/http";
 import { audit } from "@/lib/audit";
-import { ownedFacilityIds } from "@/lib/rbac";
+import { isFacilityOperatorRole, operableFacilityIds } from "@/lib/facility-owner";
 import { ORDER_STATUS } from "@/lib/status";
 import { FULFILLMENT_ITEM_SELECT, shipperOf } from "@/lib/order-fulfillment";
 
@@ -16,17 +16,23 @@ const cell = (v: unknown) => {
 };
 
 // GET /api/orders/export?all=1 — 직접 출고할 주문 목록(엑셀 CSV). 기본은 출고 대기(결제완료 · 준비중, 미출고)만.
-//  - 창고(스튜디오) 관리자: 내 창고 방송 주문 중 창고가 보내는 상품
+//  - 창고 운영자(최고관리자 · 담당 매니저): 운영하는 창고 방송 주문 중 창고가 보내는 상품 (?facility=창고id 로 한 곳만)
 //  - 셀러: 내 공간 방송 주문 중 셀러가 직접 보내는 상품
-//  - 최고관리자: 전체 (브랜드 직배송 상품은 브랜드 발주서 내려받기에 있으므로 제외)
+//  - 최고관리자 ?scope=all: 전체 (브랜드 직배송 상품은 브랜드 발주서 내려받기에 있으므로 제외)
 export async function GET(req: Request) {
   try {
     const user = await requireUser();
-    if (!["FACILITY_ADMIN", "SELLER", "SUPER_ADMIN"].includes(user.role)) return fail("권한이 없습니다.", 403);
-    const all = new URL(req.url).searchParams.get("all") === "1";
-    const scope: Prisma.OrderWhereInput = user.role === "SUPER_ADMIN" ? {}
-      : user.role === "FACILITY_ADMIN" ? { facilityId: { in: await ownedFacilityIds(user.id) } }
-      : { sellerId: user.id, facilityId: null };
+    if (user.role !== "SELLER" && !isFacilityOperatorRole(user.role)) return fail("권한이 없습니다.", 403);
+    const params = new URL(req.url).searchParams;
+    const all = params.get("all") === "1";
+    let scope: Prisma.OrderWhereInput;
+    if (user.role === "SELLER") scope = { sellerId: user.id, facilityId: null };
+    else if (user.role === "SUPER_ADMIN" && params.get("scope") === "all") scope = {};
+    else {
+      const ids = await operableFacilityIds(user);
+      const one = params.get("facility");
+      scope = { facilityId: { in: one ? ids.filter((id) => id === one) : ids } };
+    }
     const orders = await prisma.order.findMany({
       where: { ...scope, ...(all ? { status: { in: ["PAID", "PREPARING", "SHIPPED", "DELIVERED"] } } : { status: { in: ["PAID", "PREPARING"] }, localShippedAt: null }) },
       orderBy: { createdAt: "asc" }, take: 5000,

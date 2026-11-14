@@ -5,6 +5,7 @@ import { ok, fail, handleError } from "@/lib/http";
 import { audit } from "@/lib/audit";
 import { parseKST } from "@/lib/utils";
 import { changeBookingStatus, checkInBooking, rescheduleBooking, updateBookingProducts } from "@/lib/booking-actions";
+import { canOperateFacility } from "@/lib/facility-owner";
 
 // PATCH /api/bookings/[id]
 // - { status, reason? }               상태 변경: 창고(스튜디오) 관리자(승인/거절/완료/취소), 셀러(취소, 마감 전), 최고관리자(전체)
@@ -34,9 +35,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     if (typeof body.facilityMemo === "string" && !body.status) {
-      const b = await prisma.booking.findUnique({ where: { id: params.id }, include: { facility: { select: { ownerId: true } } } });
+      const b = await prisma.booking.findUnique({ where: { id: params.id }, select: { facilityId: true } });
       if (!b) return fail("예약을 찾을 수 없습니다.", 404);
-      if (b.facility.ownerId !== user.id && user.role !== "SUPER_ADMIN") return fail("메모 권한이 없습니다.", 403);
+      if (!(await canOperateFacility(user, b.facilityId))) return fail("메모 권한이 없습니다.", 403);
       const updated = await prisma.booking.update({ where: { id: params.id }, data: { facilityMemo: body.facilityMemo.slice(0, 2000) || null } });
       await audit({ actorId: user.id, action: "BOOKING_MEMO", entity: "Booking", entityId: params.id });
       return ok(updated);

@@ -15,13 +15,14 @@ import { formatDateTime, shippingLabel } from "@/lib/utils";
 import { getDemoLiveSession } from "@/lib/live-demo";
 import { getSettings } from "@/lib/settings";
 import { Hash, Radio, ExternalLink, Tv, Info } from "lucide-react";
+import { canOperateFacility } from "@/lib/facility-owner";
 
 export const dynamic = "force-dynamic";
 
 export default async function LiveSessionDetail({ params }: { params: { id: string } }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  if (!(await getSettings()).liveEnabled) redirect(user.role === "FACILITY_ADMIN" ? "/facility/dashboard" : "/seller/dashboard");
+  if (!(await getSettings()).liveEnabled) redirect(user.role === "SELLER" ? "/seller/dashboard" : "/facility/dashboard");
 
   // 실제 DB 세션 조회. 없으면 데모(더미) 세션으로 fallback 하여
   // 목록에 표시된 샘플 카드의 "상세보기"도 정상적으로 열리게 한다.
@@ -43,8 +44,7 @@ export default async function LiveSessionDetail({ params }: { params: { id: stri
   if (
     dbSession &&
     session.sellerId !== user.id &&
-    user.role !== "SUPER_ADMIN" &&
-    session.facility?.ownerId !== user.id
+    !(await canOperateFacility(user, session.facilityId))
   ) {
     redirect("/seller/live-sessions");
   }

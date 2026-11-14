@@ -2,31 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
 import { notify } from "@/lib/notify";
+import { canOperateFacility } from "@/lib/facility-owner";
 
 // PATCH /api/facilities/[id]/inquiries/[iqId]
-// FACILITY_ADMIN: 답변 달기 + isRead 처리
+// 창고 운영자(최고관리자 · 담당 매니저): 답변 달기 + isRead 처리
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string; iqId: string } },
 ) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "로그인이 필요합니다" }, { status: 401 });
-  if (user.role !== "FACILITY_ADMIN" && user.role !== "SUPER_ADMIN") {
+  if (user.role !== "MANAGER" && user.role !== "SUPER_ADMIN") {
     return NextResponse.json({ error: "권한이 없습니다" }, { status: 403 });
   }
 
   const { reply, isRead } = await req.json();
 
   try {
-    // 권한 확인: FACILITY_ADMIN은 본인 창고(스튜디오) 문의만
-    if (user.role === "FACILITY_ADMIN") {
-      const facility = await prisma.facility.findUnique({
-        where: { id: params.id },
-        select: { ownerId: true },
-      });
-      if (facility?.ownerId !== user.id) {
-        return NextResponse.json({ error: "권한이 없습니다" }, { status: 403 });
-      }
+    // 권한 확인: 창고 운영 매니저는 담당 창고 문의만
+    if (!(await canOperateFacility(user, params.id))) {
+      return NextResponse.json({ error: "권한이 없습니다" }, { status: 403 });
     }
 
     const updateData: any = {};

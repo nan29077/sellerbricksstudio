@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { cn, formatKRW, sellerUnitProfit } from "@/lib/utils";
+import { facilityTypeLabel, facilityTypeTone } from "@/lib/status";
 
 export type MarketItem = {
   id: string; name: string; category: string; description: string | null; image: string | null;
@@ -69,7 +70,7 @@ export function ProductMarket({ items }: { items: MarketItem[] }) {
                   ? <p className="text-[11px] font-semibold text-purple-700">공급가 {formatKRW(i.supplyPrice)} · 개당 마진 {formatKRW(commissionOf(i))}</p>
                   : <p className="text-[11px] font-semibold text-purple-700">개당 수익 {formatKRW(commissionOf(i))}{i.commissionType === "PERCENT" && ` (${i.commissionValue}%)`}</p>}
                 <Link href={`/facilities/${i.facility.id}`} className="mt-auto flex items-center gap-1 truncate pt-1 text-[11px] text-slate-500 hover:underline">
-                  <Badge tone={i.facility.type === "STUDIO" ? "purple" : "blue"} className="shrink-0 px-1.5 py-0 text-[11px]">{i.facility.type === "STUDIO" ? "스튜디오" : "창고"}</Badge>
+                  <Badge tone={facilityTypeTone(i.facility.type)} className="shrink-0 px-1.5 py-0 text-[11px]">{facilityTypeLabel(i.facility.type)}</Badge>
                   <span className="truncate">{i.facility.name} · {i.facility.region}</span>
                 </Link>
                 <div className="mt-1.5">

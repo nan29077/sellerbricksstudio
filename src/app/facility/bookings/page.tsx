@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
-import { ownedFacilityIds } from "@/lib/rbac";
+import { operableFacilityIds } from "@/lib/facility-owner";
 import { PageHeader } from "@/components/layout/dashboard-widgets";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty";
@@ -26,8 +26,8 @@ export const dynamic = "force-dynamic";
 const BASE = "/facility/bookings";
 
 export default async function FacilityBookings({ searchParams }: { searchParams: SP }) {
-  const user = await requireRole(["FACILITY_ADMIN"]);
-  const facIds = await ownedFacilityIds(user.id);
+  const user = await requireRole(["SUPER_ADMIN", "MANAGER"]);
+  const facIds = await operableFacilityIds(user);
   await runBookingMaintenance({ facilityIds: facIds });
   const facilities = await prisma.facility.findMany({ where: { id: { in: facIds } }, select: { id: true, name: true } });
   const view = sp(searchParams, "view") === "calendar" ? "calendar" : "list";

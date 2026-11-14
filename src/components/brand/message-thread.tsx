@@ -27,7 +27,7 @@ export async function MessageCenter({ side, scope, base, selected, startShop, me
     select: { id: true, body: true, flagged: true, createdAt: true, senderId: true, sender: { select: { role: true, profile: { select: { name: true } } } } },
   }) : [];
   const nameOf = (t: (typeof threads)[number]) => side === "BRAND"
-    ? (t.partner.profile?.companyName || t.partner.profile?.name || t.partner.email.split("@")[0]) + (t.partner.role === "SELLER" ? " · 셀러" : " · 창고(스튜디오)")
+    ? (t.partner.profile?.companyName || t.partner.profile?.name || t.partner.email.split("@")[0]) + (t.partner.role === "SELLER" ? " · 셀러" : " · 스토리지마켓 창고")
     : t.shop.name;
   const unread = (t: (typeof threads)[number]) => (side === "BRAND" ? t.brandUnread : t.partnerUnread);
 

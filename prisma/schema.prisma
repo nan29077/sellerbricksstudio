@@ -13,8 +13,8 @@ datasource db {
 // ===================== Enums =====================
 enum Role {
   SUPER_ADMIN
-  MANAGER
-  FACILITY_ADMIN
+  MANAGER // 창고 운영 매니저 (본사 직원 · 담당 창고만 운영)
+  FACILITY_ADMIN // (사용 안 함) 예전 창고(스튜디오) 관리자 계정 — 2026-11-14부터 가입 · 로그인 불가, 옛 기록 호환용
   BRAND_ADMIN
   SELLER
   BUYER
@@ -23,12 +23,19 @@ enum Role {
 enum FacilityType {
   WAREHOUSE // 창고
   STUDIO // 스튜디오
+  SHOWROOM // 쇼룸
+}
+
+// 창고(스튜디오) 운영 형태 — 외부 업체가 가입해서 여는 창고는 없다. 본사 직영 또는 긴밀하게 연동된 제휴 창고만 운영한다.
+enum FacilityOperation {
+  DIRECT // 직영: 판매 몫은 본사 수입 (지급 없음)
+  PARTNER // 제휴: 판매 몫을 등록된 계좌로 지급
 }
 
 enum FacilityStatus {
-  PENDING // 승인 대기
-  APPROVED // 승인됨
-  SUSPENDED // 정지
+  PENDING // 비공개(준비 중) — 셀러에게 보이지 않음
+  APPROVED // 공개 (예약 가능)
+  SUSPENDED // 운영 정지
 }
 
 enum BookingStatus {
@@ -232,37 +239,37 @@ model BrandShop {
 }
 
 model BrandProduct {
-  id                  String               @id @default(cuid())
+  id                  String                 @id @default(cuid())
   shopId              String
-  shop                BrandShop            @relation(fields: [shopId], references: [id])
+  shop                BrandShop              @relation(fields: [shopId], references: [id])
   name                String
   category            String
-  description         String               @default("") @db.Text
-  imageUrl            String               @default("")
+  description         String                 @default("") @db.Text
+  imageUrl            String                 @default("")
   supplyPrice         Int
   stock               Int
   samplePrice         Int?
-  sampleStock         Int                  @default(0)
-  isActive            Boolean              @default(true)
-  subCategory         String               @default("")
-  sku                 String               @default("")
-  consumerPrice       Int                  @default(0) // 권장 소비자가
-  images              String[]             @default([]) // 추가 이미지
-  options             String               @default("") // 옵션: "색상:블랙,화이트|사이즈:S,M,L"
-  allowDropship       Boolean              @default(true) // 브랜드 직배송 허용
-  allowWarehouse      Boolean              @default(true) // 창고 입고(위탁) 허용
-  shippingFee         Int                  @default(0) // 직배송 시 건당 배송비(브랜드 부담분 정산 차감 아님, 안내용)
-  leadDays            Int                  @default(2) // 발주 후 출고 소요일
-  sampleLimitPerBuyer Int                  @default(1) // 계정당 샘플 신청 한도(0 = 무제한)
+  sampleStock         Int                    @default(0)
+  isActive            Boolean                @default(true)
+  subCategory         String                 @default("")
+  sku                 String                 @default("")
+  consumerPrice       Int                    @default(0) // 권장 소비자가
+  images              String[]               @default([]) // 추가 이미지
+  options             String                 @default("") // 옵션: "색상:블랙,화이트|사이즈:S,M,L"
+  allowDropship       Boolean                @default(true) // 브랜드 직배송 허용
+  allowWarehouse      Boolean                @default(true) // 창고 입고(위탁) 허용
+  shippingFee         Int                    @default(0) // 직배송 시 건당 배송비(브랜드 부담분 정산 차감 아님, 안내용)
+  leadDays            Int                    @default(2) // 발주 후 출고 소요일
+  sampleLimitPerBuyer Int                    @default(1) // 계정당 샘플 신청 한도(0 = 무제한)
   minSalePrice        Int? // 최저 판매가(비우면 공급가)
-  minOrderQty         Int                  @default(1) // 창고 입고(위탁) 요청 최소 수량(MOQ). 샘플·직배송 가져오기에는 적용 안 함
-  volume              String               @default("") // 용량·중량 (상품 정보 고시)
-  expiryInfo          String               @default("") // 유통기한 또는 사용기한 (예: 제조일로부터 24개월)
-  ingredients         String               @default("") @db.Text // 전성분·원재료명
-  certification       String               @default("") // 인증·신고 사항 (예: 기능성 화장품 심사, KC 인증번호)
+  minOrderQty         Int                    @default(1) // 창고 입고(위탁) 요청 최소 수량(MOQ). 샘플·직배송 가져오기에는 적용 안 함
+  volume              String                 @default("") // 용량·중량 (상품 정보 고시)
+  expiryInfo          String                 @default("") // 유통기한 또는 사용기한 (예: 제조일로부터 24개월)
+  ingredients         String                 @default("") @db.Text // 전성분·원재료명
+  certification       String                 @default("") // 인증·신고 사항 (예: 기능성 화장품 심사, KC 인증번호)
   lowStockNotifiedAt  DateTime? // 재고 부족 알림을 보낸 시각(재입고되면 비움)
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
   requests            BrandRequest[]
   facilityProducts    FacilityProduct[]
   sellerListings      SellerBrandProduct[]
@@ -339,14 +346,14 @@ model SupportInquiry {
 }
 
 model Profile {
-  id             String   @id @default(cuid())
-  userId         String   @unique
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   name           String
   phone          String?
   companyName    String?
   businessNumber String?
-  categories     String[] @default([]) // 관심·취급 카테고리
+  categories     String[]  @default([]) // 관심·취급 카테고리
   avatarUrl      String?
   // 셀러 정산 계좌 (판매 정산 지급용)
   bankName       String?
@@ -355,18 +362,23 @@ model Profile {
   bankChangedAt  DateTime?
   snsLinks       Json? // 내 SNS 주소 { instagram, youtube, tiktok }
   notifyPrefs    Json? // 알림 받기 설정 { order, settlement, live } (false 면 끔)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 // ===================== Facilities =====================
 model Facility {
-  id                  String         @id @default(cuid())
-  ownerId             String
-  owner               User           @relation("FacilityOwner", fields: [ownerId], references: [id])
+  id                  String            @id @default(cuid())
+  ownerId             String // 본사 운영 계정(최고관리자). 브랜드 거래(판매처 · 샘플 · 입고 신청)의 주체로 쓴다
+  owner               User              @relation("FacilityOwner", fields: [ownerId], references: [id])
   name                String
   type                FacilityType
-  status              FacilityStatus @default(PENDING)
+  status              FacilityStatus    @default(PENDING)
+  operationType       FacilityOperation @default(DIRECT) // 직영 / 제휴
+  partnerName         String? // 제휴 업체명 (제휴 창고)
+  partnerContactName  String? // 제휴 창고 담당자 (계정 없이 정보로만 저장)
+  partnerContactPhone String?
+  partnerContactEmail String? // 입력하면 새 예약 · 출고할 주문 등을 메일로도 보낸다
   region              String // 지역 (예: 서울, 부산)
   address             String
   description         String?
@@ -375,27 +387,27 @@ model Facility {
   liveSpaceInfo       String? // 라이브 공간 안내 (조명/카메라/인터넷 등)
   openTime            String? // "09:00"
   closeTime           String? // "22:00"
-  basePrice           Int            @default(0) // (사용 안 함) 창고(스튜디오) 이용료는 무료 — 과거 데이터 호환용
-  rating              Float          @default(0)
+  basePrice           Int               @default(0) // (사용 안 함) 창고(스튜디오) 이용료는 무료 — 과거 데이터 호환용
+  rating              Float             @default(0)
   thumbnailUrl        String?
   contactPhone        String? // 현장 연락처
   capacity            Int? // 최대 수용 인원
-  minHours            Int            @default(1) // 최소 예약 시간(시간)
-  cancelPolicy        String?        @db.Text // 취소·환불 규정
+  minHours            Int               @default(1) // 최소 예약 시간(시간)
+  cancelPolicy        String?           @db.Text // 취소·환불 규정
   bankName            String? // 정산 은행
   bankAccount         String? // 정산 계좌번호
   accountHolder       String? // 예금주
   // ---- 예약 정책 (창고(스튜디오)별) ----
-  bookingUnitMinutes  Int            @default(60) // 예약 시작 단위(분): 30 | 60
-  bufferMinutes       Int            @default(0) // 예약 사이 준비·정리 시간(분)
-  minLeadHours        Int            @default(0) // 최소 몇 시간 전까지 예약 가능
-  maxAdvanceDays      Int            @default(60) // 최대 며칠 앞까지 예약 가능
-  maxHours            Int            @default(12) // 1회 최대 이용 시간
-  autoApprove         Boolean        @default(false) // 즉시 확정(승인 절차 생략)
-  cancelDeadlineHours Int            @default(24) // 셀러 직접 취소·변경 마감(이용 시작 n시간 전)
-  bookingNotice       String?        @db.Text // 예약 안내사항(셀러에게 표시)
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
+  bookingUnitMinutes  Int               @default(60) // 예약 시작 단위(분): 30 | 60
+  bufferMinutes       Int               @default(0) // 예약 사이 준비·정리 시간(분)
+  minLeadHours        Int               @default(0) // 최소 몇 시간 전까지 예약 가능
+  maxAdvanceDays      Int               @default(60) // 최대 며칠 앞까지 예약 가능
+  maxHours            Int               @default(12) // 1회 최대 이용 시간
+  autoApprove         Boolean           @default(false) // 즉시 확정(승인 절차 생략)
+  cancelDeadlineHours Int               @default(24) // 셀러 직접 취소·변경 마감(이용 시작 n시간 전)
+  bookingNotice       String?           @db.Text // 예약 안내사항(셀러에게 표시)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
 
   waitlist            BookingWaitlist[]
   reviews             FacilityReview[]
@@ -604,27 +616,27 @@ model Booking {
 
 // ===================== Live Sessions =====================
 model LiveSession {
-  id                  String             @id @default(cuid())
-  slug                String             @unique // 구매자용 링크 식별자
-  bookingId           String?            @unique
-  booking             Booking?           @relation(fields: [bookingId], references: [id])
-  sellerId            String
-  seller              User               @relation("SellerLiveSessions", fields: [sellerId], references: [id])
-  facilityId          String? // 비어 있으면 셀러 본인 공간 방송 (셀러가 가져온 브랜드 직배송 상품 판매)
-  facility            Facility?           @relation(fields: [facilityId], references: [id])
-  title               String
-  description         String?
-  status              LiveStatus         @default(DRAFT)
-  scheduledStart      DateTime?
-  scheduledEnd        DateTime?
-  buyerLinkUrl        String? // 구매자용 방송 링크 (주문 페이지). 방송 영상은 셀러의 외부 채널(StreamChannel)에서 송출
-  alimtalkStatus      NotificationStatus @default(PENDING)
-  numberVersion       Int                @default(0) // 상품번호 변경 폴링용 버전
-  endedAt             DateTime? // 방송 종료 시각 (종료 후 주문 허용 시간 계산)
-  shippingFee         Int                @default(0) // 셀러가 정한 배송비(원, 0 = 무료 · 상품가 포함)
-  freeShippingOver    Int? // 이 금액 이상 주문하면 배송비 무료
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
+  id               String             @id @default(cuid())
+  slug             String             @unique // 구매자용 링크 식별자
+  bookingId        String?            @unique
+  booking          Booking?           @relation(fields: [bookingId], references: [id])
+  sellerId         String
+  seller           User               @relation("SellerLiveSessions", fields: [sellerId], references: [id])
+  facilityId       String? // 비어 있으면 셀러 본인 공간 방송 (셀러가 가져온 브랜드 직배송 상품 판매)
+  facility         Facility?          @relation(fields: [facilityId], references: [id])
+  title            String
+  description      String?
+  status           LiveStatus         @default(DRAFT)
+  scheduledStart   DateTime?
+  scheduledEnd     DateTime?
+  buyerLinkUrl     String? // 구매자용 방송 링크 (주문 페이지). 방송 영상은 셀러의 외부 채널(StreamChannel)에서 송출
+  alimtalkStatus   NotificationStatus @default(PENDING)
+  numberVersion    Int                @default(0) // 상품번호 변경 폴링용 버전
+  endedAt          DateTime? // 방송 종료 시각 (종료 후 주문 허용 시간 계산)
+  shippingFee      Int                @default(0) // 셀러가 정한 배송비(원, 0 = 무료 · 상품가 포함)
+  freeShippingOver Int? // 이 금액 이상 주문하면 배송비 무료
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
 
   products       LiveSessionProduct[]
   numberHistory  LiveProductNumberHistory[]
@@ -638,30 +650,30 @@ model LiveSession {
 
 // 방송에서 판매하는 상품 + 상품번호
 model LiveSessionProduct {
-  id                  String           @id @default(cuid())
-  liveSessionId       String
-  liveSession         LiveSession      @relation(fields: [liveSessionId], references: [id], onDelete: Cascade)
-  facilityProductId   String?
-  facilityProduct     FacilityProduct? @relation(fields: [facilityProductId], references: [id])
-  displayNumber       Int // 구매자에게 보이는 상품번호
-  sortOrder           Int              @default(0)
+  id                      String           @id @default(cuid())
+  liveSessionId           String
+  liveSession             LiveSession      @relation(fields: [liveSessionId], references: [id], onDelete: Cascade)
+  facilityProductId       String?
+  facilityProduct         FacilityProduct? @relation(fields: [facilityProductId], references: [id])
+  displayNumber           Int // 구매자에게 보이는 상품번호
+  sortOrder               Int              @default(0)
   // 임시상품(스냅샷) 필드 - facilityProduct 없이도 동작
-  nameSnapshot        String
-  priceSnapshot       Int
-  stockSnapshot       Int              @default(0)
-  imageSnapshot       String?
-  optionSnapshot      String? // JSON 문자열
-  source              ProductSource    @default(CATALOG)
-  isActive            Boolean          @default(true)
-  brandProductId      String? // 브랜드 상품이면 연결 (발주서 생성 기준)
-  brandProduct        BrandProduct?    @relation(fields: [brandProductId], references: [id])
-  fulfillment         FulfillmentMode?
-  supplyPriceSnapshot Int? // 방송에 올릴 때의 브랜드 공급가
+  nameSnapshot            String
+  priceSnapshot           Int
+  stockSnapshot           Int              @default(0)
+  imageSnapshot           String?
+  optionSnapshot          String? // JSON 문자열
+  source                  ProductSource    @default(CATALOG)
+  isActive                Boolean          @default(true)
+  brandProductId          String? // 브랜드 상품이면 연결 (발주서 생성 기준)
+  brandProduct            BrandProduct?    @relation(fields: [brandProductId], references: [id])
+  fulfillment             FulfillmentMode?
+  supplyPriceSnapshot     Int? // 방송에 올릴 때의 브랜드 공급가
   facilitySupplySnapshot  Int? // 방송에 올릴 때의 창고(스튜디오) 셀러 공급가
   commissionTypeSnapshot  CommissionType? // 방송에 올릴 때의 셀러 수수료 방식
   commissionValueSnapshot Float?
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
 
   orderItems OrderItem[]
 
@@ -685,35 +697,35 @@ model LiveProductNumberHistory {
 
 // ===================== Orders & Payments =====================
 model Order {
-  id              String      @id @default(cuid())
-  orderNo         String      @unique
-  liveSessionId   String
-  liveSession     LiveSession @relation(fields: [liveSessionId], references: [id])
-  sellerId        String
-  seller          User        @relation("SellerOrders", fields: [sellerId], references: [id])
-  facilityId      String?
-  facility        Facility?    @relation(fields: [facilityId], references: [id])
-  buyerName       String
-  buyerPhone      String
-  buyerAddress    String?
-  status          OrderStatus @default(ORDER_CREATED)
-  totalAmount     Int // 결제 금액 = 상품 합계 + 배송비
-  shippingFee     Int         @default(0) // 주문 시 적용된 배송비 (셀러 몫)
+  id                 String      @id @default(cuid())
+  orderNo            String      @unique
+  liveSessionId      String
+  liveSession        LiveSession @relation(fields: [liveSessionId], references: [id])
+  sellerId           String
+  seller             User        @relation("SellerOrders", fields: [sellerId], references: [id])
+  facilityId         String?
+  facility           Facility?   @relation(fields: [facilityId], references: [id])
+  buyerName          String
+  buyerPhone         String
+  buyerAddress       String?
+  status             OrderStatus @default(ORDER_CREATED)
+  totalAmount        Int // 결제 금액 = 상품 합계 + 배송비
+  shippingFee        Int         @default(0) // 주문 시 적용된 배송비 (셀러 몫)
   // 판매처 직접 출고분(창고(스튜디오) 상품 · 위탁 상품 · 셀러 공간 임시 상품)의 배송. 브랜드 직배송분은 발주서에서 관리
   shipCarrier        String?
   shipTrackingNumber String?
   localShippedAt     DateTime?
   localDeliveredAt   DateTime?
-  refundedAmount  Int         @default(0) // 부분 취소·환불된 금액 합계
-  discountAmount  Int         @default(0) // 셀러 쿠폰 할인 금액 (셀러 몫에서 빠진다)
-  couponId        String? // 사용한 셀러 쿠폰
-  couponCode      String?
-  deliveredAt     DateTime? // 배송 완료 시각 (구매 확정 유예·정산 기간 기준)
-  privacyAgreedAt DateTime? // 구매자 개인정보 수집·제3자 제공 동의 시각
-  settlementId    String? // 판매 정산서에 포함되면 연결 (중복 정산 방지)
-  settlement      Settlement? @relation(fields: [settlementId], references: [id])
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  refundedAmount     Int         @default(0) // 부분 취소·환불된 금액 합계
+  discountAmount     Int         @default(0) // 셀러 쿠폰 할인 금액 (셀러 몫에서 빠진다)
+  couponId           String? // 사용한 셀러 쿠폰
+  couponCode         String?
+  deliveredAt        DateTime? // 배송 완료 시각 (구매 확정 유예·정산 기간 기준)
+  privacyAgreedAt    DateTime? // 구매자 개인정보 수집·제3자 제공 동의 시각
+  settlementId       String? // 판매 정산서에 포함되면 연결 (중복 정산 방지)
+  settlement         Settlement? @relation(fields: [settlementId], references: [id])
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
 
   items          OrderItem[]
   payment        Payment?
@@ -840,7 +852,7 @@ model Settlement {
   sellerId         String
   seller           User              @relation("SellerSettlements", fields: [sellerId], references: [id])
   facilityId       String?
-  facility         Facility?          @relation(fields: [facilityId], references: [id])
+  facility         Facility?         @relation(fields: [facilityId], references: [id])
   periodStart      DateTime
   periodEnd        DateTime
   grossAmount      Int // 총 매출
@@ -986,6 +998,7 @@ model FacilityFavorite {
 
 // ===================== 창고(스튜디오) 예약 정산 =====================
 // 기간 내 이용 완료 예약의 이용료 합계에서 플랫폼 수수료를 뺀 금액을 창고(스튜디오)에 지급한다.
+// (사용 안 함) 예전 창고 이용료 정산 — 이용료가 무료가 되어 새로 만들지 않는다. 옛 기록 보존용
 model FacilitySettlement {
   id           String           @id @default(cuid())
   facilityId   String
@@ -1208,7 +1221,7 @@ model PurchaseOrder {
   orderId                String
   order                  Order               @relation(fields: [orderId], references: [id])
   facilityId             String?
-  facility               Facility?            @relation(fields: [facilityId], references: [id])
+  facility               Facility?           @relation(fields: [facilityId], references: [id])
   sellerId               String
   seller                 User                @relation("SellerPurchaseOrders", fields: [sellerId], references: [id])
   fulfillment            FulfillmentMode
@@ -1299,27 +1312,27 @@ model BrandSettlement {
 
 // 플랫폼 운영 정책 (최고관리자가 수정) — 한 행(id="default")만 사용
 model PlatformPolicy {
-  id                   String   @id @default("default")
-  salesFeeRate         Float    @default(5) // 판매 금액 대비 플랫폼 수수료(%) — 창고(스튜디오)/셀러 몫에서 차감
-  brandFeeRate         Float    @default(5) // 브랜드 공급대금 대비 수수료(%)
-  sampleFeeRate        Float    @default(0) // 유료 샘플 결제 대비 수수료(%)
-  sellerShareRate      Float    @default(70) // 셀러가 가져온 브랜드 직배송 상품: (판매가-공급가-플랫폼수수료) 중 셀러 몫(%) — 나머지는 방송 장소 창고(스튜디오)
-  pendingExpireHours   Int      @default(48) // 승인 대기 예약 자동 만료(시간, 0 = 끄기)
-  noShowGraceMinutes   Int      @default(30) // 시작 후 n분 지나면 노쇼 처리 가능
-  autoCompleteBookings Boolean  @default(true) // 종료 시간이 지난 승인 예약 자동 이용 완료
-  reminderHoursBefore  Int      @default(24) // 이용 n시간 전 알림
-  poConfirmHours       Int      @default(24) // 브랜드 발주 확인 권장 시간(지연 표시 기준)
-  sampleMaxPerOrder    Int      @default(20) // 샘플 주문당 최대 수량
-  orderAfterEndHours   Int      @default(0) // 방송 종료 후 주문을 받는 시간(0 = 종료 즉시 마감)
-  liveAutoEndHours     Int      @default(2) // 예약(방송 예정) 종료 시각이 지나고 n시간 뒤에도 방송 중이면 자동 종료 (0 = 끄기)
-  settleAfterDays      Int      @default(7) // 배송 완료 후 n일이 지나야 정산 대상(구매 확정 유예, 보통 7)
-  piiRetentionDays     Int      @default(90) // 배송 완료 n일 후 브랜드 화면에서 구매자 연락처·주소 가림
-  requireEmailVerify   Boolean  @default(false) // 이메일 인증한 계정만 예약·방송·브랜드 거래 가능
-  maxPendingBookings   Int      @default(10) // 셀러 한 명이 동시에 가질 수 있는 승인 대기 예약 수
-  requestReplyHours    Int      @default(72) // 샘플·입고 요청 응대 기한(시간). 지나면 브랜드에 다시 알림 (0 = 끄기)
-  requestAutoRejectHours Int    @default(72) // 응대 기한 후 이 시간이 더 지나도 응답이 없으면 자동 반려·유료 샘플 환불 (0 = 끄기)
-  updatedBy            String?
-  updatedAt            DateTime @updatedAt
+  id                     String   @id @default("default")
+  salesFeeRate           Float    @default(5) // 판매 금액 대비 플랫폼 수수료(%) — 창고(스튜디오)/셀러 몫에서 차감
+  brandFeeRate           Float    @default(5) // 브랜드 공급대금 대비 수수료(%)
+  sampleFeeRate          Float    @default(0) // 유료 샘플 결제 대비 수수료(%)
+  sellerShareRate        Float    @default(70) // 셀러가 가져온 브랜드 직배송 상품: (판매가-공급가-플랫폼수수료) 중 셀러 몫(%) — 나머지는 방송 장소 창고(스튜디오)
+  pendingExpireHours     Int      @default(48) // 승인 대기 예약 자동 만료(시간, 0 = 끄기)
+  noShowGraceMinutes     Int      @default(30) // 시작 후 n분 지나면 노쇼 처리 가능
+  autoCompleteBookings   Boolean  @default(true) // 종료 시간이 지난 승인 예약 자동 이용 완료
+  reminderHoursBefore    Int      @default(24) // 이용 n시간 전 알림
+  poConfirmHours         Int      @default(24) // 브랜드 발주 확인 권장 시간(지연 표시 기준)
+  sampleMaxPerOrder      Int      @default(20) // 샘플 주문당 최대 수량
+  orderAfterEndHours     Int      @default(0) // 방송 종료 후 주문을 받는 시간(0 = 종료 즉시 마감)
+  liveAutoEndHours       Int      @default(2) // 예약(방송 예정) 종료 시각이 지나고 n시간 뒤에도 방송 중이면 자동 종료 (0 = 끄기)
+  settleAfterDays        Int      @default(7) // 배송 완료 후 n일이 지나야 정산 대상(구매 확정 유예, 보통 7)
+  piiRetentionDays       Int      @default(90) // 배송 완료 n일 후 브랜드 화면에서 구매자 연락처·주소 가림
+  requireEmailVerify     Boolean  @default(false) // 이메일 인증한 계정만 예약·방송·브랜드 거래 가능
+  maxPendingBookings     Int      @default(10) // 셀러 한 명이 동시에 가질 수 있는 승인 대기 예약 수
+  requestReplyHours      Int      @default(72) // 샘플·입고 요청 응대 기한(시간). 지나면 브랜드에 다시 알림 (0 = 끄기)
+  requestAutoRejectHours Int      @default(72) // 응대 기한 후 이 시간이 더 지나도 응답이 없으면 자동 반려·유료 샘플 환불 (0 = 끄기)
+  updatedBy              String?
+  updatedAt              DateTime @updatedAt
 }
 
 // ===================== 인증 · 보안 =====================

@@ -78,7 +78,7 @@ export default async function HomePage() {
             <h2 id="signup-roles-heading" className="break-keep text-xl font-black tracking-tight text-navy min-[390px]:text-2xl sm:text-3xl">어떤 회원으로 시작할까요?</h2>
             <Link href="/login" className="inline-flex min-h-11 items-center px-1 text-xs font-bold text-slate-600 underline decoration-slate-300 underline-offset-4 hover:text-navy sm:px-2 sm:text-sm">로그인</Link>
           </div>
-          <div className="mt-4"><SignupRoleCards facilityDisabled={settings.facilityDisabled} variant="home" /></div>
+          <div className="mt-4"><SignupRoleCards variant="home" /></div>
         </section>
       )}
       <BrandProductShowcase data={brandProducts} />

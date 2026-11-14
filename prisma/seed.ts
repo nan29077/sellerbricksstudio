@@ -1,4 +1,4 @@
-import { PrismaClient, Role, FacilityType, FacilityStatus, CommissionType } from "@prisma/client";
+import { PrismaClient, Role, FacilityType, FacilityStatus, CommissionType, FacilityOperation } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -26,18 +26,11 @@ async function main() {
     update: {},
     create: {
       email: "manager@sellerbricks.kr", passwordHash: pw, role: Role.MANAGER, profileImageIndex: 13,
-      profile: { create: { name: "중간관리자", companyName: "브릭스파트너스" } },
+      profile: { create: { name: "창고 운영 매니저", companyName: "스토리지마켓" } },
     },
   });
 
-  const facilityAdmin = await prisma.user.upsert({
-    where: { email: "facility@sellerbricks.kr" },
-    update: {},
-    create: {
-      email: "facility@sellerbricks.kr", passwordHash: pw, role: Role.FACILITY_ADMIN, profileImageIndex: 4,
-      profile: { create: { name: "창고(스튜디오) 관리자", companyName: "성수라이브" } },
-    },
-  });
+  // 창고(스튜디오) 관리자 계정은 없다 (2026-11-14) — 창고는 본사(최고관리자 · 담당 매니저)가 운영한다.
 
   const seller = await prisma.user.upsert({
     where: { email: "seller@sellerbricks.kr" },
@@ -48,7 +41,7 @@ async function main() {
     },
   });
 
-  // 중간관리자 수수료 5%
+  // 창고 운영 매니저 수수료 5%
   await prisma.managerCommissionRule.upsert({
     where: { managerId: manager.id },
     update: {},
@@ -56,10 +49,15 @@ async function main() {
   });
 
   // ---------------- 창고(스튜디오) ----------------
+  // 이용료는 무료 (basePrice 0). 직영 2곳 + 제휴 1곳
   const facData = [
-    { name: "서울 성수 라이브 창고", type: FacilityType.WAREHOUSE, region: "서울", address: "서울 성동구 성수일로 77", equipment: "조명, 짐벌, 마이크, 무대", basePrice: 150000, rating: 4.8 },
-    { name: "남양주 패션 스튜디오", type: FacilityType.STUDIO, region: "경기", address: "경기 남양주시 다산순환로 20", equipment: "행거, 전신거울, 조명세트, 배경지", basePrice: 120000, rating: 4.6 },
-    { name: "부산 식품 전문 창고", type: FacilityType.WAREHOUSE, region: "부산", address: "부산 해운대구 센텀중앙로 90", equipment: "냉장쇼케이스, 조리대, 조명", basePrice: 100000, rating: 4.5 },
+    { name: "서울 성수 라이브 창고", type: FacilityType.WAREHOUSE, region: "서울", address: "서울 성동구 성수일로 77", equipment: "조명, 짐벌, 마이크, 무대", basePrice: 0, rating: 4.8, operationType: FacilityOperation.DIRECT },
+    { name: "남양주 패션 스튜디오", type: FacilityType.STUDIO, region: "경기", address: "경기 남양주시 다산순환로 20", equipment: "행거, 전신거울, 조명세트, 배경지", basePrice: 0, rating: 4.6, operationType: FacilityOperation.DIRECT },
+    {
+      name: "부산 식품 전문 창고", type: FacilityType.WAREHOUSE, region: "부산", address: "부산 해운대구 센텀중앙로 90", equipment: "냉장쇼케이스, 조리대, 조명", basePrice: 0, rating: 4.5,
+      operationType: FacilityOperation.PARTNER, partnerName: "센텀콜드체인", partnerContactName: "김제휴", partnerContactPhone: "051-000-0000",
+      bankName: "부산은행", bankAccount: "1012020303", accountHolder: "센텀콜드체인",
+    },
   ];
 
   // 예시 사진은 저장소 안의 이미지를 쓴다 (외부 사진 사이트가 느리거나 막혀도 화면이 깨지지 않게)
@@ -70,7 +68,7 @@ async function main() {
   for (const [fi, f] of facData.entries()) {
     const fac = await prisma.facility.create({
       data: {
-        ...f, ownerId: facilityAdmin.id, status: FacilityStatus.APPROVED,
+        ...f, ownerId: admin.id, status: FacilityStatus.APPROVED,
         description: `${f.name} 입니다. 라이브 커머스에 최적화된 공간과 장비를 제공합니다.`,
         openTime: "09:00", closeTime: "22:00",
         thumbnailUrl: facImg(fi),
@@ -83,7 +81,7 @@ async function main() {
       },
     });
     facilities.push(fac);
-    // 중간관리자 연결: 첫번째/세번째 창고(스튜디오)를 manager 가 영업
+    // 창고 운영 매니저 연결: 첫번째/세번째 창고(스튜디오)를 manager 가 운영
     if (f.region !== "경기") {
       await prisma.managerFacility.create({ data: { managerId: manager.id, facilityId: fac.id } });
     }
@@ -187,7 +185,7 @@ async function main() {
     await prisma.commissionRule.create({ data: { scope: "PLATFORM", commissionType: "PERCENT", commissionValue: 10 } });
   }
 
-  console.log("Seed 완료:", { brand: brandUser.email, admin: admin.email, manager: manager.email, facilityAdmin: facilityAdmin.email, seller: seller.email, facilities: facilities.length, channel: channel.channelName });
+  console.log("Seed 완료:", { brand: brandUser.email, admin: admin.email, manager: manager.email, seller: seller.email, facilities: facilities.length, channel: channel.channelName });
 }
 
 main()

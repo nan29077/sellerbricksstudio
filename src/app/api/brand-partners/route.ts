@@ -12,7 +12,7 @@ const schema = z.object({
   note: z.string().trim().max(300).default(""),
 });
 
-// POST /api/brand-partners — 브랜드(대표·팀원): 판매처(셀러 · 창고 관리자) 승인 · 차단 · 해제
+// POST /api/brand-partners — 브랜드(대표·팀원): 판매처(셀러 · 스토리지마켓 창고) 승인 · 차단 · 해제
 //  - 차단하면 그 판매처의 이 브랜드 상품 판매(셀러 판매 목록 · 창고 판매 상품 · 진행 중 방송 상품)를 바로 멈춘다.
 export async function POST(req: Request) {
   try {
@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     const ctx = await brandContext(user);
     if (!ctx) return fail("브랜드사 계정이 필요합니다.", 403);
     const data = schema.parse(await req.json().catch(() => ({})));
-    const partner = await prisma.user.findFirst({ where: { id: data.userId, role: { in: ["SELLER", "FACILITY_ADMIN"] } }, select: { id: true } });
+    const partner = await prisma.user.findFirst({ where: { id: data.userId, role: { in: ["SELLER", "SUPER_ADMIN"] } }, select: { id: true } });
     if (!partner) return fail("판매처 계정을 찾지 못했습니다.", 404);
     const shopId = ctx.shop.id;
 

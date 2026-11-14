@@ -12,7 +12,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const { facilityIds } = await req.json().catch(() => ({}));
     if (!Array.isArray(facilityIds)) return fail("창고(스튜디오) 목록이 올바르지 않습니다.");
     const manager = await prisma.user.findUnique({ where: { id: params.id }, select: { role: true } });
-    if (!manager || manager.role !== "MANAGER") return fail("중간관리자를 찾을 수 없습니다.", 404);
+    if (!manager || manager.role !== "MANAGER") return fail("창고 운영 매니저를 찾을 수 없습니다.", 404);
     const ids = Array.from(new Set(facilityIds.map(String)));
     const valid = await prisma.facility.findMany({ where: { id: { in: ids } }, select: { id: true } });
     const before = await prisma.managerFacility.findMany({ where: { managerId: params.id }, select: { facilityId: true } });

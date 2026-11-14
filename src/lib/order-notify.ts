@@ -11,6 +11,7 @@ import { appUrl } from "./mailer";
 import { formatKRW } from "./utils";
 import { orderParts, FULFILLMENT_ITEM_SELECT } from "./order-fulfillment";
 import { SITE_NAME } from "./site-brand";
+import { notifyFacility } from "./facility-owner";
 
 export async function notifyNewOrder(orderId: string) {
   try {
@@ -18,7 +19,7 @@ export async function notifyNewOrder(orderId: string) {
       where: { id: orderId },
       select: {
         id: true, orderNo: true, status: true, totalAmount: true, sellerId: true, facilityId: true, localShippedAt: true, localDeliveredAt: true,
-        facility: { select: { ownerId: true, name: true } }, liveSession: { select: { title: true } },
+        facility: { select: { name: true } }, liveSession: { select: { title: true } },
         items: { select: { ...FULFILLMENT_ITEM_SELECT, quantity: true } },
         purchaseOrders: { select: { status: true, fulfillment: true } },
       },
@@ -32,9 +33,10 @@ export async function notifyNewOrder(orderId: string) {
       userId: o.sellerId, type: "ORDER", email: true,
       title: `새 주문이 들어왔습니다 · ${o.orderNo}`, body: base + sellerNote, link: "/seller/orders",
     });
-    if (o.facility?.ownerId && o.facility.ownerId !== o.sellerId) {
-      await notify({
-        userId: o.facility.ownerId, type: "ORDER", email: parts.localShipper === "FACILITY",
+    if (o.facilityId) {
+      await notifyFacility(o.facilityId, {
+        exclude: [o.sellerId], partnerEmail: parts.localShipper === "FACILITY",
+        type: "ORDER", email: parts.localShipper === "FACILITY",
         title: parts.localShipper === "FACILITY" ? `출고할 새 주문 · ${o.orderNo}` : `새 주문 · ${o.orderNo}`,
         body: base + (parts.localShipper === "FACILITY" ? " · 상품을 준비해 출고해 주세요" : " · 브랜드가 직배송합니다"),
         link: "/facility/orders?status=todo",

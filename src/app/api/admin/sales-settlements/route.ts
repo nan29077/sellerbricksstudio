@@ -7,6 +7,7 @@ import { notify } from "@/lib/notify";
 import { addDays, parseDateKey } from "@/lib/kst";
 import { getPolicy } from "@/lib/policy";
 import { SETTLEMENT_ORDER_INCLUDE, splitOrder } from "@/lib/settlement";
+import { notifyFacility } from "@/lib/facility-owner";
 
 // POST { from, to } — 기간 내 배송 완료 · 미정산 주문을 셀러 × 창고(스튜디오)별 판매 정산서로 묶는다.
 //  - 기간은 배송 완료일 기준(예전 주문은 주문일). 정책의 '구매 확정 유예'가 지나지 않은 주문은 다음 정산으로.
@@ -66,10 +67,11 @@ export async function POST(req: NextRequest) {
         return s;
       });
       created += 1;
-      const f = st.facilityId ? await prisma.facility.findUnique({ where: { id: st.facilityId }, select: { ownerId: true, name: true } }) : null;
+      const f = st.facilityId ? await prisma.facility.findUnique({ where: { id: st.facilityId }, select: { id: true, name: true, operationType: true } }) : null;
       const extra = g.adjustments.length ? ` · 환불 차감 ${g.adjustments.length}건` : "";
       await notify({ userId: st.sellerId, type: "SETTLEMENT", title: "판매 정산서가 생성되었습니다", body: `${f?.name ?? ""} · 주문 ${g.orders.length}건${extra} · 셀러 정산 ${sum.seller.toLocaleString()}원`, link: "/seller/settlements?tab=sales" });
-      if (f) await notify({ userId: f.ownerId, type: "SETTLEMENT", title: "판매 정산서가 생성되었습니다", body: `${f.name} · 주문 ${g.orders.length}건${extra} · 창고 정산 ${sum.facility.toLocaleString()}원`, link: "/facility/settlements" });
+      // 창고 몫: 직영은 본사 수입, 제휴는 지급 대상 — 담당 매니저에게만 알린다 (정산서는 최고관리자가 만들었다)
+      if (f) await notifyFacility(f.id, { type: "SETTLEMENT", exclude: [admin.id], title: "판매 정산서가 생성되었습니다", body: `${f.name} · 주문 ${g.orders.length}건${extra} · 창고 몫 ${sum.facility.toLocaleString()}원${f.operationType === "PARTNER" ? " (제휴 지급 대상)" : " (직영 · 본사 수입)"}`, link: "/facility/settlements" });
     }
     await audit({ actorId: admin.id, action: "SALES_SETTLEMENT_GENERATE", entity: "Settlement", meta: { from: b.from, to: b.to, count: created, orders: orders.length, adjustments: adjustments.length } });
     return ok({ created, orders: orders.length, adjustments: adjustments.length }, 201);

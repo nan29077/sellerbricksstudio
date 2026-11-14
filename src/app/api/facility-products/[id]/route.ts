@@ -4,6 +4,7 @@ import { requireRole, type SessionUser } from "@/lib/auth";
 import { ok, fail, handleError } from "@/lib/http";
 import { audit } from "@/lib/audit";
 import { z } from "zod";
+import { canOperateFacility, FACILITY_OPERATOR_ROLES } from "@/lib/facility-owner";
 
 const patchSchema = z.object({
   salePrice: z.coerce.number().int().min(0).max(100_000_000).optional(),
@@ -22,17 +23,16 @@ const patchSchema = z.object({
   thumbnailUrl: z.string().trim().max(1000).optional(),
 }).strip();
 
+// 창고 운영자(최고관리자 · 담당 매니저)만 상품을 고친다
 async function editableProduct(user: SessionUser, fpId: string) {
-  const fp = await prisma.facilityProduct.findFirst({
-    where: { id: fpId, ...(user.role !== "SUPER_ADMIN" && { facility: { ownerId: user.id } }) },
-  });
-  if (!fp) throw new Error("FORBIDDEN");
+  const fp = await prisma.facilityProduct.findUnique({ where: { id: fpId } });
+  if (!fp || !(await canOperateFacility(user, fp.facilityId))) throw new Error("FORBIDDEN");
   return fp;
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const user = await requireRole(["FACILITY_ADMIN", "SUPER_ADMIN"]);
+    const user = await requireRole(FACILITY_OPERATOR_ROLES);
     const fp = await editableProduct(user, params.id);
     const parsed = patchSchema.safeParse(await req.json());
     if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "입력값이 올바르지 않습니다.");
@@ -67,7 +67,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const user = await requireRole(["FACILITY_ADMIN"]);
+    const user = await requireRole(FACILITY_OPERATOR_ROLES);
     await editableProduct(user, params.id);
     // 방송에 쓰인 상품은 기록 보존을 위해 삭제 대신 판매 중단 처리한다.
     const [inLive, inBookings] = await Promise.all([

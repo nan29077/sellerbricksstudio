@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty";
 import { MonthCalendar } from "@/components/calendar/month-calendar";
 import { FavoriteButton } from "@/components/booking/favorite-button";
-import { BOOKING_STATUS } from "@/lib/status";
+import { BOOKING_STATUS, facilityTypeLabel, facilityTypeTone } from "@/lib/status";
 import { formatDateTime, formatKRW } from "@/lib/utils";
 import { addDays, addMonths, hhmm, parseMonth } from "@/lib/kst";
 import { sp, withParams, type SP } from "@/lib/list";
@@ -98,7 +98,7 @@ export default async function SellerReservationOverview({ searchParams }: { sear
               <div className="relative h-36 bg-gradient-to-br from-navy to-[#2a3352]">
                 {f.thumbnailUrl && /* eslint-disable-next-line @next/next/no-img-element */ <img src={f.thumbnailUrl} alt={f.name} className="h-full w-full object-cover opacity-90" />}
                 <div className="absolute right-3 top-3"><FavoriteButton facilityId={f.id} initial /></div>
-                <Badge tone={f.type === "STUDIO" ? "purple" : "blue"} className="absolute left-3 top-3">{f.type === "STUDIO" ? "스튜디오" : "창고"}</Badge>
+                <Badge tone={facilityTypeTone(f.type)} className="absolute left-3 top-3">{facilityTypeLabel(f.type)}</Badge>
               </div>
               <CardContent className="space-y-2 pt-4">
                 <Link href={`/facilities/${f.id}`} className="block truncate text-base font-bold text-navy hover:underline">{f.name}</Link>

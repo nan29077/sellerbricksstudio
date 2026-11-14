@@ -1,6 +1,7 @@
-import { redirect } from "next/navigation";
+
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { facilityScope } from "@/lib/facility-owner";
 import { PageHeader } from "@/components/layout/dashboard-widgets";
 import { ProductForm } from "@/components/product-form";
 import { EmptyState } from "@/components/ui/empty";
@@ -8,9 +9,9 @@ import { EmptyState } from "@/components/ui/empty";
 export const dynamic = "force-dynamic";
 
 export default async function NewProduct() {
-  const user = await requireRole(["FACILITY_ADMIN"]);
-  const facilities = await prisma.facility.findMany({ where: { ownerId: user.id }, select: { id: true, name: true } });
-  if (facilities.length === 0) return <EmptyState title="먼저 창고(스튜디오)를 등록하세요" description="창고(스튜디오)정보 메뉴에서 창고(스튜디오)를 등록한 뒤 상품을 추가할 수 있습니다." />;
+  const user = await requireRole(["SUPER_ADMIN", "MANAGER"]);
+  const facilities = await prisma.facility.findMany({ where: facilityScope(user), select: { id: true, name: true }, orderBy: { createdAt: "asc" } });
+  if (facilities.length === 0) return <EmptyState title="운영할 창고(스튜디오)가 없습니다" description={user.role === "MANAGER" ? "최고관리자가 담당 창고(스튜디오)를 지정하면 상품을 추가할 수 있습니다." : "창고(스튜디오) 등록 메뉴에서 창고를 등록한 뒤 상품을 추가할 수 있습니다."} />;
   return (
     <div>
       <PageHeader title="상품 등록" description="판매가, 재고, 셀러 수수료를 입력하세요." />

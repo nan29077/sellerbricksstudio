@@ -23,7 +23,7 @@ import {
 export const dynamic = "force-dynamic";
 
 const ROLE_NAME: Record<string, string> = {
-  SUPER_ADMIN: "최고관리자", MANAGER: "중간관리자", FACILITY_ADMIN: "창고(스튜디오) 관리자", BRAND_ADMIN: "브랜드사", SELLER: "셀러", BUYER: "구매자",
+  SUPER_ADMIN: "최고관리자", MANAGER: "창고 운영 매니저", FACILITY_ADMIN: "(예전) 창고 관리자", BRAND_ADMIN: "브랜드사", SELLER: "셀러", BUYER: "구매자",
 };
 
 async function load() {
@@ -46,7 +46,7 @@ async function load() {
     prisma.order.findMany({ where: { status: sold, createdAt: { gte: from } }, select: { createdAt: true, totalAmount: true, refundedAmount: true, sellerId: true } }),
     prisma.booking.findMany({ where: { createdAt: { gte: from } }, select: { createdAt: true, approvedAt: true, status: true, facilityId: true } }),
     prisma.user.findMany({ where: { createdAt: { gte: from } }, select: { createdAt: true } }),
-    prisma.facilitySettlement.count({ where: { status: { in: ["PENDING", "CONFIRMED"] } } }),
+    Promise.all([prisma.settlement.count({ where: { status: { in: ["PENDING", "CONFIRMED"] } } }), prisma.brandSettlement.count({ where: { status: { in: ["PENDING", "CONFIRMED"] } } })]).then(([a, b]) => a + b), // 판매 · 브랜드 정산 대기
     prisma.marketingApplication.count({ where: { status: "PENDING" } }),
     prisma.facilityReview.count({ where: { rating: { lte: 2 }, isHidden: false, createdAt: { gte: lastMonthStart } } }),
     prisma.supportInquiry.count({ where: { answeredAt: null } }),
@@ -212,7 +212,7 @@ export default async function AdminDashboard() {
             { label: "24시간 넘게 대기 중인 예약", desc: "창고(스튜디오) 응답이 늦어지고 있어요", n: d.todo.stalePending, href: "/admin/bookings?status=PENDING", icon: BadgeAlert, tone: "red", urgent: true },
             { label: "답변 대기 고객 문의", desc: "고객센터 문의에 답변하세요", n: d.todo.supportWaiting, href: "/admin/support?status=waiting", icon: Headset, tone: "blue" },
             { label: "결제 실패 (최근 7일)", desc: "PG 오류·한도 초과 여부를 확인하세요", n: d.todo.failedPayments, href: "/admin/payments", icon: CreditCard, tone: "red" },
-            { label: "정산 처리 대기", desc: "정산서를 확정하고 지급하세요", n: d.todo.pendingSettlements, href: "/admin/settlements", icon: Wallet, tone: "green" },
+            { label: "정산 처리 대기", desc: "판매 · 브랜드 정산서를 확정하고 지급하세요", n: d.todo.pendingSettlements, href: "/admin/payouts", icon: Wallet, tone: "green" },
             { label: "마케팅 지원 신청", desc: "셀러의 지원 신청을 검토하세요", n: d.todo.pendingMarketing, href: "/admin/marketing?status=PENDING", icon: Megaphone, tone: "violet" },
             { label: "낮은 평점 리뷰", desc: "최근 2점 이하 리뷰를 점검하세요", n: d.todo.lowReviews, href: "/admin/reviews?filter=low", icon: Star, tone: "amber" },
           ]} emptyText="모든 운영 작업이 처리되었습니다" />
@@ -238,7 +238,7 @@ export default async function AdminDashboard() {
         <Panel eyebrow="MEMBER MIX" title="회원 구성" action={{ href: "/admin/users", label: "회원 관리" }}>
           <Donut
             centerValue={d.totalUsers.toLocaleString("ko-KR")} centerLabel="전체 회원"
-            segments={(["SELLER", "FACILITY_ADMIN", "BRAND_ADMIN", "MANAGER", "BUYER", "SUPER_ADMIN"] as const)
+            segments={(["SELLER", "BRAND_ADMIN", "MANAGER", "BUYER", "SUPER_ADMIN"] as const)
               .map((r) => ({ label: ROLE_NAME[r], value: d!.roles.find((x) => x.role === r)?._count ?? 0, tone: roleTone[r] }))
               .filter((s) => s.value > 0)}
           />
@@ -318,7 +318,7 @@ export default async function AdminDashboard() {
             { title: "회원 관리", desc: "역할·상태·메모 관리", href: "/admin/users", icon: Users, tone: "green" },
             { title: "창고(스튜디오) 승인", desc: "등록 공간 검토", href: "/admin/facilities", icon: Building2, tone: "sky", badge: d.facPending },
             { title: "예약 관리", desc: "예약 요청과 상태", href: "/admin/bookings", icon: ClipboardList, tone: "violet", badge: d.pendingBookingsAll },
-            { title: "정산 관리", desc: "정산서 확정·지급", href: "/admin/settlements", icon: Wallet, tone: "green", badge: d.todo.pendingSettlements },
+            { title: "정산 관리", desc: "판매 · 브랜드 정산", href: "/admin/payouts", icon: Wallet, tone: "green", badge: d.todo.pendingSettlements },
             { title: "고객 문의", desc: "1:1 문의 답변", href: "/admin/support", icon: Headset, tone: "blue", badge: d.todo.supportWaiting },
             { title: "마케팅 지원", desc: "셀러 캠페인 관리", href: "/admin/marketing", icon: Megaphone, tone: "violet" },
             { title: "사이트 설정", desc: "배너·기본 정보", href: "/admin/site-settings", icon: Settings2, tone: "slate" },

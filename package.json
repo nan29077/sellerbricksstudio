@@ -21,7 +21,8 @@
     "postinstall": "prisma generate",
     "test:e2e": "node scripts/simulate-brand-flow.mjs",
     "test:e2e:izbeau": "node scripts/simulate-izbeau-features.mjs",
-    "test:e2e:buyer": "node scripts/simulate-buyer-features.mjs"
+    "test:e2e:buyer": "node scripts/simulate-buyer-features.mjs",
+    "test:e2e:storage": "node scripts/simulate-storage-ops.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

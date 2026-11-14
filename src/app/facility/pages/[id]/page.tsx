@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
+import { facilityScope } from "@/lib/facility-owner";
 import { PageHeader } from "@/components/layout/dashboard-widgets";
 import { FacilityPageEditor } from "@/components/facility/facility-page-editor";
 import { getFacilityPageConfig } from "@/lib/facility-page";
@@ -8,11 +9,11 @@ import { getFacilityPageConfig } from "@/lib/facility-page";
 export const dynamic = "force-dynamic";
 
 export default async function FacilityPageEdit({ params }: { params: { id: string } }) {
-  const user = await requireRole(["FACILITY_ADMIN"]);
+  const user = await requireRole(["SUPER_ADMIN", "MANAGER"]);
   let facility = null;
   try {
     facility = await prisma.facility.findFirst({
-      where: { id: params.id, ownerId: user.id },
+      where: { id: params.id, ...facilityScope(user) },
       select: { id: true, name: true, type: true, region: true, address: true, description: true },
     });
   } catch {

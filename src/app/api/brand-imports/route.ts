@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { fail, handleError, ok } from "@/lib/http";
 import { audit } from "@/lib/audit";
 import { notify } from "@/lib/notify";
-import { getSettings } from "@/lib/settings";
 import { FULFILLMENT_LABEL } from "@/lib/brands";
 import { brandRecipients, partnerAccess } from "@/lib/brand-access";
 import { emailVerifyBlock } from "@/lib/account-guards";
@@ -32,8 +31,7 @@ const schema = z.discriminatedUnion("action", [
 export async function POST(req: Request) {
   try {
     const user = await requireUser();
-    if (!["SELLER", "FACILITY_ADMIN", "SUPER_ADMIN"].includes(user.role)) return fail("셀러 또는 창고(스튜디오) 관리자 계정이 필요합니다.", 403);
-    if (user.role === "FACILITY_ADMIN" && (await getSettings()).facilityDisabled) return fail("현재 창고(스튜디오) 기능을 사용할 수 없습니다.", 403);
+    if (!["SELLER", "SUPER_ADMIN"].includes(user.role)) return fail("셀러 계정이 필요합니다. (창고 상품은 최고관리자가 가져옵니다)", 403);
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "입력값을 확인해 주세요.");
     const cmd = parsed.data;
@@ -105,10 +103,10 @@ export async function POST(req: Request) {
     }
 
     // 창고(스튜디오) 판매 상품으로 가져오기
-    if (user.role !== "FACILITY_ADMIN" && user.role !== "SUPER_ADMIN") return fail("창고(스튜디오) 관리자 계정이 필요합니다.", 403);
+    if (user.role !== "SUPER_ADMIN") return fail("창고(스튜디오) 판매 상품은 최고관리자가 가져옵니다.", 403);
     if (!cmd.facilityId) return fail("상품을 등록할 창고(스튜디오)를 선택하세요.");
     const facility = await prisma.facility.findFirst({
-      where: { id: cmd.facilityId, ...(user.role !== "SUPER_ADMIN" && { ownerId: user.id }) }, select: { id: true, name: true },
+      where: { id: cmd.facilityId }, select: { id: true, name: true },
     });
     if (!facility) return fail("상품을 등록할 수 있는 창고(스튜디오)를 찾지 못했습니다.", 403);
     const dup = await prisma.facilityProduct.findFirst({ where: { facilityId: facility.id, brandProductId: bp.id, fulfillment: cmd.fulfillment }, select: { id: true } });

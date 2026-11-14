@@ -3,10 +3,10 @@ import { appAlert } from "@/components/ui/app-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
-import { Briefcase, Warehouse, CheckCircle2, type LucideIcon } from "lucide-react";
+import { Briefcase, CheckCircle2, type LucideIcon } from "lucide-react";
 
 type ToggleRowProps = {
-  settingKey: "managerDisabled" | "facilityDisabled";
+  settingKey: "managerDisabled";
   title: string;
   icon: LucideIcon;
   descOn: string;
@@ -75,30 +75,16 @@ function ToggleRow({ settingKey, title, icon: Icon, descOn, descOff, initial }: 
   );
 }
 
-export function RoleAccessToggles({
-  managerDisabled,
-  facilityDisabled,
-}: {
-  managerDisabled: boolean;
-  facilityDisabled: boolean;
-}) {
+export function RoleAccessToggles({ managerDisabled }: { managerDisabled: boolean }) {
   return (
     <div className="space-y-4">
       <ToggleRow
         settingKey="managerDisabled"
-        title="중간관리자 비활성화"
+        title="창고 운영 매니저 비활성화"
         icon={Briefcase}
-        descOn="중간관리자 계정의 모든 기능이 중지되고, 로그인·회원가입 화면에서 해당 역할이 숨겨집니다."
-        descOff="중간관리자 계정이 정상적으로 이용 가능합니다."
+        descOn="창고 운영 매니저 계정의 모든 기능(담당 창고 운영 포함)이 중지됩니다. 최고관리자는 계속 모든 창고를 운영할 수 있습니다."
+        descOff="창고 운영 매니저가 담당 창고를 운영할 수 있습니다."
         initial={managerDisabled}
-      />
-      <ToggleRow
-        settingKey="facilityDisabled"
-        title="창고(스튜디오) 이용자 비활성화"
-        icon={Warehouse}
-        descOn="창고(스튜디오) 관리자 계정의 모든 기능이 중지되고, 로그인·회원가입 화면 및 셀러의 예약·창고(스튜디오) 예약·주문 관리 메뉴가 숨겨집니다."
-        descOff="창고(스튜디오) 관리자 계정이 정상적으로 이용 가능합니다."
-        initial={facilityDisabled}
       />
     </div>
   );

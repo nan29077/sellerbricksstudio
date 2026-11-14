@@ -4,8 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 import { ok, fail, handleError } from "@/lib/http";
 import { refreshFacilityRating } from "@/lib/booking";
-import { notify } from "@/lib/notify";
+
 import { audit } from "@/lib/audit";
+import { notifyFacility } from "@/lib/facility-owner";
 
 const schema = z.object({
   bookingId: z.string().min(1),
@@ -27,8 +28,8 @@ export async function POST(req: NextRequest) {
     });
     await refreshFacilityRating(booking.facilityId);
     await audit({ actorId: user.id, action: "REVIEW_CREATE", entity: "FacilityReview", entityId: review.id });
-    await notify({
-      userId: booking.facility.ownerId, type: "REVIEW", title: `새 리뷰 ★${data.rating}`,
+    await notifyFacility(booking.facilityId, {
+      type: "REVIEW", title: `새 리뷰 ★${data.rating}`,
       body: `${booking.facility.name} · ${data.content.slice(0, 60)}`, link: "/facility/reviews",
     });
     return ok(review, 201);

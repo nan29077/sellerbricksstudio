@@ -7,7 +7,6 @@ import { isCategory, normalizeCategory } from "@/lib/categories";
 import { fail, handleError, ok } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { notify, notifyAdmins } from "@/lib/notify";
-import { getSettings } from "@/lib/settings";
 import { isShopImageUrl } from "@/lib/shop-artwork";
 import { getPolicy } from "@/lib/policy";
 import { getPaymentAdapter, paymentBlockedReason } from "@/lib/adapters/payment";
@@ -238,13 +237,12 @@ export async function POST(req: Request) {
       return ok(created, 201);
     }
 
-    const buyerEnabled = BRAND_BUYER_ROLES.includes(user.role)
-      && (user.role !== "FACILITY_ADMIN" || !(await getSettings()).facilityDisabled);
+    const buyerEnabled = BRAND_BUYER_ROLES.includes(user.role);
     if (command.action === "request") {
-      if (!buyerEnabled) return fail("셀러 또는 창고(스튜디오) 관리자 계정이 필요합니다.", 403);
+      if (!buyerEnabled) return fail("셀러 계정이 필요합니다.", 403);
       const verifyBlocked = await emailVerifyBlock(user);
       if (verifyBlocked) return fail(verifyBlocked, 403);
-      if (command.kind === "SUPPLY" && user.role !== "FACILITY_ADMIN") return fail("창고 입고 요청은 창고(스튜디오) 관리자만 할 수 있습니다.", 403);
+      if (command.kind === "SUPPLY" && user.role !== "SUPER_ADMIN") return fail("창고 입고 요청은 스토리지마켓 본사(최고관리자)만 할 수 있습니다.", 403);
       const target = await prisma.brandProduct.findUnique({ where: { id: command.productId }, select: { shopId: true, samplePrice: true, shop: { select: { requireSellerApproval: true } } } });
       if (target) {
         const access = await partnerAccess(target.shopId, user.id, command.kind === "SUPPLY" && target.shop.requireSellerApproval);
@@ -289,7 +287,7 @@ export async function POST(req: Request) {
           if (!product.allowWarehouse) throw new BrandConflict("이 상품은 창고 입고(위탁)를 받지 않습니다.");
           if (command.quantity < product.minOrderQty) throw new BrandConflict(`이 상품은 창고 입고를 최소 ${product.minOrderQty.toLocaleString("ko-KR")}개부터 요청할 수 있습니다.`);
           const listing = command.facilityProductId ? await tx.facilityProduct.findFirst({
-            where: { id: command.facilityProductId, brandProductId: product.id, fulfillment: "WAREHOUSE", facility: { ownerId: user.id } },
+            where: { id: command.facilityProductId, brandProductId: product.id, fulfillment: "WAREHOUSE" }, // 입고 요청은 최고관리자만 (위에서 확인)
             select: { id: true },
           }) : null;
           if (!listing) throw new BrandConflict("먼저 이 상품을 '창고 입고' 방식으로 판매 상품에 가져온 뒤 입고를 요청해 주세요.");
@@ -356,7 +354,9 @@ export async function POST(req: Request) {
         include: { product: { select: { stock: true, shopId: true, shop: { select: { ownerId: true } } } } },
       });
       if (!request) return null;
-      if (!brandRequestActions(request, manager).includes(command.status)) {
+      // 최고관리자는 브랜드 대신 처리(관리)도 하고, 스토리지마켓 창고를 대신해 신청자(구매자)도 된다 → 내 신청이면 구매자 작업도 허용
+      const allowed = new Set([...brandRequestActions(request, manager), ...(request.buyerId === user.id ? brandRequestActions(request, false) : [])]);
+      if (!allowed.has(command.status)) {
         throw new BrandConflict("현재 상태에서 실행할 수 없는 작업입니다.");
       }
       const shipping = command.status === "SHIPPED";

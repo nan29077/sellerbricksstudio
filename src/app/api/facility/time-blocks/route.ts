@@ -9,7 +9,7 @@ import { audit } from "@/lib/audit";
 // POST { facilityId, date: "YYYY-MM-DD", start: "HH:mm", end: "HH:mm", reason?, repeatWeeks? } — 하루 중 일부 시간 예약 막기
 export async function POST(req: NextRequest) {
   try {
-    const user = await requireRole(["FACILITY_ADMIN", "SUPER_ADMIN"]);
+    const user = await requireRole(["SUPER_ADMIN", "MANAGER"]);
     const b = await req.json().catch(() => ({}));
     await assertFacilityAccess(user, String(b.facilityId ?? ""));
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(b.date ?? "")) || !/^\d{2}:\d{2}$/.test(String(b.start ?? "")) || !/^(\d{2}:\d{2}|24:00)$/.test(String(b.end ?? ""))) {
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
 // DELETE ?id=
 export async function DELETE(req: NextRequest) {
   try {
-    const user = await requireRole(["FACILITY_ADMIN", "SUPER_ADMIN"]);
+    const user = await requireRole(["SUPER_ADMIN", "MANAGER"]);
     const id = req.nextUrl.searchParams.get("id") ?? "";
     const row = await prisma.facilityTimeBlock.findUnique({ where: { id } });
     if (!row) return fail("차단 시간을 찾을 수 없습니다.", 404);

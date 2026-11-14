@@ -1,12 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
-import { ownedFacilityIds } from "@/lib/rbac";
+import { operableFacilityIds } from "@/lib/facility-owner";
 import { PageHeader } from "@/components/layout/dashboard-widgets";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty";
 import { FacilityProfileEdit } from "@/components/facility/facility-profile-edit";
-import { formatKRW } from "@/lib/utils";
+
+import { FACILITY_OPERATION_LABEL, FACILITY_STATUS_LABEL, FACILITY_TYPE_LABEL } from "@/lib/status";
 import {
   MapPin, Clock, Wallet, Star, CalendarCheck, TrendingUp,
   Building2, Tag, ExternalLink,
@@ -43,6 +44,16 @@ const BANK_FIELDS: Field[] = [
   { name: "accountHolder", label: "예금주", half: true },
   { name: "bankAccount", label: "계좌번호", placeholder: "- 없이 숫자만" },
 ];
+// 운영 형태 · 제휴 정보 (최고관리자만)
+const OPERATION_FIELDS: Field[] = [
+  { name: "name", label: "창고(스튜디오) 이름", half: true },
+  { name: "type", label: "공간 유형", type: "select", half: true, options: [{ value: "STUDIO", label: "스튜디오" }, { value: "WAREHOUSE", label: "창고" }, { value: "SHOWROOM", label: "쇼룸" }] },
+  { name: "operationType", label: "운영 형태", type: "select", options: [{ value: "DIRECT", label: "직영 (판매 몫은 본사 수입)" }, { value: "PARTNER", label: "제휴 (판매 몫을 계좌로 지급)" }] },
+  { name: "partnerName", label: "제휴 업체명", half: true },
+  { name: "partnerContactName", label: "제휴 담당자", half: true },
+  { name: "partnerContactPhone", label: "담당자 연락처", half: true },
+  { name: "partnerContactEmail", label: "담당자 메일", half: true, help: "제휴 창고에 메일을 넣으면 새 예약 · 출고할 주문 알림을 메일로도 보냅니다. (계정 없음)" },
+];
 function maskAccount(v?: string | null) {
   if (!v) return "미등록";
   return v.length <= 4 ? v : `${"*".repeat(Math.max(0, v.length - 4))}${v.slice(-4)}`;
@@ -51,11 +62,12 @@ function maskAccount(v?: string | null) {
 export const dynamic = "force-dynamic";
 
 export default async function FacilityProfile() {
-  const user = await requireRole(["FACILITY_ADMIN"]);
+  const user = await requireRole(["SUPER_ADMIN", "MANAGER"]);
+  const admin = user.role === "SUPER_ADMIN";
 
   let facilities: any[] = [];
   try {
-    const ids = await ownedFacilityIds(user.id);
+    const ids = await operableFacilityIds(user);
     facilities = await prisma.facility.findMany({
       where: { id: { in: ids } },
       include: {
@@ -70,12 +82,12 @@ export default async function FacilityProfile() {
   if (facilities.length === 0) {
     return (
       <div>
-        <PageHeader title="창고(스튜디오) 정보 · 편집" description="내 창고(스튜디오) 프로필과 운영 현황을 관리하세요." />
+        <PageHeader title="창고(스튜디오) 정보 · 편집" description="운영하는 창고(스튜디오)의 정보와 예약 정책을 관리합니다." />
         <EmptyState
           icon={<Building2 className="h-10 w-10" />}
-          title="등록된 창고(스튜디오)가 없습니다"
-          description="공간 정보를 입력해 등록을 신청하세요. 최고관리자 승인 후 셀러에게 공개됩니다."
-          action={<Link href="/facility/register" className="inline-flex h-10 items-center rounded-lg bg-brand-500 px-4 text-sm font-semibold text-navy hover:bg-brand-600">창고(스튜디오) 등록하기</Link>}
+          title={admin ? "등록된 창고(스튜디오)가 없습니다" : "담당 창고(스튜디오)가 없습니다"}
+          description={admin ? "직영 · 제휴 창고(스튜디오)를 등록하세요." : "최고관리자가 담당 창고(스튜디오)를 지정하면 여기서 관리할 수 있습니다."}
+          action={admin ? <Link href="/facility/register" className="inline-flex h-10 items-center rounded-lg bg-brand-500 px-4 text-sm font-semibold text-navy hover:bg-brand-600">창고(스튜디오) 등록하기</Link> : undefined}
         />
       </div>
     );
@@ -85,8 +97,8 @@ export default async function FacilityProfile() {
     <div className="space-y-6 pb-24 md:pb-0">
       <PageHeader
         title="창고(스튜디오) 정보 · 편집"
-        description="내 창고(스튜디오) 프로필과 운영 현황을 관리하세요."
-        action={<Link href="/facility/register" className="inline-flex h-10 items-center rounded-lg border border-brand-300 bg-white px-4 text-sm font-semibold text-brand-700 hover:bg-brand-50">+ 창고(스튜디오) 추가 등록</Link>}
+        description="운영하는 창고(스튜디오)의 정보와 예약 정책을 관리합니다."
+        action={admin ? <Link href="/facility/register" className="inline-flex h-10 items-center rounded-lg border border-brand-300 bg-white px-4 text-sm font-semibold text-brand-700 hover:bg-brand-50">+ 창고(스튜디오) 등록</Link> : undefined}
       />
 
       {facilities.map((f: any) => {
@@ -110,10 +122,11 @@ export default async function FacilityProfile() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <Badge tone={f.status === "APPROVED" ? "green" : f.status === "SUSPENDED" ? "red" : "yellow"}>
-                        {f.status === "APPROVED" ? "운영중" : f.status === "SUSPENDED" ? "운영 정지" : "승인 대기"}
+                        {FACILITY_STATUS_LABEL[f.status as keyof typeof FACILITY_STATUS_LABEL] ?? f.status}
                       </Badge>
+                      <Badge tone={f.operationType === "PARTNER" ? "purple" : "navy"}>{FACILITY_OPERATION_LABEL[f.operationType as keyof typeof FACILITY_OPERATION_LABEL] ?? "직영"}</Badge>
                       <span className="text-xs text-muted-foreground">
-                        {f.type === "STUDIO" ? "라이브 스튜디오" : "창고"}
+                        {FACILITY_TYPE_LABEL[f.type as keyof typeof FACILITY_TYPE_LABEL] ?? "창고"}
                       </span>
                     </div>
                     <h2 className="text-xl font-extrabold text-navy">{f.name}</h2>
@@ -179,14 +192,27 @@ export default async function FacilityProfile() {
                   <p className="text-muted-foreground sm:col-span-2">예약 정책: {f.autoApprove ? "즉시 확정" : "승인 후 확정"} · {(f.bookingUnitMinutes ?? 60) === 30 ? "30분" : "정시"} 단위 · 준비시간 {f.bufferMinutes ?? 0}분 · {f.minLeadHours ? `${f.minLeadHours}시간 전까지` : "바로"} 예약 · 최대 {f.maxAdvanceDays ?? 60}일 앞 · 변경·취소 {f.cancelDeadlineHours ?? 24}시간 전 마감</p>
                   <p className="text-muted-foreground">수용 인원 {f.capacity ? `${f.capacity}명` : "미입력"} · 연락처 {f.contactPhone ?? "미입력"}</p>
                   <p className="text-muted-foreground sm:col-span-2">취소 규정: {f.cancelPolicy ? <span className="whitespace-pre-line">{f.cancelPolicy}</span> : <span className="font-semibold text-amber-600">미입력 — 분쟁 예방을 위해 입력을 권장합니다</span>}</p>
-                  <p className="text-muted-foreground sm:col-span-2">정산 계좌: {f.bankName ?? ""} {maskAccount(f.bankAccount)} {f.accountHolder ? `(${f.accountHolder})` : ""}</p>
+                  {f.operationType === "PARTNER" ? (
+                    <>
+                      <p className="text-muted-foreground sm:col-span-2">제휴: {f.partnerName ?? "업체명 미입력"} · 담당 {f.partnerContactName ?? "미입력"} {f.partnerContactPhone ? `· ${f.partnerContactPhone}` : ""} {f.partnerContactEmail ? `· ${f.partnerContactEmail}` : ""}</p>
+                      <p className="text-muted-foreground sm:col-span-2">지급 계좌: {f.bankName ?? ""} {maskAccount(f.bankAccount)} {f.accountHolder ? `(${f.accountHolder})` : ""}</p>
+                    </>
+                  ) : (
+                    <p className="text-muted-foreground sm:col-span-2">직영 창고 — 판매 몫은 본사 수입으로 집계됩니다 (지급 없음).</p>
+                  )}
                   <div className="flex flex-wrap gap-2 sm:col-span-2">
                     <ResourceForm url="/api/facility/profile" method="PATCH" extraBody={{ facilityId: f.id }} fields={OPS_FIELDS} title="운영 정보 수정" triggerSize="sm" triggerVariant="outline"
                       initial={{ minHours: f.minHours ?? 1, openTime: f.openTime ?? "09:00", closeTime: f.closeTime ?? "22:00", capacity: f.capacity ?? "", contactPhone: f.contactPhone ?? "", region: f.region, address: f.address, equipment: f.equipment ?? "", thumbnailUrl: f.thumbnailUrl ?? "", cancelPolicy: f.cancelPolicy ?? "" }} />
                     <ResourceForm url="/api/facility/profile" method="PATCH" extraBody={{ facilityId: f.id }} fields={POLICY_FIELDS} title="예약 정책 설정" triggerSize="sm" triggerVariant="outline"
                       initial={{ autoApprove: !!f.autoApprove, bookingUnitMinutes: String(f.bookingUnitMinutes ?? 60), bufferMinutes: f.bufferMinutes ?? 0, minHours: f.minHours ?? 1, maxHours: f.maxHours ?? 12, minLeadHours: f.minLeadHours ?? 0, maxAdvanceDays: f.maxAdvanceDays ?? 60, cancelDeadlineHours: f.cancelDeadlineHours ?? 24, bookingNotice: f.bookingNotice ?? "" }} />
-                    <ResourceForm url="/api/facility/profile" method="PATCH" extraBody={{ facilityId: f.id }} fields={BANK_FIELDS} title="정산 계좌 등록" triggerSize="sm" triggerVariant="outline"
-                      initial={{ bankName: f.bankName ?? "", accountHolder: f.accountHolder ?? "", bankAccount: f.bankAccount ?? "" }} />
+                    {admin && (
+                      <ResourceForm url="/api/facility/profile" method="PATCH" extraBody={{ facilityId: f.id }} fields={OPERATION_FIELDS} title="운영 형태 · 제휴 정보" triggerSize="sm" triggerVariant="outline"
+                        initial={{ name: f.name, type: f.type, operationType: f.operationType ?? "DIRECT", partnerName: f.partnerName ?? "", partnerContactName: f.partnerContactName ?? "", partnerContactPhone: f.partnerContactPhone ?? "", partnerContactEmail: f.partnerContactEmail ?? "" }} />
+                    )}
+                    {admin && f.operationType === "PARTNER" && (
+                      <ResourceForm url="/api/facility/profile" method="PATCH" extraBody={{ facilityId: f.id }} fields={BANK_FIELDS} title="제휴 지급 계좌" triggerSize="sm" triggerVariant="outline"
+                        initial={{ bankName: f.bankName ?? "", accountHolder: f.accountHolder ?? "", bankAccount: f.bankAccount ?? "" }} />
+                    )}
                   </div>
                 </div>
 

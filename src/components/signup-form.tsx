@@ -7,16 +7,15 @@ import { Input, Label } from "@/components/ui/input";
 import { CategoryPicker } from "@/components/category-picker";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { visibleSignupRoles } from "@/lib/signup-roles";
+import { SIGNUP_ROLES } from "@/lib/signup-roles";
 
-const ROLE_LABEL = { SELLER: "셀러", FACILITY_ADMIN: "창고(스튜디오) 관리자", BRAND_ADMIN: "브랜드사" };
+const ROLE_LABEL = { SELLER: "셀러", BRAND_ADMIN: "브랜드사" };
 const CATEGORY_HINT = {
   SELLER: "주로 판매하는 카테고리를 고르면 맞춤 브랜드 상품과 창고(스튜디오)를 먼저 보여드립니다. (선택)",
-  FACILITY_ADMIN: "창고(스튜디오)에서 주로 다루는 상품 카테고리를 골라 주세요. (선택)",
   BRAND_ADMIN: "브랜드가 취급하는 상품 카테고리를 1개 이상 골라 주세요. 브랜드샵과 상품 검색에 사용됩니다. (필수)",
 };
 
-export function SignupForm({ role, facilityDisabled = false }: { role: keyof typeof ROLE_LABEL; facilityDisabled?: boolean }) {
+export function SignupForm({ role }: { role: keyof typeof ROLE_LABEL }) {
   const router = useRouter();
   const brand = role === "BRAND_ADMIN";
   const [form, setForm] = useState({ email: "", password: "", name: "", phone: "", companyName: "", businessNumber: "" });
@@ -47,7 +46,7 @@ export function SignupForm({ role, facilityDisabled = false }: { role: keyof typ
     <div>
       {/* 가입 유형 전환 */}
       <nav aria-label="가입 유형" className="mb-5 grid auto-cols-fr grid-flow-col gap-1 rounded-xl bg-slate-100 p-1">
-        {visibleSignupRoles(facilityDisabled).map((r) => (
+        {SIGNUP_ROLES.map((r) => (
           <Link key={r.role} href={r.href} replace aria-current={r.role === role ? "page" : undefined}
             className={cn("flex min-h-11 items-center justify-center gap-1 rounded-lg px-1 text-center text-xs font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-800 sm:text-sm",
               r.role === role ? "bg-navy text-white shadow-sm" : "text-slate-600 hover:bg-white hover:text-navy")}>
@@ -65,7 +64,7 @@ export function SignupForm({ role, facilityDisabled = false }: { role: keyof typ
         <div><Label htmlFor="su-pw">비밀번호 (8자 이상)</Label><Input id="su-pw" type="password" autoComplete="new-password" value={form.password} onChange={set("password")} required minLength={8} /></div>
         <div><Label htmlFor="su-phone">연락처</Label><Input id="su-phone" autoComplete="tel" value={form.phone} onChange={set("phone")} placeholder="010-0000-0000" maxLength={30} inputMode="tel" /></div>
         <div><Label htmlFor="su-company">{brand ? "브랜드(회사)명 (필수)" : "회사/상호명"}</Label><Input id="su-company" autoComplete="organization" value={form.companyName} onChange={set("companyName")} required={brand} minLength={brand ? 2 : undefined} maxLength={60} /></div>
-        {(brand || role === "FACILITY_ADMIN") && (
+        {brand && (
           <div><Label htmlFor="su-biz">사업자등록번호{brand ? "" : " (선택)"}</Label><Input id="su-biz" value={form.businessNumber} onChange={set("businessNumber")} placeholder="000-00-00000" maxLength={20} inputMode="numeric" /></div>
         )}
         <div>

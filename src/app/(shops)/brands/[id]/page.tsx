@@ -5,7 +5,6 @@ import { BrandFavoriteButton } from "@/components/shop/brand-favorite-button";
 import { PartnerApply } from "@/components/brand/partner-apply";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
-import { getSettings } from "@/lib/settings";
 import { BRAND_BUYER_ROLES, BRAND_CATEGORIES, brandArtworkFor, brandProductHref, parseOptions, canSeeSupplyPrice, SUPPLY_PRICE_HIDDEN_NOTE } from "@/lib/brands";
 import { generatedBrandProductArtwork } from "@/lib/brand-product-artwork";
 import { categoryFilterValues } from "@/lib/categories";
@@ -49,8 +48,7 @@ export default async function BrandStorefront({ params, searchParams }: { params
   const isMine = user?.id === shop.ownerId || (user?.role === "BRAND_ADMIN" && !!(await prisma.brandMember.findFirst({ where: { shopId: shop.id, userId: user.id }, select: { id: true } })));
   if (!published && !isMine && user?.role !== "SUPER_ADMIN") notFound();
 
-  const buyer = !!user && BRAND_BUYER_ROLES.includes(user.role)
-    && (user.role !== "FACILITY_ADMIN" || !(await getSettings()).facilityDisabled);
+  const buyer = !!user && BRAND_BUYER_ROLES.includes(user.role);
   // 공급가·재고·최저 판매가는 거래 파트너·최고관리자·자기 브랜드에만 보여 준다
   const showSupply = isMine || canSeeSupplyPrice(user?.role);
   const category = BRAND_CATEGORIES.find((value) => value === sp(searchParams, "category"));
@@ -64,8 +62,8 @@ export default async function BrandStorefront({ params, searchParams }: { params
     prisma.brandProduct.findMany({ where, skip: selectedProduct ? 0 : skip, take: selectedProduct ? 1 : take, orderBy: { createdAt: "desc" } }),
     prisma.brandProduct.count({ where }),
     getPolicy(),
-    buyer && user?.role === "FACILITY_ADMIN"
-      ? prisma.facility.findMany({ where: { ownerId: user.id, status: { not: "SUSPENDED" } }, select: { id: true, name: true }, orderBy: { createdAt: "asc" } })
+    buyer && user?.role === "SUPER_ADMIN"
+      ? prisma.facility.findMany({ where: { status: { not: "SUSPENDED" } }, select: { id: true, name: true }, orderBy: { createdAt: "asc" } })
       : Promise.resolve([] as { id: string; name: string }[]),
   ]);
   // 계정당 샘플 신청 한도 안내용
@@ -76,7 +74,7 @@ export default async function BrandStorefront({ params, searchParams }: { params
   const used = new Map(usedSamples.map((u) => [u.productId, u._count]));
   const imported = buyer && user ? new Set((user.role === "SELLER"
     ? await prisma.sellerBrandProduct.findMany({ where: { sellerId: user.id, brandProductId: { in: products.map((p) => p.id) } }, select: { brandProductId: true } })
-    : await prisma.facilityProduct.findMany({ where: { facility: { ownerId: user.id }, brandProductId: { in: products.map((p) => p.id) } }, select: { brandProductId: true } })
+    : await prisma.facilityProduct.findMany({ where: { brandProductId: { in: products.map((p) => p.id) } }, select: { brandProductId: true } })
   ).map((x) => x.brandProductId!)) : new Set<string>();
   // 찜 조회가 실패해도(예: Prisma Client 미갱신) 샵 화면은 열리게 한다
   // 판매처 관계: 차단되면 신청·가져오기 불가, 승인제 브랜드는 승인 후 가져오기

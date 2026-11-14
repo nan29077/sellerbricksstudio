@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { ok, fail, handleError } from "@/lib/http";
 import { audit } from "@/lib/audit";
 import { CHANNEL_LABEL, looksLikeChannel, safeHttpUrl } from "@/lib/stream-embed";
+import { canOperateFacility } from "@/lib/facility-owner";
 
 // PUT /api/live-sessions/[id]/channels — 외부 송출 채널(유튜브 · 인스타그램 · 틱톡 · 기타) 주소 저장
 //  구매자 방송 화면에 유튜브는 영상으로, 나머지는 '앱에서 보기' 버튼으로 나온다.
@@ -18,9 +19,9 @@ const schema = z.object({
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await requireUser();
-    const s = await prisma.liveSession.findUnique({ where: { id: params.id }, include: { facility: { select: { ownerId: true } } } });
+    const s = await prisma.liveSession.findUnique({ where: { id: params.id }, include: { facility: { select: { id: true } } } });
     if (!s) return fail("방송을 찾을 수 없습니다.", 404);
-    if (!(s.sellerId === user.id || s.facility?.ownerId === user.id || user.role === "SUPER_ADMIN")) return fail("권한이 없습니다.", 403);
+    if (!(s.sellerId === user.id || user.role === "SUPER_ADMIN" || (await canOperateFacility(user, s.facilityId)))) return fail("권한이 없습니다.", 403);
     if (s.status === "CANCELLED" || s.status === "ENDED") return fail("종료되거나 취소된 방송은 바꿀 수 없습니다.", 409);
     const { channels } = schema.parse(await req.json().catch(() => ({})));
 

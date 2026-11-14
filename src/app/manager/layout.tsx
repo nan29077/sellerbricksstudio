@@ -10,7 +10,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
   if (!u) redirect("/login");
   if (u.role !== "MANAGER") redirect(ROLE_HOME[u.role]);
   const { managerDisabled } = await getSettings();
-  if (managerDisabled) redirect("/"); // 중간관리자 비활성화 시 모든 기능 중지
+  if (managerDisabled) redirect("/"); // 창고 운영 매니저 비활성화 시 모든 기능 중지
   const { src: avatarSrc } = await getAccountAvatar(u);
-  return <DashboardShell role="MANAGER" roleLabel="중간관리자" userName={u.name ?? u.email} avatarSrc={avatarSrc}>{children}</DashboardShell>;
+  return <DashboardShell role="MANAGER" roleLabel="창고 운영 매니저" userName={u.name ?? u.email} avatarSrc={avatarSrc}>{children}</DashboardShell>;
 }

@@ -9,7 +9,7 @@ import { audit } from "@/lib/audit";
 // POST: { facilityId, date, endDate?, reason? } — 기간을 주면 하루씩 휴무일 등록 (최대 62일)
 export async function POST(req: NextRequest) {
   try {
-    const user = await requireRole(["FACILITY_ADMIN", "SUPER_ADMIN"]);
+    const user = await requireRole(["SUPER_ADMIN", "MANAGER"]);
     const b = await req.json().catch(() => ({}));
     await assertFacilityAccess(user, String(b.facilityId ?? ""));
     const from = parseDateKey(b.date);
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 // DELETE ?id=
 export async function DELETE(req: NextRequest) {
   try {
-    const user = await requireRole(["FACILITY_ADMIN", "SUPER_ADMIN"]);
+    const user = await requireRole(["SUPER_ADMIN", "MANAGER"]);
     const id = req.nextUrl.searchParams.get("id") ?? "";
     const row = await prisma.facilityBlackoutDate.findUnique({ where: { id } });
     if (!row) return fail("휴무일을 찾을 수 없습니다.", 404);

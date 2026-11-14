@@ -5,6 +5,7 @@ import { getFacilityPageConfig } from "@/lib/facility-page";
 import { FacilityStorefront } from "@/components/facility/facility-storefront";
 import type { Metadata } from "next";
 import { SITE_NAME } from "@/lib/site-brand";
+import { canOperateFacility } from "@/lib/facility-owner";
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const f = await prisma.facility.findUnique({ where: { id: params.id }, select: { name: true, region: true, status: true, description: true } }).catch(() => null);
@@ -67,9 +68,10 @@ export default async function FacilityDetail({ params }: { params: { id: string 
 
   if (!f && /^d[1-9]$/.test(params.id)) {
     f = { ...DUMMY_FACILITY, id: params.id };
-  } else if (!f || (f.status !== "APPROVED" && user?.role !== "SUPER_ADMIN" && f.ownerId !== user?.id)) {
-    notFound();
+  } else if (!f || (f.status !== "APPROVED" && !(await canOperateFacility(user, f.id)))) {
+    notFound(); // 비공개 · 정지 창고는 운영자(최고관리자 · 담당 매니저)만 미리 본다
   }
+  const operator = !!f && !String(f.id).match(/^d[1-9]$/) && (await canOperateFacility(user, f.id));
 
   const pageConfig = await getFacilityPageConfig(f);
   const [reviews, fav, products] = await Promise.all([
@@ -88,9 +90,9 @@ export default async function FacilityDetail({ params }: { params: { id: string 
       },
     }).catch(() => []) : Promise.resolve([]),
   ]);
-  return <FacilityStorefront facility={f} pageConfig={pageConfig} user={user} favorited={!!fav}
-    // 셀러 공급가는 셀러·창고 본인·최고관리자에게만 내려보낸다(화면에서 가려도 데이터가 함께 전달되지 않도록)
-    products={user?.role === "SELLER" || user?.role === "SUPER_ADMIN" || f.ownerId === user?.id ? products : products.map((p) => ({ ...p, supplyPrice: null }))}
+  return <FacilityStorefront facility={f} pageConfig={pageConfig} user={user} favorited={!!fav} canManage={operator}
+    // 셀러 공급가는 셀러 · 창고 운영자에게만 내려보낸다(화면에서 가려도 데이터가 함께 전달되지 않도록)
+    products={user?.role === "SELLER" || operator ? products : products.map((p) => ({ ...p, supplyPrice: null }))}
     reviews={reviews.map((r) => ({ id: r.id, rating: r.rating, content: r.content, reply: r.reply, createdAt: r.createdAt.toISOString(), author: maskName(r.seller.profile?.name) }))} />;
 }
 

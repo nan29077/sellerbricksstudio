@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
-import { ownedFacilityIds } from "@/lib/rbac";
+import { operableFacilityIds } from "@/lib/facility-owner";
 import { PageHeader } from "@/components/layout/dashboard-widgets";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,8 +21,8 @@ const BASE = "/facility/schedule";
 const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + (m || 0); };
 
 export default async function FacilitySchedule({ searchParams }: { searchParams: SP }) {
-  const user = await requireRole(["FACILITY_ADMIN"]);
-  const ids = await ownedFacilityIds(user.id);
+  const user = await requireRole(["SUPER_ADMIN", "MANAGER"]);
+  const ids = await operableFacilityIds(user);
   const facilities = await prisma.facility.findMany({ where: { id: { in: ids } }, orderBy: { createdAt: "asc" }, include: { slots: true } });
   if (facilities.length === 0) {
     return <div><PageHeader title="일정 관리" /><EmptyState icon={<Building2 className="h-10 w-10" />} title="등록된 창고(스튜디오)가 없습니다" action={<Link href="/facility/register" className="text-sm font-semibold text-brand-700">창고(스튜디오) 등록하기</Link>} /></div>;

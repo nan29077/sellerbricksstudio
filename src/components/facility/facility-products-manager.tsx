@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 import { notFound } from "next/navigation";
-import { ownedFacilityIds } from "@/lib/rbac";
+import { operableFacilityIds } from "@/lib/facility-owner";
 import { PageHeader } from "@/components/layout/dashboard-widgets";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -34,13 +34,13 @@ const EDIT_FIELDS: Field[] = [
 ];
 
 export async function FacilityProductsManager({ searchParams, admin = false }: { searchParams: SP; admin?: boolean }) {
-  const user = await requireRole(admin ? ["SUPER_ADMIN"] : ["FACILITY_ADMIN"]);
+  const user = await requireRole(admin ? ["SUPER_ADMIN"] : ["SUPER_ADMIN", "MANAGER"]);
   const q = sp(searchParams, "q");
   const state = sp(searchParams, "state");
   const fid = sp(searchParams, "facility");
   const adminFacility = admin && fid ? await prisma.facility.findUnique({ where: { id: fid }, select: { id: true, name: true } }) : null;
   if (admin && !adminFacility) notFound();
-  const facIds = adminFacility ? [adminFacility.id] : await ownedFacilityIds(user.id);
+  const facIds = adminFacility ? [adminFacility.id] : await operableFacilityIds(user);
   const newProductHref = adminFacility ? `/admin/facilities/${adminFacility.id}/products/new` : "/facility/products/new";
 
   const where: Prisma.FacilityProductWhereInput = {

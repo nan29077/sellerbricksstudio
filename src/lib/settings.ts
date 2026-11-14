@@ -17,7 +17,6 @@ export type SiteSettings = {
   bannerLinkUrl: string;
   liveEnabled: boolean;
   managerDisabled: boolean;
-  facilityDisabled: boolean;
   homeBackground: HomeBackgroundId;
 };
 
@@ -30,11 +29,10 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   bannerLinkUrl: "/signup",
   liveEnabled: true,
   managerDisabled: false,
-  facilityDisabled: false,
   homeBackground: "studio-people",
 };
 
-const BOOL_KEYS: (keyof SiteSettings)[] = ["bannerEnabled", "liveEnabled", "managerDisabled", "facilityDisabled"];
+const BOOL_KEYS: (keyof SiteSettings)[] = ["bannerEnabled", "liveEnabled", "managerDisabled"];
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");

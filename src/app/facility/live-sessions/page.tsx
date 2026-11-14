@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
-import { ownedFacilityIds } from "@/lib/rbac";
+import { operableFacilityIds } from "@/lib/facility-owner";
 import { PageHeader } from "@/components/layout/dashboard-widgets";
 import { Table, Td } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -14,13 +14,13 @@ import { Button } from "@/components/ui/button";
 export const dynamic = "force-dynamic";
 
 export default async function FacilityLiveSessions() {
-  const user = await requireRole(["FACILITY_ADMIN"]);
+  const user = await requireRole(["SUPER_ADMIN", "MANAGER"]);
   if (!(await getSettings()).liveEnabled) redirect("/facility/dashboard");
-  const ids = await ownedFacilityIds(user.id);
+  const ids = await operableFacilityIds(user);
   const sessions = await prisma.liveSession.findMany({ where: { facilityId: { in: ids } }, orderBy: { createdAt: "desc" }, take: 100, include: { seller: { include: { profile: true } }, _count: { select: { products: true } } } });
   return (
     <div>
-      <PageHeader title="라이브 세션" description="내 창고(스튜디오)에서 진행되는 방송입니다. 방송 중 상품 추가가 가능합니다." />
+      <PageHeader title="라이브 세션" description="운영하는 창고(스튜디오)에서 진행되는 방송입니다. 방송 중 상품 추가가 가능합니다." />
       {sessions.length === 0 ? <EmptyState title="라이브 세션이 없습니다" /> : (
         <Table headers={["제목", "셀러", "상태", "상품수", ""]}>
           {sessions.map((s) => { const st = LIVE_STATUS[s.status]; return (

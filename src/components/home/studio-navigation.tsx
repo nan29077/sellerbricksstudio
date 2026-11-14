@@ -20,8 +20,8 @@ type Account = { name: string; role: Role; image: string } | null;
 const settingsHref: Record<Role, string> = {
   SUPER_ADMIN: "/admin/settings",
   MANAGER: "/manager/settings",
-  FACILITY_ADMIN: "/facility/settings",
   BRAND_ADMIN: "/brand/settings",
+  FACILITY_ADMIN: "/", // 없어진 역할 (로그인 불가)
   SELLER: "/seller/settings",
   BUYER: "/support#my-inquiries",
 };

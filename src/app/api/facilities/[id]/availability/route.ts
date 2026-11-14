@@ -3,6 +3,7 @@ import { ok, fail, handleError } from "@/lib/http";
 import { getDaySchedule, getFacilityWithPolicy } from "@/lib/booking";
 import { getSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { canOperateFacility } from "@/lib/facility-owner";
 
 // GET /api/facilities/[id]/availability?date=YYYY-MM-DD&hours=2&exclude=<bookingId>
 // 해당 날짜(KST)의 운영 구간, 예약 정책, 이미 잡힌 시간대, 선택한 이용 시간 기준 "시작 가능 시각" 목록. (개인정보 없음)
@@ -18,8 +19,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const ex = req.nextUrl.searchParams.get("exclude");
     if (ex) {
       const user = await getSessionUser().catch(() => null);
-      const b = user ? await prisma.booking.findUnique({ where: { id: ex }, select: { sellerId: true, facilityId: true, facility: { select: { ownerId: true } } } }) : null;
-      if (b && b.facilityId === f.id && (b.sellerId === user!.id || b.facility.ownerId === user!.id || user!.role === "SUPER_ADMIN")) exclude = ex;
+      const b = user ? await prisma.booking.findUnique({ where: { id: ex }, select: { sellerId: true, facilityId: true } }) : null;
+      if (b && b.facilityId === f.id && (b.sellerId === user!.id || (await canOperateFacility(user, f.id)))) exclude = ex;
     }
     const day = await getDaySchedule(f, date, Number.isFinite(hours) && hours > 0 ? Math.round(hours * 60) : undefined, exclude);
     const { policy } = day;

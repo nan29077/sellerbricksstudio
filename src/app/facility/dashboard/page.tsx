@@ -2,9 +2,9 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { reportDbError, type DbIssue } from "@/lib/db-error";
 import { requireRole } from "@/lib/auth";
+import type { Role } from "@prisma/client";
 import { runBookingMaintenance } from "@/lib/booking-automation";
-import { ownedFacilityIds as ownedIdsForMaintenance } from "@/lib/rbac";
-import { ownedFacilityIds } from "@/lib/rbac";
+import { operableFacilityIds } from "@/lib/facility-owner";
 import { addDays, addMonths, hhmm, kstParts, kstStartOfDay, kstStartOfMonth, WEEKDAYS } from "@/lib/kst";
 import {
   SOLD_ORDER_STATUSES, compactKRW, dailySeries, deltaPct, greeting, hoursText, openHoursPerDay, overlapHours, ratio,
@@ -19,13 +19,14 @@ import {
   BadgeAlert, Building2, CalendarCheck, CalendarClock, CalendarDays, CircleDollarSign, ClipboardCheck, FileText, Gauge as GaugeIcon,
   MessageSquare, Package, PackagePlus, Radio, Repeat, ShoppingBag, Star, Store, Wallet, Warehouse,
 } from "lucide-react";
+import { facilityTypeLabel } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
 
 const sellerName = (s: { email: string; profile: { name: string | null; companyName?: string | null } | null }) => s.profile?.name || s.email.split("@")[0];
 
-async function load(userId: string) {
-  const facIds = await ownedFacilityIds(userId);
+async function load(user: { id: string; role: Role }) {
+  const facIds = await operableFacilityIds(user);
   if (facIds.length === 0) return { empty: true as const };
 
   const now = new Date();
@@ -56,7 +57,7 @@ async function load(userId: string) {
     prisma.booking.count({ where: { ...inFac, status: "APPROVED", endAt: { lt: now } } }),
     prisma.facilityReview.count({ where: { ...inFac, reply: null } }),
     prisma.facilityInquiry.count({ where: { ...inFac, isRead: false } }),
-    prisma.facility.count({ where: { id: { in: facIds }, OR: [{ bankAccount: null }, { cancelPolicy: null }] } }),
+    prisma.facility.count({ where: { id: { in: facIds }, OR: [{ operationType: "PARTNER", bankAccount: null }, { cancelPolicy: null }] } }), // 제휴 창고는 정산 계좌가 필요
     prisma.liveSession.count({ where: { ...inFac, status: "LIVE" } }),
   ]);
 
@@ -131,19 +132,28 @@ async function load(userId: string) {
 }
 
 export default async function FacilityDashboard() {
-  const user = await requireRole(["FACILITY_ADMIN"]);
-  if (!user.id.startsWith("demo-")) await runBookingMaintenance({ facilityIds: await ownedIdsForMaintenance(user.id).catch(() => []) });
+  const user = await requireRole(["SUPER_ADMIN", "MANAGER"]);
+  if (!user.id.startsWith("demo-")) await runBookingMaintenance({ facilityIds: await operableFacilityIds(user).catch(() => []) });
   let d: Awaited<ReturnType<typeof load>> | null = null;
   let issue: DbIssue = "unknown";
-  try { d = await load(user.id); } catch (e) { issue = reportDbError("facility-dashboard", e); }
+  try { d = await load(user); } catch (e) { issue = reportDbError("facility-dashboard", e); }
   const hello = `${greeting()}, ${user.name ?? "운영자"}님`;
 
   if (!d) return <div className="space-y-6"><DashHero eyebrow={`SPACE OPERATIONS · ${todayLabel()}`} title={hello} /><DataNotice issue={issue} /></div>;
   if (d.empty) {
+    if (user.role === "MANAGER") {
+      return (
+        <div className="space-y-6">
+          <DashHero eyebrow={`SPACE OPERATIONS · ${todayLabel()}`} title={hello}
+            description="최고관리자가 담당 창고(스튜디오)를 지정하면 예약 · 일정 · 상품 · 주문 현황이 이곳에 모입니다." />
+          <Empty icon={Warehouse} text="아직 담당 창고(스튜디오)가 지정되지 않았습니다" />
+        </div>
+      );
+    }
     return (
       <div className="space-y-6">
         <DashHero eyebrow={`SPACE OPERATIONS · ${todayLabel()}`} title={hello}
-          description="창고(스튜디오)를 등록하면 예약·일정·상품·판매 현황이 이곳에 모입니다. 이용료 없이 상품을 등록하고 셀러의 예약을 받아 보세요."
+          description="스토리지마켓이 직접 운영하는 창고 · 스튜디오 · 쇼룸과 제휴 창고를 등록하면 예약 · 일정 · 상품 · 판매 현황이 이곳에 모입니다."
           actions={<HeroButton href="/facility/register" primary><Building2 className="h-4 w-4" />창고(스튜디오) 등록하기</HeroButton>} />
         <Empty icon={Warehouse} text="아직 등록된 창고(스튜디오)가 없습니다" action={{ href: "/facility/register", label: "등록 시작" }} />
       </div>
@@ -207,7 +217,7 @@ export default async function FacilityDashboard() {
             { label: "'이용 완료' 처리가 필요한 예약", desc: "이용이 끝난 확정 예약이에요", n: d.todo.toComplete, href: "/facility/bookings?status=APPROVED&sort=upcoming", icon: CalendarCheck, tone: "blue" },
             { label: "읽지 않은 셀러 문의", n: d.todo.unreadInquiries, href: "/facility/inquiries", icon: MessageSquare, tone: "violet" },
             { label: "답글을 기다리는 리뷰", n: d.todo.unrepliedReviews, href: "/facility/reviews?filter=unreplied", icon: Star, tone: "amber" },
-            { label: "정산 계좌·취소 규정 미입력", n: d.todo.missingSetup, href: "/facility/profile", icon: FileText, tone: "slate" },
+            { label: "취소 규정 · 제휴 정산 계좌 미입력", n: d.todo.missingSetup, href: "/facility/profile", icon: FileText, tone: "slate" },
           ]} emptyText="모든 작업을 처리했어요" />
         </Panel>
       </div>
@@ -244,7 +254,7 @@ export default async function FacilityDashboard() {
                   {f.autoApprove && <Pill tone="green">즉시 확정</Pill>}
                   <Link href={`/facilities/${f.id}`} className="hit shrink-0 text-xs font-bold text-brand-700 hover:underline">샵 바로가기</Link>
                 </div>
-                <Meter label={`${f.region} · ${f.type === "WAREHOUSE" ? "창고" : "스튜디오"} · ★ ${f.rating.toFixed(1)}`} value={f.util} max={100} right={`가동률 ${f.util}%`} tone={f.util >= 80 ? "red" : f.util >= 40 ? "brand" : "green"}
+                <Meter label={`${f.region} · ${facilityTypeLabel(f.type)} · ★ ${f.rating.toFixed(1)}`} value={f.util} max={100} right={`가동률 ${f.util}%`} tone={f.util >= 80 ? "red" : f.util >= 40 ? "brand" : "green"}
                   sub={`이번 달 ${f.monthCount}건 · ${hoursText(f.hours)}${f.pending ? ` · 대기 ${f.pending}건` : ""}`} />
               </div>
             ))}
@@ -277,7 +287,7 @@ export default async function FacilityDashboard() {
             { title: "상품 관리", desc: "재고·가격·수수료", href: "/facility/products", icon: Package, tone: "navy" },
             { title: "라이브 현황", desc: "공간에서 진행 중인 방송", href: "/facility/live-sessions", icon: Radio, tone: "red" },
             { title: "주문 · 출고", desc: "판매 주문 확인", href: "/facility/orders", icon: ShoppingBag, tone: "amber" },
-            { title: "정산", desc: "정산서·지급 내역", href: "/facility/settlements", icon: Wallet, tone: "green" },
+            { title: "매출", desc: "창고 판매 몫 · 제휴 지급", href: "/facility/settlements", icon: Wallet, tone: "green" },
             { title: "공간 소개 페이지", desc: "셀러에게 보이는 화면", href: "/facility/pages", icon: Warehouse, tone: "slate" },
           ]} />
         </Panel>

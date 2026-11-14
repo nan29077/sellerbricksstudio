@@ -93,7 +93,7 @@ export async function BrandRequestList({ scope, manager, params, base }: {
             const soldQty = sold.get(key) ?? 0;
             return (
               <div className="mt-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-700">
-                <p><b>신청자</b> {request.buyer.profile?.companyName || request.buyer.profile?.name || request.buyer.email} · {request.buyer.role === "SELLER" ? "셀러" : "창고(스튜디오)"}
+                <p><b>신청자</b> {request.buyer.profile?.companyName || request.buyer.profile?.name || request.buyer.email} · {request.buyer.role === "SELLER" ? "셀러" : "스토리지마켓 창고"}
                   {request.buyer.role === "SELLER" && <> · 라이브 {liveMap.get(request.buyerId) ?? 0}회 · SNS {snsMap.get(request.buyerId)?._count ?? 0}개(팔로워 {(snsMap.get(request.buyerId)?._sum.followers ?? 0).toLocaleString()})</>}</p>
                 {!!request.buyer.profile?.categories?.length && <p className="mt-0.5">관심 카테고리: {request.buyer.profile.categories.join(", ")}</p>}
                 <p className="mt-0.5"><b>판매 전환</b> {listed.has(key) ? "판매 목록에 담음" : "아직 판매 목록에 없음"} · 판매 {soldQty.toLocaleString()}개</p>

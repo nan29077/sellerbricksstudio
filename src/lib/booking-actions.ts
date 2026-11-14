@@ -10,6 +10,7 @@ import { addDays, dateKey, hhmm } from "./kst";
 import { formatDateTime } from "./utils";
 import { getPolicy } from "./policy";
 import type { SessionUser } from "./auth";
+import { canOperateFacility, notifyFacility } from "./facility-owner";
 
 const LABEL: Record<string, string> = { APPROVED: "승인", REJECTED: "거절", CANCELLED: "취소", COMPLETED: "이용 완료", NO_SHOW: "노쇼 처리" };
 
@@ -119,8 +120,8 @@ export async function createBookings(user: SessionUser, input: CreateBookingInpu
   await audit({ actorId: user.id, action: "BOOKING_CREATE", entity: "Booking", entityId: created[0].id, meta: { count: created.length, groupId, autoApproved: policy.autoApprove, products: productRows.length } });
   const first = created[0];
   const when = `${formatDateTime(first.startAt)}${created.length > 1 ? ` 외 ${created.length - 1}회 (매주)` : ""}`;
-  await notify({
-    userId: facility.ownerId, type: "BOOKING",
+  await notifyFacility(facility.id, {
+    type: "BOOKING", partnerEmail: true,
     title: policy.autoApprove ? "새 예약이 확정되었습니다" : "새 예약 요청이 들어왔습니다",
     body: `${facility.name} · ${when}${productRows.length ? ` · 상품 ${productRows.length}종` : ""}${input.purpose ? ` · ${input.purpose}` : ""}`,
     link: policy.autoApprove ? `/facility/bookings?status=APPROVED` : `/facility/bookings?status=PENDING`,
@@ -145,7 +146,7 @@ export async function changeBookingStatus(user: SessionUser, bookingId: string, 
   });
   if (!booking) throw new Error("예약을 찾을 수 없습니다.");
 
-  const isOwner = booking.facility.ownerId === user.id;
+  const isOwner = user.role === "MANAGER" && (await canOperateFacility(user, booking.facility.id)); // 담당 창고 운영 매니저
   const isSeller = booking.sellerId === user.id;
   const isAdmin = user.role === "SUPER_ADMIN";
 
@@ -208,8 +209,8 @@ export async function changeBookingStatus(user: SessionUser, bookingId: string, 
 
   const when = formatDateTime(booking.startAt);
   if (isSeller && !isAdmin) {
-    await notify({
-      userId: booking.facility.ownerId, type: "BOOKING", title: `셀러가 예약을 취소했습니다`,
+    await notifyFacility(booking.facility.id, {
+      type: "BOOKING", partnerEmail: true, title: `셀러가 예약을 취소했습니다`,
       body: `${booking.facility.name} · ${when}${text ? ` · ${text}` : ""}`, link: `/facility/bookings?status=CANCELLED`,
     });
   } else {
@@ -228,7 +229,7 @@ export async function changeBookingStatus(user: SessionUser, bookingId: string, 
 }
 
 // ---------------------------------------------------------------------------
-// 일정 변경: 셀러(마감 전) · 창고 관리자 · 최고관리자. 승인된 예약을 셀러가 바꾸면 다시 승인 대기로 돌아간다.
+// 일정 변경: 셀러(마감 전) · 창고 운영 매니저 · 최고관리자. 승인된 예약을 셀러가 바꾸면 다시 승인 대기로 돌아간다.
 // ---------------------------------------------------------------------------
 export async function rescheduleBooking(user: SessionUser, bookingId: string, startAt: Date, endAt: Date) {
   const booking = await prisma.booking.findUnique({
@@ -236,7 +237,7 @@ export async function rescheduleBooking(user: SessionUser, bookingId: string, st
     include: { facility: { select: { id: true, name: true, ownerId: true, autoApprove: true, cancelDeadlineHours: true } }, liveSession: { select: { id: true, status: true } } },
   });
   if (!booking) throw new Error("예약을 찾을 수 없습니다.");
-  const isOwner = booking.facility.ownerId === user.id;
+  const isOwner = user.role === "MANAGER" && (await canOperateFacility(user, booking.facility.id)); // 담당 창고 운영 매니저
   const isSeller = booking.sellerId === user.id;
   const isAdmin = user.role === "SUPER_ADMIN";
   if (!isSeller && !isOwner && !isAdmin) throw new Error("FORBIDDEN");
@@ -269,8 +270,8 @@ export async function rescheduleBooking(user: SessionUser, bookingId: string, st
   await audit({ actorId: user.id, action: "BOOKING_RESCHEDULE", entity: "Booking", entityId: booking.id, meta: { from: oldStart, to: startAt, backToPending } });
   const change = `${formatDateTime(oldStart)} → ${formatDateTime(startAt)}~${hhmm(endAt)}`;
   if (isSeller && !isAdmin) {
-    await notify({
-      userId: booking.facility.ownerId, type: "BOOKING",
+    await notifyFacility(booking.facility.id, {
+      type: "BOOKING", partnerEmail: true,
       title: backToPending ? "셀러가 예약 일정 변경을 요청했습니다 (재승인 필요)" : "셀러가 예약 일정을 변경했습니다",
       body: `${booking.facility.name} · ${change}`, link: backToPending ? "/facility/bookings?status=PENDING" : "/facility/bookings",
     });
@@ -282,12 +283,12 @@ export async function rescheduleBooking(user: SessionUser, bookingId: string, st
 }
 
 // ---------------------------------------------------------------------------
-// 예약 상품 확인: 창고 관리자가 상품별로 준비 가능/불가 표시
+// 예약 상품 확인: 창고 운영자가 상품별로 준비 가능/불가 표시
 // ---------------------------------------------------------------------------
 export async function updateBookingProducts(user: SessionUser, bookingId: string, items: { id: string; status: string; note?: string | null }[]) {
-  const booking = await prisma.booking.findUnique({ where: { id: bookingId }, include: { facility: { select: { ownerId: true, name: true } }, products: true } });
+  const booking = await prisma.booking.findUnique({ where: { id: bookingId }, include: { facility: { select: { name: true } }, products: true } });
   if (!booking) throw new Error("예약을 찾을 수 없습니다.");
-  if (booking.facility.ownerId !== user.id && user.role !== "SUPER_ADMIN") throw new Error("FORBIDDEN");
+  if (!(await canOperateFacility(user, booking.facilityId))) throw new Error("FORBIDDEN");
   const valid = new Set(booking.products.map((p) => p.id));
   let unavailable = 0;
   for (const it of items) {
@@ -303,15 +304,15 @@ export async function updateBookingProducts(user: SessionUser, bookingId: string
 }
 
 // ---------------------------------------------------------------------------
-// 현장 체크인 (창고(스튜디오) 관리자 · 최고관리자). 예약번호로도 찾을 수 있다.
+// 현장 체크인 (창고 운영자: 최고관리자 · 담당 매니저). 예약번호로도 찾을 수 있다.
 // ---------------------------------------------------------------------------
 export async function checkInBooking(user: SessionUser, bookingIdOrCode: string) {
   const booking = await prisma.booking.findFirst({
     where: { OR: [{ id: bookingIdOrCode }, { code: bookingIdOrCode.trim().toUpperCase() }] },
-    include: { facility: { select: { ownerId: true, name: true } } },
+    include: { facility: { select: { name: true } } },
   });
   if (!booking) throw new Error("예약을 찾을 수 없습니다. 예약번호를 확인하세요.");
-  if (booking.facility.ownerId !== user.id && user.role !== "SUPER_ADMIN") throw new Error("FORBIDDEN");
+  if (!(await canOperateFacility(user, booking.facilityId))) throw new Error("FORBIDDEN");
   if (booking.status !== "APPROVED") throw new Error("승인된 예약만 체크인할 수 있습니다.");
   if (booking.checkedInAt) return booking;
   const now = Date.now();

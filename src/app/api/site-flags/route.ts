@@ -8,8 +8,8 @@ export const dynamic = "force-dynamic";
 // 민감 정보 없이 boolean 플래그만 반환한다.
 export async function GET() {
   try {
-    const { managerDisabled, facilityDisabled, liveEnabled } = await getSettings();
-    return ok({ managerDisabled, facilityDisabled, liveEnabled, brandDemoEnabled: demoLoginEnabled(), demoEnabled: demoLoginEnabled() });
+    const { managerDisabled, liveEnabled } = await getSettings();
+    return ok({ managerDisabled, liveEnabled, brandDemoEnabled: demoLoginEnabled(), demoEnabled: demoLoginEnabled() });
   } catch (e) {
     return handleError(e);
   }

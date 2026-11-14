@@ -34,8 +34,7 @@ export const authOptions: NextAuthOptions = {
 
         const DEMO_USERS: Record<string, { id: string; name: string; role: Role; pw: string }> = {
           "admin@sellerbricks.kr":    { id: "demo-admin",    name: "최고관리자",            role: "SUPER_ADMIN" as Role, pw: "password1234" },
-          "manager@sellerbricks.kr":  { id: "demo-manager",  name: "중간관리자 (영업담당)", role: "MANAGER",             pw: "password1234" },
-          "facility@sellerbricks.kr": { id: "demo-facility", name: "창고(스튜디오) 관리자", role: "FACILITY_ADMIN", pw: "password1234" },
+          "manager@sellerbricks.kr":  { id: "demo-manager",  name: "창고 운영 매니저", role: "MANAGER",             pw: "password1234" },
           "seller@sellerbricks.kr":   { id: "demo-seller",   name: "셀러",                 role: "SELLER",              pw: "password1234" },
           "brand@sellerbricks.kr":    { id: "demo-brand",    name: "브랜드사",             role: "BRAND_ADMIN",        pw: "password1234" },
         };
@@ -72,6 +71,8 @@ export const authOptions: NextAuthOptions = {
             return null;
           }
           if (!user.isActive) { await recordLoginFail(email); return null; }
+          // 창고(스튜디오) 관리자 계정은 없어졌다 (창고는 본사가 직접 운영). 예전 계정은 로그인할 수 없다.
+          if (user.role === "FACILITY_ADMIN") { await recordLoginFail(email); return null; }
           const ok = await bcrypt.compare(credentials.password, user.passwordHash);
           if (!ok) { await recordLoginFail(email); return null; }
           await clearLimit(failKey(email));
@@ -112,6 +113,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     try {
       const row = await prisma.user.findUnique({ where: { id: u.id }, select: { isActive: true, role: true, sessionVersion: true } });
       if (!row || !row.isActive) return null;
+      if (row.role === "FACILITY_ADMIN") return null; // 없어진 창고 관리자 계정 — 이미 로그인된 세션도 끊는다
       if ((u.sv ?? 0) !== row.sessionVersion) return null;
       return { id: u.id, email: u.email, name: u.name, role: row.role };
     } catch {
@@ -119,6 +121,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
       if (process.env.NODE_ENV === "production") return null;
     }
   }
+  if (u.role === "FACILITY_ADMIN") return null;
   return { id: u.id, email: u.email, name: u.name, role: u.role };
 }
 

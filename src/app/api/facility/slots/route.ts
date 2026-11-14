@@ -11,7 +11,7 @@ const T = /^([01]\d|2[0-4]):[0-5]\d$/;
 // POST: { facilityId, preset: "weekday"|"everyday", startTime, endTime, replace: true } — 기존 슬롯 교체
 export async function POST(req: NextRequest) {
   try {
-    const user = await requireRole(["FACILITY_ADMIN", "SUPER_ADMIN"]);
+    const user = await requireRole(["SUPER_ADMIN", "MANAGER"]);
     const b = await req.json().catch(() => ({}));
     await assertFacilityAccess(user, String(b.facilityId ?? ""));
     const days: number[] = b.preset === "weekday" ? [1, 2, 3, 4, 5] : b.preset === "everyday" ? [0, 1, 2, 3, 4, 5, 6]
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
 // PATCH: { id, isActive }
 export async function PATCH(req: NextRequest) {
   try {
-    const user = await requireRole(["FACILITY_ADMIN", "SUPER_ADMIN"]);
+    const user = await requireRole(["SUPER_ADMIN", "MANAGER"]);
     const { id, isActive } = await req.json().catch(() => ({}));
     const slot = await prisma.facilityAvailableSlot.findUnique({ where: { id: String(id) } });
     if (!slot) return fail("시간대를 찾을 수 없습니다.", 404);
@@ -44,7 +44,7 @@ export async function PATCH(req: NextRequest) {
 // DELETE ?id=
 export async function DELETE(req: NextRequest) {
   try {
-    const user = await requireRole(["FACILITY_ADMIN", "SUPER_ADMIN"]);
+    const user = await requireRole(["SUPER_ADMIN", "MANAGER"]);
     const id = req.nextUrl.searchParams.get("id") ?? "";
     const slot = await prisma.facilityAvailableSlot.findUnique({ where: { id } });
     if (!slot) return fail("시간대를 찾을 수 없습니다.", 404);

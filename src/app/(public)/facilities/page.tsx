@@ -10,6 +10,7 @@ import { ShopImage } from "@/components/shop/shop-image";
 import { registeredSpaceThumbnail } from "@/lib/showcase";
 import { cn } from "@/lib/utils";
 import { Star, MapPin, Search, Warehouse } from "lucide-react";
+import { facilityTypeLabel, facilityTypeTone } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ export default async function FacilitiesPage({
   const { q, type, region, sort } = searchParams;
 
   const where: Prisma.FacilityWhereInput = { status: "APPROVED" };
-  if (type === "WAREHOUSE" || type === "STUDIO") where.type = type;
+  if (type === "WAREHOUSE" || type === "STUDIO" || type === "SHOWROOM") where.type = type;
   if (region && region !== "전체") where.region = region;
   if (q) where.OR = [
     { name: { contains: q, mode: "insensitive" } }, { address: { contains: q, mode: "insensitive" } },
@@ -54,7 +55,7 @@ export default async function FacilitiesPage({
     facilities = db.length > 0 || Object.keys(where).length > 1 ? db : DUMMY;
   } catch {
     let filtered = DUMMY;
-    if (type === "WAREHOUSE" || type === "STUDIO") filtered = filtered.filter((f) => f.type === type);
+    if (type === "WAREHOUSE" || type === "STUDIO" || type === "SHOWROOM") filtered = filtered.filter((f) => f.type === type);
     if (region && region !== "전체") filtered = filtered.filter((f) => f.region.includes(region));
     if (q) filtered = filtered.filter((f) => f.name.includes(q) || f.address.includes(q));
     facilities = filtered;
@@ -106,7 +107,7 @@ export default async function FacilitiesPage({
       </form>
 
       <div className="mt-3 flex flex-wrap gap-1.5">
-        {["전체", "WAREHOUSE", "STUDIO"].map((t) => (
+        {["전체", "WAREHOUSE", "STUDIO", "SHOWROOM"].map((t) => (
           <Link
             key={t}
             href={qs({ type: t === "전체" ? "" : t })}
@@ -117,7 +118,7 @@ export default async function FacilitiesPage({
                 : "border-slate-200 bg-white text-slate-700 hover:border-brand-300"
             )}
           >
-            {t === "전체" ? "전체" : t === "WAREHOUSE" ? "창고" : "스튜디오"}
+            {t === "전체" ? "전체" : facilityTypeLabel(t)}
           </Link>
         ))}
       </div>
@@ -137,12 +138,12 @@ export default async function FacilitiesPage({
           {facilities.map((f) => (
             <Link key={f.id} href={`/facilities/${f.id}`} aria-label={`${f.name} 공간 보기`} className={cardLinkClassName}>
               <div className="aspect-[16/9] overflow-hidden bg-slate-100">
-                <ShopImage src={f.thumbnailUrl} fallback={registeredSpaceThumbnail(f.id, f.type === "WAREHOUSE" ? "WAREHOUSE" : "STUDIO")}
+                <ShopImage src={f.thumbnailUrl} fallback={registeredSpaceThumbnail(f.id, f.type)}
                   className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03] motion-reduce:transition-none" />
               </div>
               <div className="flex flex-1 flex-col p-4">
                 <div className="flex items-center justify-between gap-2">
-                  <Badge tone={f.type === "WAREHOUSE" ? "blue" : "purple"}>{f.type === "WAREHOUSE" ? "창고" : "스튜디오"}</Badge>
+                  <Badge tone={facilityTypeTone(f.type)}>{facilityTypeLabel(f.type)}</Badge>
                   <span className="flex items-center gap-1 text-xs font-bold text-navy">
                     <Star aria-hidden="true" className="h-3.5 w-3.5 fill-brand-400 text-brand-400" />
                     <span className="sr-only">평점 </span>{(f.rating ?? 0).toFixed(1)}

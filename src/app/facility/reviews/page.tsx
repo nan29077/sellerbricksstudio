@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
-import { ownedFacilityIds } from "@/lib/rbac";
+import { operableFacilityIds } from "@/lib/facility-owner";
 import { PageHeader } from "@/components/layout/dashboard-widgets";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,8 +18,8 @@ export const dynamic = "force-dynamic";
 const BASE = "/facility/reviews";
 
 export default async function FacilityReviews({ searchParams }: { searchParams: SP }) {
-  const user = await requireRole(["FACILITY_ADMIN"]);
-  const ids = await ownedFacilityIds(user.id);
+  const user = await requireRole(["SUPER_ADMIN", "MANAGER"]);
+  const ids = await operableFacilityIds(user);
   const filter = sp(searchParams, "filter");
   const { page, size, skip, take } = pageOf(searchParams, 15);
   const scope: Prisma.FacilityReviewWhereInput = { facilityId: { in: ids } };

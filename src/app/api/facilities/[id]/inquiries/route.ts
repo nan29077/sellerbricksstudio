@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
-import { notify } from "@/lib/notify";
+
+import { canOperateFacility, notifyFacility } from "@/lib/facility-owner";
 
 // GET /api/facilities/[id]/inquiries
 // - SELLER: 본인 문의 목록
-// - FACILITY_ADMIN: 해당 창고(스튜디오)의 모든 문의
+// - 창고 운영자(최고관리자 · 담당 매니저): 해당 창고(스튜디오)의 모든 문의
 // - SUPER_ADMIN: 전체 문의
 export async function GET(
   req: NextRequest,
@@ -21,16 +22,8 @@ export async function GET(
 
     if (user.role === "SELLER") {
       where.sellerId = user.id;
-    } else if (user.role === "FACILITY_ADMIN") {
-      // 본인 소유 창고(스튜디오)인지 확인
-      const facility = await prisma.facility.findUnique({
-        where: { id: facilityId },
-        select: { ownerId: true },
-      });
-      if (facility?.ownerId !== user.id) {
-        return NextResponse.json({ error: "권한이 없습니다" }, { status: 403 });
-      }
-    } else if (user.role !== "SUPER_ADMIN") {
+    } else if (!(await canOperateFacility(user, facilityId))) {
+      // 창고 운영자(최고관리자 · 담당 매니저)만 그 창고의 문의를 본다
       return NextResponse.json({ error: "권한이 없습니다" }, { status: 403 });
     }
 
@@ -76,7 +69,7 @@ export async function POST(
   try {
     const facility = await prisma.facility.findUnique({
       where: { id: params.id },
-      select: { id: true, status: true, name: true, ownerId: true },
+      select: { id: true, status: true, name: true },
     });
     if (!facility || facility.status !== "APPROVED") {
       return NextResponse.json({ error: "창고(스튜디오)를 찾을 수 없습니다" }, { status: 404 });
@@ -89,7 +82,7 @@ export async function POST(
         message: message.trim().slice(0, 2000),
       },
     });
-    await notify({ userId: facility.ownerId, type: "INQUIRY", title: "새 셀러 문의가 도착했습니다", body: `${facility.name} · ${message.trim().slice(0, 60)}`, link: "/facility/inquiries" });
+    await notifyFacility(facility.id, { type: "INQUIRY", partnerEmail: true, title: "새 셀러 문의가 도착했습니다", body: `${facility.name} · ${message.trim().slice(0, 60)}`, link: "/facility/inquiries" });
 
     return NextResponse.json({ inquiry }, { status: 201 });
   } catch (e) {

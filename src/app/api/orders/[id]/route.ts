@@ -11,6 +11,7 @@ import { applyOrderStatusInTx, cancelOrderItems, OrderActionError, shipLocalPart
 import { FULFILLMENT_ITEM_SELECT, orderActions, orderParts } from "@/lib/order-fulfillment";
 import { clearLimit, consume } from "@/lib/rate-limit";
 import { notifyBuyer } from "@/lib/order-notify";
+import { canOperateFacility } from "@/lib/facility-owner";
 
 const REFUND_DENIED = "출고된 주문의 환불은 상품을 출고한 창고(스튜디오) 또는 최고관리자만 할 수 있습니다. 브랜드가 보낸 상품의 환불은 고객지원 1:1 문의로 요청해 주세요.";
 
@@ -29,14 +30,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const order = await prisma.order.findUnique({
       where: { id: params.id },
       include: {
-        facility: { select: { ownerId: true, name: true } }, payment: true,
+        facility: { select: { id: true, name: true } }, payment: true,
         items: { select: FULFILLMENT_ITEM_SELECT },
         purchaseOrders: { select: { status: true, fulfillment: true } },
       },
     });
     if (!order) return fail("주문을 찾을 수 없습니다.", 404);
 
-    const actor = { isAdmin: user.role === "SUPER_ADMIN", isSeller: order.sellerId === user.id, isFacilityOwner: !!order.facility && order.facility.ownerId === user.id };
+    const actor = { isAdmin: user.role === "SUPER_ADMIN", isSeller: order.sellerId === user.id, isFacilityOwner: !!order.facility && user.role !== "SUPER_ADMIN" && (await canOperateFacility(user, order.facility.id)) };
     if (!actor.isAdmin && !actor.isSeller && !actor.isFacilityOwner) return fail("이 주문을 처리할 권한이 없습니다.", 403);
     const can = orderActions(order, actor);
 

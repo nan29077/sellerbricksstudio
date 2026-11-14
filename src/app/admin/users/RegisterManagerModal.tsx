@@ -42,7 +42,7 @@ export function RegisterManagerButton() {
       }
       const linked = json.data?.facility ? `\n담당 창고(스튜디오): ${json.data.facility}` : "";
       const note = json.data?.note ? `\n${json.data.note}` : "";
-      void appAlert(`중간 관리자가 등록되었습니다.${linked}${note}\n임시 비밀번호를 본인에게 안전하게 전달하세요.`);
+      void appAlert(`창고 운영 매니저가 등록되었습니다.${linked}${note}\n임시 비밀번호를 본인에게 안전하게 전달하세요.`);
       handleClose();
       router.refresh();
     } catch {
@@ -56,7 +56,7 @@ export function RegisterManagerButton() {
     <>
       <Button onClick={() => setOpen(true)} size="sm" className="flex items-center gap-2">
         <UserPlus className="h-4 w-4" />
-        중간 관리자 등록
+        창고 운영 매니저 등록
       </Button>
 
       {open && (
@@ -66,7 +66,7 @@ export function RegisterManagerButton() {
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-bold text-navy flex items-center gap-2">
                 <UserPlus className="h-5 w-5 text-brand-500" />
-                중간 관리자 등록
+                창고 운영 매니저 등록
               </h2>
               <button aria-label="닫기" type="button" onClick={handleClose} className="rounded-lg p-1.5 hover:bg-muted transition-colors">
                 <X className="h-4 w-4" />

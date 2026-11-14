@@ -82,7 +82,7 @@ export default async function BrandDirectory({ searchParams }: { searchParams: S
     return <div className="space-y-6 px-4 py-7 sm:px-6"><h1 className="text-3xl font-black text-navy">브랜드샵</h1><DataNotice issue={issue} /></div>;
   }
 
-  const buyer = user?.role === "SELLER" || user?.role === "FACILITY_ADMIN";
+  const buyer = user?.role === "SELLER" || user?.role === "SUPER_ADMIN"; // 셀러 · 스토리지마켓 본사(창고 상품)
   const myProducts = user?.role === "SELLER" ? "/seller/brand-products" : "/facility/brand-products";
 
   return (

@@ -63,7 +63,7 @@ export default async function BrandChannelsPage() {
             <ul className="divide-y divide-[#F0ECE6]">
               {[...pending, ...blocked].map((p) => (
                 <li key={p.userId} className="flex flex-wrap items-center gap-3 py-2.5">
-                  <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-navy">{sellerName(p.user)} <span className="text-xs font-normal text-slate-400">{p.user.role === "SELLER" ? "셀러" : "창고(스튜디오)"}</span></span>
+                  <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-navy">{sellerName(p.user)} <span className="text-xs font-normal text-slate-400">{p.user.role === "SELLER" ? "셀러" : "스토리지마켓 창고"}</span></span>
                     <span className="block truncate text-xs text-slate-500">{STATUS_LABEL[p.status as keyof typeof STATUS_LABEL]}{p.note ? ` · ${p.note}` : ""}</span></span>
                   <PartnerActions userId={p.userId} status={p.status as "PENDING" | "BLOCKED"} name={sellerName(p.user)} />
                 </li>

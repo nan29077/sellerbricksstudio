@@ -1,9 +1,4 @@
-import { getSettings } from "@/lib/settings";
-import { SignupForm } from "@/components/signup-form";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-export default async function Page() {
-  const { facilityDisabled } = await getSettings();
-  return <SignupForm role="FACILITY_ADMIN" facilityDisabled={facilityDisabled} />;
-}
+// 창고(스튜디오) 가입은 없어졌다 — 창고는 스토리지마켓 본사가 직접 운영한다 (2026-11-14)
+export default function Page() { redirect("/signup"); }

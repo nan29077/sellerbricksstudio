@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input, Label, Textarea, Select } from "@/components/ui/input";
 import { SlotPicker, endOf, type PickerPolicy, type SlotValue } from "./slot-picker";
 import { cn, formatKRW, sellerUnitProfit } from "@/lib/utils";
+import { facilityTypeLabel, facilityTypeTone } from "@/lib/status";
 
 export type WizardFacility = {
   id: string; name: string; type: string; region: string; address: string; rating: number; thumbnailUrl: string | null;
@@ -253,7 +254,7 @@ export function BookingWizard({
                     </div>
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex flex-wrap items-center gap-1">
-                        <Badge tone={f.type === "STUDIO" ? "purple" : "blue"} className="px-2 py-0 text-[11px]">{f.type === "STUDIO" ? "스튜디오" : "창고"}</Badge>
+                        <Badge tone={facilityTypeTone(f.type)} className="px-2 py-0 text-[11px]">{facilityTypeLabel(f.type)}</Badge>
                         {f.autoApprove && <Badge tone="green" className="px-2 py-0 text-[11px]"><Zap className="mr-0.5 h-3 w-3" />즉시 확정</Badge>}
                         {f.favorite && <Heart className="h-3.5 w-3.5 fill-red-500 text-red-500" />}
                       </div>
@@ -397,7 +398,7 @@ export function BookingWizard({
               </label>
             )}
             <p className="rounded-xl bg-muted/50 px-3 py-2.5 text-xs text-slate-600">
-              {facility.autoApprove ? "이 공간은 신청 즉시 예약이 확정됩니다." : "창고(스튜디오) 관리자가 승인하면 예약이 확정됩니다."}{" "}
+              {facility.autoApprove ? "이 공간은 신청 즉시 예약이 확정됩니다." : "스토리지마켓 운영팀이 승인하면 예약이 확정됩니다."}{" "}
               승인된 예약은 이용 {facility.cancelDeadlineHours}시간 전까지 직접 일정 변경·취소할 수 있어요.
             </p>
           </CardContent></Card>

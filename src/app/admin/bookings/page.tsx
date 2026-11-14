@@ -58,7 +58,7 @@ export default async function AdminBookings({ searchParams }: { searchParams: SP
 
   return (
     <div className="space-y-5">
-      <PageHeader title="예약 현황" description={`전체 창고(스튜디오)의 예약을 조회하고, 필요하면 운영자를 대신해 처리합니다. 승인 대기 ${policy.pendingExpireHours ? `${policy.pendingExpireHours}시간 자동 만료` : "자동 만료 꺼짐"} · 노쇼는 시작 ${policy.noShowGraceMinutes}분 후부터.`}
+      <PageHeader title="예약 현황" description={`전체 창고(스튜디오)의 예약을 조회하고 처리합니다. (창고 운영 콘솔의 예약 현황과 같은 기능) 승인 대기 ${policy.pendingExpireHours ? `${policy.pendingExpireHours}시간 자동 만료` : "자동 만료 꺼짐"} · 노쇼는 시작 ${policy.noShowGraceMinutes}분 후부터.`}
         action={<div className="flex gap-2"><a href="/admin/policy" className="inline-flex h-9 items-center rounded-lg border px-3 text-sm font-semibold">예약 정책</a>
           <PatchButton url="/api/cron/bookings" body={{}} variant="outline" size="sm" confirmText="자동 만료 · 이용 완료 · 이용 전 알림을 지금 실행할까요?">자동 처리 실행</PatchButton></div>} />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
