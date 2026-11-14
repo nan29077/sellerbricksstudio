@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { SupportButton } from "@/components/support/support-center";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useRef } from "react";
@@ -55,9 +56,9 @@ export function StudioTopBar({ account }: { account: Account }) {
         <MenuItems account={account} desktop={false} onNavigate={() => menu.current?.close()} />
       </dialog>
       {pathname !== "/support" && (
-        <Link href="/support" aria-label="문의하기" title="문의하기" className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-[max(1rem,calc((100vw-716px)/2+1rem))] z-40 grid h-12 w-12 place-items-center rounded-full bg-navy text-white shadow-lg hover:bg-navy-700 lg:hidden">
+        <SupportButton ariaLabel="문의하기" className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-[max(1rem,calc((100vw-716px)/2+1rem))] z-40 grid h-12 w-12 place-items-center rounded-full bg-navy text-white shadow-lg hover:bg-navy-700 lg:hidden">
           <Headset className="h-5 w-5 text-brand-300" />
-        </Link>
+        </SupportButton>
       )}
       <nav aria-label="모바일 하단 메뉴" className="safe-area-inset-bottom fixed bottom-0 left-1/2 z-40 grid w-full max-w-[716px] -translate-x-1/2 grid-cols-5 border-t border-slate-200 bg-[#F8F9FA]/95 shadow-[0_-6px_24px_#1A1A2E12] backdrop-blur-md lg:hidden">
         {[
@@ -88,9 +89,9 @@ export function StudioNavigation({ account }: { account: Account }) {
         <MenuItems account={account} desktop />
         <p aria-hidden="true" className="pb-1 pt-2 text-center text-[11px] font-black tracking-[0.13em] text-slate-500">STORAGE MARKET</p>
       </div>
-      <Link href="/support" aria-current={pathname === "/support" ? "page" : undefined} className="row-start-3 mb-1 flex min-h-11 items-center justify-center gap-1.5 self-end rounded-full border border-white/20 bg-navy px-3 text-[11px] font-bold text-white shadow-lg transition hover:bg-navy-700 [@media(max-height:740px)]:row-start-2">
+      <SupportButton className="row-start-3 mb-1 flex min-h-11 items-center justify-center gap-1.5 self-end rounded-full border border-white/20 bg-navy px-3 text-[11px] font-bold text-white shadow-lg transition hover:bg-navy-700 [@media(max-height:740px)]:row-start-2">
         <Headset className="h-4 w-4 text-brand-300" />문의하기
-      </Link>
+      </SupportButton>
     </>
   );
 }

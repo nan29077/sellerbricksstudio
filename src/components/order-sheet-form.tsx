@@ -14,7 +14,11 @@ import { CheckCircle2, Download, FileSpreadsheet, Loader2, Minus, PenLine, Plus,
 type CatalogItem = {
   code: string; kind: "BRAND" | "STOCK"; name: string; brandName: string | null; facilityName: string | null; facilityId: string | null;
   unitCost: number; stock: number; options: { name: string; values: string[] }[]; shipper: string; imageUrl: string | null; shippingNote: string;
+  variants?: { key: string; extra: number; saleExtra: number; soldOut: boolean }[];
 };
+// 옵션 조합별 추가 공급가 · 품절 (브랜드가 상품 등록 때 정함)
+const variantFor = (c: CatalogItem, opts: Record<string, string>) => { const key = c.options.map((o) => opts[o.name]).join(" / "); return c.variants?.find((v) => v.key === key) ?? null; };
+const unitOf = (c: CatalogItem | undefined, opts: Record<string, string>) => (c ? Math.max(0, c.unitCost + (variantFor(c, opts)?.extra ?? 0)) : 0);
 type Line = { code: string; quantity: number; opts: Record<string, string> };
 type Result = { ref?: string; ok: boolean; error?: string; orders?: { id: string; orderNo: string; total: number; shipper: string }[] };
 type PreviewSheet = {
@@ -118,7 +122,7 @@ function DirectForm({ catalog, platforms, defaultEtc, shippingFee }: { catalog: 
   const found = catalog.filter((c) => !q.trim() || `${c.name} ${c.brandName ?? ""} ${c.code}`.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 30);
   const add = (c: CatalogItem) => setLines((ls) => [...ls, { code: c.code, quantity: 1, opts: Object.fromEntries(c.options.map((o) => [o.name, o.values[0] ?? ""])) }]);
   const setLine = (i: number, patch: Partial<Line>) => setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
-  const subtotal = lines.reduce((s, l) => s + (map.get(l.code)?.unitCost ?? 0) * l.quantity, 0);
+  const subtotal = lines.reduce((s, l) => s + unitOf(map.get(l.code), l.opts) * l.quantity, 0);
   const stockFacilities = new Set(lines.map((l) => map.get(l.code)).filter((c) => c?.kind === "STOCK").map((c) => c!.facilityId));
   const shipping = stockFacilities.size * shippingFee;
 
@@ -214,7 +218,7 @@ function DirectForm({ catalog, platforms, defaultEtc, shippingFee }: { catalog: 
                         <Input aria-label={`${c.name} 수량`} className="h-9 w-16 text-center" inputMode="numeric" value={l.quantity} onChange={(e) => setLine(i, { quantity: Math.max(1, Math.min(9999, Number(e.target.value.replace(/\D/g, "")) || 1)) })} />
                         <Button type="button" size="sm" variant="outline" aria-label="수량 늘리기" onClick={() => setLine(i, { quantity: Math.min(9999, l.quantity + 1) })}><Plus className="h-4 w-4" /></Button>
                       </div>
-                      <b className="text-sm text-navy">{formatKRW(c.unitCost * l.quantity)}</b>
+                      <b className="text-sm text-navy">{variantFor(c, l.opts)?.soldOut ? <span className="text-red-600">품절 옵션</span> : formatKRW(unitOf(c, l.opts) * l.quantity)}</b>
                     </div>
                   </li>
                 );

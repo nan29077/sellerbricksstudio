@@ -207,7 +207,7 @@ async function main() {
   ok((await db.auditLog.count({ where: { action: "BRAND_MESSAGE_CONTACT_FLAG", meta: { contains: threadId } } })) === samples.length, "직거래 의심 메시지 감사 기록");
   pg = await brand.page(`/brand/messages?t=${threadId}`);
   ok(pg.status === 200 && pg.text.includes("직거래는 이용약관에 따라"), "브랜드 메시지 화면에 경고 표시", pg.status);
-  pg = await seller.page(`/brand-messages?t=${threadId}`);
+  pg = await seller.page(`/seller/brand-messages?t=${threadId}`);
   ok(pg.status === 200 && pg.text.includes("직거래는 이용약관에 따라"), "셀러 메시지 화면에 경고 표시", pg.status);
 
   console.log("\n[A6] 공지사항 — DB 저장 · 공개 페이지");
@@ -249,7 +249,7 @@ async function main() {
   ok(pg.text.includes("/notices"), "푸터에 공지사항 링크");
 
   console.log("\n[A8] 화면 렌더링 회귀 (500 없음)");
-  const pages = [[guest, "/"], [guest, "/brands"], [guest, `/brands/${shopId}`], [guest, "/notices"], [guest, "/terms"], [seller, "/brand-requests"], [seller, "/brand-messages"], [fac, "/brand-requests"], [fac, "/facility/brand-products"], [brand, "/brand/requests"], [brand, "/brand/messages"], [brand, "/brand/products"], [brand, "/brand/shop"], [admin, "/admin/policy"], [admin, "/admin/site-management"]];
+  const pages = [[guest, "/"], [guest, "/brands"], [guest, `/brands/${shopId}`], [guest, "/notices"], [guest, "/terms"], [seller, "/seller/brand-requests"], [seller, "/seller/brand-messages"], [fac, "/facility/brand-requests"], [fac, "/facility/brand-products"], [brand, "/brand/requests"], [brand, "/brand/messages"], [brand, "/brand/products"], [brand, "/brand/shop"], [admin, "/admin/policy"], [admin, "/admin/site-management"]];
   for (const [cl, path] of pages) { const x = await cl.page(path); ok(x.status === 200, `${cl.name} ${path}`, x.status); }
   } finally {
     // 정책 원복

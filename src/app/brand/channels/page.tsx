@@ -14,7 +14,7 @@ import { Store, Users, Video, Warehouse } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-// 브랜드 계정: 내 상품을 판매 목록에 담은 셀러 · 창고(스튜디오)와 판매 성과
+// 브랜드 계정: 내 상품을 판매 목록에 담은 셀러 · 공간과 판매 성과
 export default async function BrandChannelsPage() {
   const user = await requireRole(["BRAND_ADMIN"]);
   if (user.id === "demo-brand") return <p className="rounded-2xl border bg-white p-5 text-sm text-slate-700">판매처를 보려면 데이터베이스 연결이 필요합니다.</p>;
@@ -56,7 +56,7 @@ export default async function BrandChannelsPage() {
 
     return (
       <div className="space-y-5">
-        <PageHeader title="판매처 관리" description="내 상품을 판매하는 셀러와 창고(스튜디오)를 승인하거나 차단하고, 최근 3개월 발주 실적을 봅니다." />
+        <PageHeader title="판매처 관리" description="내 상품을 판매하는 셀러와 공간을 승인하거나 차단하고, 최근 3개월 발주 실적을 봅니다." />
         <Panel eyebrow="PARTNERS" title={shop.requireSellerApproval ? "판매처 신청 · 승인 (승인제 운영 중)" : "판매처 차단 · 신청 관리"} action={{ href: "/brand/shop", label: "승인제 설정" }}>
           {!shop.requireSellerApproval && <p className="mb-2 text-xs text-slate-500">지금은 누구나 상품을 가져갈 수 있습니다. 샵 정보에서 &lsquo;승인한 판매처만&rsquo;을 켜면 신청을 받아 승인한 곳만 판매할 수 있습니다.</p>}
           {pending.length + blocked.length === 0 ? <Empty text="대기 중인 신청이나 차단한 판매처가 없습니다" /> : (
@@ -74,7 +74,7 @@ export default async function BrandChannelsPage() {
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <KpiTile label="전체 판매처" value={String(sellers.size + facilities.size)} unit="곳" icon={Users} tone="brand" emphasis />
           <KpiTile label="셀러(위탁배송)" value={String(sellers.size)} unit="명" sub={`등록 상품 ${sellerListings.length}건`} icon={Video} tone="violet" />
-          <KpiTile label="창고(스튜디오)" value={String(facilities.size)} unit="곳" sub={`등록 상품 ${facilityListings.length}건`} icon={Warehouse} tone="sky" />
+          <KpiTile label="공간" value={String(facilities.size)} unit="곳" sub={`등록 상품 ${facilityListings.length}건`} icon={Warehouse} tone="sky" />
           <KpiTile label="최근 3개월 발주" value={compactKRW(pos.reduce((s, p) => s + p.supplyAmount, 0))} sub={`${pos.length}건 · 공급가 기준`} icon={Store} tone="green" />
         </div>
         <div className="grid gap-5 xl:grid-cols-2">
@@ -95,8 +95,8 @@ export default async function BrandChannelsPage() {
               </ul>
             )}
           </Panel>
-          <Panel eyebrow="SPACES" title="창고(스튜디오) 판매처" action={{ href: "/brand/requests?kind=SUPPLY", label: "입고 신청" }}>
-            {facilityListings.length === 0 ? <Empty text="아직 내 상품을 담은 창고(스튜디오)가 없습니다" /> : (
+          <Panel eyebrow="SPACES" title="공간 판매처" action={{ href: "/brand/requests?kind=SUPPLY", label: "입고 신청" }}>
+            {facilityListings.length === 0 ? <Empty text="아직 내 상품을 담은 공간이 없습니다" /> : (
               <ul className="divide-y divide-[#F0ECE6]">
                 {facilityListings.map((l) => {
                   const perf = byFacility.get(l.facility.id);

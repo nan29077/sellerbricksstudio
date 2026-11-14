@@ -18,14 +18,14 @@ import { CalendarDays, Heart, MessageSquare, Star, MapPin, Clock, CalendarPlus }
 export const dynamic = "force-dynamic";
 const BASE = "/seller/farm-reservations";
 const TABS = [
-  { key: "calendar", label: "예약 캘린더", icon: CalendarDays },
-  { key: "favorites", label: "찜한 창고(스튜디오)", icon: Heart },
+  { key: "favorites", label: "찜한 공간", icon: Heart },
   { key: "inquiries", label: "문의 내역", icon: MessageSquare },
+  { key: "calendar", label: "예약 캘린더", icon: CalendarDays },
 ] as const;
 
 export default async function SellerReservationOverview({ searchParams }: { searchParams: SP }) {
   const user = await requireRole(["SELLER"]);
-  const tab = (TABS.find((t) => t.key === sp(searchParams, "tab"))?.key ?? "calendar") as (typeof TABS)[number]["key"];
+  const tab = (TABS.find((t) => t.key === sp(searchParams, "tab"))?.key ?? "favorites") as (typeof TABS)[number]["key"];
   const month = parseMonth(sp(searchParams, "month"));
 
   const [monthBookings, next7, favorites, inquiries, unreadReplies] = await Promise.all([
@@ -50,12 +50,12 @@ export default async function SellerReservationOverview({ searchParams }: { sear
 
   return (
     <div className="space-y-5 pb-24 md:pb-0">
-      <PageHeader title="창고(스튜디오) 예약 현황" description="월간 일정, 자주 찾는 창고(스튜디오), 보낸 문의를 한눈에 확인하세요."
-        action={<Link href="/seller/bookings/new"><Button><CalendarPlus className="h-4 w-4" />예약 신청</Button></Link>} />
+      <PageHeader title="찜 · 문의한 공간" description="자주 찾는 창고 · 스튜디오 · 쇼룸과 보낸 문의, 월간 예약 일정을 모아 봤어요."
+        action={<Link href="/seller/bookings/new"><Button><CalendarPlus className="h-4 w-4" />방송 예약하기</Button></Link>} />
 
       <div className="flex gap-1.5 overflow-x-auto">
         {TABS.map((t) => (
-          <Link key={t.key} href={withParams(BASE, {}, { tab: t.key === "calendar" ? undefined : t.key })}
+          <Link key={t.key} href={withParams(BASE, {}, { tab: t.key === "favorites" ? undefined : t.key })}
             className={cn("flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold", tab === t.key ? "border-navy bg-navy text-white" : "border-[#E5E0D6] bg-white text-slate-600")}>
             <t.icon className="h-4 w-4" />{t.label}
             {t.key === "inquiries" && unreadReplies > 0 && <span className="rounded-full bg-red-500 px-1.5 text-[11px] text-white">{unreadReplies}</span>}
@@ -89,8 +89,8 @@ export default async function SellerReservationOverview({ searchParams }: { sear
       )}
 
       {tab === "favorites" && (favorites.length === 0 ? (
-        <EmptyState icon={<Heart className="h-10 w-10" />} title="찜한 창고(스튜디오)가 없습니다" description="창고(스튜디오) 상세 화면에서 하트를 눌러 자주 쓰는 곳을 모아두세요."
-          action={<Link href="/facilities"><Button variant="outline">창고(스튜디오) 둘러보기</Button></Link>} />
+        <EmptyState icon={<Heart className="h-10 w-10" />} title="찜한 공간이 없습니다" description="공간 상세 화면에서 하트를 눌러 자주 쓰는 곳을 모아두세요."
+          action={<Link href="/facilities"><Button variant="outline">공간 둘러보기</Button></Link>} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {favorites.map(({ facility: f }) => (
@@ -117,7 +117,7 @@ export default async function SellerReservationOverview({ searchParams }: { sear
       ))}
 
       {tab === "inquiries" && (inquiries.length === 0 ? (
-        <EmptyState icon={<MessageSquare className="h-10 w-10" />} title="보낸 문의가 없습니다" description="창고(스튜디오) 상세 화면에서 궁금한 점을 문의할 수 있습니다." />
+        <EmptyState icon={<MessageSquare className="h-10 w-10" />} title="보낸 문의가 없습니다" description="공간 상세 화면에서 궁금한 점을 문의할 수 있습니다." />
       ) : (
         <div className="space-y-3">
           {inquiries.map((iq) => (

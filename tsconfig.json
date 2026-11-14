@@ -14,7 +14,10 @@
     "jsx": "preserve",
     "incremental": true,
     "plugins": [{ "name": "next" }],
-    "paths": { "@/*": ["./src/*"] }
+    "paths": {
+      "@/*": ["./src/*"],
+      "@studio-rail": ["./src/components/home/studio-broadcast-rail.local", "./src/components/home/studio-broadcast-rail"]
+    }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", ".next-dev/types/**/*.ts"],
   "exclude": ["node_modules", "_backup", "_typecheck", "_to_delete"]

@@ -13,7 +13,7 @@ import { CsvButton } from "@/components/list/csv-button";
 import { Kpi } from "@/components/list/charts";
 import { MonthCalendar } from "@/components/calendar/month-calendar";
 import { ManageBookingList } from "@/components/booking/manage-booking-list";
-import { toManageBooking } from "@/lib/booking-view";
+import { BRAND_ITEMS_INCLUDE, toManageBooking } from "@/lib/booking-view";
 import { runBookingMaintenance, sellerReliability } from "@/lib/booking-automation";
 import { getPolicy } from "@/lib/policy";
 import { BOOKING_STATUS } from "@/lib/status";
@@ -53,7 +53,7 @@ export default async function FacilityBookings({ searchParams }: { searchParams:
   const today = kstStartOfDay(new Date());
   const month = parseMonth(sp(searchParams, "month"));
   const mStart = kstStartOfMonth(new Date());
-  const include = { facility: { select: { name: true } }, seller: { select: { email: true, profile: { select: { name: true, phone: true, companyName: true } } } }, products: { orderBy: { createdAt: "asc" as const } } } as const;
+  const include = { facility: { select: { name: true } }, seller: { select: { email: true, profile: { select: { name: true, phone: true, companyName: true } } } }, products: { orderBy: { createdAt: "asc" as const } }, brandItems: BRAND_ITEMS_INCLUDE } as const;
 
   const [rows, total, grouped, todayCount, monthRev, calRows, blackouts, overduePending] = await Promise.all([
     view === "list" ? prisma.booking.findMany({

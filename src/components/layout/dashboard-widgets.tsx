@@ -31,12 +31,13 @@ export function PageHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+    <div className="mb-5 flex flex-col gap-3 border-b border-[#E9E5DC] pb-5 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
       <div className="min-w-0">
-        <h1 className="break-words text-2xl font-extrabold tracking-tight text-navy sm:text-3xl">{title}</h1>
-        {description && <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>}
+        <span aria-hidden className="mb-3 block h-1 w-8 rounded-full bg-brand-500" />
+        <h1 className="break-keep text-2xl font-extrabold tracking-tight text-navy sm:text-[28px] sm:leading-tight">{title}</h1>
+        {description && <p className="mt-2 max-w-2xl break-keep text-[13px] leading-6 text-slate-500 sm:text-sm">{description}</p>}
       </div>
-      {action}
+      {action && <div className="flex shrink-0 flex-wrap gap-2">{action}</div>}
     </div>
   );
 }

@@ -9,7 +9,7 @@ import { StatusTabs } from "@/components/list/status-tabs";
 import { Pagination } from "@/components/list/pagination";
 import { CsvButton } from "@/components/list/csv-button";
 import { ManageBookingList } from "@/components/booking/manage-booking-list";
-import { toManageBooking } from "@/lib/booking-view";
+import { BRAND_ITEMS_INCLUDE, toManageBooking } from "@/lib/booking-view";
 import { runBookingMaintenance, sellerReliability } from "@/lib/booking-automation";
 import { getPolicy } from "@/lib/policy";
 import { PatchButton } from "@/components/resource-form";
@@ -39,7 +39,7 @@ export default async function AdminBookings({ searchParams }: { searchParams: SP
   };
   const mStart = kstStartOfMonth(new Date());
   const prev = addMonths(mStart, -1);
-  const include = { facility: { select: { name: true } }, seller: { select: { email: true, profile: { select: { name: true, phone: true, companyName: true } } } }, products: { orderBy: { createdAt: "asc" as const } } } as const;
+  const include = { facility: { select: { name: true } }, seller: { select: { email: true, profile: { select: { name: true, phone: true, companyName: true } } } }, products: { orderBy: { createdAt: "asc" as const } }, brandItems: BRAND_ITEMS_INCLUDE } as const;
   const [rows, total, grouped, facilities, thisM, lastM, stale, cancelM] = await Promise.all([
     prisma.booking.findMany({ where, include, skip, take, orderBy: status === "PENDING" ? { createdAt: "asc" } : { startAt: "desc" } }),
     prisma.booking.count({ where }),

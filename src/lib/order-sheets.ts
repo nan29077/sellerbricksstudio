@@ -1,3 +1,4 @@
+import { readVariants, variantKeyOf, variantOf, type OptionVariant } from "./brand-pricing";
 import type { FulfillmentMode, PaymentMethod } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
@@ -29,6 +30,7 @@ export type CatalogItem = {
   stock: number;
   options: { name: string; values: string[] }[];
   shipper: string;              // 화면 표시용 (브랜드 직배송 · 스토리지마켓 ○○ 출고)
+  variants?: OptionVariant[];   // 옵션 조합별 추가 공급가 · 품절 (브랜드 상품)
   imageUrl: string | null;
   consumerPrice: number | null;
   shippingNote: string;
@@ -62,6 +64,7 @@ export async function sheetCatalog(sellerId: string): Promise<CatalogItem[]> {
   const brand: CatalogItem[] = brandRows.map(({ brandProduct: bp }) => ({
     code: `B-${bp.id}`, kind: "BRAND", name: bp.name, brandName: bp.shop.name, facilityName: null, facilityId: null,
     unitCost: bp.supplyPrice, stock: bp.stock, options: parseOptions(bp.options), shipper: `위탁배송 · 브랜드 배송 (${bp.shop.name})`,
+    variants: readVariants(bp.optionVariants, parseOptions(bp.options)),
     imageUrl: bp.imageUrl || null, consumerPrice: bp.consumerPrice || null,
     shippingNote: `발주 후 ${bp.leadDays}일 안에 브랜드가 받는 분에게 바로 보냅니다. 택배비는 공급가에 포함됩니다.`,
   }));
@@ -127,6 +130,7 @@ export function checkSheet(sheet: SheetInput, catalog: Map<string, CatalogItem>)
     if (!Number.isInteger(l.quantity) || l.quantity < 1 || l.quantity > 9999) return { ok: false, error: `${item.name}: 수량을 확인하세요.` };
     const opt = normalizeOption(item.options, l.optionLabel);
     if (!opt.ok) return { ok: false, error: `${item.name}: ${opt.error}` };
+    if (item.variants?.length && variantOf(item.variants, opt.label)?.soldOut) return { ok: false, error: `${item.name}: '${variantKeyOf(opt.label)}' 옵션은 품절입니다.` };
   }
   return { ok: true };
 }
@@ -186,23 +190,28 @@ async function createGroupOrder(
   const bpIds = g.lines.filter((l) => l.item.kind === "BRAND").map((l) => l.item.code.slice(2));
   const [fps, bps] = await Promise.all([
     fpIds.length ? prisma.facilityProduct.findMany({ where: { id: { in: fpIds } }, include: { brandProduct: { select: { id: true, supplyPrice: true } } } }) : Promise.resolve([]),
-    bpIds.length ? prisma.brandProduct.findMany({ where: { id: { in: bpIds } }, select: { id: true, supplyPrice: true } }) : Promise.resolve([]),
+    bpIds.length ? prisma.brandProduct.findMany({ where: { id: { in: bpIds } }, select: { id: true, supplyPrice: true, options: true, optionVariants: true } }) : Promise.resolve([]),
   ]);
   const fpMap = new Map(fps.map((f) => [f.id, f]));
   const bpMap = new Map(bps.map((b) => [b.id, b]));
 
   const lines = g.lines.map((l, i) => {
-    const unit = l.item.unitCost;
-    const lineTotal = unit * l.quantity;
     if (l.item.kind === "BRAND") {
       const bp = bpMap.get(l.item.code.slice(2));
       if (!bp) throw new StockError(`${l.item.name}: 판매가 중지된 상품입니다.`);
+      // 옵션 조합별 추가 공급가 (브랜드가 상품 등록 때 정함) — 지금 값으로 다시 계산
+      const variant = variantOf(readVariants(bp.optionVariants, parseOptions(bp.options)), l.optionLabel);
+      if (variant?.soldOut) throw new StockError(`${l.item.name}: '${variant.key}' 옵션은 품절입니다.`);
+      const unit = Math.max(0, bp.supplyPrice + (variant?.extra ?? 0));
+      const lineTotal = unit * l.quantity;
       return {
         no: i + 1, l, lineTotal, unit,
-        lsp: { brandProductId: bp.id, fulfillment: "DROPSHIP" as FulfillmentMode, supplyPriceSnapshot: bp.supplyPrice, facilityProductId: null as string | null },
+        lsp: { brandProductId: bp.id, fulfillment: "DROPSHIP" as FulfillmentMode, supplyPriceSnapshot: unit, facilityProductId: null as string | null },
         split: { platformFee: 0, brandAmount: lineTotal, facilityAmount: 0, sellerAmount: 0 }, // 브랜드 수수료는 브랜드 정산에서 뺀다
       };
     }
+    const unit = l.item.unitCost;
+    const lineTotal = unit * l.quantity;
     const fp = fpMap.get(l.item.code.slice(2));
     if (!fp) throw new StockError(`${l.item.name}: 판매가 중지된 상품입니다.`);
     const brand = fp.brandProduct ? fp.brandProduct.supplyPrice * l.quantity : 0;

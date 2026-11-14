@@ -1,3 +1,5 @@
+import { checkPricing, optionCombos, readVariants } from "@/lib/brand-pricing";
+import { notifyFacility } from "@/lib/facility-owner";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { audit } from "@/lib/audit";
@@ -77,6 +79,11 @@ const commandSchema = z.discriminatedUnion("action", [
     minOrderQty: z.number().int().min(1).max(10000).optional(), // 스토리지마켓 입고 요청 최소 수량(MOQ). 보내지 않으면 기존 값 유지
     // 상품 정보 고시 (화장품·식품 등). 보내지 않으면 기존 값을 그대로 둔다
     volume: line(60).optional(), expiryInfo: line(60).optional(), ingredients: line(3000).optional(), certification: line(200).optional(),
+    // 2026-11-14 가격 · 옵션 고도화 (보내지 않으면 기존 값 유지)
+    salePrice: price.optional(), priceRule: z.enum(["FLEX", "FIXED"]).optional(),
+    optionVariants: z.array(z.object({ key: line(200), extra: z.number().int().min(-100_000_000).max(100_000_000).default(0), saleExtra: z.number().int().min(-100_000_000).max(100_000_000).default(0), soldOut: z.boolean().default(false) })).max(100).optional(),
+    taxType: z.enum(["TAXABLE", "TAX_FREE"]).optional(), origin: line(60).optional(), manufacturer: line(60).optional(),
+    returnShippingFee: price.optional(), exchangeShippingFee: price.optional(),
   }),
   z.object({
     action: z.literal("request"), productId: id, requestKey: z.string().regex(/^[0-9a-f]{32}$/), kind: z.enum(["SUPPLY", "SAMPLE"]),
@@ -193,6 +200,25 @@ export async function POST(req: Request) {
       if (data.minSalePrice != null && data.minSalePrice < data.supplyPrice) return fail("최저 판매가는 공급가보다 낮을 수 없습니다.");
       const shop = await prisma.brandShop.findFirst({ where: { id: shopId, ...ownerScope }, select: { id: true, lowStockThreshold: true } });
       if (!shop) return fail("편집할 수 있는 브랜드샵을 찾지 못했습니다.", 404);
+      const prev = productId ? await prisma.brandProduct.findFirst({ where: { id: productId, shopId }, select: { salePrice: true, priceRule: true, minSalePrice: true, optionVariants: true } }) : null;
+      const pricing = {
+        supplyPrice: data.supplyPrice, consumerPrice: data.consumerPrice,
+        salePrice: data.salePrice ?? prev?.salePrice ?? 0, priceRule: data.priceRule ?? prev?.priceRule ?? "FLEX",
+        minSalePrice: data.minSalePrice !== undefined ? data.minSalePrice : prev?.minSalePrice ?? null,
+      };
+      const priceError = checkPricing(pricing);
+      if (priceError) return fail(priceError);
+      if (data.optionVariants) {
+        const groups = parseOptions(data.options);
+        const combos = new Set(optionCombos(groups));
+        const bad = data.optionVariants.find((v) => !combos.has(v.key));
+        if (bad) return fail(`옵션 조합 '${bad.key}'이(가) 옵션 목록에 없습니다. 옵션을 바꿨다면 조합표를 다시 확인해 주세요.`);
+        if (data.optionVariants.some((v) => data.supplyPrice + v.extra < 0)) return fail("추가 공급가를 빼면 공급가가 0원보다 작아집니다.");
+        (data as { optionVariants: unknown }).optionVariants = readVariants(data.optionVariants, groups);
+      } else if (prev && data.options !== undefined) {
+        // 옵션이 바뀌면 사라진 조합은 정리
+        (data as { optionVariants: unknown }).optionVariants = readVariants(prev.optionVariants, parseOptions(data.options));
+      }
       if (productId) {
         if (!revision) return fail("상품을 다시 불러와 주세요.", 409);
         const before = await prisma.brandProduct.findFirst({ where: { id: productId, shopId } });
@@ -209,10 +235,13 @@ export async function POST(req: Request) {
           const stoppedLive = stopDropship ? await stopBrandSales(tx, { id: productId }, { warehouse: false }) : 0;
           if (!data.allowWarehouse) await tx.facilityProduct.updateMany({ where: { brandProductId: productId, fulfillment: "WAREHOUSE", stock: 0 }, data: { isSellable: false } });
           // 공급가·최저가 아래로 팔고 있던 판매 목록은 판매 중단 (판매처가 새 가격으로 다시 켜야 함)
+          // 판매가 고정 상품은 모든 셀러 판매가를 브랜드 판매가로 맞춘다
+          const fixedSync = pricing.priceRule === "FIXED" && pricing.salePrice > 0
+            ? (await tx.sellerBrandProduct.updateMany({ where: { brandProductId: productId, salePrice: { not: pricing.salePrice } }, data: { salePrice: pricing.salePrice } })).count : 0;
           const underSeller = await tx.sellerBrandProduct.updateMany({ where: { brandProductId: productId, isActive: true, salePrice: { lt: floor } }, data: { isActive: false } });
           const underFacility = await tx.facilityProduct.updateMany({ where: { brandProductId: productId, isSellable: true, salePrice: { lt: floor } }, data: { isSellable: false } });
           if (data.stock !== before.stock) await capDropshipLiveStockInTx(tx, productId, data.stock);
-          return { stoppedLive, under: underSeller.count + underFacility.count };
+          return { stoppedLive, under: underSeller.count + underFacility.count, fixedSync };
         });
         if (!result) return fail("상품 또는 재고가 변경되었습니다. 새로고침한 뒤 다시 저장해 주세요.", 409);
         if (data.stock <= shop.lowStockThreshold && data.stock < before.stock) await checkLowStock([productId]);
@@ -223,6 +252,9 @@ export async function POST(req: Request) {
         if (data.supplyPrice !== before.supplyPrice) notes.push(`공급가 ${before.supplyPrice.toLocaleString()}원 → ${data.supplyPrice.toLocaleString()}원 (새로 방송에 올리는 상품부터 적용)`);
         if ((data.minSalePrice ?? null) !== before.minSalePrice && data.minSalePrice != null) notes.push(`최저 판매가 ${data.minSalePrice.toLocaleString()}원`);
         if (data.options !== before.options) notes.push("옵션이 바뀌었습니다");
+        if (pricing.salePrice !== before.salePrice && pricing.salePrice > 0) notes.push(`판매가 ${pricing.salePrice.toLocaleString()}원${pricing.priceRule === "FIXED" ? " (고정)" : ""}`);
+        if (pricing.priceRule !== before.priceRule) notes.push(pricing.priceRule === "FIXED" ? "판매가 고정 상품으로 바뀌었습니다" : "셀러가 판매가를 정할 수 있게 바뀌었습니다");
+        if (result.fixedSync) notes.push(`판매 목록 ${result.fixedSync}건의 판매가를 고정 판매가로 맞췄습니다`);
         if (before.stock > 0 && data.stock === 0) notes.push("품절");
         if (result.under) notes.push(`최저 판매가 미만으로 등록된 판매 상품 ${result.under}건이 판매 중단되었습니다`);
         if (notes.length) {
@@ -369,7 +401,7 @@ export async function POST(req: Request) {
         await capDropshipLiveStockInTx(tx, request.productId, left.stock);
       }
       const release = command.status === "REJECTED" || command.status === "CANCELLED" || command.status === "REFUNDED";
-      if (release && (request.kind === "SAMPLE" || request.status === "APPROVED")) {
+      if (release && request.kind !== "DISPLAY" && (request.kind === "SAMPLE" || request.status === "APPROVED")) {
         const change = { increment: request.quantity };
         await tx.brandProduct.update({
           where: { id: request.productId },
@@ -393,7 +425,7 @@ export async function POST(req: Request) {
         select: { id: true },
       });
       return {
-        id: request.id, buyerId: request.buyerId, ownerId: request.product.shop.ownerId, shopId: request.product.shopId, productName: request.productName,
+        id: request.id, kind: request.kind, buyerId: request.buyerId, ownerId: request.product.shop.ownerId, shopId: request.product.shopId, productName: request.productName,
         refund: refund ? { pgTransactionId: request.pgTransactionId!, amount: request.paidAmount } : null,
       };
     });
@@ -415,6 +447,11 @@ export async function POST(req: Request) {
       title: `브랜드 신청 · ${BRAND_REQUEST_STATUS[command.status]}${saved.refund ? " (결제 환불)" : ""}`, body: command.reason ? `${saved.productName} · ${command.reason}` : saved.productName,
       link: `${manager ? "/brand-requests" : "/brand/requests"}?request=${saved.id}`,
     });
+    // 방송 시연품: 받는 공간(창고 · 스튜디오 · 쇼룸) 운영자에게도 알린다
+    if (saved.kind === "DISPLAY") {
+      const item = await prisma.bookingBrandItem.findUnique({ where: { brandRequestId: saved.id }, select: { booking: { select: { facilityId: true, startAt: true } } } });
+      if (item) await notifyFacility(item.booking.facilityId, { type: "BOOKING", title: `방송 시연품 · ${BRAND_REQUEST_STATUS[command.status]}`, body: command.reason ? `${saved.productName} · ${command.reason}` : saved.productName, link: "/facility/bookings?status=APPROVED", exclude: [user.id] });
+    }
     return ok({ id: saved.id });
   } catch (error) {
     if (error instanceof BrandConflict) return fail(error.message, 409);

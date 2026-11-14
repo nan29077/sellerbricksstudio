@@ -41,6 +41,12 @@ export const bookingSchema = z.object({
     facilityProductId: z.string().min(1),
     quantity: z.coerce.number().int().min(1, "수량은 1개 이상입니다.").max(100000),
   })).max(50, "상품은 50개까지 선택할 수 있습니다.").optional(),
+  // 방송할 브랜드 상품 (셀러가 고른 위탁배송 상품) — 예약이 승인되면 브랜드에 방송 시연품을 요청한다
+  brandItems: z.array(z.object({
+    brandProductId: z.string().min(1).max(64),
+    quantity: z.coerce.number().int().min(1).max(5, "시연품은 상품마다 5개까지 요청할 수 있습니다.").optional(),
+    optionLabel: z.string().max(100).nullish(),
+  })).max(20, "브랜드 상품은 20개까지 담을 수 있습니다.").optional(),
   repeatWeeks: z.coerce.number().int().min(1).max(12).optional(), // 매주 반복 횟수 (1 = 반복 없음)
   skipConflicts: z.boolean().optional(),
   dryRun: z.boolean().optional(),

@@ -41,7 +41,7 @@ async function load(userId: string) {
     prisma.purchaseOrder.count({ where: { brandShopId: sid, status: "NEW" } }),
     prisma.purchaseOrder.count({ where: { brandShopId: sid, status: "NEW", createdAt: { lt: lateBefore } } }),
     prisma.purchaseOrder.count({ where: { brandShopId: sid, status: "CONFIRMED", fulfillment: "DROPSHIP" } }),
-    prisma.brandRequest.count({ where: { product: { shopId: sid }, kind: "SAMPLE", status: "PENDING" } }),
+    prisma.brandRequest.count({ where: { product: { shopId: sid }, kind: { in: ["SAMPLE", "DISPLAY"] }, status: "PENDING" } }),
     prisma.brandRequest.count({ where: { product: { shopId: sid }, status: "AWAITING_PAYMENT" } }),
     prisma.brandRequest.count({ where: { product: { shopId: sid }, kind: "SUPPLY", status: "PENDING" } }),
     prisma.brandProduct.count({ where: { shopId: sid } }),
@@ -103,11 +103,11 @@ export default async function BrandDashboard() {
     const steps = [
       { n: 1, title: "브랜드샵 만들기", desc: "샵 이름 · 소개 · 취급 카테고리와 정산 계좌를 입력합니다.", href: "/brand/shop", cta: "샵 만들기" },
       { n: 2, title: "상품 등록", desc: "공급가 · 권장 소비자가 · 배송 방식(위탁배송 · 스토리지마켓 입고) · 샘플 조건을 정합니다.", href: "/brand/products?new=1", cta: "상품 등록" },
-      { n: 3, title: "승인 후 공개", desc: "최고관리자 승인 후 셀러·창고(스튜디오)가 브랜드샵에서 상품을 찾아 판매합니다.", href: "/brands", cta: "다른 샵 보기" },
+      { n: 3, title: "승인 후 공개", desc: "최고관리자 승인 후 셀러가 브랜드샵에서 상품을 골라 방송하고 판매해요.", href: "/brand/shop", cta: "샵 꾸미기" },
     ];
     return (
       <div className="space-y-6 pb-6">
-        <DashHero eyebrow={`BRAND · ${todayLabel()}`} title={hello} description="브랜드샵을 열면 라이브 셀러와 창고(스튜디오)가 상품을 가져가 판매하고, 판매될 때마다 발주서가 자동으로 들어옵니다."
+        <DashHero eyebrow={`BRAND · ${todayLabel()}`} title={hello} description="브랜드샵을 열면 라이브 셀러가 상품을 골라 방송하고, 판매될 때마다 발주서가 자동으로 들어와요."
           actions={<HeroButton href="/brand/shop" primary><Store className="h-4 w-4" />브랜드샵 만들기</HeroButton>} />
         <div className="grid gap-3 md:grid-cols-3">
           {steps.map((s) => (
@@ -132,7 +132,7 @@ export default async function BrandDashboard() {
       <DashHero
         eyebrow={`BRAND · ${todayLabel()}`}
         title={hello}
-        description={`${shop.name} — 발주 확인과 출고, 샘플 응답, 재고를 챙기고 판매처를 늘려 보세요.`}
+        description={`${shop.name} · 발주 확인과 출고, 샘플 · 방송 시연품 응답, 재고를 챙기고 판매처를 늘려 보세요.`}
         chips={[
           { label: BRAND_SHOP_STATUS[shop.status], tone: shop.status === "APPROVED" ? "default" : "warn" },
           ...(d.todo.latePos ? [{ label: `확인 지연 발주 ${d.todo.latePos}건`, tone: "warn" as const }] : []),
@@ -182,7 +182,7 @@ export default async function BrandDashboard() {
             { label: "반품 상품 수령 대기", n: d.todo.returnsWaiting, href: "/brand/claims?status=RETURNED", icon: PackageX, tone: "amber" },
             { label: "안 읽은 판매처 문의", n: d.todo.unreadThreads, href: "/brand/messages", icon: FileText, tone: "violet" },
             { label: "판매처 신청 승인", n: d.todo.partnerPending, href: "/brand/channels", icon: Package, tone: "sky" },
-            { label: "샘플 신청 검토", desc: "빠른 응답이 판매처 확보로 이어져요", n: d.todo.samplePending, href: "/brand/requests?status=PENDING", icon: Gift, tone: "violet" },
+            { label: "샘플 · 방송 시연품 요청 검토", desc: "시연품은 방송 2일 전까지 공간에 도착해야 해요", n: d.todo.samplePending, href: "/brand/requests?status=PENDING", icon: Gift, tone: "violet" },
             { label: "스토리지마켓 입고 요청 검토", n: d.todo.supplyPending, href: "/brand/requests?kind=SUPPLY", icon: Package, tone: "sky" },
             { label: "결제 대기 샘플", n: d.todo.awaitingPayment, href: "/brand/requests?status=AWAITING_PAYMENT", icon: CreditCard, tone: "slate" },
             { label: "품절된 공개 상품", desc: "재고를 채우거나 숨김 처리하세요", n: d.todo.soldout, href: "/brand/products?filter=soldout", icon: PackageX, tone: "red" },
@@ -234,13 +234,13 @@ export default async function BrandDashboard() {
 
       <Panel eyebrow="SHORTCUTS" title="바로가기">
         <ShortcutGrid cols="sm:grid-cols-2 xl:grid-cols-4" items={[
-          { title: "상품 · 재고 관리", desc: "상품 등록·수정·숨김", href: "/brand/products", icon: Boxes, tone: "brand" },
-          { title: "샵 꾸미기 · 정보", desc: "디자인·소개·정산 계좌", href: "/brand/shop", icon: LayoutTemplate, tone: "navy", badge: missing.length },
-          { title: "발주서", desc: "확인·운송장 입력", href: "/brand/orders", icon: FileText, tone: "amber", badge: d.todo.newPos },
-          { title: "샘플 · 입고 신청", desc: "신청 검토·배송", href: "/brand/requests", icon: Gift, tone: "violet", badge: d.todo.samplePending + d.todo.supplyPending },
+          { title: "상품 · 재고 관리", desc: "상품 등록 · 수정 · 숨김", href: "/brand/products", icon: Boxes, tone: "brand" },
+          { title: "샵 꾸미기 · 라이브 영상", desc: "디자인 · 소개 · 라이브 커머스 영상", href: "/brand/shop", icon: LayoutTemplate, tone: "navy", badge: missing.length },
+          { title: "발주서 · 출고", desc: "확인 · 운송장 입력", href: "/brand/orders", icon: FileText, tone: "amber", badge: d.todo.newPos },
+          { title: "셀러 요청", desc: "샘플 · 방송 시연품 · 입고", href: "/brand/requests", icon: Gift, tone: "violet", badge: d.todo.samplePending + d.todo.supplyPending },
           { title: "판매처 현황", desc: "내 상품을 파는 곳", href: "/brand/channels", icon: Users, tone: "green" },
           { title: "정산 내역", desc: "지급·수수료 확인", href: "/brand/settlements", icon: Banknote, tone: "sky" },
-          { title: "브랜드샵 둘러보기", desc: "다른 브랜드 살펴보기", href: "/brands", icon: ShoppingBag, tone: "slate" },
+          { title: "내 샵 미리보기", desc: "셀러에게 보이는 화면", href: "/brand/preview", icon: ShoppingBag, tone: "slate" },
           { title: "설정", desc: "계정·알림", href: "/brand/settings", icon: Settings, tone: "slate" },
         ]} />
       </Panel>

@@ -1,0 +1,10 @@
+-- AlterTable
+ALTER TABLE "BrandProduct" ADD COLUMN     "exchangeShippingFee" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "manufacturer" TEXT NOT NULL DEFAULT '',
+ADD COLUMN     "optionVariants" JSONB NOT NULL DEFAULT '[]',
+ADD COLUMN     "origin" TEXT NOT NULL DEFAULT '',
+ADD COLUMN     "priceRule" TEXT NOT NULL DEFAULT 'FLEX',
+ADD COLUMN     "returnShippingFee" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "salePrice" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "taxType" TEXT NOT NULL DEFAULT 'TAXABLE';
+

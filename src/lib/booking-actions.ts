@@ -11,6 +11,7 @@ import { formatDateTime } from "./utils";
 import { getPolicy } from "./policy";
 import type { SessionUser } from "./auth";
 import { canOperateFacility, notifyFacility } from "./facility-owner";
+import { cancelDisplayItems, requestDisplayItems, rescheduleDisplayItems, resolveBrandItems, type BrandItemInput } from "./booking-brand-items";
 
 const LABEL: Record<string, string> = { APPROVED: "승인", REJECTED: "거절", CANCELLED: "취소", COMPLETED: "이용 완료", NO_SHOW: "노쇼 처리" };
 
@@ -21,6 +22,7 @@ export type CreateBookingInput = {
   facilityId: string; startAt: Date; endAt: Date;
   purpose?: string; headcount?: number | null; requestNote?: string | null;
   products?: { facilityProductId: string; quantity: number }[];
+  brandItems?: BrandItemInput[];   // 방송할 브랜드 상품 (셀러가 고른 위탁배송 상품) → 승인 시 시연품 요청
   repeatWeeks?: number;            // 1 = 반복 없음, 최대 12
   skipConflicts?: boolean;         // 반복 중 안 되는 날짜는 건너뛰고 나머지만 예약
   dryRun?: boolean;                // 검사만
@@ -54,6 +56,9 @@ export async function createBookings(user: SessionUser, input: CreateBookingInpu
     facilityProductId: fp.id, quantity: wanted.get(fp.id)!, nameSnapshot: fp.product.name, priceSnapshot: fp.salePrice,
     commissionType: fp.commissionType, commissionValue: fp.commissionValue,
   }));
+
+  // 브랜드 상품 (반복 예약이면 첫 회차에만 담는다 — 시연품은 한 번 보내 두고 이어서 쓴다)
+  const brandRows = await resolveBrandItems(user.id, input.brandItems);
 
   // 반복 일정 펼치기
   const weeks = Math.max(1, Math.min(12, Math.round(input.repeatWeeks ?? 1)));
@@ -107,6 +112,7 @@ export async function createBookings(user: SessionUser, input: CreateBookingInpu
               requestNote: input.requestNote?.trim() || null, totalPrice: 0,
               expectedProducts: productRows.map((p) => `${p.nameSnapshot} ×${p.quantity}`).join(", ").slice(0, 500) || null,
               products: productRows.length ? { create: productRows } : undefined,
+              brandItems: brandRows.length && created.length === 0 ? { create: brandRows } : undefined,
             },
           });
         } catch (e: any) { if (e?.code !== "P2002") throw e; }
@@ -117,15 +123,16 @@ export async function createBookings(user: SessionUser, input: CreateBookingInpu
     return { created, results };
   }, { timeout: 20000 });
 
-  await audit({ actorId: user.id, action: "BOOKING_CREATE", entity: "Booking", entityId: created[0].id, meta: { count: created.length, groupId, autoApproved: policy.autoApprove, products: productRows.length } });
+  await audit({ actorId: user.id, action: "BOOKING_CREATE", entity: "Booking", entityId: created[0].id, meta: { count: created.length, groupId, autoApproved: policy.autoApprove, products: productRows.length, brandItems: brandRows.length } });
   const first = created[0];
   const when = `${formatDateTime(first.startAt)}${created.length > 1 ? ` 외 ${created.length - 1}회 (매주)` : ""}`;
   await notifyFacility(facility.id, {
     type: "BOOKING", partnerEmail: true,
     title: policy.autoApprove ? "새 예약이 확정되었습니다" : "새 예약 요청이 들어왔습니다",
-    body: `${facility.name} · ${when}${productRows.length ? ` · 상품 ${productRows.length}종` : ""}${input.purpose ? ` · ${input.purpose}` : ""}`,
+    body: `${facility.name} · ${when}${productRows.length ? ` · 상품 ${productRows.length}종` : ""}${brandRows.length ? ` · 브랜드 상품 ${brandRows.length}종(시연품)` : ""}${input.purpose ? ` · ${input.purpose}` : ""}`,
     link: policy.autoApprove ? `/facility/bookings?status=APPROVED` : `/facility/bookings?status=PENDING`,
   });
+  if (policy.autoApprove && brandRows.length) await requestDisplayItems(first.id);
   if (policy.autoApprove) {
     await notify({ userId: user.id, type: "BOOKING", title: "예약이 바로 확정되었습니다", body: `${facility.name} · ${when} · 예약번호 ${first.code}`, link: "/seller/bookings" });
   }
@@ -204,6 +211,10 @@ export async function changeBookingStatus(user: SessionUser, bookingId: string, 
   // 승인 시 요청 상품은 별도 표시가 없으면 확정 처리
   if (status === "APPROVED") {
     await prisma.bookingProduct.updateMany({ where: { bookingId, status: "REQUESTED" }, data: { status: "CONFIRMED" } }).catch(() => undefined);
+    await requestDisplayItems(bookingId); // 담은 브랜드 상품 → 브랜드에 방송 시연품 요청
+  }
+  if (status === "CANCELLED" || status === "REJECTED" || status === "NO_SHOW") {
+    await cancelDisplayItems(bookingId, status === "CANCELLED" ? "예약이 취소되었습니다" : status === "REJECTED" ? "예약이 거절되었습니다" : "셀러가 방송에 오지 않았습니다");
   }
   await audit({ actorId: user.id, action: `BOOKING_${status}`, entity: "Booking", entityId: booking.id, meta: text ? { reason: text } : undefined });
 
@@ -267,6 +278,7 @@ export async function rescheduleBooking(user: SessionUser, bookingId: string, st
     return row;
   }, { timeout: 15000 });
 
+  await rescheduleDisplayItems(booking.id, startAt);
   await audit({ actorId: user.id, action: "BOOKING_RESCHEDULE", entity: "Booking", entityId: booking.id, meta: { from: oldStart, to: startAt, backToPending } });
   const change = `${formatDateTime(oldStart)} → ${formatDateTime(startAt)}~${hhmm(endAt)}`;
   if (isSeller && !isAdmin) {

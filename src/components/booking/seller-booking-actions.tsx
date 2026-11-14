@@ -96,7 +96,7 @@ export function SellerBookingActions({ booking, review }: Props) {
       {modifiable && (
         <Button size="sm" variant="outline" className="text-red-600" onClick={() => { setErr(""); setCancelOpen(true); }}><XCircle className="h-3.5 w-3.5" />예약 취소</Button>
       )}
-      {active && !modifiable && <p className="w-full text-right text-[11px] text-slate-500">이용 {booking.cancelDeadlineHours}시간 전이 지나 변경·취소는 창고(스튜디오)에 문의하세요.</p>}
+      {active && !modifiable && <p className="w-full text-right text-[11px] text-slate-500">이용 {booking.cancelDeadlineHours}시간 전이 지나 변경·취소는 공간에 문의하세요.</p>}
 
       <Dialog open={cancelOpen} onClose={() => setCancelOpen(false)} title="예약 취소"
         footer={<><Button variant="outline" size="sm" onClick={() => setCancelOpen(false)}>닫기</Button><Button variant="destructive" size="sm" disabled={busy} onClick={cancel}>{busy ? "처리중..." : "예약 취소하기"}</Button></>}>
@@ -109,7 +109,7 @@ export function SellerBookingActions({ booking, review }: Props) {
       <Dialog open={moveOpen} onClose={() => setMoveOpen(false)} title="예약 일정 변경" className="sm:max-w-2xl"
         footer={<><Button variant="outline" size="sm" onClick={() => setMoveOpen(false)}>닫기</Button><Button size="sm" disabled={busy || slotStatus !== "available"} onClick={move}>{busy ? "변경 중..." : "이 시간으로 변경"}</Button></>}>
         <p className="mb-3 text-xs text-slate-600">
-          {booking.status === "APPROVED" ? "승인된 예약의 일정을 바꾸면 창고(스튜디오)의 재승인이 필요할 수 있어요. " : ""}
+          {booking.status === "APPROVED" ? "승인된 예약의 일정을 바꾸면 공간의 재승인이 필요할 수 있어요. " : ""}
           판매 상품과 요청사항은 그대로 유지됩니다.
         </p>
         {moveOpen && <SlotPicker facilityId={booking.facilityId} value={slot} onChange={setSlot} excludeBookingId={booking.id} onStatusChange={setSlotStatus} compact />}
@@ -128,7 +128,7 @@ export function SellerBookingActions({ booking, review }: Props) {
         </div>
         <Label>리뷰 내용</Label>
         <Textarea aria-label="리뷰 내용" value={content} onChange={(e) => setContent(e.target.value)} rows={5} maxLength={1000} placeholder="장비 상태, 방음, 직원 응대, 주차 등 다른 셀러에게 도움이 되는 내용을 남겨주세요. (5자 이상)" />
-        {review?.reply && <div className="mt-3 rounded-lg bg-muted/60 p-3 text-xs text-slate-600"><b className="text-navy">창고(스튜디오) 답글</b><br />{review.reply}</div>}
+        {review?.reply && <div className="mt-3 rounded-lg bg-muted/60 p-3 text-xs text-slate-600"><b className="text-navy">공간 답글</b><br />{review.reply}</div>}
       </Dialog>
     </div>
   );

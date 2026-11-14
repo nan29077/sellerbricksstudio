@@ -1,4 +1,4 @@
-// 메인 영상 플레이어 E2E 시뮬레이션 — 최고관리자 홈 영상(라이브 커머스 · 캠페인/행사) · 셀러브릭스 방송 수신(준비 기능)
+// 메인 영상 플레이어 E2E 시뮬레이션 — 최고관리자 홈 영상(라이브 커머스 한 목록: 라이브 다시보기 · 홍보 · 캠페인 · 행사) · 셀러브릭스 방송 수신(준비 기능)
 // 실행: 개발 서버(http://localhost:3007) + 시드된 DB. 서명 · 피드까지 시험하려면 개발 서버를 이렇게 띄운다:
 //   SELLERBRICKS_WEBHOOK_SECRET=sim-secret SELLERBRICKS_LIVE_FEED_URL=http://127.0.0.1:4599/feed npm run dev
 //   그리고 같은 SELLERBRICKS_WEBHOOK_SECRET 로 `node scripts/simulate-broadcasts.mjs`
@@ -63,7 +63,7 @@ async function main() {
   const V = "/api/admin/home-videos";
 
   if (!FEED_MODE) {
-  console.log("\n[1] 최고관리자 — 홈 영상 (라이브 커머스 · 캠페인/행사)");
+  console.log("\n[1] 최고관리자 — 홈 영상 (라이브 커머스 한 목록)");
   r = await seller.req("POST", V, { category: "LIVE_COMMERCE", title: "시뮬 셀러", url: "https://youtu.be/abcdefghijk" });
   ok(r.status === 403, "셀러는 홈 영상 넣기 불가", r);
   r = await guest.req("GET", V);
@@ -78,17 +78,19 @@ async function main() {
   ok(r.status === 400, "영상 파일이 아닌 사이트 안 경로 거절", r);
   r = await admin.req("POST", V, { category: "LIVE_COMMERCE", title: "시뮬 길이", url: "https://youtu.be/abcdefghijk", duration: "30초" });
   ok(r.status === 400 && /길이/.test(r.error ?? ""), "길이 형식 검사", r);
-  r = await admin.req("POST", V, { category: "CAMPAIGN", title: "시뮬 기간", url: "https://vimeo.com/76979871", startsAt: new Date(Date.now() + 7200000).toISOString(), endsAt: new Date(Date.now() + 3600000).toISOString() });
+  r = await admin.req("POST", V, { category: "CAMPAIGN", title: "시뮬 옛 탭", url: "https://youtu.be/abcdefghijk" });
+  ok(r.status === 400, "예전 캠페인 탭으로는 넣을 수 없음 (라이브 커머스 하나로 합침)", r);
+  r = await admin.req("POST", V, { category: "LIVE_COMMERCE", title: "시뮬 기간", url: "https://vimeo.com/76979871", startsAt: new Date(Date.now() + 7200000).toISOString(), endsAt: new Date(Date.now() + 3600000).toISOString() });
   ok(r.status === 400 && /노출 종료/.test(r.error ?? ""), "노출 종료가 시작보다 앞이면 거절", r);
 
   const add = async (b) => (await admin.req("POST", V, { duration: "", ...b })).data?.id;
   const yt = await add({ category: "LIVE_COMMERCE", title: `시뮬 니트 라이브 다시보기 ${stamp}`, caption: "뷰티 스튜디오", url: "https://www.youtube.com/watch?v=abcdefghijk", duration: "12:05", sortOrder: -10 });
   const shorts = await add({ category: "LIVE_COMMERCE", title: `시뮬 숏폼 ${stamp}`, caption: "숏폼", url: "https://youtube.com/shorts/bbbbbbbbbbb" });
   const mp4 = await add({ category: "LIVE_COMMERCE", title: `시뮬 mp4 ${stamp}`, url: "/media/broadcasts/beauty-studio.mp4", thumbnailUrl: "/media/broadcasts/beauty-studio.webp", duration: "0:30" });
-  const vimeo = await add({ category: "CAMPAIGN", title: `시뮬 브랜드 캠페인 ${stamp}`, caption: "온유 브랜드", url: "https://vimeo.com/76979871" });
-  const insta = await add({ category: "CAMPAIGN", title: `시뮬 팝업 행사 ${stamp}`, caption: "성수 팝업", url: "https://www.instagram.com/reel/abc/" });
-  const future = await add({ category: "CAMPAIGN", title: `시뮬 예정 행사 ${stamp}`, url: "https://youtu.be/ccccccccccc", startsAt: new Date(Date.now() + 3600000).toISOString() });
-  const hidden = await add({ category: "CAMPAIGN", title: `시뮬 숨김 ${stamp}`, url: "https://youtu.be/ddddddddddd", isVisible: false });
+  const vimeo = await add({ category: "LIVE_COMMERCE", title: `시뮬 브랜드 캠페인 ${stamp}`, caption: "온유 브랜드", url: "https://vimeo.com/76979871" });
+  const insta = await add({ category: "LIVE_COMMERCE", title: `시뮬 팝업 행사 ${stamp}`, caption: "성수 팝업", url: "https://www.instagram.com/reel/abc/" });
+  const future = await add({ category: "LIVE_COMMERCE", title: `시뮬 예정 행사 ${stamp}`, url: "https://youtu.be/ccccccccccc", startsAt: new Date(Date.now() + 3600000).toISOString() });
+  const hidden = await add({ category: "LIVE_COMMERCE", title: `시뮬 숨김 ${stamp}`, url: "https://youtu.be/ddddddddddd", isVisible: false });
   ok([yt, shorts, mp4, vimeo, insta, future, hidden].every(Boolean), "영상 7개 넣기 (유튜브 · 쇼츠 · mp4 · 비메오 · 인스타 · 예정 · 숨김)");
   r = await admin.req("GET", V);
   const row = (id) => r.data.find((x) => x.id === id);
@@ -96,8 +98,9 @@ async function main() {
   ok(row(yt).shown && !row(future).shown && !row(hidden).shown, "관리 목록에 메인 노출 여부 (예정 · 숨김은 안 보임)");
 
   let home = await guest.page("/");
-  ok(home.status === 200 && home.text.includes("스토리지마켓 TV") && !/>\s*온에어|ON AIR/.test(home.text), "메인 플레이어: 제목 '스토리지마켓 TV' · 온에어 탭 없음");
-  ok(home.text.includes("라이브 커머스") && home.text.includes("캠페인 · 행사"), "메인 플레이어 탭: 라이브 커머스 · 캠페인/행사");
+  ok(home.status === 200 && home.text.includes("라이브 커머스") && !/>\s*온에어|ON AIR/.test(home.text), "메인 플레이어: 제목 '라이브 커머스' · 온에어 없음");
+  ok(!home.text.includes("캠페인 · 행사") && !/role="tab"[^>]*>[^<]*라이브 커머스/.test(home.text), "메인 플레이어: 탭 없이 한 목록 (캠페인 · 행사 탭 없음)");
+  ok(home.text.includes(`시뮬 브랜드 캠페인 ${stamp}`), "캠페인 영상도 라이브 커머스 목록에 함께 보임");
   ok(home.text.includes(`시뮬 니트 라이브 다시보기 ${stamp}`), "라이브 커머스 탭에 넣은 영상 표시");
   ok(home.text.indexOf(`시뮬 니트 라이브 다시보기 ${stamp}`) < home.text.indexOf(`시뮬 숏폼 ${stamp}`), "순서(작을수록 앞) 반영");
   ok(home.text.includes("i.ytimg.com/vi/abcdefghijk"), "유튜브는 썸네일 자동");
@@ -109,8 +112,8 @@ async function main() {
   ok(home.text.includes(`시뮬 예정 행사 ${stamp}`) && home.text.includes(`시뮬 숨김 ${stamp}`), "노출 시작 시각이 되면 · 숨김 해제하면 메인에 보임");
   r = await admin.req("PATCH", V, { id: yt, url: "notaurl" });
   ok(r.status === 400, "수정할 때도 주소 검사", r);
-  r = await admin.req("PATCH", V, { id: yt, category: "CAMPAIGN", title: `시뮬 탭 이동 ${stamp}` });
-  ok(r.ok && r.data.category === "CAMPAIGN", "다른 탭으로 옮기기 · 제목 수정", r);
+  r = await admin.req("PATCH", V, { id: yt, title: `시뮬 탭 이동 ${stamp}` });
+  ok(r.ok && r.data.category === "LIVE_COMMERCE", "제목 수정 (분류는 라이브 커머스 유지)", r);
   r = await admin.req("PATCH", V, { id: yt, endsAt: new Date(Date.now() - 1000).toISOString(), startsAt: null });
   home = await guest.page("/");
   ok(r.ok && !home.text.includes(`시뮬 탭 이동 ${stamp}`), "노출 종료 시각이 지나면 내려감", r);
@@ -119,7 +122,7 @@ async function main() {
   r = await admin.req("DELETE", `${V}?id=nope`);
   ok(r.status === 404, "없는 영상 삭제 404", r);
   const pg = await admin.page("/admin/site-management?tab=videos");
-  ok(pg.status === 200 && pg.text.includes("영상 넣기") && pg.text.includes("캠페인 · 행사") && pg.text.includes("라이브 커머스"), "사이트 관리 → 홈 영상 탭 화면");
+  ok(pg.status === 200 && pg.text.includes("영상 넣기") && pg.text.includes("라이브 커머스") && !pg.text.includes("캠페인 · 행사 탭"), "사이트 관리 → 홈 영상 화면 (한 목록)");
   const old = await admin.page("/admin/site-management?tab=broadcasts");
   ok(old.status === 200 && old.text.includes("영상 넣기"), "예전 '방송 링크' 탭 주소 → 홈 영상 탭");
 

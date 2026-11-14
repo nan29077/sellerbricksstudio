@@ -16,3 +16,6 @@ commit-push.bat
 # 운영 중 바뀌는 사이트 설정 (서버마다 따로 관리)
 data/settings.json
 사주메이트_코드_감사_보고서.docx
+
+# PC 작업본 전용 레일 플레이어 (메인 플레이어 작업본과 함께 PC에만 둔다)
+src/components/home/studio-broadcast-rail.local.tsx

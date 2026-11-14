@@ -7,7 +7,7 @@ import { audit } from "@/lib/audit";
 import { safeHttpUrl } from "@/lib/stream-embed";
 import { isVideoShown, videoSourceOf } from "@/lib/home-videos";
 
-// 메인 영상 플레이어 영상 관리 (최고관리자) — 라이브 커머스 · 캠페인/행사 탭에 넣을 영상 링크
+// 메인 영상 플레이어 영상 관리 (최고관리자) — 라이브 커머스 탭에 넣을 영상 링크 (지난 라이브 · 숏폼 · 홍보 · 캠페인 · 행사)
 const localPath = (v: string) => v.startsWith("/") && !v.startsWith("//");
 const optDate = z.string().trim().max(40).nullish().transform((v, ctx) => {
   if (!v) return null;
@@ -16,7 +16,7 @@ const optDate = z.string().trim().max(40).nullish().transform((v, ctx) => {
   return d;
 });
 const fields = {
-  category: z.enum(["LIVE_COMMERCE", "CAMPAIGN"], { errorMap: () => ({ message: "탭(라이브 커머스 · 캠페인/행사)을 고르세요." }) }),
+  category: z.enum(["LIVE_COMMERCE"], { errorMap: () => ({ message: "영상 탭은 라이브 커머스 하나입니다." }) }).default("LIVE_COMMERCE"),
   title: z.string().trim().min(1, "영상 제목을 입력하세요.").max(120),
   caption: z.string().trim().max(60).default(""),
   url: z.string().trim().max(500).refine((v) => !!videoSourceOf(v), "영상 주소는 http(s) 주소(유튜브 · 비메오 · mp4 등)이거나 /로 시작하는 사이트 안 영상 파일이어야 합니다."),

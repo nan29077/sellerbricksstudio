@@ -13,7 +13,7 @@ export const BRAND_REQUEST_STATUS: Record<BrandRequestStatus, string> = {
   SHIPPED: "배송 중", COMPLETED: "완료", REJECTED: "반려", CANCELLED: "취소", REFUNDED: "환불 완료",
 };
 export const BRAND_REQUEST_KIND: Record<BrandRequestKind, string> = {
-  SUPPLY: "창고 입고 요청", SAMPLE: "샘플 주문",
+  SUPPLY: "스토리지마켓 입고 요청", SAMPLE: "샘플 주문", DISPLAY: "방송 시연품",
 };
 // 브랜드 상품을 가져가 파는 판매처: 셀러, 그리고 스토리지마켓 창고를 대신하는 최고관리자(본사)
 export const BRAND_BUYER_ROLES: Role[] = ["SELLER", "SUPER_ADMIN"];
@@ -28,8 +28,8 @@ export function canSeeSupplyPrice(role?: Role | null) {
 }
 export const SUPPLY_PRICE_HIDDEN_NOTE = "공급가는 셀러·창고(스튜디오) 계정으로 로그인하면 볼 수 있습니다";
 
-export function brandProductHref(shopId: string, productId: string) {
-  return `/brands/${shopId}?product=${encodeURIComponent(productId)}#shop-products`;
+export function brandProductHref(shopId: string, productId: string, base = "/brands") {
+  return `${base}/${shopId}?product=${encodeURIComponent(productId)}#shop-products`;
 }
 
 export function brandArtworkFor(category: string) {

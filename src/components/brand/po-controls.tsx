@@ -46,7 +46,7 @@ export function PoControls({ po, actor }: {
     const json = await res.json().catch(() => ({ ok: false }));
     setBusy(false);
     if (!json.ok) { setMsg({ text: json.error ?? "처리하지 못했습니다.", error: true }); return; }
-    setMsg({ text: json.data?.orderStatus ? "처리했습니다. 주문 상태도 함께 바뀌었습니다." : extra === "REQUEST_CANCEL" ? "셀러·창고(스튜디오)와 최고관리자에게 알렸습니다." : "저장했습니다.", error: false });
+    setMsg({ text: json.data?.orderStatus ? "처리했습니다. 주문 상태도 함께 바뀌었습니다." : extra === "REQUEST_CANCEL" ? "셀러·공간과 최고관리자에게 알렸습니다." : "저장했습니다.", error: false });
     setChoice(""); router.refresh();
   }
 

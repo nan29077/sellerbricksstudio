@@ -47,7 +47,7 @@ export default async function BrandSettlements() {
       </div>
       <Card><CardContent className="space-y-2 p-4 sm:p-5">
         <p className="font-bold text-navy">판매별 공급 수익 (최근 {recentPos.length}건)</p>
-        <p className="text-xs text-slate-500">셀러 · 창고(스튜디오)가 판 브랜드 상품의 공급대금에서 수수료 {feeRate}%를 뺀 금액이 브랜드 수익입니다. 취소 · 반품된 발주는 정산에서 빠집니다.</p>
+        <p className="text-xs text-slate-500">셀러 · 공간이 판 브랜드 상품의 공급대금에서 수수료 {feeRate}%를 뺀 금액이 브랜드 수익입니다. 취소 · 반품된 발주는 정산에서 빠집니다.</p>
         {recentPos.length === 0 ? <p className="py-4 text-center text-sm text-muted-foreground">아직 판매된 발주가 없습니다.</p> : (
           <Table headers={["발주일", "발주번호", "판매처", "판매 금액", "공급대금", "수수료", "예상 수익", "상태"]}
             rows={recentPos.map((po) => {

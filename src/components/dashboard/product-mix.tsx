@@ -9,7 +9,7 @@ import { ShoppingBag } from "lucide-react";
 /**
  * 판매 상품을 출처별로 구분해 보여 준다.
  *  - 브랜드샵 상품   : 브랜드사 상품을 가져와 판매 (발주서가 브랜드로 전달)
- *  - 창고(스튜디오) 상품 : 창고가 직접 등록한 상품
+ *  - 공간 상품 : 창고가 직접 등록한 상품
  *  - 방송 임시 상품  : 방송 중 바로 추가한 상품
  * 데이터 로딩에 실패해도 대시보드 전체가 멈추지 않도록 자체적으로 오류를 처리한다.
  */
@@ -41,10 +41,10 @@ export async function ProductMixPanel({ scope }: { scope: { sellerId: string } |
     const brandLink = seller ? "/seller/brand-products" : "/facility/brand-products";
     return (
       <Panel eyebrow="PRODUCT MIX" title="상품 구분별 이번 달 판매" action={{ href: brandLink, label: "브랜드 상품" }}>
-        {total === 0 ? <Empty icon={ShoppingBag} text="이번 달 판매가 생기면 브랜드샵 상품과 창고(스튜디오) 상품 판매를 나눠 보여 드립니다" action={{ href: "/brands", label: "브랜드샵 둘러보기" }} /> : (
+        {total === 0 ? <Empty icon={ShoppingBag} text="이번 달 판매가 생기면 브랜드샵 상품과 공간 상품 판매를 나눠 보여 드립니다" action={{ href: "/brands", label: "브랜드샵 둘러보기" }} /> : (
           <Donut centerValue={compactKRW(total)} centerLabel="이번 달 판매" segments={[
             { label: "브랜드샵 상품", value: brand, tone: "violet" as const },
-            { label: "창고(스튜디오) 상품", value: own, tone: "brand" as const },
+            { label: "공간 상품", value: own, tone: "brand" as const },
             { label: "방송 임시 상품", value: temp, tone: "slate" as const },
           ].filter((s) => s.value > 0)} />
         )}

@@ -15,7 +15,7 @@ import { CalendarPlus, Package, Warehouse, Percent, Boxes } from "lucide-react";
 export const dynamic = "force-dynamic";
 const BASE = "/seller/products";
 
-// 셀러: 창고(스튜디오)들이 등록한 판매 상품을 둘러보고, 고른 상품으로 바로 그 창고를 예약
+// 셀러: 공간들이 등록한 판매 상품을 둘러보고, 고른 상품으로 바로 그 창고를 예약
 export default async function SellerProducts({ searchParams }: { searchParams: SP }) {
   await requireRole(["SELLER"]);
   const q = sp(searchParams, "q");
@@ -72,19 +72,19 @@ export default async function SellerProducts({ searchParams }: { searchParams: S
   return (
     <div className="space-y-5 pb-36 md:pb-24">
       <PageHeader
-        title="판매 상품 둘러보기"
-        description="창고(스튜디오)가 등록한 상품을 보고 방송할 상품을 담으세요. 담은 상품의 창고(스튜디오)로 바로 예약할 수 있고, 이용료는 무료입니다."
-        action={<Link href="/seller/bookings/new"><Button variant="outline"><CalendarPlus className="h-4 w-4" />장소부터 예약</Button></Link>}
+        title="공간에 준비된 상품"
+        description="스토리지마켓 창고 · 스튜디오 · 쇼룸에 이미 입고된 상품이에요. 담으면 그 공간으로 바로 예약할 수 있고, 이용료는 무료입니다."
+        action={<Link href="/seller/bookings/new"><Button variant="outline"><CalendarPlus className="h-4 w-4" />공간부터 예약</Button></Link>}
       />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="판매 가능 상품" value={`${total.toLocaleString()}개`} sub={q || category || region || type ? "검색 조건 기준" : "전체"} icon={Package} tone="brand" />
-        <Kpi label="상품 보유 창고(스튜디오)" value={`${facilityCount}곳`} icon={Warehouse} tone="blue" />
+        <Kpi label="상품 보유 공간" value={`${facilityCount}곳`} icon={Warehouse} tone="blue" />
         <Kpi label="평균 셀러 수수료" value={avgComm._avg.commissionValue ? `${avgComm._avg.commissionValue.toFixed(1)}%` : "-"} sub="정률 상품 기준" icon={Percent} tone="purple" />
         <Kpi label="이용료" value="무료" sub="창고·스튜디오 예약" icon={Boxes} tone="green" />
       </div>
 
       <FilterBar fields={[
-        { type: "search", key: "q", placeholder: "상품명 · 설명 · 창고(스튜디오)명" },
+        { type: "search", key: "q", placeholder: "상품명 · 설명 · 공간명" },
         { type: "select", key: "category", label: "카테고리", options: cats.map((c) => ({ value: c.category, label: c.category })) },
         { type: "select", key: "region", label: "지역", options: regions.map((r) => ({ value: r.region, label: r.region })) },
         { type: "select", key: "type", label: "유형", options: [{ value: "STUDIO", label: "스튜디오" }, { value: "WAREHOUSE", label: "창고" }] },
@@ -97,7 +97,7 @@ export default async function SellerProducts({ searchParams }: { searchParams: S
 
       {items.length === 0 ? (
         <EmptyState icon={<Package className="h-10 w-10" />} title={q || category || region || type ? "조건에 맞는 상품이 없습니다" : "아직 등록된 판매 상품이 없습니다"}
-          description="창고(스튜디오)가 상품을 등록하면 이곳에 표시됩니다. 상품 없이도 장소를 예약할 수 있어요."
+          description="공간이 상품을 등록하면 이곳에 표시됩니다. 상품 없이도 장소를 예약할 수 있어요."
           action={<Link href="/seller/bookings/new"><Button>장소 예약하기</Button></Link>} />
       ) : (
         <>

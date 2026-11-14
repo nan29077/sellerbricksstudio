@@ -1,0 +1,10 @@
+/* 레일 플레이어는 PC 너비(1024px 이상)에서만 보인다. 모바일은 메인 화면 안 플레이어만 쓴다. */
+.railOnly {
+  display: none !important;
+}
+
+@media (min-width: 1024px) {
+  .railOnly {
+    display: flex !important;
+  }
+}

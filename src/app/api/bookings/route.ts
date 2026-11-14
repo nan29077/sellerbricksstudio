@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     try {
       const result = await createBookings(user, {
         facilityId: data.facilityId, startAt, endAt, purpose: data.purpose, headcount: data.headcount ?? null,
-        requestNote: data.requestNote ?? null, products: data.products, repeatWeeks: data.repeatWeeks,
+        requestNote: data.requestNote ?? null, products: data.products, brandItems: data.brandItems, repeatWeeks: data.repeatWeeks,
         skipConflicts: data.skipConflicts, dryRun: data.dryRun,
       });
       if (data.dryRun) return ok({ results: result.results, autoApproved: result.autoApproved });

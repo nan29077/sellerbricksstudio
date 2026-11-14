@@ -25,7 +25,7 @@ export default async function BrandProductsPage({ searchParams }: { searchParams
       <div className="space-y-4">
         <h1 className="text-2xl font-extrabold text-navy">상품 · 재고 관리</h1>
         <Empty icon={PackagePlus} text="상품을 등록하려면 먼저 브랜드샵을 만들어 주세요." action={{ href: "/brand/shop", label: "브랜드샵 만들기" }} />
-        <p className="text-center text-xs text-slate-500"><Link href="/brands" className="underline">다른 브랜드샵 둘러보기</Link></p>
+        <p className="text-center text-xs text-slate-500"><Link href="/brand/preview" className="underline">내 브랜드샵 미리보기</Link></p>
       </div>
     );
   }

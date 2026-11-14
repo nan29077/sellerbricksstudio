@@ -50,7 +50,9 @@ export function FacilityStorefront({
   favorited = false,
   canManage = false,
   products,
+  frame = "shop",
 }: {
+  frame?: "shop" | "inline";
   facility: any;
   pageConfig: FacilityPageConfig;
   user: { role?: string; id?: string } | null;
@@ -88,7 +90,7 @@ export function FacilityStorefront({
   ];
 
   return (
-    <ShopShell background={pageConfig.backgroundUrl} fallback={artwork} links={shopLinks}>
+    <ShopShell background={pageConfig.backgroundUrl} fallback={artwork} links={shopLinks} frame={frame}>
       {/* 상단 헤더 */}
       <div className="border-b border-[#EEEAE0] bg-white">
         <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between px-4 sm:px-6">
@@ -98,16 +100,16 @@ export function FacilityStorefront({
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-black text-navy sm:text-base">{pageConfig.pageTitle}</p>
-              <p className="text-[11px] font-semibold text-muted-foreground">스토리지마켓 파트너 창고(스튜디오)</p>
+              <p className="text-[11px] font-semibold text-muted-foreground">스토리지마켓 직영 · 직접 관리 공간</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             {management && <Link href={management} className="whitespace-nowrap text-xs font-bold text-slate-600 hover:text-navy">샵 관리</Link>}
             {user?.role === "SELLER" && <FavoriteButton facilityId={f.id} initial={favorited} className="h-10 rounded-xl border-2 border-navy px-3 shadow-[2px_2px_0_#1A1A2E]" />}
-            <a href="#store-inquiry" aria-label="창고(스튜디오) 문의" className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-navy bg-white text-navy shadow-[2px_2px_0_#1A1A2E] transition hover:-translate-y-0.5">
+            <a href="#store-inquiry" aria-label="공간 문의" className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-navy bg-white text-navy shadow-[2px_2px_0_#1A1A2E] transition hover:-translate-y-0.5">
               <MessageSquare className="h-5 w-5" />
             </a>
-            {bookable && <Link href={bookingHref} aria-label="창고(스튜디오) 예약" className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-navy bg-[#FFD552] text-navy shadow-[2px_2px_0_#1A1A2E] transition hover:-translate-y-0.5">
+            {bookable && <Link href={bookingHref} aria-label="공간 예약" className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-navy bg-[#FFD552] text-navy shadow-[2px_2px_0_#1A1A2E] transition hover:-translate-y-0.5">
               <CalendarDays className="h-5 w-5" />
             </Link>}
           </div>
@@ -119,7 +121,7 @@ export function FacilityStorefront({
         <ShopImage src={pageConfig.bannerUrl} fallback={artwork} eager className="h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/5" />
         <Link href="/facilities" className="absolute left-4 top-4 inline-flex items-center gap-1 rounded-full border border-white/25 bg-black/30 px-3 py-2 text-xs font-bold text-white backdrop-blur-md hover:bg-black/45 sm:left-6">
-          <ChevronLeft className="h-4 w-4" /> 창고(스튜디오) 목록
+          <ChevronLeft className="h-4 w-4" /> 공간 목록
         </Link>
         {/* 전문 분야 배지 (배너 오른쪽 하단) */}
         {specialties.length > 0 && (
@@ -235,7 +237,7 @@ export function FacilityStorefront({
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h2 className="break-keep text-2xl font-black text-navy">예약 시간 선택</h2>
-                  <p className="mt-2 text-sm font-medium leading-relaxed text-slate-500">창고(스튜디오)와 시간이 미리 선택된 예약 신청서로 바로 연결됩니다.</p>
+                  <p className="mt-2 text-sm font-medium leading-relaxed text-slate-500">공간과 시간이 미리 선택된 예약 신청서로 바로 연결됩니다.</p>
                 </div>
                 <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#FFF7D6] text-brand-700">
                   <CalendarDays className="h-6 w-6" />
@@ -265,7 +267,7 @@ export function FacilityStorefront({
 
             <div className="flex min-w-0 flex-col justify-between bg-[#171B30] p-5 text-white sm:p-6">
               <div>
-                <p className="text-xs font-bold text-white/55">창고(스튜디오) 이용료</p>
+                <p className="text-xs font-bold text-white/55">공간 이용료</p>
                 <p className="mt-2 text-3xl font-black text-[#FFD552]">무료</p>
                 <div className="mt-5 space-y-3 border-t border-white/10 pt-5">
                   <p className="flex items-center gap-2 text-xs font-bold text-white/75">
@@ -372,15 +374,15 @@ export function FacilityStorefront({
             </section>
           )}
 
-          {/* 창고(스튜디오) 정보 */}
+          {/* 공간 정보 */}
           <section id="store-info" className="scroll-mt-36 rounded-[24px] border border-[#EEEAE0] bg-white p-5 shadow-sm sm:p-7">
             <div className="mb-5">
               <p className="text-[11px] font-black uppercase tracking-[0.18em] text-brand-700">Facility guide</p>
-              <h2 className="mt-1 text-xl font-black text-navy">창고(스튜디오) 정보</h2>
+              <h2 className="mt-1 text-xl font-black text-navy">공간 정보</h2>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {[
-                { icon: isWarehouse ? Warehouse : Camera, label: "창고(스튜디오) 유형", value: isWarehouse ? "물류 창고" : "라이브 스튜디오" },
+                { icon: isWarehouse ? Warehouse : Camera, label: "공간 유형", value: isWarehouse ? "물류 창고" : "라이브 스튜디오" },
                 { icon: MapPin, label: "위치", value: f.address ?? f.region },
                 { icon: Clock3, label: "운영 시간", value: `${f.openTime ?? "09:00"} – ${f.closeTime ?? "22:00"}` },
                 { icon: Store, label: "이용료", value: "무료" },
@@ -396,7 +398,7 @@ export function FacilityStorefront({
             {pageConfig.showEquipment && equipment.length > 0 && (
               <div className="mt-5">
                 <h3 className="mb-3 flex items-center gap-2 text-sm font-black text-navy">
-                  <Boxes className="h-4 w-4 text-brand-600" /> 제공 창고(스튜디오)·장비
+                  <Boxes className="h-4 w-4 text-brand-600" /> 제공 공간·장비
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {equipment.map((item: string) => (
@@ -411,7 +413,7 @@ export function FacilityStorefront({
             <div className="mt-6 grid gap-2 border-t border-[#EEEAE0] pt-5 sm:grid-cols-3">
               {[
                 { icon: ShieldCheck, text: "안전한 예약·결제" },
-                { icon: Wifi, text: "창고(스튜디오) 연결 지원" },
+                { icon: Wifi, text: "공간 연결 지원" },
                 { icon: CheckCircle2, text: "마케팅 지원 연동" },
               ].map((item) => (
                 <div key={item.text} className="flex items-center gap-2 text-xs font-bold text-slate-500">
@@ -456,8 +458,8 @@ export function FacilityStorefront({
             <div className="mb-5 flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-black uppercase tracking-[0.18em] text-brand-700">Inquiry</p>
-                <h2 className="mt-1 text-xl font-black text-navy">창고(스튜디오)에 문의하기</h2>
-                <p className="mt-1 text-xs text-slate-400">예약 가능 여부, 창고(스튜디오) 상태, 특별 요청 등을 문의해보세요</p>
+                <h2 className="mt-1 text-xl font-black text-navy">공간에 문의하기</h2>
+                <p className="mt-1 text-xs text-slate-400">예약 가능 여부, 공간 상태, 특별 요청 등을 문의해보세요</p>
               </div>
               <MessageSquare className="h-6 w-6 text-brand-500" />
             </div>
@@ -472,7 +474,7 @@ export function FacilityStorefront({
 
         <div className="py-8 text-center">
           <Link href="/facilities" className="hit inline-flex min-h-[44px] items-center gap-1 text-sm font-black text-slate-400 hover:text-brand-700">
-            <ChevronLeft className="h-4 w-4" /> 다른 창고(스튜디오) 둘러보기
+            <ChevronLeft className="h-4 w-4" /> 다른 공간 둘러보기
           </Link>
         </div>
       </main>

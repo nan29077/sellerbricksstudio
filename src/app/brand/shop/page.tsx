@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { reportDbError } from "@/lib/db-error";
 import { BrandShopPanel } from "@/components/shop/brand-workspace";
 import { DataNotice } from "@/components/dashboard/kit";
+import { BrandVideoManager } from "@/components/brand/brand-video-manager";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,12 @@ export default async function BrandShopPage() {
       prisma.brandShop.findFirst({ where: brandShopWhere(user.id) }),
       prisma.profile.findUnique({ where: { userId: user.id }, select: { companyName: true } }),
     ]);
-    return <BrandShopPanel shop={shop} name={profile?.companyName || user.name || ""} isOwner={!shop || shop.ownerId === user.id} />;
+    return (
+      <div className="space-y-6">
+        <BrandShopPanel shop={shop} name={profile?.companyName || user.name || ""} isOwner={!shop || shop.ownerId === user.id} />
+        {shop && <BrandVideoManager shopId={shop.id} shopName={shop.name} />}
+      </div>
+    );
   } catch (e) {
     return <DataNotice issue={reportDbError("brand-shop", e)} />;
   }

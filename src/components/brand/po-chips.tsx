@@ -16,7 +16,7 @@ export function PoChips({ pos }: { pos?: Po[] | null }) {
   );
 }
 
-// 직접 출고분(창고(스튜디오) · 셀러) 배송 상태
+// 직접 출고분(공간 · 셀러) 배송 상태
 export function LocalShipChip({ order }: { order: { facilityId?: string | null; localShippedAt?: Date | string | null; localDeliveredAt?: Date | string | null; shipCarrier?: string | null; shipTrackingNumber?: string | null; status?: string } }) {
   if (!order.localShippedAt) return null;
   return (

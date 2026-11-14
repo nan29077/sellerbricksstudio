@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Warehouse, Package, CalendarDays, ClipboardCheck, Check, Search, Star, Zap, Minus, Plus, Loader2,
-  AlertCircle, ChevronLeft, ChevronRight, Repeat, Gift, MapPin, Heart, CheckCircle2, Info,
+  AlertCircle, ChevronLeft, ChevronRight, Repeat, Gift, MapPin, Heart, CheckCircle2, Info, Tag, Truck,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,12 +24,17 @@ type FacilityProduct = {
   commissionType: string; commissionValue: number; bookedCount: number; supplyPrice?: number | null;
   product: { id: string; name: string; category: string; description: string | null; thumbnailUrl: string | null };
 };
+type BrandListing = {
+  brandProductId: string; name: string; brandName: string; imageUrl: string | null; supplyPrice: number; salePrice: number;
+  category: string; leadDays: number; options: { name: string; values: string[] }[];
+};
+type BrandPick = { quantity: number; optionLabel: string };
 type Occ = { date: string; start: string; end: string; ok: boolean; reason?: string | null };
 type Created = { id: string; code: string | null; status: string; startAt: string; endAt: string };
 
 const STEPS = [
-  { key: "facility", label: "장소", icon: Warehouse },
-  { key: "products", label: "상품", icon: Package },
+  { key: "facility", label: "상품 · 공간", icon: Warehouse },
+  { key: "products", label: "방송 상품", icon: Package },
   { key: "schedule", label: "일정", icon: CalendarDays },
   { key: "confirm", label: "확인", icon: ClipboardCheck },
 ] as const;
@@ -40,7 +45,7 @@ export function BookingWizard({
   facilities, defaults,
 }: {
   facilities: WizardFacility[];
-  defaults: { facilityId?: string; products?: Record<string, number>; date?: string; start?: string; hours?: number };
+  defaults: { facilityId?: string; products?: Record<string, number>; brand?: string[]; date?: string; start?: string; hours?: number };
 }) {
   const router = useRouter();
   const initialFacility = facilities.find((f) => f.id === defaults.facilityId);
@@ -57,6 +62,19 @@ export function BookingWizard({
   const [picks, setPicks] = useState<Record<string, number>>(defaults.products ?? {});
   const [pq, setPq] = useState("");
   const [pcat, setPcat] = useState("");
+  // 2-b. 내가 고른 브랜드 상품 (위탁배송) — 예약이 승인되면 브랜드가 시연품을 이 공간으로 미리 보낸다
+  const [brandList, setBrandList] = useState<BrandListing[] | null>(null);
+  const [brandPicks, setBrandPicks] = useState<Record<string, BrandPick>>(() => Object.fromEntries((defaults.brand ?? []).map((id) => [id, { quantity: 1, optionLabel: "" }])));
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/seller/brand-listings").then((r) => r.json()).then((j) => {
+      if (!alive) return;
+      const list: BrandListing[] = Array.isArray(j.data) ? j.data : [];
+      setBrandList(list);
+      setBrandPicks((prev) => Object.fromEntries(Object.entries(prev).filter(([id]) => list.some((b) => b.brandProductId === id))));
+    }).catch(() => alive && setBrandList([]));
+    return () => { alive = false; };
+  }, []);
   // 3. 일정
   const [slot, setSlot] = useState<SlotValue>({ date: defaults.date ?? "", start: defaults.start ?? "", hours: defaults.hours ?? 2 });
   const [slotStatus, setSlotStatus] = useState<string | null>(null);
@@ -115,6 +133,8 @@ export function BookingWizard({
   const categories = useMemo(() => Array.from(new Set(products.map((p) => p.product.category))).sort(), [products]);
   const filteredProducts = products.filter((p) => (!pcat || p.product.category === pcat) && (!pq || p.product.name.toLowerCase().includes(pq.toLowerCase())));
   const picked = products.filter((p) => picks[p.id]);
+  const pickedBrand = (brandList ?? []).filter((b) => brandPicks[b.brandProductId]);
+  const missingOption = pickedBrand.find((b) => b.options.length > 0 && !brandPicks[b.brandProductId].optionLabel);
   const expectedRevenue = picked.reduce((a, p) => a + p.salePrice * picks[p.id], 0);
   const expectedCommission = picked.reduce((a, p) => a + commissionOf(p) * picks[p.id], 0);
   const endTime = slot.start ? endOf(slot.start, slot.hours) : "";
@@ -145,7 +165,8 @@ export function BookingWizard({
 
   function goNext() {
     setError("");
-    if (step === 0 && !facilityId) return setError("예약할 창고(스튜디오)를 선택하세요.");
+    if (step === 0 && !facilityId) return setError("예약할 창고 · 스튜디오 · 쇼룸을 선택하세요.");
+    if (step === 1 && missingOption) return setError(`${missingOption.name}: 시연품 옵션을 고르세요.`);
     if (step === 2) {
       if (!slot.date || !slot.start) return setError("날짜와 시작 시간을 선택하세요.");
       if (slotStatus !== "available") return setError("선택한 시간은 예약할 수 없습니다. 다른 시간을 선택하세요.");
@@ -169,6 +190,7 @@ export function BookingWizard({
           facilityId, purpose: purpose || undefined, headcount: headcount ? Number(headcount) : undefined, requestNote: requestNote || undefined,
           startAt: `${slot.date}T${slot.start}:00`, endAt: `${slot.date}T${end}:00`,
           products: picked.map((p) => ({ facilityProductId: p.id, quantity: picks[p.id] })),
+          brandItems: pickedBrand.map((b) => ({ brandProductId: b.brandProductId, quantity: brandPicks[b.brandProductId].quantity, optionLabel: brandPicks[b.brandProductId].optionLabel || null })),
           repeatWeeks: repeat, skipConflicts,
         }),
       });
@@ -188,7 +210,7 @@ export function BookingWizard({
           <CheckCircle2 className="mx-auto h-14 w-14 text-emerald-500" />
           <div>
             <h2 className="text-2xl font-extrabold text-navy">{done.autoApproved ? "예약이 확정되었습니다" : "예약을 신청했습니다"}</h2>
-            <p className="mt-2 text-sm text-slate-500">{done.autoApproved ? "이 창고(스튜디오)는 즉시 확정 공간이라 바로 이용할 수 있어요." : "창고(스튜디오) 관리자가 승인하면 알림으로 알려드려요."}</p>
+            <p className="mt-2 text-sm text-slate-500">{done.autoApproved ? "이 공간은 즉시 확정 공간이라 바로 이용할 수 있어요." : "공간 관리자가 승인하면 알림으로 알려드려요."}</p>
           </div>
           <div className="space-y-2 rounded-2xl bg-muted/50 p-4 text-left text-sm">
             <p className="font-bold text-navy">{facility?.name}</p>
@@ -198,7 +220,8 @@ export function BookingWizard({
                 <span className="font-mono text-xs font-bold text-navy">{b.code}</span>
               </div>
             ))}
-            {picked.length > 0 && <p className="border-t border-border/60 pt-2 text-xs text-slate-500">판매 예정 상품 {picked.length}종 — 라이브 세션을 만들면 상품번호와 함께 자동으로 등록됩니다.</p>}
+            {pickedBrand.length > 0 && <p className="border-t border-border/60 pt-2 text-xs text-slate-600"><Truck className="mr-1 inline h-3.5 w-3.5 text-brand-600" />브랜드 상품 {pickedBrand.length}종 — {done.autoApproved ? "브랜드에 방송 시연품을 요청했어요." : "예약이 승인되면 브랜드에 방송 시연품이 자동으로 요청돼요."} 방송 2일 전까지 이 공간에 도착하도록 안내합니다.</p>}
+            {picked.length > 0 && <p className="border-t border-border/60 pt-2 text-xs text-slate-500">공간 입고 상품 {picked.length}종 — 방송 날 현장에 준비됩니다.</p>}
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
             <Link href="/seller/bookings"><Button className="w-full sm:w-auto">예약 관리로 이동</Button></Link>
@@ -232,18 +255,48 @@ export function BookingWizard({
 
         {step === 0 && (
           <Card><CardContent className="space-y-3 p-4 sm:p-5">
+            {/* ① 방송할 브랜드 상품 먼저 고르기 (수량 · 옵션은 다음 단계에서) */}
+            <section aria-labelledby="pick-brand-heading" className="rounded-2xl border border-brand-200 bg-brand-50/50 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <h3 id="pick-brand-heading" className="text-sm font-extrabold text-navy">① 방송할 상품 <span className="font-semibold text-slate-500">({Object.keys(brandPicks).length}개 선택)</span></h3>
+                <a href="/seller/brands" className="text-xs font-bold text-brand-700 underline underline-offset-2">상품 더 고르기</a>
+              </div>
+              {brandList === null ? <p className="mt-2 text-xs text-slate-500">내 방송 상품을 불러오는 중…</p>
+                : brandList.length === 0 ? <p className="mt-2 break-keep text-xs text-slate-600">아직 고른 브랜드 상품이 없어요. 상품 없이 공간만 예약해도 되고, 브랜드샵에서 고른 뒤 다시 와도 됩니다.</p> : (
+                <ul className="mt-2 flex gap-2 overflow-x-auto pb-1">
+                  {brandList.map((b) => {
+                    const on = !!brandPicks[b.brandProductId];
+                    return (
+                      <li key={b.brandProductId} className="shrink-0">
+                        <button type="button" aria-pressed={on}
+                          onClick={() => setBrandPicks((p) => { const n = { ...p }; if (on) delete n[b.brandProductId]; else n[b.brandProductId] = { quantity: 1, optionLabel: "" }; return n; })}
+                          className={cn("flex w-36 flex-col overflow-hidden rounded-xl border-2 bg-white text-left transition", on ? "border-brand-500 shadow-sm" : "border-transparent hover:border-brand-200")}>
+                          <span className="relative block aspect-[4/3] bg-slate-100">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            {b.imageUrl ? <img src={b.imageUrl} alt="" className="h-full w-full object-cover" /> : <Package className="absolute inset-0 m-auto h-6 w-6 text-slate-300" />}
+                            {on && <span className="absolute right-1.5 top-1.5 grid h-5 w-5 place-items-center rounded-full bg-brand-500 text-[11px] font-black text-navy">✓</span>}
+                          </span>
+                          <span className="block px-2 py-1.5"><span className="block truncate text-[11px] text-slate-500">{b.brandName}</span><span className="block truncate text-xs font-bold text-navy">{b.name}</span></span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+            <h3 className="pt-1 text-sm font-extrabold text-navy">② 방송할 공간</h3>
             <div className="flex flex-col gap-2 sm:flex-row">
               <div className="relative flex-1">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <Input value={fq} onChange={(e) => setFq(e.target.value)} placeholder="이름 · 지역 · 전문 분야 검색" className="pl-9" />
               </div>
               <div className="flex gap-1.5">
-                {[["", "전체"], ["STUDIO", "스튜디오"], ["WAREHOUSE", "창고"]].map(([v, l]) => (
-                  <button key={v} type="button" onClick={() => setFtype(v)} className={cn("h-11 rounded-lg border px-3 text-sm font-semibold", ftype === v ? "border-navy bg-navy text-white" : "border-border bg-white text-navy")}>{l}</button>
+                {[["", "전체"], ["WAREHOUSE", "창고"], ["STUDIO", "스튜디오"], ["SHOWROOM", "쇼룸"]].map(([v, l]) => (
+                  <button key={v} type="button" onClick={() => setFtype(v)} className={cn("h-11 shrink-0 rounded-lg border px-2.5 text-sm font-semibold sm:px-3", ftype === v ? "border-navy bg-navy text-white" : "border-border bg-white text-navy")}>{l}</button>
                 ))}
               </div>
             </div>
-            {filteredFacilities.length === 0 ? <p className="py-10 text-center text-sm text-muted-foreground">조건에 맞는 창고(스튜디오)가 없습니다.</p> : (
+            {filteredFacilities.length === 0 ? <p className="py-10 text-center text-sm text-muted-foreground">조건에 맞는 공간이 없습니다.</p> : (
               <div className="grid gap-2.5 sm:grid-cols-2">
                 {filteredFacilities.map((f) => (
                   <button key={f.id} type="button" onClick={() => chooseFacility(f.id)}
@@ -275,17 +328,65 @@ export function BookingWizard({
 
         {step === 1 && facility && (
           <Card><CardContent className="space-y-3 p-4 sm:p-5">
+            <div>
+              <p className="flex items-center gap-1.5 text-lg font-extrabold text-navy"><Tag className="h-5 w-5 text-brand-600" />내가 고른 브랜드 상품</p>
+              <p className="text-xs text-slate-500">담으면 예약이 승인될 때 브랜드에 <b className="text-navy">방송 시연품</b>을 자동으로 요청해, 방송 2일 전까지 {facility.name}(으)로 미리 보내 드려요. 판매분은 방송 뒤 주문서로 내면 브랜드가 받는 분에게 바로 보냅니다.</p>
+            </div>
+            {brandList === null ? <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" />브랜드 상품 불러오는 중...</div>
+              : brandList.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
+                  아직 고른 브랜드 상품이 없어요. <Link href="/brands" className="font-bold text-brand-700 underline">브랜드샵</Link>에서 방송할 상품을 먼저 골라 보세요.
+                </div>
+              ) : (
+                <div className="grid gap-2.5 sm:grid-cols-2">
+                  {brandList.map((b) => {
+                    const pick = brandPicks[b.brandProductId];
+                    return (
+                      <div key={b.brandProductId} className={cn("flex gap-3 rounded-2xl border-2 p-3 transition", pick ? "border-brand-500 bg-brand-50/50" : "border-border bg-white")}>
+                        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-muted">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          {b.imageUrl ? <img src={b.imageUrl} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Tag className="h-6 w-6 text-slate-300" /></div>}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[11px] text-slate-500">{b.brandName} · {b.category}</p>
+                          <p className="line-clamp-2 text-sm font-bold text-navy">{b.name}</p>
+                          <p className="text-[11px] text-slate-500">공급가 {formatKRW(b.supplyPrice)} · 내 판매가 {formatKRW(b.salePrice)}</p>
+                          {!pick ? (
+                            <Button type="button" size="sm" variant="outline" className="mt-1.5" onClick={() => setBrandPicks((p) => ({ ...p, [b.brandProductId]: { quantity: 1, optionLabel: "" } }))}>방송에 담기</Button>
+                          ) : (
+                            <div className="mt-1.5 space-y-1.5">
+                              {b.options.length > 0 && (
+                                <Select aria-label={`${b.name} 시연품 옵션`} value={pick.optionLabel} onChange={(e) => setBrandPicks((p) => ({ ...p, [b.brandProductId]: { ...pick, optionLabel: e.target.value } }))} className="h-9 text-xs">
+                                  <option value="">시연품 옵션 선택</option>
+                                  {b.options.flatMap((g) => g.values.map((v) => <option key={`${g.name}:${v}`} value={`${g.name}:${v}`}>{g.name} {v}</option>))}
+                                </Select>
+                              )}
+                              <div className="flex items-center gap-1.5">
+                                <button type="button" onClick={() => setBrandPicks((p) => { const n = { ...p }; if (pick.quantity <= 1) delete n[b.brandProductId]; else n[b.brandProductId] = { ...pick, quantity: pick.quantity - 1 }; return n; })} className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-white" aria-label="시연품 수량 줄이기"><Minus className="h-4 w-4" /></button>
+                                <span className="w-8 text-center text-sm font-bold">{pick.quantity}</span>
+                                <button type="button" onClick={() => setBrandPicks((p) => ({ ...p, [b.brandProductId]: { ...pick, quantity: Math.min(5, pick.quantity + 1) } }))} className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-white" aria-label="시연품 수량 늘리기"><Plus className="h-4 w-4" /></button>
+                                <span className="text-[11px] text-slate-500">개 시연품</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            <div className="border-t border-border pt-3" />
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-lg font-extrabold text-navy">{facility.name}의 판매 상품</p>
-                <p className="text-xs text-slate-500">방송에서 판매할 상품과 수량을 고르세요. 예약 후 라이브 세션을 만들면 상품번호가 자동으로 붙습니다.</p>
+                <p className="text-lg font-extrabold text-navy">{facility.name}에 입고된 상품</p>
+                <p className="text-xs text-slate-500">이미 이 공간에 있는 스토리지마켓 입고 상품이에요. 방송 날 현장에 준비되고, 판매분은 주문서로 내면 스토리지마켓이 보냅니다.</p>
               </div>
               {products.length > 0 && <button type="button" className="text-xs font-semibold text-brand-700" onClick={() => setPicks(Object.keys(picks).length === products.length ? {} : Object.fromEntries(products.map((p) => [p.id, picks[p.id] ?? 1])))}>{Object.keys(picks).length === products.length ? "전체 해제" : "전체 선택"}</button>}
             </div>
             {productsLoading ? <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" />상품 불러오는 중...</div>
               : products.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
-                  <Package className="mx-auto mb-2 h-8 w-8 text-slate-300" />아직 이 창고(스튜디오)에 등록된 상품이 없습니다.<br />상품 없이 예약하고, 방송 때 임시 상품을 추가할 수 있어요.
+                  <Package className="mx-auto mb-2 h-8 w-8 text-slate-300" />이 공간에 입고된 상품이 없습니다.<br />위의 브랜드 상품만 담거나, 상품 없이 예약할 수도 있어요.
                 </div>
               ) : (
                 <>
@@ -410,7 +511,7 @@ export function BookingWizard({
           {step > 0 && <Button type="button" variant="outline" onClick={() => { setError(""); setStep(step - 1); }}><ChevronLeft className="h-4 w-4" />이전</Button>}
           {step < 3 ? (
             <Button type="button" className="flex-1" onClick={goNext} disabled={step === 0 && !facilityId}>
-              {step === 1 ? (picked.length ? `상품 ${picked.length}종 선택 · 다음` : "상품 없이 다음") : "다음"}<ChevronRight className="h-4 w-4" />
+              {step === 1 ? (picked.length + pickedBrand.length ? `상품 ${picked.length + pickedBrand.length}종 선택 · 다음` : "상품 없이 다음") : "다음"}<ChevronRight className="h-4 w-4" />
             </Button>
           ) : (
             <Button type="button" className="flex-1" size="lg" onClick={submit} disabled={submitting}>
@@ -430,7 +531,15 @@ export function BookingWizard({
           <Row label="확정 방식" value={facility ? (facility.autoApprove ? "즉시 확정" : "관리자 승인") : "-"} />
           {policy && <Row label="변경·취소" value={`이용 ${policy.cancelDeadlineHours}시간 전까지`} />}
           <div className="border-t border-border pt-3">
-            <p className="mb-1.5 text-xs font-bold text-navy">판매 예정 상품 {picked.length}종</p>
+            <p className="mb-1.5 text-xs font-bold text-navy">브랜드 상품 (시연품) {pickedBrand.length}종</p>
+            {pickedBrand.length === 0 ? <p className="text-xs text-muted-foreground">담은 브랜드 상품이 없습니다.</p> : (
+              <ul className="max-h-40 space-y-1 overflow-y-auto text-xs">
+                {pickedBrand.map((b) => <li key={b.brandProductId} className="flex justify-between gap-2"><span className="truncate text-slate-600">{b.name}{brandPicks[b.brandProductId].optionLabel ? ` · ${brandPicks[b.brandProductId].optionLabel.split(":")[1]}` : ""}</span><span className="shrink-0 font-semibold text-navy">×{brandPicks[b.brandProductId].quantity}</span></li>)}
+              </ul>
+            )}
+          </div>
+          <div className="border-t border-border pt-3">
+            <p className="mb-1.5 text-xs font-bold text-navy">공간 입고 상품 {picked.length}종</p>
             {picked.length === 0 ? <p className="text-xs text-muted-foreground">선택한 상품이 없습니다.</p> : (
               <ul className="max-h-48 space-y-1 overflow-y-auto text-xs">
                 {picked.map((p) => <li key={p.id} className="flex justify-between gap-2"><span className="truncate text-slate-600">{p.product.name}</span><span className="shrink-0 font-semibold text-navy">×{picks[p.id]}</span></li>)}

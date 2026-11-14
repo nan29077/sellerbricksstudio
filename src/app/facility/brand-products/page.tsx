@@ -39,7 +39,7 @@ export default async function FacilityBrandProducts() {
   return (
     <div className="space-y-5">
       <PageHeader title="브랜드 판매 상품 · 입고" description="브랜드샵에서 가져온 상품입니다. 직배송은 바로 판매되고, 창고 입고 상품은 브랜드에 입고를 요청해 받은 뒤 '입고 확인'하면 판매 재고가 늘어납니다."
-        action={<div className="flex gap-2"><Link href="/brands" className={buttonVariants({ variant: "outline" })}>브랜드샵 둘러보기</Link><Link href="/brand-requests?kind=SUPPLY" className={buttonVariants({ variant: "outline" })}>입고 요청 내역</Link></div>} />
+        action={<div className="flex gap-2"><Link href="/facility/brands" className={buttonVariants({ variant: "outline" })}>브랜드샵 둘러보기</Link><Link href="/brand-requests?kind=SUPPLY" className={buttonVariants({ variant: "outline" })}>입고 요청 내역</Link></div>} />
       {rows.length === 0 ? <EmptyState title="가져온 브랜드 상품이 없습니다" description="브랜드샵에서 '판매 상품으로 가져오기'를 누르고 배송 방식을 고르세요." /> : (
         <div className="space-y-3">
           {rows.map((fp) => {

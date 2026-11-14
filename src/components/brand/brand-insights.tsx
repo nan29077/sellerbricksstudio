@@ -32,7 +32,7 @@ export async function BrandInsights({ shopId }: { shopId: string }) {
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-2xl border bg-white p-4">
           <p className="mb-2 flex items-center gap-1.5 font-extrabold text-navy"><Store className="h-4 w-4 text-brand-600" />내 상품을 판매하는 곳</p>
-          {channels === 0 ? <p className="text-sm text-slate-500">아직 없습니다. 샘플을 보내 셀러·창고(스튜디오)에 상품을 알려 보세요.</p> : (
+          {channels === 0 ? <p className="text-sm text-slate-500">아직 없습니다. 샘플을 보내 셀러·공간에 상품을 알려 보세요.</p> : (
             <ul className="max-h-56 space-y-1 overflow-auto text-sm">
               {facilityListings.map((l, i) => <li key={`f${i}`} className="flex justify-between gap-2"><span className="truncate">🏬 {l.facility.name} · {l.brandProduct?.name}</span><span className="shrink-0 text-xs text-slate-500">{l.fulfillment === "WAREHOUSE" ? `위탁재고 ${l.stock}` : "직배송"}</span></li>)}
               {sellerListings.map((l, i) => <li key={`s${i}`} className="flex justify-between gap-2"><span className="truncate">🎥 {l.seller.profile?.name ?? l.seller.email} · {l.brandProduct.name}</span><span className="shrink-0 text-xs text-slate-500">{formatKRW(l.salePrice)}</span></li>)}

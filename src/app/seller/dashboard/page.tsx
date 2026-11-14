@@ -101,7 +101,22 @@ async function load(userId: string) {
     shipping, paidTotal: (paidTotal._sum.totalAmount ?? 0) - (paidTotal._sum.refundedAmount ?? 0),
     pendingBookings: upcoming.filter((b) => b.status === "PENDING").length,
     todo: { reviewTodo, repliedInquiries, activePromos, plannedPosts, toShip },
+    flow: await loadFlow(userId, now),
   };
+}
+
+// 방송 준비 흐름: 고른 상품 → 예정 방송 → 시연품 준비 → 판매 주문서
+async function loadFlow(userId: string, now: Date) {
+  const [listings, upcomingBookings, displayItems] = await Promise.all([
+    prisma.sellerBrandProduct.count({ where: { sellerId: userId, isActive: true } }),
+    prisma.booking.count({ where: { sellerId: userId, status: { in: ["PENDING", "APPROVED"] }, startAt: { gte: now } } }),
+    prisma.bookingBrandItem.findMany({
+      where: { booking: { sellerId: userId, status: "APPROVED", startAt: { gte: now } } },
+      select: { brandRequest: { select: { status: true } } },
+    }),
+  ]);
+  const arrived = displayItems.filter((i) => i.brandRequest?.status === "COMPLETED").length;
+  return { listings, upcomingBookings, displayTotal: displayItems.length, displayArrived: arrived };
 }
 
 export default async function SellerDashboard() {
@@ -124,13 +139,13 @@ export default async function SellerDashboard() {
       <DashHero
         eyebrow={`SELLER STUDIO · ${todayLabel()}`}
         title={hello}
-        description="외부 라이브 플랫폼에서 판매하고 주문서를 내면, 브랜드 · 스토리지마켓이 받는 분에게 바로 보냅니다. 오늘 챙길 일과 성과를 한눈에 확인하세요."
+        description="브랜드 상품을 고르고 공간만 예약하면, 방송 날 그 자리에 시연품이 준비돼요. 판매분은 주문서로 내면 브랜드가 고객에게 바로 보냅니다."
         chips={[
           ...(d.todo.toShip ? [{ label: `출고 준비 중 주문서 ${d.todo.toShip}건` }] : []),
           ...(d.pendingBookings ? [{ label: `승인 대기 ${d.pendingBookings}건` }] : []),
           { label: `이번 달 공간 이용 ${hoursText(d.usedHours)}` },
         ]}
-        actions={<><HeroButton href="/seller/orders/new" primary><SquarePlus className="h-4 w-4" />주문서 작성</HeroButton><HeroButton href="/seller/bookings/new"><CalendarPlus className="h-4 w-4" />공간 예약하기</HeroButton><HeroButton href="/facilities"><Search className="h-4 w-4" />창고(스튜디오) 찾기</HeroButton></>}
+        actions={<><HeroButton href="/seller/brands" primary><ShoppingBag className="h-4 w-4" />방송 상품 고르기</HeroButton><HeroButton href="/seller/bookings/new"><CalendarPlus className="h-4 w-4" />방송 예약하기</HeroButton><HeroButton href="/seller/orders/new"><SquarePlus className="h-4 w-4" />주문서 작성</HeroButton></>}
         aside={
           next && np ? (
             <HeroPanel title="다음 일정" href="/seller/bookings" cta="예약 확인">
@@ -147,11 +162,27 @@ export default async function SellerDashboard() {
             </HeroPanel>
           ) : (
             <HeroPanel title="다음 일정" href="/facilities" cta="공간 둘러보기">
-              <p className="text-sm text-white/75">예정된 예약이 없어요. 상품이 준비된 창고(스튜디오)를 찾아 방송 공간을 예약해 보세요.</p>
+              <p className="text-sm text-white/75">예정된 예약이 없어요. 상품이 준비된 공간을 찾아 방송 공간을 예약해 보세요.</p>
             </HeroPanel>
           )
         }
       />
+
+      <nav aria-label="방송 준비 흐름" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {[
+          { n: 1, title: "방송 상품 고르기", value: `${d.flow.listings.toLocaleString()}개`, hint: "판매 중인 내 방송 상품", href: d.flow.listings ? "/seller/brand-products" : "/seller/brands" },
+          { n: 2, title: "공간 · 날짜 예약", value: `${d.flow.upcomingBookings.toLocaleString()}건`, hint: "다가오는 방송 예약", href: d.flow.upcomingBookings ? "/seller/bookings" : "/seller/bookings/new" },
+          { n: 3, title: "시연품 준비", value: d.flow.displayTotal ? `${d.flow.displayArrived}/${d.flow.displayTotal}` : "—", hint: d.flow.displayTotal ? "공간에 도착한 시연품" : "예약에 상품을 담으면 표시돼요", href: "/seller/bookings?status=APPROVED" },
+          { n: 4, title: "판매 · 주문서", value: `${d.todo.toShip.toLocaleString()}건`, hint: "출고 준비 중 주문서", href: "/seller/orders/new" },
+        ].map((s) => (
+          <Link key={s.n} href={s.href} className="group min-w-0 rounded-2xl border border-[#E9E5DC] bg-white p-3.5 shadow-sm transition hover:border-brand-300 hover:shadow-md sm:p-4">
+            <p className="flex items-center gap-2 text-[11px] font-extrabold text-brand-700"><span className="grid h-5 w-5 place-items-center rounded-full bg-navy text-[10px] text-white">{s.n}</span>STEP {s.n}</p>
+            <p className="mt-2 truncate text-sm font-extrabold text-navy">{s.title}</p>
+            <p className="mt-1 text-xl font-black tracking-tight text-navy">{s.value}</p>
+            <p className="mt-0.5 truncate text-[11px] text-slate-500 group-hover:text-slate-700">{s.hint}</p>
+          </Link>
+        ))}
+      </nav>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiTile emphasis label="이번 달 주문서 결제액" value={compactKRW(d.gmv)} delta={d.gmvDelta} sub="전월 동기 대비" icon={CircleDollarSign} tone="brand" spark={d.gmvDaily.map((x) => x.value)} href="/seller/settlements" />
@@ -177,7 +208,7 @@ export default async function SellerDashboard() {
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Panel eyebrow="SCHEDULE" title="다가오는 일정" action={{ href: "/seller/bookings?view=calendar", label: "캘린더" }}>
-          {d.upcoming.length === 0 ? <Empty icon={CalendarDays} text="다가오는 예약이 없습니다" action={{ href: "/seller/bookings/new", label: "예약 신청하기" }} /> : (
+          {d.upcoming.length === 0 ? <Empty icon={CalendarDays} text="다가오는 예약이 없어요" action={{ href: "/seller/bookings/new", label: "예약 신청하기" }} /> : (
             <ul className="space-y-2">
               {d.upcoming.map((b) => {
                 const p = kstParts(b.startAt);
@@ -213,7 +244,7 @@ export default async function SellerDashboard() {
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <Panel eyebrow="ORDER SHEETS" title="최근 주문서" action={{ href: "/seller/orders", label: "주문서 · 배송 현황" }}>
-          {d.sheets.length === 0 ? <Empty icon={FileText} text="아직 낸 주문서가 없습니다" action={{ href: "/seller/orders/new", label: "주문서 작성" }} /> : (
+          {d.sheets.length === 0 ? <Empty icon={FileText} text="아직 낸 주문서가 없어요" action={{ href: "/seller/orders/new", label: "주문서 작성" }} /> : (
             <div className="-mx-1 overflow-x-auto">
               <table className="w-full min-w-[480px] text-sm rtable">
                 <thead><tr className="text-left text-[11px] font-bold text-slate-400"><th className="px-1 pb-2">주문서</th><th className="px-1 pb-2">상태</th><th className="px-1 pb-2 text-right">상품</th><th className="px-1 pb-2 text-right">결제액</th></tr></thead>
@@ -236,8 +267,8 @@ export default async function SellerDashboard() {
             </div>
           )}
         </Panel>
-        <Panel eyebrow="MY SPACES" title="자주 찾는 창고(스튜디오)" action={{ href: "/facilities", label: "더 찾기" }}>
-          {d.spaces.length === 0 ? <Empty icon={Heart} text="등록된 창고(스튜디오)가 없습니다" /> : (
+        <Panel eyebrow="MY SPACES" title="자주 찾는 공간" action={{ href: "/facilities", label: "더 찾기" }}>
+          {d.spaces.length === 0 ? <Empty icon={Heart} text="등록된 공간이 없습니다" /> : (
             <ul className="space-y-2">
               {d.spaces.map((f) => (
                 <li key={f.id}>
@@ -259,14 +290,14 @@ export default async function SellerDashboard() {
 
       <Panel eyebrow="SHORTCUTS" title="바로가기">
         <ShortcutGrid cols="sm:grid-cols-2 xl:grid-cols-4" items={[
-          { title: "주문서 작성", desc: "화면 입력 · 엑셀 업로드", href: "/seller/orders/new", icon: SquarePlus, tone: "brand" },
+          { title: "① 브랜드 상품 고르기", desc: "방송할 상품 담기", href: "/seller/brands", icon: Star, tone: "amber" },
+          { title: "② 방송 예약하기", desc: "공간 · 날짜 · 방송 상품 선택", href: "/seller/bookings/new", icon: CalendarPlus, tone: "red" },
+          { title: "③ 주문서 작성", desc: "화면 입력 · 엑셀 업로드", href: "/seller/orders/new", icon: SquarePlus, tone: "brand" },
+          { title: "④ 결제 · 정산 내역", desc: "주문서 결제 · 환불", href: "/seller/settlements", icon: Wallet, tone: "green" },
+          { title: "내 방송 상품", desc: "판매가 · 판매 여부 관리", href: "/seller/brand-products", icon: ShoppingBag, tone: "violet" },
           { title: "주문서 · 배송 현황", desc: "출고 · 운송장 확인", href: "/seller/orders", icon: ShoppingBag, tone: "navy", badge: d.todo.toShip },
-          { title: "결제 · 정산 내역", desc: "주문서 결제 · 환불", href: "/seller/settlements", icon: Wallet, tone: "green" },
-          { title: "예약 신청", desc: "새 공간 예약 만들기", href: "/seller/bookings/new", icon: CalendarPlus, tone: "red" },
-          { title: "마케팅 지원", desc: "SNS·광고 소재·이벤트", href: "/seller/marketing", icon: Megaphone, tone: "violet" },
-          { title: "브랜드 상품 고르기", desc: "위탁배송 상품 담기", href: "/brands", icon: Star, tone: "amber" },
-          { title: "예약 캘린더", desc: "월간 일정 보기", href: "/seller/bookings?view=calendar", icon: CheckCircle2, tone: "sky" },
-          { title: "스토리지마켓 플랫폼", desc: "sellerbricks.co.kr", href: "https://sellerbricks.co.kr", icon: ExternalLink, tone: "slate" },
+          { title: "예약 캘린더", desc: "월간 방송 일정 보기", href: "/seller/bookings?view=calendar", icon: CheckCircle2, tone: "sky" },
+          { title: "마케팅 지원", desc: "SNS · 광고 소재 · 이벤트", href: "/seller/marketing", icon: Megaphone, tone: "slate" },
         ]} />
       </Panel>
     </div>

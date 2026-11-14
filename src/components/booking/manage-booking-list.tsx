@@ -10,6 +10,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Input, Label, Textarea } from "@/components/ui/input";
 import { api } from "@/lib/client-api";
 import { cn } from "@/lib/utils";
+import { BrandItemList, type BrandItemView } from "./brand-item-list";
 
 export type ManageBookingProduct = { id: string; name: string; quantity: number; price: number; status: string; note: string | null };
 export type ManageBooking = {
@@ -19,6 +20,7 @@ export type ManageBooking = {
   requestNote: string | null; facilityMemo: string | null; rejectReason: string | null; cancelReason: string | null;
   started: boolean; createdAt: string; sellerHistory?: number;
   code?: string | null; recurring?: boolean; rescheduleCount?: number; products?: ManageBookingProduct[];
+  brandItems?: BrandItemView[];
   checkedIn?: boolean; canCheckIn?: boolean; canNoShow?: boolean; noShowCount?: number; cancelCount?: number;
 };
 
@@ -29,7 +31,7 @@ const BP: Record<string, { label: string; cls: string }> = {
   UNAVAILABLE: { label: "준비 불가", cls: "border-red-200 bg-red-50 text-red-600" },
 };
 
-// 창고(스튜디오) 관리자 · 최고관리자 공용 예약 처리 목록 (체크박스 일괄 처리 · 판매 예정 상품 확인 포함)
+// 공간 관리자 · 최고관리자 공용 예약 처리 목록 (체크박스 일괄 처리 · 판매 예정 상품 확인 포함)
 export function ManageBookingList({ rows, showFacility = true }: { rows: ManageBooking[]; showFacility?: boolean }) {
   const router = useRouter();
   const [sel, setSel] = useState<Set<string>>(new Set());
@@ -128,6 +130,7 @@ export function ManageBookingList({ rows, showFacility = true }: { rows: ManageB
                       </div>
                     </div>
                   ) : b.expectedProducts ? <p className="truncate text-xs text-slate-500">판매 예정 상품: {b.expectedProducts}</p> : null}
+                  {!!b.brandItems?.length && <BrandItemList items={b.brandItems} canConfirm={b.status === "APPROVED"} />}
                   {b.requestNote && <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">요청사항: {b.requestNote}</p>}
                   {b.facilityMemo && <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">📝 내부 메모: {b.facilityMemo}</p>}
                   {b.rejectReason && b.status === "REJECTED" && <p className="text-xs text-red-600">거절 사유: {b.rejectReason}</p>}

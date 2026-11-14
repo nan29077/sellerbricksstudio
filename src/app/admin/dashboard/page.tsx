@@ -139,7 +139,7 @@ export default async function AdminDashboard() {
   if (!d) {
     return (
       <div className="space-y-6 pb-6">
-        <DashHero eyebrow={`OPERATIONS · ${todayLabel()}`} title={`${greeting()}, ${me.name ?? "관리자"}님`} description="운영 현황을 한눈에 보는 최고관리자 대시보드입니다." />
+        <DashHero eyebrow={`OPERATIONS · ${todayLabel()}`} title={`${greeting()}, ${me.name ?? "관리자"}님`} description="운영 현황을 한눈에 확인하는 최고관리자 화면이에요." />
         <DataNotice issue={issue} />
       </div>
     );
@@ -202,8 +202,8 @@ export default async function AdminDashboard() {
         </Panel>
         <Panel eyebrow="TO DO" title="처리가 필요한 작업">
           <TodoList items={[
-            { label: "창고(스튜디오) 승인 대기", desc: "새로 등록된 공간을 검토하세요", n: d.facPending, href: "/admin/facilities?status=PENDING", icon: Building2, tone: "sky", urgent: d.facPending > 0 },
-            { label: "24시간 넘게 대기 중인 예약", desc: "창고(스튜디오) 응답이 늦어지고 있어요", n: d.todo.stalePending, href: "/admin/bookings?status=PENDING", icon: BadgeAlert, tone: "red", urgent: true },
+            { label: "공간 승인 대기", desc: "새로 등록된 창고 · 스튜디오 · 쇼룸을 검토하세요", n: d.facPending, href: "/admin/facilities?status=PENDING", icon: Building2, tone: "sky", urgent: d.facPending > 0 },
+            { label: "24시간 넘게 대기 중인 예약", desc: "공간 운영자의 응답이 늦어지고 있어요", n: d.todo.stalePending, href: "/admin/bookings?status=PENDING", icon: BadgeAlert, tone: "red", urgent: true },
             { label: "답변 대기 고객 문의", desc: "고객센터 문의에 답변하세요", n: d.todo.supportWaiting, href: "/admin/support?status=waiting", icon: Headset, tone: "blue" },
             { label: "결제 실패 (최근 7일)", desc: "PG 오류·한도 초과 여부를 확인하세요", n: d.todo.failedPayments, href: "/admin/payments", icon: CreditCard, tone: "red" },
             { label: "정산 처리 대기", desc: "판매 · 브랜드 정산서를 확정하고 지급하세요", n: d.todo.pendingSettlements, href: "/admin/payouts", icon: Wallet, tone: "green" },
@@ -240,7 +240,7 @@ export default async function AdminDashboard() {
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2 2xl:grid-cols-3">
-        <Panel eyebrow="TOP SPACES" title="이번 달 인기 창고(스튜디오)" action={{ href: "/admin/facilities", label: "전체" }}>
+        <Panel eyebrow="TOP SPACES" title="이번 달 인기 공간" action={{ href: "/admin/facilities", label: "전체" }}>
           <RankList items={d.topFacilities} empty="이번 달 예약이 아직 없습니다" />
         </Panel>
         <Panel eyebrow="TOP SELLERS" title="이번 달 거래액 TOP 셀러" action={{ href: "/admin/users", label: "전체" }}>

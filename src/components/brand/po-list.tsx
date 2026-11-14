@@ -67,7 +67,7 @@ export async function PurchaseOrderList({ scope, actor, base, params }: {
         <a href={exportHref} className={buttonVariants({ variant: "outline" })}><Download className="h-4 w-4" />엑셀(CSV)</a>
         {poId && <Link href={withParams(base, params, { po: undefined })} className="text-sm font-semibold text-brand-800 underline">전체 보기</Link>}
       </form>
-      {rows.length === 0 && <p className="rounded-2xl border bg-white p-6 text-sm text-slate-600">해당하는 발주서가 없습니다. 셀러·창고(스튜디오)가 가져간 상품이 방송에서 판매되면 여기에 자동으로 들어옵니다.</p>}
+      {rows.length === 0 && <p className="rounded-2xl border bg-white p-6 text-sm text-slate-600">해당하는 발주서가 없습니다. 셀러·공간이 가져간 상품이 방송에서 판매되면 여기에 자동으로 들어옵니다.</p>}
       {rows.map((po) => (
         <article key={po.id} className={`rounded-2xl border bg-white p-4 shadow-sm sm:p-5 ${late(po.createdAt, po.status) ? "border-amber-300" : ""}`}>
           <div className="flex flex-wrap items-start justify-between gap-2">
@@ -100,7 +100,7 @@ export async function PurchaseOrderList({ scope, actor, base, params }: {
           </div>
           {po.trackingNumber && <p className="mt-1 text-sm">운송장 {po.carrier} {po.trackingNumber}{po.shippedAt && ` · ${fmt(po.shippedAt)} 출고`}</p>}
           {po.cancelReason && <p className="mt-1 text-sm text-red-700">사유: {po.cancelReason}</p>}
-          {po.cancelRequestedAt && (po.status === "NEW" || po.status === "CONFIRMED") && <p className="mt-1 rounded-lg bg-red-50 px-2 py-1 text-sm text-red-700">출고 불가 요청 중 · {po.cancelRequestReason} — 셀러·창고(스튜디오)가 부분 취소하면 발주가 취소됩니다.</p>}
+          {po.cancelRequestedAt && (po.status === "NEW" || po.status === "CONFIRMED") && <p className="mt-1 rounded-lg bg-red-50 px-2 py-1 text-sm text-red-700">출고 불가 요청 중 · {po.cancelRequestReason} — 셀러·공간이 부분 취소하면 발주가 취소됩니다.</p>}
           {po.status === "RETURNED" && <p className="mt-1 text-sm text-slate-700">반품 상품 {po.returnReceivedAt ? `수령 확인 (${fmt(po.returnReceivedAt)})` : "수령 대기 — 받으면 '반품 수령 확인'을 눌러 주세요"}</p>}
           {po.exchangeTrackingNumber && <p className="mt-1 text-sm text-slate-700">교환 발송 {po.exchangeCarrier} {po.exchangeTrackingNumber}{po.exchangeShippedAt && ` · ${fmt(po.exchangeShippedAt)}`}</p>}
           {po.adminMemo && actor === "ADMIN" && <p className="mt-1 text-xs text-amber-700">관리자 메모: {po.adminMemo}</p>}

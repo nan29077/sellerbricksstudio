@@ -2,6 +2,28 @@ import { BOOKING_STATUS } from "./status";
 import { formatDateTime } from "./utils";
 import { hhmm, hoursBetween } from "./kst";
 import type { ManageBooking } from "@/components/booking/manage-booking-list";
+import type { BrandItemView } from "@/components/booking/brand-item-list";
+import type { BrandRequestStatus, Prisma } from "@prisma/client";
+import { displayState } from "./booking-brand-items-view";
+
+/** 예약 조회 시 같이 읽을 브랜드 상품(시연품) */
+export const BRAND_ITEMS_INCLUDE = {
+  orderBy: { createdAt: "asc" },
+  include: { brandProduct: { select: { shop: { select: { name: true } } } }, brandRequest: { select: { status: true, carrier: true, trackingNumber: true, rejectReason: true } } },
+} satisfies Prisma.Booking$brandItemsArgs;
+type BrandItemRow = {
+  id: string; nameSnapshot: string; quantity: number; optionLabel: string | null; dueAt: Date | null;
+  brandProduct: { shop: { name: string } }; brandRequest: { status: BrandRequestStatus; carrier: string; trackingNumber: string; rejectReason: string } | null;
+};
+export function toBrandItemView(i: BrandItemRow): BrandItemView {
+  const st = displayState(i.brandRequest?.status);
+  return {
+    id: i.id, name: i.nameSnapshot, brandName: i.brandProduct.shop.name, quantity: i.quantity, optionLabel: i.optionLabel,
+    state: st.key, stateLabel: st.label, due: i.dueAt ? formatDateTime(i.dueAt) : null,
+    carrier: i.brandRequest?.carrier || null, trackingNumber: i.brandRequest?.trackingNumber || null,
+    reason: st.key === "UNAVAILABLE" ? i.brandRequest?.rejectReason || null : null,
+  };
+}
 
 type Row = {
   id: string; status: string; startAt: Date; endAt: Date; headcount: number | null; purpose: string | null;
@@ -11,6 +33,7 @@ type Row = {
   facility: { name: string };
   seller: { email: string; profile: { name: string; phone: string | null; companyName: string | null } | null };
   products?: { id: string; nameSnapshot: string; quantity: number; priceSnapshot: number; status: string; facilityNote: string | null }[];
+  brandItems?: BrandItemRow[];
 };
 
 // 서버 → 클라이언트 전달용 직렬화
@@ -33,5 +56,6 @@ export function toManageBooking(b: Row, history?: Map<string, number>, extra?: {
     noShowCount: extra?.reliability?.get(b.sellerId)?.noShow ?? 0,
     cancelCount: extra?.reliability?.get(b.sellerId)?.cancelled ?? 0,
     products: (b.products ?? []).map((p) => ({ id: p.id, name: p.nameSnapshot, quantity: p.quantity, price: p.priceSnapshot, status: p.status, note: p.facilityNote })),
+    brandItems: (b.brandItems ?? []).map(toBrandItemView),
   };
 }

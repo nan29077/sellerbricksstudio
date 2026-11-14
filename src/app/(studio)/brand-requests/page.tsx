@@ -1,24 +1,17 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { BRAND_BUYER_ROLES } from "@/lib/brands";
 import { ROLE_HOME } from "@/lib/rbac";
+import { buyerHome } from "@/components/shop/buyer-brand-pages";
 import type { SP } from "@/lib/list";
-import { BrandRequestList } from "@/components/shop/brand-request-list";
-import { runBrandRequestMaintenance } from "@/lib/brand-request-automation";
 
-export default async function BuyerBrandRequests({ searchParams }: { searchParams: SP }) {
+export const dynamic = "force-dynamic";
+
+// 예전 주소 — 2026-11-14부터 각 대시보드 안(셀러 /seller/brand-requests · 최고관리자 /facility/brand-requests)에서 연다
+export default async function LegacyBrandRequests({ searchParams }: { searchParams: SP }) {
   const user = await getSessionUser();
   if (!user) redirect("/login?callbackUrl=/brand-requests");
   if (!BRAND_BUYER_ROLES.includes(user.role)) redirect(ROLE_HOME[user.role]);
-  if (!user.id.startsWith("demo-")) await runBrandRequestMaintenance(); // 응대 기한 처리(1분에 한 번만 실제로 돈다)
-  return (
-    <div className="space-y-5 px-4 py-7 sm:px-6">
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h1 className="text-2xl font-black text-navy">내 브랜드 신청</h1>
-        <Link href="/brands" className="hit text-sm font-bold text-brand-800 hover:underline">브랜드샵 둘러보기</Link>
-      </div>
-      <BrandRequestList base="/brand-requests" scope={{ buyerId: user.id }} manager={false} params={searchParams} />
-    </div>
-  );
+  const qs = new URLSearchParams(Object.entries(searchParams).flatMap(([k, v]) => (Array.isArray(v) ? v : v ? [v] : []).map((x) => [k, x] as [string, string]))).toString();
+  redirect(`${buyerHome(user.role)}/brand-requests${qs ? `?${qs}` : ""}`);
 }

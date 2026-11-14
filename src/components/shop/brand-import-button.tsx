@@ -12,7 +12,7 @@ import { formatKRW } from "@/lib/utils";
 type Mode = "DROPSHIP" | "WAREHOUSE";
 
 export function BrandImportButton({ product, target, facilities = [] }: {
-  product: { id: string; name: string; supplyPrice: number; consumerPrice: number; stock: number; allowDropship: boolean; allowWarehouse: boolean };
+  product: { id: string; name: string; supplyPrice: number; consumerPrice: number; stock: number; allowDropship: boolean; allowWarehouse: boolean; salePrice?: number; priceRule?: string; minSalePrice?: number | null };
   target: "SELLER" | "FACILITY";
   facilities?: { id: string; name: string }[];
 }) {
@@ -21,7 +21,10 @@ export function BrandImportButton({ product, target, facilities = [] }: {
   const modes: Mode[] = target === "SELLER" ? (product.allowDropship ? ["DROPSHIP"] : []) : [
     ...(product.allowDropship ? (["DROPSHIP"] as Mode[]) : []), ...(product.allowWarehouse ? (["WAREHOUSE"] as Mode[]) : []),
   ];
-  const suggested = product.consumerPrice > product.supplyPrice ? product.consumerPrice : Math.round((product.supplyPrice * 1.3) / 100) * 100;
+  // 브랜드가 정한 판매가가 있으면 그 값 (판매가 고정이면 바꿀 수 없음)
+  const fixedPrice = product.priceRule === "FIXED" && (product.salePrice ?? 0) > 0;
+  const floor = Math.max(product.supplyPrice, product.minSalePrice ?? 0);
+  const suggested = (product.salePrice ?? 0) > 0 ? product.salePrice! : product.consumerPrice > product.supplyPrice ? product.consumerPrice : Math.max(floor, Math.round((product.supplyPrice * 1.3) / 100) * 100);
   const [mode, setMode] = useState<Mode>(modes[0] ?? "DROPSHIP");
   const [salePrice, setSalePrice] = useState(String(suggested));
   const [facilityId, setFacilityId] = useState(facilities[0]?.id ?? "");
@@ -107,8 +110,8 @@ export function BrandImportButton({ product, target, facilities = [] }: {
                 </label>
               ))}
             </fieldset>
-            <Label className="block">판매가 (원)
-              <Input type="number" min={product.supplyPrice} max={100_000_000} required value={salePrice} onChange={(e) => setSalePrice(e.target.value)} />
+            <Label className="block">판매가 (원){fixedPrice && <span className="ml-1 rounded-full bg-navy px-2 py-0.5 text-[10px] font-bold text-white">브랜드 고정 판매가</span>}
+              <Input type="number" min={target === "SELLER" ? floor : product.supplyPrice} max={100_000_000} required value={salePrice} readOnly={fixedPrice && target === "SELLER"} onChange={(e) => setSalePrice(e.target.value)} />
             </Label>
             <p className="rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
               공급가 {formatKRW(product.supplyPrice)} · 판매 1개당 차액 <b className={margin < 0 ? "text-red-600" : "text-navy"}>{formatKRW(margin)}</b>

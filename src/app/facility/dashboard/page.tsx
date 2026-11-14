@@ -145,7 +145,7 @@ export default async function FacilityDashboard() {
       return (
         <div className="space-y-6">
           <DashHero eyebrow={`SPACE OPERATIONS · ${todayLabel()}`} title={hello}
-            description="최고관리자가 담당 창고(스튜디오)를 지정하면 예약 · 일정 · 상품 · 주문 현황이 이곳에 모입니다." />
+            description="최고관리자가 담당 공간을 지정하면 예약 · 일정 · 상품 · 주문 현황이 이곳에 모여요." />
           <Empty icon={Warehouse} text="아직 담당 창고(스튜디오)가 지정되지 않았습니다" />
         </div>
       );
@@ -153,9 +153,9 @@ export default async function FacilityDashboard() {
     return (
       <div className="space-y-6">
         <DashHero eyebrow={`SPACE OPERATIONS · ${todayLabel()}`} title={hello}
-          description="스토리지마켓이 직접 운영하는 창고 · 스튜디오 · 쇼룸과 제휴 창고를 등록하면 예약 · 일정 · 상품 · 판매 현황이 이곳에 모입니다."
+          description="직영 · 직접 관리하는 창고 · 스튜디오 · 쇼룸을 등록하면 예약 · 일정 · 상품 · 판매 현황이 이곳에 모여요."
           actions={<HeroButton href="/facility/register" primary><Building2 className="h-4 w-4" />창고(스튜디오) 등록하기</HeroButton>} />
-        <Empty icon={Warehouse} text="아직 등록된 창고(스튜디오)가 없습니다" action={{ href: "/facility/register", label: "등록 시작" }} />
+        <Empty icon={Warehouse} text="아직 등록된 공간이 없어요" action={{ href: "/facility/register", label: "등록 시작" }} />
       </div>
     );
   }
@@ -168,7 +168,7 @@ export default async function FacilityDashboard() {
       <DashHero
         eyebrow={`SPACE OPERATIONS · ${todayLabel()}`}
         title={hello}
-        description="오늘 일정과 승인 대기, 가동률·판매 성과를 확인하고 바로 처리하세요."
+        description="오늘 일정과 승인 대기, 방송 시연품 도착, 가동률 · 판매 성과를 확인하고 바로 처리하세요."
         chips={[
           ...(d.inUse ? [{ label: `지금 이용 중 ${d.inUse}건`, tone: "live" as const }] : []),
           ...(d.sheetsToShip ? [{ label: `출고할 주문서 ${d.sheetsToShip}건`, tone: "warn" as const }] : []),
@@ -244,7 +244,7 @@ export default async function FacilityDashboard() {
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2 2xl:grid-cols-3">
-        <Panel eyebrow="MY SPACES" title="창고(스튜디오)별 현황" action={{ href: "/facility/profile", label: "정보 관리" }} className="2xl:col-span-1">
+        <Panel eyebrow="MY SPACES" title="공간별 현황" action={{ href: "/facility/profile", label: "정보 관리" }} className="2xl:col-span-1">
           <div className="space-y-4">
             {d.perFac.map((f) => (
               <div key={f.id} className="rounded-2xl border border-[#EEEAE2] p-3.5">

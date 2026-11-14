@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { prisma } from "@/lib/prisma";
 import { BRAND_REQUEST_KIND, BRAND_REQUEST_STATUS, brandProductHref } from "@/lib/brands";
 import { pageOf, sp, type SP } from "@/lib/list";
-import { formatKRW } from "@/lib/utils";
+import { formatDateTime, formatKRW } from "@/lib/utils";
 import { BrandRequestControls } from "./brand-request-controls";
 
 export async function BrandRequestList({ scope, manager, params, base }: {
@@ -19,13 +19,14 @@ export async function BrandRequestList({ scope, manager, params, base }: {
   const requestId = sp(params, "request");
   const where: Prisma.BrandRequestWhereInput = { ...scope, ...(status && { status }), ...(requestId && { id: requestId }) };
   const kindFilter = sp(params, "kind");
-  if (kindFilter === "SAMPLE" || kindFilter === "SUPPLY") where.kind = kindFilter;
+  if (kindFilter === "SAMPLE" || kindFilter === "SUPPLY" || kindFilter === "DISPLAY") where.kind = kindFilter;
   const [requests, total] = await Promise.all([
     prisma.brandRequest.findMany({
       where, skip, take, orderBy: { createdAt: "desc" },
       include: {
         product: { select: { isActive: true, shop: { select: { id: true, name: true } } } },
         buyer: { select: { id: true, role: true, email: true, profile: { select: { name: true, companyName: true, categories: true } } } },
+        bookingItem: { select: { dueAt: true, booking: { select: { startAt: true, facility: { select: { name: true } } } } } },
       },
     }),
     prisma.brandRequest.count({ where }),
@@ -67,7 +68,7 @@ export async function BrandRequestList({ scope, manager, params, base }: {
           {Object.entries(BRAND_REQUEST_STATUS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </Select>
         <Select aria-label="신청 종류" name="kind" defaultValue={kindFilter ?? ""} className="w-auto">
-          <option value="">전체 종류</option><option value="SAMPLE">샘플 주문</option><option value="SUPPLY">스토리지마켓 입고 요청</option>
+          <option value="">전체 종류</option><option value="SAMPLE">샘플 주문</option><option value="SUPPLY">스토리지마켓 입고 요청</option><option value="DISPLAY">방송 시연품</option>
         </Select>
         {manager && <Input aria-label="신청 번호" name="request" placeholder="신청 번호" maxLength={64} defaultValue={requestId} className="max-w-52" />}
         <Button variant="outline">조회</Button>
@@ -83,11 +84,19 @@ export async function BrandRequestList({ scope, manager, params, base }: {
             </div>
             <Badge tone={request.status === "AWAITING_PAYMENT" ? "yellow" : request.status === "COMPLETED" ? "green" : "gray"}>{BRAND_REQUEST_STATUS[request.status]}</Badge>
           </div>
-          <p className="mt-2 text-sm font-bold">{request.quantity.toLocaleString("ko-KR")}개 · {request.kind === "SAMPLE" && request.unitPrice === 0 ? "무료" : formatKRW(request.quantity * request.unitPrice)}
+          <p className="mt-2 text-sm font-bold">{request.quantity.toLocaleString("ko-KR")}개 · {(request.kind === "SAMPLE" || request.kind === "DISPLAY") && request.unitPrice === 0 ? "무료" : formatKRW(request.quantity * request.unitPrice)}
             {request.paymentStatus === "PAID" && <Badge tone="green" className="ml-2">결제 완료</Badge>}
             {request.paymentStatus === "REFUNDED" && <Badge tone="gray" className="ml-2">환불 완료</Badge>}
             {request.kind === "SUPPLY" && <span className="ml-2 text-xs font-medium text-slate-600">위탁 입고 · 판매분만 정산</span>}
+            {request.kind === "DISPLAY" && <span className="ml-2 text-xs font-medium text-slate-600">셀러 예약 공간으로 보내는 방송 시연품 · 받는 곳에서 도착 확인</span>}
           </p>
+          {request.kind === "DISPLAY" && request.bookingItem && (
+            <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 rounded-xl bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-800">
+              <span>방송 장소 · {request.bookingItem.booking.facility.name}</span>
+              <span>방송 · {formatDateTime(request.bookingItem.booking.startAt)}</span>
+              {request.bookingItem.dueAt && <span>도착 기한 · {formatDateTime(request.bookingItem.dueAt)}</span>}
+            </p>
+          )}
           {manager && (() => {
             const key = `${request.buyerId}:${request.productId}`;
             const soldQty = sold.get(key) ?? 0;
@@ -127,7 +136,7 @@ export async function BrandRequestList({ scope, manager, params, base }: {
                   {onList
                     ? <><Link href={manage} className="hit font-bold text-brand-800 hover:underline">판매 상품 관리 →</Link><Link href={orders} className="hit font-bold text-brand-800 hover:underline">주문 · 발주 현황 →</Link></>
                     : request.product.isActive
-                      ? <Link href={brandProductHref(request.product.shop.id, request.productId)} className="font-bold text-brand-800 hover:underline">판매 상품으로 가져오기 →</Link>
+                      ? <Link href={brandProductHref(request.product.shop.id, request.productId, base.endsWith("/brand-requests") && base !== "/brand-requests" ? base.replace(/brand-requests$/, "brands") : "/brands")} className="font-bold text-brand-800 hover:underline">판매 상품으로 가져오기 →</Link>
                       : <span className="text-slate-500">브랜드가 판매를 중단한 상품입니다.</span>}
                 </div>
               </div>

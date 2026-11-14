@@ -24,7 +24,7 @@ export default async function BrandMessagesPage({ searchParams }: { searchParams
     const existing = partner ? await prisma.brandThread.findUnique({ where: { shopId_partnerId: { shopId: ctx.shop.id, partnerId: partner.id } }, select: { id: true } }) : null;
     return (
       <div className="space-y-5">
-        <PageHeader title="판매처 문의함" description="셀러 · 창고(스튜디오)와 샘플, 입고, 방송 일정을 1:1로 주고받습니다." />
+        <PageHeader title="판매처 문의함" description="셀러 · 공간과 샘플, 입고, 방송 일정을 1:1로 주고받습니다." />
         {partner && !existing && (
           <div className="rounded-2xl border bg-white">
             <p className="border-b px-4 py-3 text-sm font-bold text-navy">새 메시지 · {partner.profile?.companyName || partner.profile?.name || partner.email.split("@")[0]}</p>

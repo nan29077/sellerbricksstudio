@@ -18,14 +18,14 @@ type CatalogProduct = {
   sampleStock: number;
 };
 
-export function BrandCatalogProductCard({ product, rank }: { product: CatalogProduct; rank?: number }) {
+export function BrandCatalogProductCard({ product, rank, base = "/brands" }: { product: CatalogProduct; rank?: number; base?: string }) {
   const artwork = generatedBrandProductArtwork(product.shop.name, product);
   const sample = product.samplePrice !== null && product.sampleStock > 0
     ? (product.samplePrice === 0 ? "무료 샘플" : "유료 샘플") : null;
   const soldOut = product.stock !== undefined && product.stock <= 0;
 
   return (
-    <Link href={brandProductHref(product.shop.id, product.id)} aria-label={`${product.name} 상품 보기`} className={cardLinkClassName}>
+    <Link href={brandProductHref(product.shop.id, product.id, base)} aria-label={`${product.name} 상품 보기`} className={cardLinkClassName}>
       <div className="relative aspect-square overflow-hidden bg-[#F4F0E9]">
         <ShopImage src={product.imageUrl} fallback={artwork?.cover ?? brandArtworkFor(product.category)} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03] motion-reduce:transition-none" />
         {rank !== undefined && <span aria-label={`판매량 ${rank}위`} className="absolute left-2 top-2 grid h-7 min-w-7 place-items-center rounded-lg bg-navy px-1.5 text-xs font-black tabular-nums text-white">{rank}</span>}

@@ -111,11 +111,15 @@ async function main() {
   ok(Array.isArray(r.facilities) && r.facilities.length === await db.facility.count(), "최고관리자: 모든 창고 운영", { n: r.facilities?.length });
 
   console.log("\n[4] 예약 알림 받는 사람 = 최고관리자 + 담당 매니저 · 매니저 승인");
-  const offset = 8 + (Date.now() % 40); // 다시 돌려도 겹치지 않게
-  const day = weekday(offset);
+  let offset = 8 + (Date.now() % 40); // 다시 돌려도 겹치지 않게 (겹치면 다음 날로)
+  let day = weekday(offset);
   const mgrUser = await db.user.findUnique({ where: { email: "manager@sellerbricks.kr" } });
   const before = new Date();
-  r = await seller.req("POST", "/api/bookings", { facilityId: F.id, startAt: `${day}T10:00`, endAt: `${day}T12:00`, purpose: "운영 시뮬" });
+  for (let tries = 0; tries < 40; tries++) {
+    r = await seller.req("POST", "/api/bookings", { facilityId: F.id, startAt: `${day}T10:00`, endAt: `${day}T12:00`, purpose: "운영 시뮬" });
+    if (r.status !== 409 || !/이미 예약/.test(r.error ?? "")) break;
+    offset = 5 + ((offset + 1) % 50); day = weekday(offset);
+  }
   ok(r.status === 201, "셀러 예약 신청 (담당 창고)", r);
   const bookingId = r.data?.bookings?.[0]?.id;
   await new Promise((res) => setTimeout(res, 300));

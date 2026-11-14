@@ -1,9 +1,9 @@
 import { safeHttpUrl, youtubeId } from "./stream-embed";
 
 // 메인 영상 플레이어 — 주소 판별 (브라우저 · 서버 공용, DB 를 쓰지 않는다)
+// 2026-11-14: '캠페인 · 행사' 탭을 없애고 '라이브 커머스' 한 탭으로 합쳤다.
 export const HOME_VIDEO_CATEGORIES = {
-  LIVE_COMMERCE: { label: "라이브 커머스", desc: "지난 라이브 커머스 · 숏폼 영상" },
-  CAMPAIGN: { label: "캠페인 · 행사", desc: "홍보 · 캠페인 · 행사 영상" },
+  LIVE_COMMERCE: { label: "라이브 커머스", desc: "지난 라이브 커머스 · 숏폼 · 홍보 · 캠페인 · 행사 영상" },
 } as const;
 export type HomeVideoCategory = keyof typeof HOME_VIDEO_CATEGORIES;
 export const isHomeVideoCategory = (v: unknown): v is HomeVideoCategory => typeof v === "string" && v in HOME_VIDEO_CATEGORIES;

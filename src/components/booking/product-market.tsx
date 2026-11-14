@@ -95,7 +95,7 @@ export function ProductMarket({ items }: { items: MarketItem[] }) {
           <div className="rounded-2xl border border-navy/20 bg-white shadow-2xl">
             <button type="button" onClick={() => setOpen(!open)} className="flex w-full items-center gap-2 px-4 py-3 text-left">
               <ShoppingBag className="h-5 w-5 text-brand-600" />
-              <span className="flex-1 text-sm font-bold text-navy">담은 상품 {count}종 · 창고(스튜디오) {groups.length}곳</span>
+              <span className="flex-1 text-sm font-bold text-navy">담은 상품 {count}종 · 공간 {groups.length}곳</span>
               {open ? <ChevronDown className="h-4 w-4 text-slate-500" /> : <ChevronUp className="h-4 w-4 text-slate-500" />}
             </button>
             {groups.length === 1 && !open && (
@@ -148,7 +148,7 @@ export function ProductMarket({ items }: { items: MarketItem[] }) {
                 {detail.facility.region} · <Star className="h-3 w-3 fill-brand-500 text-brand-500" />{detail.facility.rating.toFixed(1)}
                 {detail.facility.autoApprove && <span className="flex items-center gap-0.5 font-semibold text-emerald-700"><Zap className="h-3 w-3" />즉시 확정</span>}
               </p>
-              <Link href={`/facilities/${detail.facility.id}`} className="mt-1 inline-block font-semibold text-brand-700">창고(스튜디오) 보기 →</Link>
+              <Link href={`/facilities/${detail.facility.id}`} className="mt-1 inline-block font-semibold text-brand-700">공간 보기 →</Link>
             </div>
           </div>
         )}

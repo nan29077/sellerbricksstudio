@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { BRAND_ITEMS_INCLUDE, toBrandItemView } from "@/lib/booking-view";
+import { BrandItemList } from "@/components/booking/brand-item-list";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
@@ -57,7 +59,7 @@ export default async function SellerBookings({ searchParams }: { searchParams: S
       where, orderBy: { startAt: "desc" }, skip, take,
       include: {
         facility: { select: { id: true, name: true, type: true, region: true, address: true, contactPhone: true, cancelDeadlineHours: true } },
-        review: true, products: { orderBy: { createdAt: "asc" } }, liveSession: { select: { id: true, status: true } },
+        review: true, products: { orderBy: { createdAt: "asc" } }, brandItems: BRAND_ITEMS_INCLUDE,
       },
     }) : Promise.resolve([]),
     prisma.booking.count({ where }),
@@ -84,7 +86,7 @@ export default async function SellerBookings({ searchParams }: { searchParams: S
     <div className="space-y-5 pb-24 md:pb-0">
       <PageHeader
         title="예약 관리"
-        description="신청한 예약의 진행 상황, 판매 예정 상품, 일정 변경과 리뷰를 한 곳에서 관리하세요. 창고(스튜디오) 이용료는 무료입니다."
+        description="신청한 예약의 진행 상황, 판매 예정 상품, 일정 변경과 리뷰를 한 곳에서 관리하세요. 공간 이용료는 무료입니다."
         action={<div className="flex gap-2">
           <Link href="/seller/products"><Button variant="outline"><Package className="h-4 w-4" />상품 둘러보기</Button></Link>
           <Link href="/seller/bookings/new"><Button><CalendarPlus className="h-4 w-4" />예약 신청</Button></Link>
@@ -93,7 +95,7 @@ export default async function SellerBookings({ searchParams }: { searchParams: S
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="다가오는 예약" value={upcoming ? formatDateTime(upcoming.startAt) : "없음"} sub={upcoming?.facility.name} icon={Clock} tone="blue" />
-        <Kpi label="승인 대기" value={`${counts.PENDING ?? 0}건`} sub="창고(스튜디오) 확인 중" icon={CalendarDays} tone="brand" />
+        <Kpi label="승인 대기" value={`${counts.PENDING ?? 0}건`} sub="공간 확인 중" icon={CalendarDays} tone="brand" />
         <Kpi label="이번 달 확정" value={`${monthCount}건`} sub="승인 · 이용 완료" icon={CheckCircle2} tone="green" />
         <Kpi label="누적 이용 시간" value={`${totalHours}시간`} sub={`이용 완료 ${counts.COMPLETED ?? 0}건`} icon={Radio} tone="navy" />
       </div>
@@ -126,7 +128,7 @@ export default async function SellerBookings({ searchParams }: { searchParams: S
       <StatusTabs base={BASE} params={searchParams} tabs={tabs} />
       <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
         <FilterBar className="flex-1" fields={[
-          { type: "search", key: "q", placeholder: "창고(스튜디오)명 · 지역 · 방송 목적 · 예약번호" },
+          { type: "search", key: "q", placeholder: "공간명 · 지역 · 방송 목적 · 예약번호" },
           { type: "date", key: "from", label: "이용일 시작" },
           { type: "date", key: "to", label: "이용일 끝" },
         ]} />
@@ -134,7 +136,7 @@ export default async function SellerBookings({ searchParams }: { searchParams: S
           <Link href={withParams(BASE, searchParams, { view: undefined })}><Button size="sm" variant={view === "list" ? "secondary" : "outline"}><List className="h-4 w-4" />목록</Button></Link>
           <Link href={withParams(BASE, searchParams, { view: "calendar", page: undefined })}><Button size="sm" variant={view === "calendar" ? "secondary" : "outline"}><CalendarDays className="h-4 w-4" />달력</Button></Link>
           {view === "list" && (
-            <CsvButton filename="내_예약목록" headers={["예약번호", "상태", "창고(스튜디오)", "시작", "종료", "이용시간", "인원", "목적", "판매 예정 상품"]}
+            <CsvButton filename="내_예약목록" headers={["예약번호", "상태", "공간", "시작", "종료", "이용시간", "인원", "목적", "판매 예정 상품"]}
               rows={rows.map((b) => [b.code, BOOKING_STATUS[b.status]?.label, b.facility.name, formatDateTime(b.startAt), formatDateTime(b.endAt), hoursBetween(b.startAt, b.endAt), b.headcount, b.purpose, b.products.map((p) => `${p.nameSnapshot}×${p.quantity}`).join(" / ")])} label="CSV" />
           )}
         </div>
@@ -181,6 +183,7 @@ export default async function SellerBookings({ searchParams }: { searchParams: S
                           ))}
                         </div>
                       ) : b.expectedProducts ? <p className="max-w-md truncate text-xs text-slate-600">상품: {b.expectedProducts}</p> : null}
+                      {b.brandItems.length > 0 && <BrandItemList items={b.brandItems.map(toBrandItemView)} canConfirm={false} />}
                       {b.requestNote && <p className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-slate-600">요청사항: {b.requestNote}</p>}
                       {b.rejectReason && b.status === "REJECTED" && <p className="text-xs font-semibold text-red-600">거절 사유: {b.rejectReason}</p>}
                       {b.cancelReason && b.status === "CANCELLED" && <p className="text-xs text-slate-500">취소 사유: {b.cancelReason}</p>}
@@ -197,7 +200,7 @@ export default async function SellerBookings({ searchParams }: { searchParams: S
                         booking={{
                           id: b.id, status: b.status, startAt: b.startAt.toISOString(), endAt: b.endAt.toISOString(), facilityId: b.facility.id,
                           facilityName: b.facility.name, address: b.facility.address, purpose: b.purpose, code: b.code,
-                          cancelDeadlineHours: b.facility.cancelDeadlineHours, hasLive: !!b.liveSession,
+                          cancelDeadlineHours: b.facility.cancelDeadlineHours,
                         }}
                         review={b.review ? { id: b.review.id, rating: b.review.rating, content: b.review.content, reply: b.review.reply } : null}
                       />

@@ -8,7 +8,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { BRAND_CATEGORIES, BRAND_SHOP_STATUS } from "@/lib/brands";
 import { categoryFilterValues } from "@/lib/categories";
-import { getPolicy } from "@/lib/policy";
+import { brandFeeRateOf, getPolicy } from "@/lib/policy";
 import { pageOf, sp, withParams, type SP } from "@/lib/list";
 import { prisma } from "@/lib/prisma";
 import { cn, formatKRW } from "@/lib/utils";
@@ -110,6 +110,7 @@ export async function BrandProductsPanel({ shop, params, admin = false, header =
   const sort = SORTS.find((s) => s.value === sp(params, "sort"))?.value ?? "";
   const openNew = sp(params, "new") === "1";
   const { page, size, skip, take } = pageOf(params);
+  const feeRate = brandFeeRateOf(await getPolicy(), shop.feeRate);
 
   const filterWhere: Record<string, Prisma.BrandProductWhereInput> = {
     "": {}, active: { isActive: true }, hidden: { isActive: false },
@@ -171,7 +172,7 @@ export async function BrandProductsPanel({ shop, params, admin = false, header =
 
       <details className="rounded-2xl border bg-white" open={openNew || (!counts[0] && !q && !category)}>
         <summary className="cursor-pointer px-4 py-3 font-bold text-navy">＋ 새 상품 등록</summary>
-        <BrandProductEditor shopId={shop.id} />
+        <BrandProductEditor shopId={shop.id} feeRate={feeRate} />
       </details>
       {!admin && (
         <details className="rounded-2xl border bg-white">
@@ -235,7 +236,9 @@ export async function BrandProductsPanel({ shop, params, admin = false, header =
                   allowDropship: product.allowDropship, allowWarehouse: product.allowWarehouse, shippingFee: product.shippingFee,
                   leadDays: product.leadDays, sampleLimitPerBuyer: product.sampleLimitPerBuyer, minSalePrice: product.minSalePrice,
                   minOrderQty: product.minOrderQty, volume: product.volume, expiryInfo: product.expiryInfo, ingredients: product.ingredients, certification: product.certification,
-                }} />
+                  salePrice: product.salePrice, priceRule: product.priceRule, optionVariants: product.optionVariants, taxType: product.taxType, origin: product.origin,
+                  manufacturer: product.manufacturer, returnShippingFee: product.returnShippingFee, exchangeShippingFee: product.exchangeShippingFee,
+                }} feeRate={feeRate} />
               </div>
             </details>
           );

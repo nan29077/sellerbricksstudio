@@ -13,7 +13,7 @@ import {
   ChevronRight, Home, Globe, TrendingUp, Megaphone,
   Share2, BarChart3, LayoutTemplate, Star, Wallet, Coins, Package, ShoppingBag, ClipboardList,
   FileText, Percent, Banknote, PackagePlus, Undo2, UserCog,
-  Heart,
+  Heart, CalendarPlus,
 } from "lucide-react";
 import { NotificationBell } from "./notification-bell";
 import { cn } from "@/lib/utils";
@@ -57,35 +57,37 @@ const ROLE_NAV: Record<string, NavSection[]> = {
       { href: "/admin/settings", label: "설정", icon: Settings },
     ]},
   ],
+  // 셀러 메뉴 (2026-11-14 재정리): ① 상품 고르기 → ② 공간 · 날짜 예약 → ③ 방송 후 주문서 → ④ 정산 순서
   SELLER: [
-    { title: "운영", items: [
+    { title: "홈", items: [
       { href: "/seller/dashboard", label: "대시보드", icon: LayoutDashboard },
-      { href: "/seller/bookings",  label: "예약 관리", icon: CalendarDays },
     ]},
-    { title: "주문서", items: [
+    { title: "① 방송 상품 고르기", items: [
+      { href: "/seller/brands", label: "브랜드샵 둘러보기", icon: ShoppingBag },
+      { href: "/seller/brand-products", label: "내 방송 상품", icon: PackagePlus },
+      { href: "/seller/brand-favorites", label: "찜한 브랜드 상품", icon: Heart },
+      { href: "/seller/brand-requests", label: "샘플 · 시연품 신청 내역", icon: ClipboardList },
+    ]},
+    { title: "② 공간 예약 · 방송", items: [
+      { href: "/seller/bookings/new", label: "방송 예약하기", icon: CalendarPlus },
+      { href: "/seller/bookings", label: "예약 · 방송 일정", icon: CalendarDays },
+      { href: "/facilities", label: "창고 · 스튜디오 · 쇼룸 둘러보기", icon: Warehouse },
+      { href: "/seller/products", label: "공간에 준비된 상품", icon: Package },
+      { href: "/seller/farm-reservations", label: "찜 · 문의한 공간", icon: Building2 },
+    ]},
+    { title: "③ 판매 · 주문서", items: [
       { href: "/seller/orders/new", label: "주문서 작성", icon: SquarePlus },
-      { href: "/seller/orders",     label: "주문서 · 배송 현황", icon: FileText },
+      { href: "/seller/orders", label: "주문서 · 배송 현황", icon: FileText },
+      { href: "/seller/brand-messages", label: "브랜드 문의", icon: MessageSquare },
     ]},
-    { title: "브랜드", items: [
-      { href: "/brands", label: "브랜드샵 둘러보기", icon: ShoppingBag },
-      { href: "/seller/brand-products", label: "내 브랜드 판매 상품", icon: PackagePlus },
-      { href: "/brand-favorites", label: "찜한 브랜드 상품", icon: Heart },
-      { href: "/brand-requests", label: "샘플 신청 내역", icon: ClipboardList },
-      { href: "/brand-messages", label: "브랜드 문의", icon: MessageSquare },
-    ]},
-    { title: "창고·스튜디오", items: [
-      { href: "/seller/products",           label: "스토리지마켓 창고 상품", icon: Package },
-      { href: "/facilities",                label: "창고(스튜디오) 검색", icon: Warehouse },
-      { href: "/seller/farm-reservations",  label: "창고(스튜디오) 예약 현황",      icon: Building2 },
+    { title: "④ 정산", items: [
+      { href: "/seller/settlements", label: "결제 · 정산 내역", icon: TrendingUp },
     ]},
     { title: "마케팅 지원", items: [
       { href: "/seller/marketing",           label: "SNS 마케팅",     icon: Share2 },
-      { href: "/seller/marketing/events",    label: "이벤트/프로모션", icon: Megaphone },
+      { href: "/seller/marketing/events",    label: "이벤트 · 프로모션", icon: Megaphone },
       { href: "/seller/marketing/assets",    label: "광고 소재",      icon: ImageIcon },
       { href: "/seller/marketing/analytics", label: "마케팅 분석",    icon: BarChart3 },
-    ]},
-    { title: "정산", items: [
-      { href: "/seller/settlements", label: "결제 · 정산 내역", icon: TrendingUp },
     ]},
     { title: "계정", items: [
       { href: "/seller/settings", label: "설정", icon: Settings },
@@ -101,11 +103,11 @@ const ROLE_NAV: Record<string, NavSection[]> = {
       { href: "/facility/products",  label: "상품 · 재고", icon: Package },
     ]},
     { title: "브랜드", items: [
-      { href: "/brands", label: "브랜드샵 둘러보기", icon: ShoppingBag },
+      { href: "/facility/brands", label: "브랜드샵 둘러보기", icon: ShoppingBag },
       { href: "/facility/brand-products", label: "브랜드 판매 상품 · 입고", icon: PackagePlus },
-      { href: "/brand-favorites", label: "찜한 브랜드 상품", icon: Heart },
-      { href: "/brand-requests", label: "샘플 · 입고 신청 내역", icon: ClipboardList },
-      { href: "/brand-messages", label: "브랜드 문의", icon: MessageSquare },
+      { href: "/facility/brand-favorites", label: "찜한 브랜드 상품", icon: Heart },
+      { href: "/facility/brand-requests", label: "샘플 · 입고 신청 내역", icon: ClipboardList },
+      { href: "/facility/brand-messages", label: "브랜드 문의", icon: MessageSquare },
     ]},
     { title: "예약 관리", items: [
       { href: "/facility/bookings",   label: "예약 현황", icon: CalendarDays },
@@ -143,27 +145,29 @@ const ROLE_NAV: Record<string, NavSection[]> = {
       { href: "/manager/dashboard", label: "매니저 메뉴로", icon: Home },
     ]},
   ],
+  // 브랜드 메뉴 (2026-11-14 재정리): 샵 · 상품 → 셀러 요청(샘플 · 방송 시연품) → 발주 출고 → 정산
   BRAND_ADMIN: [
-    { title: "운영 현황", items: [
+    { title: "홈", items: [
       { href: "/brand/dashboard", label: "대시보드", icon: LayoutDashboard },
     ]},
-    { title: "내 브랜드샵", items: [
-      { href: "/brand/shop", label: "샵 꾸미기 · 정보", icon: LayoutTemplate },
+    { title: "① 내 브랜드샵", items: [
+      { href: "/brand/shop", label: "샵 꾸미기 · 라이브 영상", icon: LayoutTemplate },
       { href: "/brand/products", label: "상품 · 재고 관리", icon: Package },
+      { href: "/brand/preview", label: "내 샵 미리보기", icon: Globe },
     ]},
-    { title: "주문 · 판매", items: [
-      { href: "/brand/orders", label: "발주서", icon: FileText },
-      { href: "/brand/claims", label: "취소 · 반품 · 교환", icon: Undo2 },
-      { href: "/brand/requests", label: "샘플 · 입고 신청", icon: ClipboardList },
-      { href: "/brand/channels", label: "판매처 관리", icon: Users },
+    { title: "② 셀러 요청", items: [
+      { href: "/brand/requests?kind=DISPLAY", label: "방송 시연품 요청", icon: CalendarDays },
+      { href: "/brand/requests", label: "샘플 · 입고 요청 전체", icon: ClipboardList },
       { href: "/brand/messages", label: "판매처 문의함", icon: MessageSquare },
     ]},
-    { title: "정산 · 분석", items: [
+    { title: "③ 발주 · 출고", items: [
+      { href: "/brand/orders", label: "발주서 · 출고", icon: FileText },
+      { href: "/brand/claims", label: "취소 · 반품 · 교환", icon: Undo2 },
+      { href: "/brand/channels", label: "판매처(셀러) 관리", icon: Users },
+    ]},
+    { title: "④ 정산 · 분석", items: [
       { href: "/brand/settlements", label: "정산 내역", icon: Banknote },
       { href: "/brand/reports", label: "매출 리포트", icon: BarChart3 },
-    ]},
-    { title: "둘러보기", items: [
-      { href: "/brands", label: "브랜드샵 둘러보기", icon: ShoppingBag },
     ]},
     { title: "계정", items: [{ href: "/brand/team", label: "팀원 관리", icon: UserCog }, { href: "/brand/settings", label: "설정", icon: Settings }] },
   ],
@@ -212,6 +216,9 @@ export function DashboardShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  // 같은 주소에 조건만 다른 메뉴(예: 방송 시연품 요청 / 전체 요청)를 구분하려고 현재 검색 조건을 읽는다
+  const [search, setSearch] = useState("");
+  useEffect(() => { setSearch(window.location.search); }, [pathname]);
   const [open, setOpen] = useState(false);
   const menu = useRef<HTMLDialogElement>(null);
 
@@ -233,13 +240,26 @@ export function DashboardShell({
     .filter((s) => s.items.length > 0);
   const navItems = sections.flatMap((s) => s.items);
   const settingsHref = navItems.find((item) => item.href.endsWith("/settings"))?.href;
-  const isActive = (href: string) => {
-    if (pathname === href) return true;
+  const pathOf = (href: string) => href.split("?")[0];
+  const queryMatches = (href: string) => {
+    const q = href.split("?")[1];
+    if (!q) return true;
+    const cur = new URLSearchParams(search);
+    return Array.from(new URLSearchParams(q).entries()).every(([k, v]) => cur.get(k) === v);
+  };
+  const isActive = (rawHref: string) => {
+    const href = pathOf(rawHref);
+    if (pathname === href) {
+      if (rawHref.includes("?")) return queryMatches(rawHref);
+      // 조건이 붙은 같은 주소 메뉴가 지금 조건과 맞으면 그쪽만 활성화
+      return !navItems.some((item) => item.href !== rawHref && item.href.includes("?") && pathOf(item.href) === href && queryMatches(item.href));
+    }
     if (!pathname.startsWith(href + "/")) return false;
     // 더 구체적으로 일치하는 다른 메뉴가 있으면 상위 메뉴는 비활성 처리
-    return !navItems.some(
-      (o) => o.href !== href && o.href.length > href.length && (pathname === o.href || pathname.startsWith(o.href + "/")),
-    );
+    return !navItems.some((item) => {
+      const o = pathOf(item.href);
+      return o !== href && o.length > href.length && (pathname === o || pathname.startsWith(o + "/"));
+    });
   };
   const currentPage = navItems.find((item) => isActive(item.href))?.label ?? "워크스페이스";
 

@@ -67,12 +67,7 @@ export function HomeVideoManager({ initial }: { initial: HomeVideoRow[] }) {
     <div className="space-y-3 rounded-xl border border-brand-200 bg-brand-50/40 p-3">
       <p className="font-bold text-navy">{editing === "new" ? "새 영상" : "영상 수정"}</p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Label className="block">탭
-          <Select value={form.category} onChange={(e) => set("category", e.target.value as HomeVideoCategory)}>
-            {CATS.map((c) => <option key={c} value={c}>{HOME_VIDEO_CATEGORIES[c].label} ({HOME_VIDEO_CATEGORIES[c].desc})</option>)}
-          </Select>
-        </Label>
-        <Label className="block">작은 글씨 (셀러 · 브랜드 · 행사명, 선택)<Input value={form.caption} onChange={(e) => set("caption", e.target.value)} maxLength={60} placeholder="예) 뷰티 스튜디오 · 온유 브랜드" /></Label>
+        <Label className="block sm:col-span-2">작은 글씨 (셀러 · 브랜드 · 행사명, 선택)<Input value={form.caption} onChange={(e) => set("caption", e.target.value)} maxLength={60} placeholder="예) 뷰티 스튜디오 · 온유 브랜드" /></Label>
         <Label className="block sm:col-span-2">영상 제목<Input value={form.title} onChange={(e) => set("title", e.target.value)} maxLength={120} placeholder="예) 겨울 니트 특가 라이브 다시보기" /></Label>
         <Label className="block sm:col-span-2">영상 링크<Input value={form.url} onChange={(e) => set("url", e.target.value)} inputMode="url" placeholder="https://youtu.be/… · https://youtube.com/shorts/… · https://vimeo.com/… · https://…/video.mp4" />
           {form.url && <span className={`mt-1 block text-[11px] ${kind ? (kind === "link" ? "text-amber-700" : "text-emerald-700") : "text-red-600"}`}>{kind ? VIDEO_KIND_LABEL[kind] : "영상 주소 형식이 아닙니다."}</span>}
@@ -94,25 +89,25 @@ export function HomeVideoManager({ initial }: { initial: HomeVideoRow[] }) {
   return (
     <div className="space-y-5">
       <p className="text-sm text-slate-600">
-        메인 영상 플레이어의 두 탭에 들어갈 영상입니다. 링크를 넣으면 메인에서 좌우로 넘기며 볼 수 있습니다.
+        메인 &lsquo;라이브 커머스&rsquo; 플레이어에 들어갈 영상입니다. 지난 라이브 커머스 · 숏폼 · 홍보 · 캠페인 · 행사 영상 링크를 넣으면 메인에서 좌우로 넘기며 볼 수 있습니다.
         유튜브(일반 · 쇼츠) · 비메오 · mp4 같은 영상 파일은 메인에서 바로 재생되고, 인스타그램 · 틱톡 등 끼워 넣을 수 없는 주소는 &lsquo;원본에서 보기&rsquo;로 열립니다.
       </p>
       {msg && <p role={msg.ok ? "status" : "alert"} className={msg.ok ? "text-sm font-semibold text-emerald-700" : "text-sm font-semibold text-red-700"}>{msg.text}</p>}
       {CATS.map((cat) => {
-        const list = rows.filter((r) => r.category === cat);
+        const list = rows; // 탭이 하나라 모든 영상을 이 목록에 보여 준다
         const showing = list.filter((r) => r.shown).length;
         return (
           <Card key={cat}>
             <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
               <div>
-                <CardTitle className="text-base">{HOME_VIDEO_CATEGORIES[cat].label} 탭 ({showing}/{list.length})</CardTitle>
-                <p className="text-xs text-slate-500">{HOME_VIDEO_CATEGORIES[cat].desc} · 메인에 보이는 영상 {showing}개</p>
+                <CardTitle className="text-base">{HOME_VIDEO_CATEGORIES[cat].label} 영상 ({showing}/{list.length})</CardTitle>
+                <p className="text-xs text-slate-500">메인에 보이는 영상 {showing}개 · 화살표로 순서를 바꿔요</p>
               </div>
               <Button size="sm" onClick={() => openNew(cat)} disabled={busy}><Plus className="h-4 w-4" />영상 넣기</Button>
             </CardHeader>
             <CardContent className="space-y-3">
-              {editing && form.category === cat && editor}
-              {list.length === 0 ? <p className="py-6 text-center text-sm text-slate-500">아직 넣은 영상이 없습니다.{cat === "LIVE_COMMERCE" ? " 영상이 없으면 메인에는 샘플 영상이 보입니다." : ""}</p> : (
+              {editing && editor}
+              {list.length === 0 ? <p className="py-6 text-center text-sm text-slate-500">아직 넣은 영상이 없습니다. 영상이 없으면 메인에는 샘플 영상이 보입니다.</p> : (
                 <ul className="space-y-2">
                   {list.map((r, i) => (
                     <li key={r.id} className="flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-center">

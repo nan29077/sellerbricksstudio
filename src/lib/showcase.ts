@@ -12,6 +12,7 @@ export type SpaceCard = {
   price: number | null;
   demo: boolean;
   tags: string[];
+  operation?: "DIRECT" | "PARTNER"; // 직영 · 직접 관리 제휴 (등록 공간만)
 };
 
 type ShowcaseSpace = SpaceCard & { description: string };

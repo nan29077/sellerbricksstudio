@@ -1,3 +1,4 @@
+import { checkSellerPrice } from "@/lib/brand-pricing";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -56,7 +57,7 @@ export async function POST(req: Request) {
     }
 
     if (cmd.action === "seller-update" || cmd.action === "seller-remove") {
-      const listing = await prisma.sellerBrandProduct.findUnique({ where: { id: cmd.listingId }, include: { brandProduct: { select: { supplyPrice: true, minSalePrice: true, shopId: true, isActive: true, allowDropship: true, shop: { select: { status: true } } } } } });
+      const listing = await prisma.sellerBrandProduct.findUnique({ where: { id: cmd.listingId }, include: { brandProduct: { select: { supplyPrice: true, minSalePrice: true, salePrice: true, priceRule: true, shopId: true, isActive: true, allowDropship: true, shop: { select: { status: true } } } } } });
       if (!listing || (listing.sellerId !== user.id && user.role !== "SUPER_ADMIN")) return fail("판매 상품을 찾지 못했습니다.", 404);
       if (cmd.action === "seller-remove") {
         await prisma.sellerBrandProduct.delete({ where: { id: listing.id } });
@@ -65,6 +66,8 @@ export async function POST(req: Request) {
       }
       const floor = Math.max(listing.brandProduct.supplyPrice, listing.brandProduct.minSalePrice ?? 0);
       if (cmd.salePrice < floor) return fail(`판매가는 ${listing.brandProduct.minSalePrice ? "브랜드 최저 판매가" : "공급가"}(${floor.toLocaleString()}원)보다 낮을 수 없습니다.`);
+      const fixed = checkSellerPrice(listing.brandProduct, cmd.salePrice);
+      if (fixed) return fail(fixed);
       if (cmd.isActive) {
         const bp = listing.brandProduct;
         if (!bp.isActive || !bp.allowDropship || bp.shop.status !== "APPROVED") return fail("브랜드가 판매를 중단한 상품이라 다시 켤 수 없습니다.");
@@ -88,6 +91,7 @@ export async function POST(req: Request) {
     if (cmd.fulfillment === "WAREHOUSE" && !bp.allowWarehouse) return fail("이 상품은 창고 입고(위탁)를 지원하지 않습니다.");
     if (cmd.salePrice < bp.supplyPrice) return fail(`판매가는 공급가(${bp.supplyPrice.toLocaleString()}원)보다 낮을 수 없습니다.`);
     if (bp.minSalePrice != null && cmd.salePrice < bp.minSalePrice) return fail(`판매가는 브랜드 최저 판매가(${bp.minSalePrice.toLocaleString()}원)보다 낮을 수 없습니다.`);
+    if (cmd.target === "SELLER") { const fixed = checkSellerPrice(bp, cmd.salePrice); if (fixed) return fail(fixed); }
 
     if (cmd.target === "SELLER") {
       if (user.role !== "SELLER") return fail("셀러 계정만 내 판매 상품으로 가져올 수 있습니다.", 403);

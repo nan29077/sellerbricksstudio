@@ -9,7 +9,7 @@ import { Package, Warehouse } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-type SPx = { facilityId?: string; products?: string; date?: string; start?: string; end?: string; hours?: string };
+type SPx = { facilityId?: string; products?: string; brand?: string; date?: string; start?: string; end?: string; hours?: string };
 
 export default async function NewBookingPage({ searchParams }: { searchParams: SPx }) {
   const user = await requireRole(["SELLER"]);
@@ -43,6 +43,8 @@ export default async function NewBookingPage({ searchParams }: { searchParams: S
     const [id, q] = part.split(":");
     if (id && /^[\w-]{5,40}$/.test(id)) products[id] = Math.max(1, Math.min(100000, Number(q) || 1));
   }
+  // ?brand=브랜드상품id,브랜드상품id (내 브랜드 판매 상품에서 '이 상품으로 방송 예약')
+  const brand = (typeof searchParams.brand === "string" ? searchParams.brand : "").split(",").filter((id) => /^[\w-]{5,40}$/.test(id)).slice(0, 20);
   const start = validTime(searchParams.start);
   const end = validTime(searchParams.end);
   const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
@@ -51,23 +53,23 @@ export default async function NewBookingPage({ searchParams }: { searchParams: S
   return (
     <div className="pb-24 md:pb-0">
       <PageHeader
-        title="예약 신청"
-        description="장소 → 판매 상품 → 일정 순서로 고르면 실시간 예약 현황을 확인하며 바로 신청할 수 있습니다. 창고(스튜디오) 이용료는 무료입니다."
-        action={<Link href="/seller/products"><Button variant="outline"><Package className="h-4 w-4" />상품부터 둘러보기</Button></Link>}
+        title="방송 예약하기"
+        description="방송할 브랜드 상품을 고르고, 창고 · 스튜디오 · 쇼룸과 날짜를 정하면 끝. 예약이 승인되면 브랜드가 시연품을 방송 2일 전까지 그 공간으로 보내 드려요. 이용료는 무료입니다."
+        action={<Link href="/seller/brands"><Button variant="outline"><Package className="h-4 w-4" />브랜드 상품 고르기</Button></Link>}
       />
       {facilities.length === 0 ? (
         <EmptyState
           icon={<Warehouse className="h-10 w-10" />}
-          title="예약 가능한 창고(스튜디오)가 없습니다"
-          description="승인된 창고(스튜디오)가 등록되면 예약할 수 있습니다."
-          action={<Link href="/facilities"><Button variant="outline">창고(스튜디오) 둘러보기</Button></Link>}
+          title="예약 가능한 공간이 없습니다"
+          description="승인된 공간이 등록되면 예약할 수 있습니다."
+          action={<Link href="/facilities"><Button variant="outline">공간 둘러보기</Button></Link>}
         />
       ) : (
         <BookingWizard
           facilities={facilities}
           defaults={{
             facilityId: facilities.some((f) => f.id === searchParams.facilityId) ? searchParams.facilityId : undefined,
-            products, date: validDate(searchParams.date), start, hours,
+            products, brand, date: validDate(searchParams.date), start, hours,
           }}
         />
       )}
