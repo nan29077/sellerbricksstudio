@@ -243,7 +243,7 @@ export default async function BrandDashboard() {
           { title: "셀러 요청", desc: "샘플 · 방송 시연품 · 입고", href: "/brand/requests", icon: Gift, tone: "violet", badge: d.todo.samplePending + d.todo.supplyPending },
           { title: "판매처 현황", desc: "내 상품을 파는 곳", href: "/brand/channels", icon: Users, tone: "green" },
           { title: "정산 내역", desc: "지급·수수료 확인", href: "/brand/settlements", icon: Banknote, tone: "sky" },
-          { title: "내 샵 미리보기", desc: "셀러에게 보이는 화면", href: "/brand/preview", icon: ShoppingBag, tone: "slate" },
+          { title: "판매처 문의함", desc: "셀러와 1:1 대화", href: "/brand/messages", icon: ShoppingBag, tone: "slate", badge: d.todo.unreadThreads },
           { title: "설정", desc: "계정·알림", href: "/brand/settings", icon: Settings, tone: "slate" },
         ]} />
       </Panel>

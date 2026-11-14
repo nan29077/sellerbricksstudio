@@ -218,7 +218,7 @@ export async function BrandProductsPanel({ shop, params, admin = false, header =
                 price={<PriceLine label="공급" value={formatKRW(product.supplyPrice)} note={pb.sale > 0 ? `판매가 ${formatKRW(pb.sale)}` : product.consumerPrice > 0 ? `소비자가 ${formatKRW(product.consumerPrice)}` : undefined} />}
                 chips={[product.stock > 0 && product.stock <= LOW_STOCK && { label: "재고 적음", tone: "amber" }, product.sampleStock > 0 && product.isActive && { label: product.samplePrice ? "유료 샘플" : "무료 샘플", tone: "brand" }, ch > 0 && { label: `판매처 ${ch}곳`, tone: "violet" }]}
                 meta={<>재고 {product.stock.toLocaleString("ko-KR")}개 · {[product.allowDropship && "위탁배송", product.allowWarehouse && "창고 입고"].filter(Boolean).join("/") || "배송 방식 없음"}</>}
-                actions={<Link href={`${link({ view: "list", open: product.id })}#p-${product.id}`} className={buttonVariants({ size: "sm", className: "h-9 w-full rounded-xl text-xs" })}>수정 · 재고</Link>} />
+                actions={<Link href={`${withParams(base, params, { view: "list", open: product.id })}#p-${product.id}`} className={buttonVariants({ size: "sm", className: "h-9 w-full rounded-xl text-xs" })}>수정 · 재고</Link>} />
             );
           })}
         </ProductGrid>

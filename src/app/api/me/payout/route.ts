@@ -7,6 +7,9 @@ import { ok, fail, handleError } from "@/lib/http";
 import { audit } from "@/lib/audit";
 import { notify, notifyAdmins } from "@/lib/notify";
 
+// 요청마다 실행 (빌드 때 정적 생성 시도 안 함)
+export const dynamic = "force-dynamic";
+
 // 셀러 · 중간관리자 정산 계좌 (판매 정산 · 영업 수수료 지급용)
 //  - 이미 등록된 계좌를 바꿀 때는 현재 비밀번호로 본인 확인하고, 최고관리자에게 알린다.
 const mask = (v: string) => (v.length <= 4 ? "****" : `${"*".repeat(Math.max(0, v.length - 4))}${v.slice(-4)}`);

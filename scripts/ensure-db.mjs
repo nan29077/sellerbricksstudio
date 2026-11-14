@@ -123,9 +123,20 @@ if (dbUp && fs.existsSync(cleanupDir)) {
   }
 }
 
+// db push 는 '고유 제약 추가'처럼 데이터를 지우지 않는 경고에도 y/N 을 물어 개발 서버 시작이 멈춘다.
+// 바뀔 SQL 을 미리 보고, 테이블 · 열 삭제나 형식 변경(데이터가 사라질 수 있는 변경)이 없으면 묻지 않고 진행한다.
+// 데이터가 사라질 수 있는 변경이면 지금처럼 확인을 묻는다. (2026-11-14)
+function pushFlags() {
+  const sql = quiet("npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --script", 90000);
+  if (sql === null) return "";
+  const destructive = /\bDROP\s+(TABLE|COLUMN|TYPE|SCHEMA)\b|\bALTER\s+COLUMN\s+"?[\w]+"?\s+(SET\s+DATA\s+)?TYPE\b|\bTRUNCATE\b|\bDELETE\s+FROM\b/i.test(sql);
+  if (destructive) { say("데이터가 사라질 수 있는 DB 변경이 있어 확인을 묻습니다. 내용을 확인한 뒤 y 를 눌러 주세요."); return ""; }
+  return " --accept-data-loss";
+}
+
 let dbOk = true;
 try {
-  run("npx prisma db push --skip-generate");
+  run(`npx prisma db push --skip-generate${dbUp ? pushFlags() : ""}`);
 } catch {
   dbOk = false;
   console.log(line);

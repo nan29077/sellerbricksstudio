@@ -7,10 +7,12 @@ import { StudioFooter } from "@/components/layout/studio-footer";
 import { SupportCenter } from "@/components/support/support-center";
 import { StudioRailGate } from "@/components/home/studio-rail-gate";
 import { StudioBroadcastRail } from "@/components/home/studio-broadcast-rail";
+import { MobileMiniPlayer } from "@/components/home/mobile-mini-player";
+import { getHomeVideos } from "@/lib/home-videos";
 import styles from "./studio.module.css";
 
 export default async function StudioLayout({ children }: { children: React.ReactNode }) {
-  const [settings, user] = await Promise.all([getSettings(), getSessionUser()]);
+  const [settings, user, homeVideos] = await Promise.all([getSettings(), getSessionUser(), getHomeVideos().catch(() => null)]);
   const account = user ? {
     name: user.name ?? user.email,
     role: user.role,
@@ -29,6 +31,7 @@ export default async function StudioLayout({ children }: { children: React.React
       <div className={styles.rail}>
         <StudioNavigation account={account} />
       </div>
+      <MobileMiniPlayer videos={homeVideos?.LIVE_COMMERCE ?? null} />
       <SupportCenter member={user ? { name: user.name ?? null, email: user.email ?? "" } : null} />
     </div>
   );

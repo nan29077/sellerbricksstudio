@@ -76,7 +76,7 @@ export default async function HomePage() {
         </div>
       )}
       <HeroSlider showSignup={!user} />
-      <div className={styles.broadcast}>
+      <div className={styles.broadcast} data-mini-anchor>
         <HomeBroadcastPlayer videos={homeVideos} />
       </div>
       {!user && (

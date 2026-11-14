@@ -12,17 +12,17 @@ import styles from "./home-broadcast-player.module.css";
 //  영상은 최고관리자가 사이트 관리 → 홈 영상에서 링크로 넣는다. 영상이 없으면 샘플 영상을 보여 준다.
 const DEFAULT_POSTER = "/images/home/banner-live-prep.webp";
 
-type Slide = {
+export type Slide = {
   id: string; title: string; caption: string; poster: string; duration: string; sample?: boolean; url: string;
   source: HomeVideoItem["source"];
 };
 
-const SAMPLE_SLIDES: Slide[] = HOME_BROADCAST_CLIPS.map((clip) => ({
+export const SAMPLE_SLIDES: Slide[] = HOME_BROADCAST_CLIPS.map((clip) => ({
   id: clip.id, title: clip.title, caption: clip.source, poster: clip.poster, duration: clip.duration, sample: clip.sample,
   url: clip.video, source: { kind: "file", src: clip.video },
 }));
 
-const toSlide = (v: HomeVideoItem): Slide => ({
+export const toSlide = (v: HomeVideoItem): Slide => ({
   id: v.id, title: v.title, caption: v.caption, poster: v.poster || DEFAULT_POSTER, duration: v.duration, url: v.url, source: v.source,
 });
 

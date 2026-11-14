@@ -247,7 +247,7 @@ export async function BrandStorefront({ id, searchParams, base = "/brands", fram
                       <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 [&>*]:min-h-10">
                         {buyer && !blocked && <BrandFavoriteButton productId={product.id} initial={favorites.has(product.id)} className="rounded-xl px-3 text-xs" />}
                         {!user && <Link href={login} className={buttonVariants({ variant: "outline", className: "rounded-xl px-3 text-xs" })}><Heart aria-hidden="true" className="h-3.5 w-3.5" />찜하기</Link>}
-                        {buyer && !blocked && user && canImport && !onList && <BrandImportButton target={user.role === "SELLER" ? "SELLER" : "FACILITY"} facilities={facilities}
+                        {buyer && !blocked && user && canImport && !(onList && user.role === "SELLER") && <BrandImportButton target={user.role === "SELLER" ? "SELLER" : "FACILITY"} facilities={facilities}
                           product={{ id: product.id, name: product.name, supplyPrice: product.supplyPrice, consumerPrice: product.consumerPrice, stock: product.stock, allowDropship: product.allowDropship, allowWarehouse: product.allowWarehouse, salePrice: product.salePrice, priceRule: product.priceRule, minSalePrice: product.minSalePrice }} />}
                         {product.samplePrice !== null && (!user
                           ? <Link href={login} className={buttonVariants({ variant: "outline", className: "rounded-xl border-brand-200 bg-brand-50 px-3 text-xs font-bold" })}>{product.samplePrice === 0 ? "무료 샘플 신청" : "샘플 구매"}</Link>
@@ -294,7 +294,8 @@ export async function BrandStorefront({ id, searchParams, base = "/brands", fram
                     price={showSupply
                       ? <PriceLine label="공급" value={formatKRW(product.supplyPrice)} note={pb.sale > 0 ? `판매가 ${formatKRW(pb.sale)} · 마진 ${formatKRW(pb.sellerMargin)}` : product.consumerPrice > 0 ? `소비자가 ${formatKRW(product.consumerPrice)}` : undefined} />
                       : <PriceLine value={pb.sale > 0 ? formatKRW(pb.sale) : product.consumerPrice > 0 ? formatKRW(product.consumerPrice) : "가격 문의"} rate={pb.discountRate} strike={pb.discountRate ? formatKRW(pb.list) : undefined} note={!user ? "공급가는 로그인하면 볼 수 있습니다" : undefined} />}
-                    chips={[sample && { label: product.samplePrice === 0 ? "무료 샘플" : "유료 샘플", tone: "brand" }, favorites.has(product.id) && { label: "찜", tone: "red" }, product.allowWarehouse && { label: "창고 입고", tone: "violet" }]} />
+                    chips={[sample && { label: product.samplePrice === 0 ? "무료 샘플" : "유료 샘플", tone: "brand" }, product.allowWarehouse && { label: "창고 입고", tone: "violet" }]}
+                    actions={buyer && !blocked && published ? <BrandFavoriteButton productId={product.id} initial={favorites.has(product.id)} className="h-9 w-full justify-center rounded-xl text-xs" /> : undefined} />
                 );
               })}
             </ProductGrid>

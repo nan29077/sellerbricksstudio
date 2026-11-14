@@ -5,6 +5,7 @@ import { BRAND_ARTWORK } from "@/lib/shop-artwork";
 import { BrandStorefront } from "@/components/shop/brand-storefront";
 import { StudioBroadcastRail } from "@/components/home/studio-broadcast-rail";
 import { getBrandShopVideos } from "@/lib/home-videos";
+import { MiniPlayerSource } from "@/components/home/mobile-mini-player";
 import type { SP } from "@/lib/list";
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
@@ -35,6 +36,7 @@ export default async function BrandShopPage({ params, searchParams }: { params: 
           <style dangerouslySetInnerHTML={{ __html: `[data-studio-background]{background:#1a1a2e ${cssUrl(background)} center/cover no-repeat}[data-studio-background]>*{display:none}` }} />
           <StudioBroadcastRail own={videos ?? { LIVE_COMMERCE: [] }} title={`${shop.name} 라이브 커머스`} logo={shop.logoUrl}
             emptyText={`${shop.name}의 라이브 커머스 영상이 곧 올라와요.`} />
+          <MiniPlayerSource id={shop.id} title={`${shop.name} 라이브 커머스`} videos={videos?.LIVE_COMMERCE ?? []} />
         </>
       )}
       <BrandStorefront id={params.id} searchParams={searchParams} base="/brands" frame="inline" studio />

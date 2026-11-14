@@ -3,6 +3,9 @@ import path from "node:path";
 import { clientIp, consume, MINUTE } from "@/lib/rate-limit";
 import { SITE_LOGO, SITE_NAME } from "@/lib/site-brand";
 
+// 요청마다 실행 (빌드 때 정적 생성 시도 안 함)
+export const dynamic = "force-dynamic";
+
 function pptxResponse(buf: Buffer) {
   return new NextResponse(new Uint8Array(buf), {
     headers: {
