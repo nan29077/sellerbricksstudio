@@ -1,18 +1,23 @@
 import Link from "next/link";
-import { ArrowRight, CalendarDays, Camera, ClipboardList, Headset, PackageCheck, Radio, Wallet } from "lucide-react";
+import { ArrowRight, Camera, ClipboardList, Headset, PackageCheck } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
 import { getSessionUser } from "@/lib/auth";
 import { SignupRoleCards } from "@/components/signup/signup-role-cards";
 import { getHomeBrandProducts } from "@/lib/home-brand-products";
 import { canSeeSupplyPrice } from "@/lib/brands";
-import { registeredSpaceThumbnail, SHOWCASE_SPACES, type SpaceCard } from "@/lib/showcase";
+import { registeredSpaceThumbnail, type SpaceCard } from "@/lib/showcase";
 import { BrandProductShowcase } from "@/components/home/brand-product-showcase";
+import { HomeBroadcastPlayer } from "@/components/home/home-broadcast-player";
 import { HeroSlider } from "@/components/home/hero-slider";
 import { HomeFeatureBanner } from "@/components/home/home-feature-banner";
 import { SpaceMarketplace } from "@/components/home/space-marketplace";
+import { SellerFlowShowcase } from "@/components/home/seller-flow-showcase";
+import { SupportButton } from "@/components/support/support-center";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { getHomeVideos } from "@/lib/home-videos";
+import styles from "./studio.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +27,7 @@ async function getRegisteredSpaces(): Promise<{ spaces: SpaceCard[]; available: 
       where: { status: "APPROVED" },
       orderBy: [{ rating: "desc" }, { id: "asc" }],
       take: 24,
-      select: { id: true, name: true, type: true, region: true, basePrice: true, specialty: true },
+      select: { id: true, name: true, type: true, region: true, basePrice: true, specialty: true, operationType: true },
     });
     return {
       available: true,
@@ -35,6 +40,7 @@ async function getRegisteredSpaces(): Promise<{ spaces: SpaceCard[]; available: 
         image: registeredSpaceThumbnail(facility.id, facility.type),
         price: facility.basePrice,
         demo: false,
+        operation: facility.operationType,
         tags: (facility.specialty ?? "").split(",").map((tag) => tag.trim()).filter(Boolean).slice(0, 2),
       })),
     };
@@ -42,13 +48,6 @@ async function getRegisteredSpaces(): Promise<{ spaces: SpaceCard[]; available: 
     return { spaces: [], available: false };
   }
 }
-
-const steps = [
-  { icon: CalendarDays, title: "공간 예약", description: "필요한 공간과 날짜를 선택해 예약을 신청하세요." },
-  { icon: ClipboardList, title: "상품·일정 준비", description: "방송 상품과 순서, 일정을 한곳에서 정리하세요." },
-  { icon: Radio, title: "라이브 운영", description: "방송 상태와 주문 흐름을 확인하며 판매에 집중하세요." },
-  { icon: Wallet, title: "판매·정산 확인", description: "방송 후 주문과 정산 내역을 확인하세요." },
-];
 
 const liveChecklist = [
   { icon: Camera, title: "공간과 장비", description: "예약 가능 시간, 기본 조명·마이크 제공 여부, 인터넷 연결을 확인하세요." },
@@ -59,7 +58,12 @@ const liveChecklist = [
 export default async function HomePage() {
   // 공급가 공개 여부는 로그인 계정에 따라 달라지므로 계정을 먼저 확인한다
   const user = await getSessionUser().catch(() => null);
-  const [{ spaces, available }, settings, brandProducts] = await Promise.all([getRegisteredSpaces(), getSettings(), getHomeBrandProducts(new Date(), canSeeSupplyPrice(user?.role))]);
+  const [{ spaces, available }, settings, brandProducts, homeVideos] = await Promise.all([
+    getRegisteredSpaces(),
+    getSettings(),
+    getHomeBrandProducts(new Date(), canSeeSupplyPrice(user?.role)),
+    getHomeVideos().catch(() => null),
+  ]);
 
   return (
     <>
@@ -72,6 +76,9 @@ export default async function HomePage() {
         </div>
       )}
       <HeroSlider showSignup={!user} />
+      <div className={styles.broadcast}>
+        <HomeBroadcastPlayer videos={homeVideos} />
+      </div>
       {!user && (
         <section id="signup-roles" aria-labelledby="signup-roles-heading" className="scroll-mt-20 px-4 pt-8 sm:px-6 sm:pt-10">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -92,7 +99,8 @@ export default async function HomePage() {
         tone="light"
         className="mt-7 sm:mt-9"
       />
-      <SpaceMarketplace spaces={[...spaces, ...SHOWCASE_SPACES]} registeredAvailable={available} />
+      <SellerFlowShowcase role={user?.role ?? null} />
+      <SpaceMarketplace spaces={spaces} registeredAvailable={available} />
       <HomeFeatureBanner
         id="live-prep-heading"
         title="첫 라이브를 준비하고 있나요?"
@@ -103,19 +111,6 @@ export default async function HomePage() {
         tone="dark"
         className="mb-8 sm:mb-10"
       />
-      <section className="border-y border-slate-200 bg-white px-4 py-9 sm:px-6 sm:py-12">
-        <h2 className="break-keep text-2xl font-black tracking-tight text-navy sm:text-3xl">예약부터 판매·정산까지</h2>
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          {steps.map(({ icon: Icon, title, description }) => (
-            <div key={title} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-100 text-brand-800"><Icon aria-hidden="true" className="h-4 w-4" /></span>
-              <h3 className="mt-3 text-sm font-bold text-navy">{title}</h3>
-              <p className="mt-1 text-xs leading-5 text-slate-600">{description}</p>
-            </div>
-          ))}
-        </div>
-        <Link href="/intro" className={buttonVariants({ variant: "outline", className: "mt-4 rounded-xl px-4" })}>서비스 자세히 보기</Link>
-      </section>
       <section id="live-checklist" aria-labelledby="live-checklist-heading" className="scroll-mt-20 px-4 pt-9 sm:px-6 sm:pt-12">
         <h2 id="live-checklist-heading" className="break-keep text-2xl font-black tracking-tight text-navy sm:text-3xl">방송 전 체크리스트</h2>
         <ul className="mt-4 divide-y divide-[#E8E5DD] overflow-hidden rounded-2xl border border-[#E8E5DD] bg-white sm:grid sm:grid-cols-3 sm:divide-x sm:divide-y-0">
@@ -136,12 +131,13 @@ export default async function HomePage() {
         <div className="rounded-[24px] bg-navy p-5 text-white sm:p-7">
           <Headset className="h-6 w-6 text-brand-300" />
           <h2 className="mt-3 text-xl font-extrabold">이용에 도움이 필요하신가요?</h2>
-          <p className="mt-2 text-sm leading-6 text-white/75">자주 묻는 질문을 찾아보거나, 운영팀에 1:1 문의를 남기세요.</p>
+          <p className="mt-2 text-sm leading-6 text-white/75">챗봇이 바로 답하고, 해결되지 않으면 운영팀에 1:1 문의로 이어 드려요.</p>
           <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-            <Link href="/support#faq" className={cn(buttonVariants(), "rounded-xl bg-brand-300 px-4 font-bold text-navy hover:bg-brand-200")}>
-              자주 묻는 질문
-            </Link>
-            <Link href="/support#new-inquiry" className={cn(buttonVariants({ variant: "outline" }), "rounded-xl border-white/40 bg-transparent px-4 text-white hover:border-brand-300 hover:bg-navy-700")}>1:1 문의하기</Link>
+            <SupportButton tab="chat" className={cn(buttonVariants(), "rounded-xl bg-brand-300 px-4 font-bold text-navy hover:bg-brand-200")}>
+              챗봇 상담
+            </SupportButton>
+            <SupportButton tab="inquiry" className={cn(buttonVariants({ variant: "outline" }), "rounded-xl border-white/40 bg-transparent px-4 text-white hover:border-brand-300 hover:bg-navy-700")}>1:1 문의하기</SupportButton>
+            <Link href="/support#faq" className="text-sm font-bold text-white/80 underline underline-offset-4 hover:text-white">자주 묻는 질문</Link>
           </div>
         </div>
       </section>

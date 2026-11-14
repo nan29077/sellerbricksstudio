@@ -40,3 +40,26 @@
   right: 0;
   object-position: 87.5% center;
 }
+
+.edgeArtwork {
+  container-type: size;
+}
+
+.edgeImage {
+  position: absolute;
+  inset-block-start: 0;
+  width: max(100%, 178cqh);
+  max-width: none;
+  height: 100%;
+  object-fit: cover;
+}
+
+.left .edgeImage {
+  left: 0;
+  object-position: left center;
+}
+
+.right .edgeImage {
+  right: 0;
+  object-position: right center;
+}

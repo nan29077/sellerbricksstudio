@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { SITE_NAME } from "@/lib/site-brand";
 import { BrandStorefront } from "@/components/shop/brand-storefront";
-import { StudioBroadcastRail } from "@studio-rail";
+import { StudioBroadcastRail } from "@/components/home/studio-broadcast-rail";
 import { getBrandShopVideos } from "@/lib/home-videos";
 import type { SP } from "@/lib/list";
 

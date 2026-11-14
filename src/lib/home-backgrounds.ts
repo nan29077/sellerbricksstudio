@@ -6,6 +6,14 @@ export const HOME_BACKGROUND_SAMPLES = [
   { id: "seller-illustration", label: "우리들의 셀러 작업실", description: "상품 소개와 포장을 함께하는 입체 일러스트", style: "일러스트형" },
 ] as const;
 
+export const MINIATURE_HOME_BACKGROUNDS = [
+  { id: "mini-flower-shop", label: "파스텔 꽃가게", description: "분홍 차양과 튤립 화분이 있는 작은 꽃가게" },
+  { id: "mini-gift-studio", label: "선물 포장 작업실", description: "리본과 라벤더빛 선물 상자가 놓인 포장 작업실" },
+  { id: "mini-orchard", label: "햇살 든 과일 정원", description: "복숭아 바구니와 하얀 꽃이 반기는 과일 정원" },
+  { id: "mini-live-studio", label: "꼬마 라이브 스튜디오", description: "작은 카메라와 별 조명이 켜진 아늑한 촬영 공간" },
+  { id: "mini-moon-clouds", label: "달빛 구름 마을", description: "초승달 아래 뜨개구름과 별이 떠 있는 마을" },
+] as const;
+
 export const LEGACY_HOME_BACKGROUNDS = [
   { id: "studio", label: "라이브 스튜디오", description: "네이비와 골드 조명으로 연출한 촬영 공간" },
   { id: "fulfillment", label: "풀필먼트 센터", description: "정돈된 랙과 따뜻한 조명의 물류 창고" },
@@ -14,7 +22,7 @@ export const LEGACY_HOME_BACKGROUNDS = [
   { id: "control-room", label: "라이브 컨트롤룸", description: "방송 모니터와 믹싱 콘솔이 놓인 공간" },
 ] as const;
 
-export const HOME_BACKGROUNDS = [...HOME_BACKGROUND_SAMPLES, ...LEGACY_HOME_BACKGROUNDS] as const;
+export const HOME_BACKGROUNDS = [...MINIATURE_HOME_BACKGROUNDS, ...HOME_BACKGROUND_SAMPLES, ...LEGACY_HOME_BACKGROUNDS] as const;
 
 export type HomeBackgroundId = (typeof HOME_BACKGROUNDS)[number]["id"];
 

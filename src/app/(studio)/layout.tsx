@@ -6,7 +6,7 @@ import { HomeBackgroundArtwork } from "@/components/home/home-background-artwork
 import { StudioFooter } from "@/components/layout/studio-footer";
 import { SupportCenter } from "@/components/support/support-center";
 import { StudioRailGate } from "@/components/home/studio-rail-gate";
-import { StudioBroadcastRail } from "@studio-rail";
+import { StudioBroadcastRail } from "@/components/home/studio-broadcast-rail";
 import styles from "./studio.module.css";
 
 export default async function StudioLayout({ children }: { children: React.ReactNode }) {
