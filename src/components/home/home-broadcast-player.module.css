@@ -80,6 +80,8 @@
 .empty {
   aspect-ratio: 4 / 5;
   max-height: 390px;
+  /* 높이 상한(390px)에 걸리면 4:5 비율 때문에 폭이 줄어드는데, 그때도 프레임 가운데에 오게 */
+  margin-inline: auto;
   border-radius: 16px;
   background: #11111b;
 }
