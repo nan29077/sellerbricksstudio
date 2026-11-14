@@ -22,7 +22,7 @@
     "test:e2e": "node scripts/simulate-brand-flow.mjs",
     "test:e2e:izbeau": "node scripts/simulate-izbeau-features.mjs",
     "test:e2e:sheets": "node scripts/simulate-order-sheets.mjs",
-    "test:e2e:broadcasts": "node scripts/simulate-broadcasts.mjs",
+    "test:e2e:videos": "node scripts/simulate-home-videos.mjs",
     "test:e2e:storage": "node scripts/simulate-storage-ops.mjs"
   },
   "prisma": {

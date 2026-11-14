@@ -1518,3 +1518,25 @@ model ExternalBroadcast {
   @@unique([source, externalId])
   @@index([status, isVisible])
 }
+
+/// 메인 영상 플레이어에 보여 줄 영상 (2026-11-14) — 최고관리자가 링크를 넣는다
+///  - LIVE_COMMERCE: 지난 라이브 커머스 · 숏폼 영상
+///  - CAMPAIGN: 홍보 · 캠페인 · 행사 영상
+model HomeVideo {
+  id           String    @id @default(cuid())
+  category     String    @default("LIVE_COMMERCE") // LIVE_COMMERCE | CAMPAIGN
+  title        String
+  caption      String    @default("") // 셀러 · 브랜드 · 행사명 등 (제목 위 작은 글씨)
+  url          String // 영상 주소 (유튜브 · 쇼츠 · 비메오 · mp4 등)
+  thumbnailUrl String?
+  duration     String    @default("") // 표시용 길이 (예: 0:30)
+  isVisible    Boolean   @default(true)
+  sortOrder    Int       @default(0)
+  startsAt     DateTime? // 노출 기간 (선택)
+  endsAt       DateTime?
+  createdBy    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([category, isVisible, sortOrder])
+}

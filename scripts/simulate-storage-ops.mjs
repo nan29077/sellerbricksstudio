@@ -129,8 +129,12 @@ async function main() {
   r = await manager.req("PATCH", `/api/bookings/${bookingId}`, { facilityMemo: "매니저 메모" });
   ok(r.ok, "담당 매니저가 내부 메모 저장", r);
   // 담당이 아닌 창고 예약은 처리 불가
-  const day2 = weekday(offset + 1);
-  r = await seller.req("POST", "/api/bookings", { facilityId: notMine.id, startAt: `${day2}T10:00`, endAt: `${day2}T12:00` });
+  // 반복 실행으로 같은 날 같은 시간에 예약이 남아 있을 수 있어 빈 날을 찾을 때까지 하루씩 미룬다
+  for (let add = 1; add < 30; add++) {
+    const day2 = weekday(offset + add);
+    r = await seller.req("POST", "/api/bookings", { facilityId: notMine.id, startAt: `${day2}T10:00`, endAt: `${day2}T12:00` });
+    if (r.status !== 409) break;
+  }
   const otherBooking = r.data?.bookings?.[0]?.id;
   ok(!!otherBooking, "셀러 예약 신청 (담당이 아닌 창고)", r);
   r = await manager.req("PATCH", `/api/bookings/${otherBooking}`, { status: "APPROVED" });

@@ -20,7 +20,7 @@ const GROUPS = [
   { key: "pay", name: "결제 PG", icon: CreditCard, required: ["PAYMENT_PROVIDER"], optional: ["TOSS_SECRET_KEY", "TOSS_CLIENT_KEY", "PORTONE_API_KEY", "PORTONE_API_SECRET", "PAYMENT_WEBHOOK_SECRET"], note: "미설정 시 Mock 결제로 동작합니다." },
   { key: "kakao", name: "카카오 알림톡", icon: MessageCircle, required: ["KAKAO_API_KEY", "KAKAO_SENDER_KEY"], optional: ["KAKAO_ALIMTALK_PROVIDER", "KAKAO_API_SECRET", "KAKAO_PLUS_FRIEND_ID"], note: "미설정 시 발송 로그만 저장합니다(Mock)." },
   { key: "s3", name: "파일 저장소 (S3 호환)", icon: HardDrive, required: ["S3_BUCKET", "S3_REGION", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"], optional: ["S3_ENDPOINT", "S3_PUBLIC_URL", "IMAGE_HOSTS"], note: "이미지 파일 업로드. 미설정 시 개발 환경은 public/uploads 에 저장하고, 배포 환경은 업로드를 막습니다(이미지 주소 직접 입력)." },
-  { key: "sellerbricks", name: "셀러브릭스 방송 연동", icon: ShieldCheck, required: ["SELLERBRICKS_WEBHOOK_SECRET"], optional: ["SELLERBRICKS_LIVE_FEED_URL", "SELLERBRICKS_API_KEY", "SELLERBRICKS_EMBED_HOSTS", "SELLERBRICKS_STALE_MINUTES", "BROADCAST_EMBED_HOSTS"], note: "셀러브릭스에서 자체 송출 중인 방송을 메인 온에어에 보여 줍니다. 웹훅 서명 키가 없으면 배포 환경에서는 받지 않습니다. 방송 목록은 사이트 관리 → 방송 링크에서 확인합니다." },
+  { key: "sellerbricks", name: "셀러브릭스 방송 연동", icon: ShieldCheck, required: ["SELLERBRICKS_WEBHOOK_SECRET"], optional: ["SELLERBRICKS_LIVE_FEED_URL", "SELLERBRICKS_API_KEY", "SELLERBRICKS_EMBED_HOSTS", "SELLERBRICKS_STALE_MINUTES", "BROADCAST_EMBED_HOSTS"], note: "셀러브릭스 방송 소식을 받는 준비 기능입니다. (메인 온에어는 없어져 지금은 화면에 보이지 않습니다 — 메인 영상은 사이트 관리 → 홈 영상에서 최고관리자가 넣습니다.) 웹훅 서명 키가 없으면 배포 환경에서는 받지 않습니다." },
   { key: "mail", name: "메일 발송 (Resend)", icon: Mail, required: ["RESEND_API_KEY", "MAIL_FROM"], optional: [], note: "비밀번호 재설정 · 이메일 인증 메일. 없으면 개발 환경에서는 서버 로그로만 보내고, 배포 환경에서는 발송되지 않습니다." },
 ];
 

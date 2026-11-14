@@ -8,15 +8,15 @@ import { SiteNoticeManager } from "@/components/admin/site-notices";
 import { RoleAccessToggles } from "@/components/admin/role-access-toggles";
 import { cn } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
-import { BroadcastManager } from "@/components/admin/broadcast-manager";
-import { isOnAir, sellerbricksFeedStatus, SELLERBRICKS_STALE_MINUTES } from "@/lib/external-broadcasts";
+import { HomeVideoManager } from "@/components/admin/home-video-manager";
+import { isVideoShown } from "@/lib/home-videos";
 
 export const dynamic = "force-dynamic";
 
 // 사이트 관리 (2026-11-14): 예전 '사이트 설정 · 메인 여백 관리 · 사이트 관리(공지) · 메뉴 권한 설정'을 한 화면의 탭으로 합쳤다.
 const TABS = [
   { key: "basic", label: "기본 정보 · 배너" },
-  { key: "broadcasts", label: "방송 링크" },
+  { key: "videos", label: "홈 영상" },
   { key: "background", label: "메인 여백" },
   { key: "notices", label: "공지사항" },
   { key: "access", label: "메뉴 권한" },
@@ -26,14 +26,14 @@ type TabKey = (typeof TABS)[number]["key"];
 export default async function SiteManagementPage({ searchParams }: { searchParams: { tab?: string | string[] } }) {
   await requireRole(["SUPER_ADMIN"]);
   const raw = Array.isArray(searchParams.tab) ? searchParams.tab[0] : searchParams.tab;
-  const tab: TabKey = TABS.some((t) => t.key === raw) ? (raw as TabKey) : "basic";
+  const want = raw === "broadcasts" ? "videos" : raw; // 예전 '방송 링크' 탭 주소
+  const tab: TabKey = TABS.some((t) => t.key === want) ? (want as TabKey) : "basic";
   const settings = await getSettings();
-  const broadcasts = tab === "broadcasts" ? await prisma.externalBroadcast.findMany({ orderBy: [{ status: "asc" }, { sortOrder: "asc" }, { createdAt: "desc" }], take: 300 }) : [];
-  const lastSb = tab === "broadcasts" ? await prisma.externalBroadcast.findFirst({ where: { source: "SELLERBRICKS" }, orderBy: { lastSyncedAt: "desc" }, select: { lastSyncedAt: true } }) : null;
+  const videos = tab === "videos" ? await prisma.homeVideo.findMany({ orderBy: [{ category: "asc" }, { sortOrder: "asc" }, { createdAt: "desc" }], take: 300 }) : [];
 
   return (
     <div className="space-y-5">
-      <PageHeader title="사이트 관리" description="사이트 기본 정보 · 상단 배너, 메인 방송 링크, 메인 여백 배경, 공지사항, 메뉴 권한을 탭으로 나누어 관리합니다." />
+      <PageHeader title="사이트 관리" description="사이트 기본 정보 · 상단 배너, 메인 영상(라이브 커머스 · 캠페인/행사), 메인 여백 배경, 공지사항, 메뉴 권한을 탭으로 나누어 관리합니다." />
       <nav aria-label="사이트 관리 탭" className="-mx-1 flex gap-1 overflow-x-auto border-b border-border px-1">
         {TABS.map((t) => (
           <Link key={t.key} href={`/admin/site-management?tab=${t.key}`} aria-current={tab === t.key ? "page" : undefined}
@@ -44,15 +44,8 @@ export default async function SiteManagementPage({ searchParams }: { searchParam
         ))}
       </nav>
       {tab === "basic" && <SiteSettingsForm initial={settings} />}
-      {tab === "broadcasts" && (
-        <BroadcastManager
-          initial={broadcasts.map((b) => ({ ...b, startsAt: b.startsAt?.toISOString() ?? null, endsAt: b.endsAt?.toISOString() ?? null, lastSyncedAt: b.lastSyncedAt?.toISOString() ?? null, onAir: isOnAir(b) }))}
-          sellerbricks={{
-            webhookPath: `${(process.env.NEXTAUTH_URL ?? "").replace(/\/$/, "")}/api/integrations/sellerbricks/broadcasts`,
-            secretSet: !!process.env.SELLERBRICKS_WEBHOOK_SECRET?.trim(), feedSet: !!process.env.SELLERBRICKS_LIVE_FEED_URL?.trim(),
-            staleMinutes: SELLERBRICKS_STALE_MINUTES, lastReceivedAt: lastSb?.lastSyncedAt?.toISOString() ?? null, feed: sellerbricksFeedStatus(),
-          }}
-        />
+      {tab === "videos" && (
+        <HomeVideoManager initial={videos.map((v) => ({ ...v, startsAt: v.startsAt?.toISOString() ?? null, endsAt: v.endsAt?.toISOString() ?? null, shown: isVideoShown(v) }))} />
       )}
       {tab === "background" && (
         <div className="space-y-3">
