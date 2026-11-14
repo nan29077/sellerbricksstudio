@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import type { SupportCategory } from "@prisma/client";
-import { ArrowLeft, ArrowRight, Bot, CheckCircle2, Headset, ImagePlus, Loader2, MessageSquareText, Plus, Send, Star, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Bot, CheckCircle2, Clock3, Headset, ImagePlus, Loader2, MessageSquareText, Plus, Send, Star, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { SUPPORT_CATEGORIES, SUPPORT_HOURS, SUPPORT_STATUS, isSupportCategory, supportInquirySchema, type SupportStatus } from "@/lib/support";
@@ -19,12 +19,38 @@ import { cn } from "@/lib/utils";
 // ---------------------------------------------------------------------------
 
 type Tab = "chat" | "inquiry" | "mine";
-type OpenDetail = { tab?: Tab; category?: SupportCategory; subject?: string };
+type Anchor = { right: number; bottom: number };
+// menu: 떠 있는 문의하기 버튼 → 위에 작은 선택 창(챗봇 상담 · 1:1 채팅 상담). 다른 버튼은 바로 상담 창(panel)을 연다
+type OpenDetail = { tab?: Tab; category?: SupportCategory; subject?: string; menu?: boolean; anchor?: Anchor };
+type View = "closed" | "menu" | "panel";
 const EVENT = "sm:support";
+const CLOSE_EVENT = "sm:support-close";
+const VIEW_EVENT = "sm:support-view";
 const UNREAD_EVENT = "sm:support-unread";
 const GUEST_STORE = "sm.support.guest";
 export function openSupport(detail: OpenDetail = {}) {
   window.dispatchEvent(new CustomEvent<OpenDetail>(EVENT, { detail }));
+}
+
+export function closeSupport() {
+  window.dispatchEvent(new Event(CLOSE_EVENT));
+}
+
+// 문의하기 창이 열려 있는지 — 떠 있는 버튼(X 로 바뀜) · 미니 플레이어(숨김)가 쓴다
+let viewNow: View = "closed";
+function setView(v: View) {
+  viewNow = v;
+  window.dispatchEvent(new CustomEvent<View>(VIEW_EVENT, { detail: v }));
+}
+export function useSupportView() {
+  const [v, setV] = useState<View>("closed");
+  useEffect(() => {
+    setV(viewNow);
+    const on = (e: Event) => setV((e as CustomEvent<View>).detail ?? "closed");
+    window.addEventListener(VIEW_EVENT, on);
+    return () => window.removeEventListener(VIEW_EVENT, on);
+  }, []);
+  return v;
 }
 
 // 안 읽은 상담 답변 수 — 문의하기 팝업(레이아웃에 항상 있음)이 확인해서 알려 준다
@@ -52,16 +78,26 @@ function saveGuestThread(t: GuestThread) {
   try { localStorage.setItem(GUEST_STORE, JSON.stringify([t, ...guestThreads().filter((x) => x.id !== t.id)].slice(0, 20))); } catch { /* 저장소 사용 불가 */ }
 }
 
-/** 문의하기 버튼 — 자바스크립트가 없으면 고객센터 페이지로 간다. showUnread면 안 읽은 답변 수를 붙인다 */
-export function SupportButton({ className, children, tab = "chat", category, subject, ariaLabel, showUnread = false }: { className?: string; children: React.ReactNode; tab?: Tab; category?: SupportCategory; subject?: string; ariaLabel?: string; showUnread?: boolean }) {
+/** 문의하기 버튼 — 누르면 페이지 이동 없이 문의하기 팝업이 뜬다.
+ *  launcher(떠 있는 문의하기 버튼): 버튼 위에 '챗봇 상담 · 1:1 채팅 상담' 선택 창, 열려 있으면 X 로 바뀌어 닫는다.
+ *  showUnread면 안 읽은 답변 수를 붙인다 */
+export function SupportButton({ className, children, tab = "chat", category, subject, ariaLabel, showUnread = false, launcher = false }: { className?: string; children: React.ReactNode; tab?: Tab; category?: SupportCategory; subject?: string; ariaLabel?: string; showUnread?: boolean; launcher?: boolean }) {
   const unread = useUnread();
-  const badge = showUnread && unread > 0;
+  const view = useSupportView();
+  const opened = launcher && view !== "closed";
+  const badge = showUnread && unread > 0 && !opened;
   return (
-    <a href="/support" aria-label={ariaLabel ? `${ariaLabel}${badge ? ` (새 답변 ${unread}개)` : ""}` : undefined} title={ariaLabel} className={cn(className, badge && !/\b(fixed|absolute|sticky)\b/.test(className ?? "") && "relative")} aria-haspopup="dialog"
-      onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey) return; e.preventDefault(); openSupport({ tab: badge ? "inquiry" : tab, category, subject }); }}>
-      {children}
+    <button type="button" aria-label={opened ? "문의하기 닫기" : ariaLabel ? `${ariaLabel}${badge ? ` (새 답변 ${unread}개)` : ""}` : undefined} title={ariaLabel}
+      className={cn(className, badge && !/\b(fixed|absolute|sticky)\b/.test(className ?? "") && "relative")} aria-haspopup="dialog" aria-expanded={launcher ? opened : undefined}
+      onClick={(e) => {
+        if (opened) return closeSupport();
+        if (!launcher) return openSupport({ tab: badge ? "inquiry" : tab, category, subject });
+        const r = e.currentTarget.getBoundingClientRect();
+        openSupport({ menu: true, anchor: { right: Math.max(8, window.innerWidth - r.right), bottom: Math.max(8, window.innerHeight - r.top + 10) } });
+      }}>
+      {opened ? <X aria-hidden="true" className="h-5 w-5" /> : children}
       {badge && <span aria-hidden="true" className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-rose-500 px-1 text-[10px] font-black text-white ring-2 ring-white">{unread > 9 ? "9+" : unread}</span>}
-    </a>
+    </button>
   );
 }
 
@@ -77,11 +113,14 @@ type Prefill = { category?: SupportCategory; subject?: string; transcript?: stri
 
 export function SupportCenter({ member }: { member: Member }) {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
+  const [view, setViewState] = useState<View>("closed");
+  const [anchor, setAnchor] = useState<Anchor | null>(null);
   const [tab, setTab] = useState<Tab>("chat");
   const [prefill, setPrefill] = useState<Prefill>({});
   const unread = useUnread();
   const closeBtn = useRef<HTMLButtonElement>(null);
+  const open = view !== "closed";
+  const show = useCallback((v: View) => { setViewState(v); setView(v); }, []);
 
   // 안 읽은 답변 확인 (1분마다 · 화면을 보고 있을 때만)
   const refreshUnread = useCallback(async () => {
@@ -106,60 +145,82 @@ export function SupportCenter({ member }: { member: Member }) {
   useEffect(() => {
     const onOpen = (e: Event) => {
       const d = (e as CustomEvent<OpenDetail>).detail ?? {};
+      if (d.menu) { setAnchor(d.anchor ?? null); show("menu"); return; }
       setTab(d.tab === "mine" ? "inquiry" : d.tab ?? "chat");
       setPrefill(d.category || d.subject ? { category: d.category, subject: d.subject, source: "POPUP", at: Date.now() } : {});
-      setOpen(true);
+      show("panel");
     };
+    const onClose = () => show("closed");
     window.addEventListener(EVENT, onOpen);
-    return () => window.removeEventListener(EVENT, onOpen);
-  }, []);
+    window.addEventListener(CLOSE_EVENT, onClose);
+    return () => { window.removeEventListener(EVENT, onOpen); window.removeEventListener(CLOSE_EVENT, onClose); };
+  }, [show]);
   useEffect(() => {
     if (!open) { void refreshUnread(); return; }
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && show("closed");
     window.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    setTimeout(() => closeBtn.current?.focus(), 0);
-    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
-  }, [open, refreshUnread]);
-  useEffect(() => { setOpen(false); }, [pathname]);
+    setTimeout(() => closeBtn.current?.focus({ preventScroll: true }), 0);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, refreshUnread, show]);
+  useEffect(() => { show("closed"); }, [pathname, show]);
 
   const handoff = useCallback((h: { category: SupportCategory; subject: string }, transcript: string) => {
     setPrefill({ category: h.category, subject: h.subject, transcript, source: "CHATBOT", at: Date.now() });
     setTab("inquiry");
   }, []);
+  const choose = (t: Tab) => { setTab(t); setPrefill({}); show("panel"); };
 
   if (!open) return null;
-  const tabs: { id: Tab; label: string; icon: typeof Bot; badge?: number }[] = [
-    { id: "chat", label: "챗봇 상담", icon: Bot },
-    { id: "inquiry", label: "1:1 상담", icon: MessageSquareText, badge: unread },
-  ];
+
+  // ── 선택 창: 떠 있는 문의하기 버튼 바로 위 ─────────────────────────────
+  if (view === "menu") {
+    const pos = anchor ? { right: anchor.right, bottom: anchor.bottom } : { right: 16, bottom: 140 };
+    return (
+      <>
+        <div className="fixed inset-0 z-[70]" onClick={() => show("closed")} aria-hidden="true" />
+        <div role="dialog" aria-modal="false" aria-labelledby="support-menu-title" style={pos}
+          className="fixed z-[71] w-[min(17.5rem,calc(100vw-2rem))] origin-bottom-right animate-[support-pop_160ms_ease-out] rounded-[22px] border border-slate-100 bg-white p-2 text-navy shadow-[0_18px_44px_#1A1A2E2e] motion-reduce:animate-none">
+          <div className="flex items-center justify-between py-1 pl-3 pr-0.5">
+            <h2 id="support-menu-title" className="text-[15px] font-black">문의하기</h2>
+            <button ref={closeBtn} type="button" onClick={() => show("closed")} aria-label="문의하기 닫기" className="grid h-10 w-10 place-items-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-navy"><X className="h-5 w-5" /></button>
+          </div>
+          {([
+            { id: "chat" as const, title: "챗봇 상담", desc: "자주 묻는 질문 · 바로 답변", icon: Bot, tone: "bg-brand-50 text-brand-700" },
+            { id: "inquiry" as const, title: "1:1 채팅 상담", desc: "운영팀과 대화하기", icon: MessageSquareText, tone: "bg-sky-50 text-sky-700", badge: unread },
+          ]).map(({ id, title, desc, icon: Icon, tone, badge }) => (
+            <button key={id} type="button" onClick={() => choose(id)} className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition hover:bg-slate-50 active:bg-slate-100">
+              <span className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-2xl", tone)}><Icon className="h-5 w-5" aria-hidden="true" /></span>
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-1.5 text-sm font-extrabold">{title}{!!badge && <span className="rounded-full bg-rose-500 px-1.5 text-[10px] font-black text-white">{badge > 9 ? "9+" : badge}<span className="sr-only">개 새 답변</span></span>}</span>
+                <span className="block text-xs text-slate-500">{desc}</span>
+              </span>
+            </button>
+          ))}
+          <p className="mx-3 mt-1 flex items-center gap-1.5 border-t border-slate-100 pb-1.5 pt-2.5 text-[11px] font-semibold text-slate-500"><Clock3 className="h-3.5 w-3.5 text-brand-600" aria-hidden="true" />{SUPPORT_HOURS} · 챗봇은 24시간</p>
+        </div>
+      </>
+    );
+  }
+
+  // ── 상담 창: 화면 위에 떠 있는 카드 (모바일은 하단 메뉴바 위까지, PC는 오른쪽 아래) ─────
+  const isChat = tab === "chat";
   return (
-    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/45 backdrop-blur-sm sm:items-center sm:p-4" onClick={() => setOpen(false)}>
-      <div role="dialog" aria-modal="true" aria-labelledby="support-center-title" onClick={(e) => e.stopPropagation()}
-        className="flex h-[min(92svh,760px)] w-full flex-col overflow-hidden rounded-t-[26px] bg-[#F8F9FA] shadow-2xl sm:max-w-[460px] sm:rounded-[26px]">
-        <div className="bg-navy px-5 pb-3 pt-4 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[11px] font-extrabold tracking-[0.16em] text-brand-300">STORAGE MARKET SUPPORT</p>
-              <h2 id="support-center-title" className="mt-0.5 text-lg font-black">무엇을 도와드릴까요?</h2>
-            </div>
-            <button ref={closeBtn} type="button" onClick={() => setOpen(false)} className="grid h-11 w-11 place-items-center rounded-full hover:bg-white/10" aria-label="문의하기 닫기"><X className="h-5 w-5" /></button>
-          </div>
-          <div role="tablist" aria-label="문의 방법" className="mt-3 grid grid-cols-2 gap-1 rounded-xl bg-white/[0.08] p-1">
-            {tabs.map(({ id, label, icon: Icon, badge }) => (
-              <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
-                className={cn("flex min-h-10 items-center justify-center gap-1.5 rounded-lg text-xs font-bold transition", tab === id ? "bg-brand-300 text-navy" : "text-white/80 hover:bg-white/10")}>
-                <Icon aria-hidden="true" className="h-4 w-4" />{label}
-                {!!badge && <span className="rounded-full bg-rose-500 px-1.5 text-[10px] font-black text-white">{badge > 9 ? "9+" : badge}<span className="sr-only">개 새 답변</span></span>}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="min-h-0 flex-1">
-          {tab === "chat" && <ChatPanel member={member} onHandoff={handoff} />}
-          {tab === "inquiry" && <TalkPanel key={prefill.at ?? 0} member={member} prefill={prefill} pagePath={pathname} onRead={refreshUnread} />}
-        </div>
+    <div role="dialog" aria-modal="false" aria-labelledby="support-center-title"
+      className="fixed inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] top-[calc(env(safe-area-inset-top)+4.25rem)] z-[71] mx-auto flex max-w-[460px] animate-[support-pop_180ms_ease-out] flex-col overflow-hidden rounded-[22px] border border-slate-200/70 bg-[#F8F9FA] shadow-[0_22px_60px_#1A1A2E40] motion-reduce:animate-none lg:inset-x-auto lg:bottom-6 lg:right-6 lg:top-auto lg:h-[min(680px,calc(100vh-3rem))] lg:w-[410px]">
+      <div className="flex items-center gap-1 bg-navy py-2.5 pl-2 pr-1.5 text-white">
+        <button type="button" onClick={() => show("menu")} aria-label="상담 방법 다시 고르기" className="grid h-10 w-10 shrink-0 place-items-center rounded-full hover:bg-white/10"><ArrowLeft className="h-5 w-5" /></button>
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-white/10 text-brand-300">{isChat ? <Bot className="h-[18px] w-[18px]" aria-hidden="true" /> : <MessageSquareText className="h-[18px] w-[18px]" aria-hidden="true" />}</span>
+        <h2 id="support-center-title" className="ml-1.5 min-w-0 flex-1 truncate text-base font-black">{isChat ? "챗봇 상담" : "1:1 채팅 상담"}</h2>
+        <button type="button" onClick={() => setTab(isChat ? "inquiry" : "chat")} className="relative mr-0.5 inline-flex h-8 shrink-0 items-center rounded-full bg-white/10 px-3 text-[11px] font-bold text-white/90 hover:bg-white/20">
+          {isChat ? "1:1 상담" : "챗봇"}
+          {isChat && unread > 0 && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-navy" aria-label={`새 답변 ${unread}개`} />}
+        </button>
+        <button ref={closeBtn} type="button" onClick={() => show("closed")} className="grid h-10 w-10 shrink-0 place-items-center rounded-full hover:bg-white/10" aria-label="문의하기 닫기"><X className="h-5 w-5" /></button>
+      </div>
+      <p className="flex items-center gap-1.5 border-b border-sky-100 bg-sky-50 px-4 py-1.5 text-[11px] font-semibold text-sky-800"><Clock3 className="h-3.5 w-3.5" aria-hidden="true" />운영팀 {SUPPORT_HOURS}{isChat ? " · 챗봇은 24시간 답변" : " · 답변이 오면 알려 드려요"}</p>
+      <div className="min-h-0 flex-1">
+        {isChat && <ChatPanel member={member} onHandoff={handoff} />}
+        {tab === "inquiry" && <TalkPanel key={prefill.at ?? 0} member={member} prefill={prefill} pagePath={pathname} onRead={refreshUnread} />}
       </div>
     </div>
   );

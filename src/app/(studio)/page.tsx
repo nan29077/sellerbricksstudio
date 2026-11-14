@@ -8,6 +8,7 @@ import { getHomeBrandProducts } from "@/lib/home-brand-products";
 import { canSeeSupplyPrice } from "@/lib/brands";
 import { registeredSpaceThumbnail, type SpaceCard } from "@/lib/showcase";
 import { BrandProductShowcase } from "@/components/home/brand-product-showcase";
+import { MiniPlayerAnchor } from "@/components/home/mobile-mini-player";
 import { HomeBroadcastPlayer } from "@/components/home/home-broadcast-player";
 import { HeroSlider } from "@/components/home/hero-slider";
 import { HomeFeatureBanner } from "@/components/home/home-feature-banner";
@@ -77,6 +78,7 @@ export default async function HomePage() {
       )}
       <HeroSlider showSignup={!user} />
       <div className={styles.broadcast} data-mini-anchor>
+        <MiniPlayerAnchor />
         <HomeBroadcastPlayer videos={homeVideos} />
       </div>
       {!user && (

@@ -7,6 +7,7 @@ import { ArrowUpRight, ChevronDown, ChevronLeft, ChevronRight, Maximize2, Play, 
 import { SAMPLE_SLIDES, toSlide, type Slide } from "@/components/home/home-broadcast-player";
 import type { HomeVideoItem } from "@/lib/home-videos";
 import { cn } from "@/lib/utils";
+import { useSupportView } from "@/components/support/support-center";
 import styles from "./mobile-mini-player.module.css";
 
 // 모바일 미니 플레이어 (2026-11-14)
@@ -36,6 +37,30 @@ export function MiniPlayerSource({ id, title, videos }: { id: string; title: str
   return null;
 }
 
+// 메인 화면의 큰 영상 섹션이 화면에 보이는지 — 섹션 안의 MiniPlayerAnchor 가 직접 알려 준다.
+// (레이아웃에서 querySelector 로 찾으면, 화면이 늦게 붙는 휴대폰에서 섹션을 못 찾아 미니 플레이어가 같이 떠 버렸다)
+type AnchorState = "none" | "visible" | "away";
+let anchor: AnchorState = "none";
+const anchorListeners = new Set<() => void>();
+function setAnchor(v: AnchorState) { anchor = v; anchorListeners.forEach((l) => l()); }
+function subscribeAnchor(l: () => void) { anchorListeners.add(l); return () => { anchorListeners.delete(l); }; }
+const useAnchor = () => useSyncExternalStore(subscribeAnchor, () => anchor, () => "none" as AnchorState);
+
+/** 메인 화면 영상 섹션 안에 둔다. 섹션이 화면에 보이는 동안 미니 플레이어를 숨긴다. */
+export function MiniPlayerAnchor() {
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const el = ref.current?.parentElement;
+    if (!el) return;
+    setAnchor("visible");
+    if (typeof IntersectionObserver === "undefined") return () => setAnchor("none");
+    const io = new IntersectionObserver(([entry]) => setAnchor(entry.isIntersecting ? "visible" : "away"), { threshold: 0.05 });
+    io.observe(el);
+    return () => { io.disconnect(); setAnchor("none"); };
+  }, []);
+  return <span ref={ref} hidden />;
+}
+
 const CLOSED_KEY = "sb.miniPlayer.closed";
 function readClosed(): string[] {
   try { return JSON.parse(sessionStorage.getItem(CLOSED_KEY) ?? "[]"); } catch { return []; }
@@ -47,7 +72,8 @@ export function MobileMiniPlayer({ videos }: { videos: HomeVideoItem[] | null })
   const fallback: Source = { key: "home", title: "라이브 커머스", slides: videos?.length ? videos.map(toSlide) : SAMPLE_SLIDES };
   const source = own === undefined ? fallback : own;
   const [closed, setClosed] = useState<string[]>([]);
-  const [anchorVisible, setAnchorVisible] = useState(false);
+  const anchorState = useAnchor();
+  const supportView = useSupportView(); // 문의하기 창이 열려 있으면 잠시 숨김 (같은 자리라 겹치지 않게)
   const [index, setIndex] = useState(0);
   const [expanded, setExpanded] = useState(false);
   const [quiet, setQuiet] = useState(true); // 미리보기 자동 재생을 끌지 (동작 줄이기 · 데이터 절약)
@@ -64,17 +90,6 @@ export function MobileMiniPlayer({ videos }: { videos: HomeVideoItem[] | null })
   const sourceKey = source?.key;
   useEffect(() => { setIndex(0); setExpanded(false); }, [sourceKey]);
 
-  // 메인: 화면 안 큰 플레이어가 보이는 동안은 숨긴다
-  useEffect(() => {
-    setAnchorVisible(false);
-    if (pathname !== "/") return;
-    const el = document.querySelector("[data-mini-anchor]");
-    if (!el || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver(([entry]) => setAnchorVisible(entry.isIntersecting), { threshold: 0.15 });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [pathname]);
-
   useEffect(() => {
     if (!restoreFocus.current) return;
     restoreFocus.current = false;
@@ -83,7 +98,8 @@ export function MobileMiniPlayer({ videos }: { videos: HomeVideoItem[] | null })
   }, [expanded]);
 
   if (!source || !source.slides.length || closed.includes(source.key)) return null;
-  const hidden = pathname === "/" && anchorVisible && !expanded;
+  // 메인(/)에서는 영상 섹션이 화면 밖으로 나갔다고 확인된 뒤에만 보인다 (서버 렌더 · 첫 화면 · 섹션이 보이는 동안은 숨김)
+  const hidden = (pathname === "/" && anchorState !== "away" && !expanded) || supportView !== "closed";
   const slide = source.slides[Math.min(index, source.slides.length - 1)];
   const src = slide.source;
   const count = source.slides.length;
@@ -157,10 +173,10 @@ export function MobileMiniPlayer({ videos }: { videos: HomeVideoItem[] | null })
         )}
         <div className={styles.previewControls} aria-hidden>
           {preview && src.kind !== "link" && <span className={styles.muted} title="음소거 미리보기"><VolumeX size={13} /></span>}
-          <span className={styles.openIcon}>
-            {src.kind === "link" ? <ArrowUpRight size={16} /> : preview ? <Maximize2 size={14} /> : <Play size={14} fill="currentColor" />}
-          </span>
         </div>
+        {(src.kind === "link" || !preview) && (
+          <span className={styles.centerIcon} aria-hidden>{src.kind === "link" ? <ArrowUpRight size={16} /> : <Play size={15} fill="currentColor" />}</span>
+        )}
       </div>
       <div className={styles.caption}>
         <span className={styles.source} title={source.title}>{source.title}</span>
@@ -169,7 +185,12 @@ export function MobileMiniPlayer({ videos }: { videos: HomeVideoItem[] | null })
       {src.kind === "link" ? (
         <a href={slide.url} target="_blank" rel="noopener noreferrer" tabIndex={tab} aria-label={`${slide.title} 원본에서 보기`} className={styles.open} />
       ) : (
-        <button ref={openButton} type="button" onClick={() => resize(true)} tabIndex={tab} aria-label={`${slide.title} 크게 보기`} className={styles.open} />
+        <button ref={openButton} type="button" onClick={() => resize(true)} tabIndex={tab} aria-label={`${slide.title} 크게 보기 (화면 누르기)`} className={styles.open} />
+      )}
+      {src.kind !== "link" && (
+        <button type="button" onClick={() => resize(true)} tabIndex={tab} aria-label="크게 보기" className={cn(styles.iconButton, styles.expand)}>
+          <span className={styles.closeIcon}><Maximize2 size={13} aria-hidden /></span>
+        </button>
       )}
       <button type="button" onClick={close} tabIndex={tab} aria-label="미니 플레이어 닫기" className={cn(styles.iconButton, styles.close)}>
         <span className={styles.closeIcon}><X size={15} aria-hidden /></span>

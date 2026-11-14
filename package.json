@@ -5,6 +5,7 @@
   "scripts": {
     "predev": "node scripts/ensure-db.mjs",
     "dev": "next dev -p 3007",
+    "dev:clean": "node -e \"require('fs').rmSync('.next-dev',{recursive:true,force:true})\" && npm run dev",
     "start": "next start -p 3007",
     "build": "prisma generate && next build",
     "lint": "next lint",

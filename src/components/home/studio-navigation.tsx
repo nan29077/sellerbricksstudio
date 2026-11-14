@@ -77,7 +77,7 @@ export function StudioTopBar({ account }: { account: Account }) {
         <MenuItems account={account} desktop={false} onNavigate={() => menu.current?.close()} />
       </dialog>
       {pathname !== "/support" && (
-        <SupportButton showUnread ariaLabel="문의하기" className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-[max(1rem,calc((100vw-716px)/2+1rem))] z-40 grid h-12 w-12 place-items-center rounded-full bg-navy text-white shadow-lg hover:bg-navy-700 lg:hidden">
+        <SupportButton showUnread launcher ariaLabel="문의하기" className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-[max(1rem,calc((100vw-716px)/2+1rem))] z-40 grid h-12 w-12 place-items-center rounded-full bg-navy text-white shadow-lg hover:bg-navy-700 lg:hidden">
           <Headset className="h-5 w-5 text-brand-300" />
         </SupportButton>
       )}
@@ -110,7 +110,7 @@ export function StudioNavigation({ account }: { account: Account }) {
         <MenuItems account={account} desktop />
         <p aria-hidden="true" className="pb-1 pt-2 text-center text-[11px] font-black tracking-[0.13em] text-slate-500">STORAGE MARKET</p>
       </div>
-      <SupportButton showUnread ariaLabel="문의하기" className="row-start-3 mb-1 flex min-h-11 items-center justify-center gap-1.5 self-end rounded-full border border-white/20 bg-navy px-3 text-[11px] font-bold text-white shadow-lg transition hover:bg-navy-700 [@media(max-height:740px)]:row-start-2">
+      <SupportButton showUnread launcher ariaLabel="문의하기" className="row-start-3 mb-1 flex min-h-11 items-center justify-center gap-1.5 self-end rounded-full border border-white/20 bg-navy px-3 text-[11px] font-bold text-white shadow-lg transition hover:bg-navy-700 [@media(max-height:740px)]:row-start-2">
         <Headset className="h-4 w-4 text-brand-300" />문의하기
       </SupportButton>
     </>
